@@ -1,0 +1,18 @@
+{
+  "name": "Δ9 LYGO Champion Hub",
+  "short_name": "chatagent",
+  "description": "Δ9 summonable champions hub on the LYGO lattice — chatagent.ca",
+  "start_url": "https://chatagent.ca/",
+  "scope": "https://chatagent.ca/",
+  "display": "standalone",
+  "background_color": "#03040a",
+  "theme_color": "#03040a",
+  "icons": [
+    {
+      "src": "https://pbs.twimg.com/media/G90k8DKasAAIdnB?format=png&name=360x360",
+      "sizes": "360x360",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
