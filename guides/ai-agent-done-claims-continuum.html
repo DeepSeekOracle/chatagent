@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>When Your AI Agent Says “Done” — Continuum Capsules | chatagent.ca</title>
+<meta name="description" content="Why agent 'done' messages are not proof, and how LYGO Continuum falsifiable capsules, drift detection, and handoffs help humans and agents verify work.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://chatagent.ca/guides/ai-agent-done-claims-continuum.html">
+<meta name="author" content="Justin Helmer">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "When Your AI Agent Says Done — Continuum Capsules",
+  "datePublished": "2026-08-08",
+  "dateModified": "2026-08-08",
+  "author": { "@type": "Person", "name": "Justin Helmer" },
+  "publisher": { "@type": "Organization", "name": "chatagent.ca" },
+  "mainEntityOfPage": "https://chatagent.ca/guides/ai-agent-done-claims-continuum.html"
+}
+</script>
+</head>
+<body>
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="/">chatagent.ca</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/lygo-continuum.html">Continuum</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap prose">
+  <p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Continuum</p>
+  <article class="card">
+    <h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">When your AI agent says “done” — make the claim falsifiable</h1>
+    <p class="meta">By Justin Helmer · 8 August 2026 · Original guide · Tool: <a href="/lygo-continuum.html">Continuum portal</a></p>
+
+    <h2>The everyday failure mode</h2>
+    <p>
+      Coding agents and multi-step chat tools often finish with a confident summary: tests passed, file updated,
+      feature complete. A clean exit code only proves the process finished — not that the world matches the story.
+      The next human, or the next model in a new session, inherits a <strong>chat narrative</strong>, not a proof.
+    </p>
+    <p>
+      Industry writing in 2025–2026 increasingly frames completion as something that must be checked, not believed.
+      Continuum is our practical product for that idea: a capsule of claims you can re-run against real files.
+    </p>
+
+    <h2>What Continuum is (and is not)</h2>
+    <p><strong>Continuum is:</strong></p>
+    <ul>
+      <li>A schema for work capsules (<code>lygo.continuum.v1</code>)</li>
+      <li>A claim language: file exists, SHA-256, contains, JSON path, counts, portable text hashes</li>
+      <li>Verify + drift reports when reality changes after seal</li>
+      <li>A handoff markdown pack for the next agent</li>
+      <li>A browser portal that hashes dropped files locally (no upload for verification)</li>
+    </ul>
+    <p><strong>Continuum is not:</strong></p>
+    <ul>
+      <li>A cloud blockchain notary (unless you separately publish a hash yourself)</li>
+      <li>A replacement for unit tests</li>
+      <li>Permission to skip human review</li>
+    </ul>
+
+    <h2>A simple mental model</h2>
+    <ol>
+      <li>Finish the task on disk.</li>
+      <li>Write claims that must remain true for the work to “still hold.”</li>
+      <li>Seal → get a capsule with root hash and seal-time results.</li>
+      <li>Later, verify. If files changed, drift appears.</li>
+      <li>Hand off the capsule JSON + markdown so the next session starts with evidence, not vibes.</li>
+    </ol>
+
+    <h2>Example claims (educational)</h2>
+    <p style="font-family:ui-monospace,monospace;font-size:0.82rem;background:#0f151c;color:#e8eef4;padding:1rem;border-radius:10px;overflow:auto">
+[
+  {"id":"c1","kind":"file_exists","path":"src/login.py"},
+  {"id":"c2","kind":"file_sha256","path":"src/login.py"},
+  {"id":"c3","kind":"file_contains","path":"src/login.py","needle":"def login"},
+  {"id":"c4","kind":"json_path_eq","path":"out/report.json","jpath":"status","expect":"ok"}
+]
+    </p>
+    <p>
+      When you seal, omitted <code>file_sha256</code> expects can be filled from the current file.
+      Re-verify fails if someone edits <code>login.py</code> after the seal — that is drift, and it is useful.
+    </p>
+
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <h2>Human portal workflow</h2>
+    <p>
+      Open <a href="/lygo-continuum.html">https://chatagent.ca/lygo-continuum.html</a>, paste a capsule,
+      drop the files named in claims, and run verify. The browser computes SHA-256 with Web Crypto.
+      Use this when you received a capsule from an agent and want a visual HOLDS / BROKEN / DRIFT result
+      without installing Python.
+    </p>
+
+    <h2>CLI skill (for operators)</h2>
+    <p>
+      The OpenClaw / ClawHub skill <code>lygo-continuum</code> provides <code>seal</code>, <code>verify</code>,
+      <code>drift</code>, <code>handoff</code>, and <code>demo</code> with pure standard-library Python
+      (no network, no subprocess). Install when you want automation in agent workflows:
+    </p>
+    <p style="font-family:ui-monospace,monospace;font-size:0.85rem;background:#fafaf8;border:1px solid var(--line);padding:0.75rem;border-radius:8px">
+      npx clawhub@latest install deepseekoracle/lygo-continuum
+    </p>
+
+    <h2>Why this helps multi-agent teams</h2>
+    <p>
+      When Agent A stops and Agent B starts, the expensive part is rebuilding trust.
+      A capsule compresses “what must still be true” into something B can re-check in seconds.
+      Humans can arbitrate: if drift shows, either the world moved (legitimate edit) or the claim was wrong.
+    </p>
+
+    <h2>Ethics and limits</h2>
+    <ul>
+      <li>Do not put secrets into claim needles or task summaries you will publish.</li>
+      <li>Hashes prove file bytes matched; they do not prove the design is good.</li>
+      <li>Exit code 10 from the CLI means claims failed — treat as not done.</li>
+    </ul>
+
+    <h2>Further reading on this site</h2>
+    <ul>
+      <li><a href="/lygo-continuum.html">Continuum portal</a></li>
+      <li><a href="/guides/safe-openclaw-skills.html">Safe skill installation habits</a></li>
+      <li><a href="/guides/how-to-summon-ai-champions.html">Summon champions guide</a></li>
+      <li><a href="/lygoskillhub.html">LYGOSKILLHUB</a></li>
+    </ul>
+  </article>
+</div>
+<footer class="site">
+  <div class="wrap">
+    <nav><a href="/guides/">All guides</a> <a href="/privacy.html">Privacy</a> <a href="/contact.html">Contact</a></nav>
+    <p>© <span id="y"></span> Justin Helmer · chatagent.ca</p>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>

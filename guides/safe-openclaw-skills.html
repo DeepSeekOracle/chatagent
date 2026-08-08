@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safe Habits Before Installing OpenClaw / ClawHub Skills | chatagent.ca</title>
+<meta name="description" content="Practical safety checklist before installing AI agent skills from ClawHub or OpenClaw: permissions, subprocess, network, secrets, and claim mismatches.">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://chatagent.ca/guides/safe-openclaw-skills.html">
+<meta name="author" content="Justin Helmer">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "Safe Habits Before Installing OpenClaw / ClawHub Skills",
+  "datePublished": "2026-08-08",
+  "dateModified": "2026-08-08",
+  "author": { "@type": "Person", "name": "Justin Helmer" },
+  "publisher": { "@type": "Organization", "name": "chatagent.ca" }
+}
+</script>
+</head>
+<body>
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="/">chatagent.ca</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/lygoskillhub.html">SkillHub</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap prose">
+  <p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Skill safety</p>
+  <article class="card">
+    <h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">Safe habits before installing OpenClaw / ClawHub skills</h1>
+    <p class="meta">By Justin Helmer · 8 August 2026 · Educational checklist</p>
+
+    <h2>Why skills need a gate</h2>
+    <p>
+      Agent skills are powerful because they can read files, call tools, and encode workflows.
+      That power is also the risk: a skill that claims “no network” but imports HTTP libraries is a trust problem.
+      Treat every skill like untrusted software — even from publishers you generally like (including us).
+    </p>
+
+    <h2>Pre-install checklist</h2>
+    <ol>
+      <li><strong>Read SKILL.md</strong> — what does it say it does? what permissions does it claim?</li>
+      <li><strong>Skim scripts/</strong> — look for <code>subprocess</code>, <code>shell=True</code>, <code>eval</code>, raw sockets, hardcoded secrets.</li>
+      <li><strong>Check for auto-publish</strong> — git push, social post, or cloud upload without consent flags is a red flag.</li>
+      <li><strong>Prefer local-first</strong> — tools that work offline with explicit <code>--i-consent</code> for writes are easier to reason about.</li>
+      <li><strong>Install from a known slug</strong> — typo-squatting is a real class of attack on package ecosystems.</li>
+      <li><strong>Run in a throwaway environment first</strong> if the skill is high privilege.</li>
+    </ol>
+
+    <h2>Claim vs code mismatches</h2>
+    <p>
+      A common failure mode: documentation says “no network / no subprocess,” but the code clearly uses them.
+      That may be malice, sloppy packaging, or an outdated description — all are reasons to pause.
+      Our local scanner skill <strong>lygo-skill-gate</strong> was built for exactly this pre-install scan
+      (stdlib only; it does not auto-install anything). See listings on
+      <a href="/lygoskillhub.html">LYGOSKILLHUB</a>.
+    </p>
+
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <h2>Permissions table (mental model)</h2>
+    <table class="simple">
+      <thead><tr><th>Capability</th><th>Ask yourself</th></tr></thead>
+      <tbody>
+        <tr><td>Filesystem write</td><td>Where? Is consent required? Can it escape the skill folder?</td></tr>
+        <tr><td>Network</td><td>Which hosts? Why? Can it be disabled?</td></tr>
+        <tr><td>Subprocess / shell</td><td>Is the command allowlisted? Any user-controlled strings?</td></tr>
+        <tr><td>Secrets</td><td>Does it log env vars? Store tokens in plaintext?</td></tr>
+        <tr><td>Publish</td><td>Can it post or push without you?</td></tr>
+      </tbody>
+    </table>
+
+    <h2>After install</h2>
+    <ul>
+      <li>Run any provided <code>self_check</code> scripts.</li>
+      <li>Pin versions when your tool allows it.</li>
+      <li>Re-scan after updates — changelogs can hide permission expansions.</li>
+      <li>For multi-step agent work, seal results with <a href="/guides/ai-agent-done-claims-continuum.html">Continuum</a>.</li>
+    </ul>
+
+    <h2>What chatagent.ca publishes</h2>
+    <p>
+      We list skills associated with the deepseekoracle ClawHub profile on
+      <a href="/lygoskillhub.html">lygoskillhub.html</a>. Public skills are meant as “tentacles”;
+      FULL engineer packages (when offered) sit behind an explicit gate. Always re-verify locally.
+    </p>
+
+    <p class="notice">This guide is education, not a guarantee of safety. You own the machines and the agents you run.</p>
+  </article>
+</div>
+<footer class="site">
+  <div class="wrap">
+    <nav><a href="/guides/">All guides</a> <a href="/privacy.html">Privacy</a> <a href="/contact.html">Contact</a></nav>
+    <p>© <span id="y"></span> Justin Helmer · chatagent.ca</p>
+  </div>
+</footer>
+<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+</body>
+</html>
