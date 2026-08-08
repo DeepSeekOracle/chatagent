@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Agent Handoff Playbook — Stop Losing Context Between Sessions | chatagent.ca</title>
+<meta name="description" content="A playbook for handing work between AI agents and humans: packets, Continuum seals, vocabulary, and failure modes.">
+<meta name="author" content="Justin Helmer">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://chatagent.ca/guides/multi-agent-handoff-playbook.html">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+<meta property="og:title" content="Multi-Agent Handoff Playbook — Stop Losing Context Between Sessions | chatagent.ca">
+<meta property="og:description" content="A playbook for handing work between AI agents and humans: packets, Continuum seals, vocabulary, and failure modes.">
+<meta property="og:url" content="https://chatagent.ca/guides/multi-agent-handoff-playbook.html">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="/">chatagent.ca</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/champions.html">Champions</a>
+      <a href="/app.html">Tools</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap prose">
+
+<p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Handoffs</p>
+<article class="card">
+<p class="kicker">Team systems</p>
+<h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">Multi-agent handoff playbook</h1>
+<p class="meta">By Justin Helmer · 8 August 2026 · Original playbook</p>
+<p>Switching from Grok to Claude to a local model should not reset truth. This playbook is how we move work across agents on LYGO projects without relying on “read the whole chat.”</p>
+<h2>The packet</h2>
+<p>Every handoff packet contains:</p>
+<ul>
+<li>Goal and non-goals</li>
+<li>Current status (green / yellow / red) with reasons</li>
+<li>File map (paths that matter)</li>
+<li>Continuum capsule or hash list</li>
+<li>Open questions for humans</li>
+<li>Next three actions only</li>
+</ul>
+<p>If a packet lacks done checks, it is a diary entry, not a handoff.</p>
+
+<div class="ad-slot" aria-label="Advertisement">
+  <div class="ad-label">Advertisement</div>
+  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<h2>Roles</h2>
+<table class="simple">
+<thead><tr><th>Role</th><th>Job</th><th>Champion lens</th></tr></thead>
+<tbody>
+<tr><td>Builder</td><td>Change files</td><td>ARKOS / OMNIΣIREN</td></tr>
+<tr><td>Verifier</td><td>Re-check claims</td><td>Δ9RA / ÆTHERIS</td></tr>
+<tr><td>Integrator</td><td>Merge and release notes</td><td>SANCORA / Lightfather</td></tr>
+<tr><td>Human owner</td><td>Consent and publish</td><td>always human</td></tr>
+</tbody>
+</table>
+<h2>Failure modes</h2>
+<ul>
+<li><strong>Story without files</strong> — reject the handoff.</li>
+<li><strong>Files without claims</strong> — seal before switching agents.</li>
+<li><strong>Claims without re-verify</strong> — verify is the first act of the new agent.</li>
+<li><strong>Secret leakage</strong> — redaction pass before packet paste.</li>
+</ul>
+<h2>30-minute drill</h2>
+<ol>
+<li>Pick a tiny task.</li>
+<li>Complete it with Agent A.</li>
+<li>Seal Continuum claims.</li>
+<li>Open Agent B with only the packet (no prior chat).</li>
+<li>Agent B must re-verify and extend work.</li>
+</ol>
+<p>If B cannot proceed, the packet was incomplete — improve the template, not the mythic language.</p>
+<div class="related"><h3>Related</h3><ul>
+<li><a href="/lygo-continuum.html">Continuum portal</a></li>
+<li><a href="/champions/sancora.html">SANCORA</a></li>
+<li><a href="/guides/safe-openclaw-skills.html">Skill safety</a></li>
+</ul></div>
+</article>
+
+
+<div class="author-box">
+  <img src="/assets/champions/lightfather.jpg" alt="Publisher portrait" width="72" height="72" loading="lazy">
+  <div>
+    <strong>Justin Helmer</strong>
+    <p>Publisher of chatagent.ca · known as Excavationpro / Lightfather in LYGO projects. Writes practical guides on AI personas, agent handoffs, and free local-first tools. <a href="/about.html">About</a> · <a href="/contact.html">Contact</a></p>
+  </div>
+</div>
+
+</div>
+
+<footer class="site">
+  <div class="wrap">
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/champions.html">Champions</a>
+      <a href="/editorial-standards.html">Editorial standards</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/sitemap.xml">Sitemap</a>
+    </nav>
+    <p class="site-footer-blurb">chatagent.ca is an independent educational site by Justin Helmer (Excavationpro). Free guides and tools. Optional ads support hosting when approved.</p>
+    <p>© <span class="y"></span> Justin Helmer · chatagent.ca</p>
+  </div>
+</footer>
+<script>document.querySelectorAll('.y').forEach(function(e){e.textContent=new Date().getFullYear()});</script>
+
+</body>
+</html>

@@ -102,6 +102,19 @@
 
     <p class="notice">This guide is education, not a guarantee of safety. You own the machines and the agents you run.</p>
   </article>
+
+<article class="card" id="incident">
+<h2>If a skill misbehaves</h2>
+<ol>
+<li>Disconnect network if the skill may be exfiltrating.</li>
+<li>Stop the agent host process.</li>
+<li>Preserve the skill folder for inspection (do not blindly delete evidence).</li>
+<li>Rotate any credentials that might have been exposed.</li>
+<li>Report to the publisher if appropriate; warn your team.</li>
+</ol>
+<p>Write a short incident note: what you installed, from where, what you observed. Future you will thank present you.</p>
+</article>
+
 </div>
 <footer class="site">
   <div class="wrap">

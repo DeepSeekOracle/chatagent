@@ -138,6 +138,25 @@
       <li><a href="/lygoskillhub.html">LYGOSKILLHUB</a></li>
     </ul>
   </article>
+
+<article class="card" id="ops">
+<h2>Operations notes for teams</h2>
+<p>Store capsules next to the repo (for example <code>ops/capsules/</code>) or in your ticket system as attachments. Name them with date and milestone. When CI exists, you can still keep Continuum as a human-readable layer for tasks CI does not cover (docs, content, mixed folders).</p>
+<h2>What good claims look like</h2>
+<ul>
+<li>Stable paths (not temporary editor junk)</li>
+<li>Needles that encode intent (“def login”) not huge paste blocks</li>
+<li>JSON paths for machine reports agents already write</li>
+<li>Enough claims to catch partial work (3–10 is a sweet spot)</li>
+</ul>
+<h2>What bad claims look like</h2>
+<ul>
+<li>Hashing secrets</li>
+<li>Claims on generated folders that change every run without meaning</li>
+<li>Only <code>file_exists</code> with no content checks for critical files</li>
+</ul>
+</article>
+
 </div>
 <footer class="site">
   <div class="wrap">

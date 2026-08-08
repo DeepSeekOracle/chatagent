@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local-First AI Tools — Why We Prefer Offline Defaults | chatagent.ca</title>
+<meta name="description" content="Why chatagent.ca and LYGO tools default to local-first: privacy, cost, consent, and how to choose when cloud is worth it.">
+<meta name="author" content="Justin Helmer">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://chatagent.ca/guides/local-first-ai-tools.html">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+<meta property="og:title" content="Local-First AI Tools — Why We Prefer Offline Defaults | chatagent.ca">
+<meta property="og:description" content="Why chatagent.ca and LYGO tools default to local-first: privacy, cost, consent, and how to choose when cloud is worth it.">
+<meta property="og:url" content="https://chatagent.ca/guides/local-first-ai-tools.html">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="/">chatagent.ca</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/champions.html">Champions</a>
+      <a href="/app.html">Tools</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap prose">
+
+<p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Local-first</p>
+<article class="card">
+<p class="kicker">Philosophy in practice</p>
+<h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">Local-first AI tools (and when cloud still wins)</h1>
+<p class="meta">By Justin Helmer · 8 August 2026</p>
+<p>Local-first does not mean “never use a network.” It means the default path works on your machine, with explicit consent for anything that leaves. That default is how we design Continuum, skill gates, and many ClawHub utilities.</p>
+<h2>Benefits you can feel</h2>
+<ul>
+<li><strong>Privacy</strong> — fewer accidental secret uploads.</li>
+<li><strong>Cost</strong> — hashing a file locally is free; stuffing logs into a paid API is not.</li>
+<li><strong>Reproducibility</strong> — stdlib scripts behave the same offline.</li>
+<li><strong>Consent clarity</strong> — flags like <code>--i-consent</code> make writes intentional.</li>
+</ul>
+
+<div class="ad-slot" aria-label="Advertisement">
+  <div class="ad-label">Advertisement</div>
+  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<h2>When cloud is the right tool</h2>
+<p>Use hosted models for broad knowledge, multimodal leaps, or collaboration you cannot run locally. Be explicit: paste only redacted context; keep source of truth on disk; seal results.</p>
+<h2>A decision table</h2>
+<table class="simple">
+<thead><tr><th>Job</th><th>Prefer local</th><th>Prefer cloud</th></tr></thead>
+<tbody>
+<tr><td>File hash / claim verify</td><td>yes</td><td>no need</td></tr>
+<tr><td>Skill risk scan</td><td>yes</td><td>optional second opinion</td></tr>
+<tr><td>Creative brainstorm</td><td>small models ok</td><td>frontier models shine</td></tr>
+<tr><td>Public search synthesis</td><td>limited</td><td>often better</td></tr>
+</tbody>
+</table>
+<p>chatagent.ca itself is a static educational site: content is public, tools that touch your files explain that they run in-browser or as local scripts.</p>
+<div class="related"><h3>Related</h3><ul>
+<li><a href="/guides/safe-openclaw-skills.html">Safe skills</a></li>
+<li><a href="/guides/ai-agent-done-claims-continuum.html">Continuum</a></li>
+<li><a href="/editorial-standards.html">Editorial standards</a></li>
+</ul></div>
+</article>
+
+
+<div class="author-box">
+  <img src="/assets/champions/lightfather.jpg" alt="Publisher portrait" width="72" height="72" loading="lazy">
+  <div>
+    <strong>Justin Helmer</strong>
+    <p>Publisher of chatagent.ca · known as Excavationpro / Lightfather in LYGO projects. Writes practical guides on AI personas, agent handoffs, and free local-first tools. <a href="/about.html">About</a> · <a href="/contact.html">Contact</a></p>
+  </div>
+</div>
+
+</div>
+
+<footer class="site">
+  <div class="wrap">
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/champions.html">Champions</a>
+      <a href="/editorial-standards.html">Editorial standards</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html">Contact</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/sitemap.xml">Sitemap</a>
+    </nav>
+    <p class="site-footer-blurb">chatagent.ca is an independent educational site by Justin Helmer (Excavationpro). Free guides and tools. Optional ads support hosting when approved.</p>
+    <p>© <span class="y"></span> Justin Helmer · chatagent.ca</p>
+  </div>
+</footer>
+<script>document.querySelectorAll('.y').forEach(function(e){e.textContent=new Date().getFullYear()});</script>
+
+</body>
+</html>
