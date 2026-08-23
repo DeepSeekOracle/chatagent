@@ -39,4 +39,6 @@
   <url><loc>https://chatagent.ca/guides/local-first-ai-tools.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://chatagent.ca/guides/redact-secrets-before-ai.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://chatagent.ca/guides/human-review-checklist-for-ai-output.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://chatagent.ca/games/eternal-lattice/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://chatagent.ca/games/lattice-swarm/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
 </urlset>
