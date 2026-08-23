@@ -12,6 +12,8 @@
   <url><loc>https://chatagent.ca/app.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://chatagent.ca/lygo-continuum.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://chatagent.ca/lygoskillhub.html</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://chatagent.ca/lygo-eternal-lattice.html</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://chatagent.ca/lygo-apps.html</loc><changefreq>weekly</changefreq><priority>0.85</priority></url>
   <url><loc>https://chatagent.ca/guides/how-to-summon-ai-champions.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://chatagent.ca/guides/ai-agent-done-claims-continuum.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://chatagent.ca/guides/safe-openclaw-skills.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
