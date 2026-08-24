@@ -55,7 +55,7 @@
     factory: { name: "Factory", cost: 200, hp: 110, pwr: 1, cat: "production", spr: "factory",
                desc: "Train Marines and scouts on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
-               desc: "Drop autonomous Lattice Marines across the fog." },
+               desc: "One living sortie at a time. Rearms one full turn after that unit dies. Missiles still cycle every turn from silos." },
     pad:     { name: "Reclaim Pad", cost: 50, hp: 45, pwr: 0, cat: "core", spr: "pad",
                desc: "50c floating deck. Drops on water, turns it into a buildable surface, and hops command range by 2. Build another structure on it to occupy the deck." },
     relay:   { name: "Command Relay", cost: 160, hp: 70, pwr: 1, cat: "core", spr: "emp",
@@ -77,7 +77,7 @@
     fake:    { name: "Decoy HQ", cost: 80, hp: 42, pwr: 0, cat: "decoy", spr: "fake",
                desc: "Looks like a command centre until it detonates." },
     silo:    { name: "Missile Silo", cost: 220, hp: 90, pwr: 1, cat: "offense", spr: "silo",
-               desc: "One cruise missile per silo, per salvo." },
+               desc: "One cruise missile per silo, every turn." },
     icbm:    { name: "ICBM Silo", cost: 420, hp: 95, pwr: 2, cat: "offense", spr: "icbm", unlock: "icbm",
                desc: "One ICBM per silo, per salvo. Costly. Interceptable." }
   };
@@ -90,13 +90,13 @@
     icbm:      { name: "ICBM", cost: 190, fuel: 6, dmg: 135, r: 2, need: "icbm",
                  desc: "One shot per live ICBM Silo. Huge crater." },
     drop:      { name: "Marine drop", cost: 75, fuel: 3, need: "hangar", spawn: "marine",
-                 desc: "One drop per hangar (shared with tanks/airstrike)." },
+                 desc: "Hangar stays busy until that marine dies, then one full turn to rearm." },
     tankdrop:  { name: "Tank drop", cost: 150, fuel: 4, need: "hangar", spawn: "tank", unlock: "tank",
-                 desc: "Uses that hangar’s one launch this salvo." },
+                 desc: "Hangar stays busy until that tank dies, then one full turn to rearm." },
     scout:     { name: "Scout run", cost: 55, fuel: 2, need: "factory", spawn: "scout", unlock: "scout",
-                 desc: "One scout per live Factory." },
+                 desc: "Factory stays busy until that scout dies, then one full turn to rearm." },
     airstrike: { name: "Airstrike", cost: 170, fuel: 4, dmg: 78, r: 1, need: "hangar", unlock: "airstrike",
-                 desc: "Uses a hangar launch. AA can intercept." },
+                 desc: "Uses a free hangar. Rearms one full turn later. AA can intercept." },
     emp:       { name: "EMP pulse", cost: 85, fuel: 2, need: "emp", emp: true, unlock: "emp",
                  desc: "One pulse per live EMP Tower." },
     sat:       { name: "Satellite pass", cost: 40, fuel: 3, need: "sat", unlock: "sat", sat: true,
@@ -977,8 +977,44 @@
     if (kind === "scout") return "factory";
     return null;
   }
+  function padReady(b) {
+    if (!b) return false;
+    if (b.boundUid) {
+      const u = S.units.find((x) => x.id === b.boundUid && x.hp > 0);
+      if (u) return false;
+    }
+    if (b.rearmTurn && S.turn < b.rearmTurn) return false;
+    return true;
+  }
   function livePads(owner, type) {
-    return S.buildings.filter((b) => b.owner === owner && b.type === type && b.hp > 0 && !b.wrecked && !b.offline);
+    return S.buildings.filter((b) => {
+      if (b.owner !== owner || b.type !== type || b.hp <= 0 || b.wrecked || b.offline) return false;
+      if (type === "hangar" || type === "factory") return padReady(b);
+      return true;
+    });
+  }
+  function markSortie(q, unit) {
+    const pad = q.pad && S.buildings.find((b) => b.id === q.pad);
+    if (!pad) return;
+    const occupy = q.kind === "drop" || q.kind === "tankdrop" || q.kind === "scout";
+    if (occupy && unit && unit.hp > 0) {
+      pad.boundUid = unit.id;
+      unit.fromPad = pad.id;
+      pad.rearmTurn = 0;
+    } else {
+      pad.boundUid = null;
+      pad.rearmTurn = S.turn + 2;
+    }
+  }
+  function tickSorties() {
+    for (const b of S.buildings) {
+      if (!b.boundUid) continue;
+      const u = S.units.find((x) => x.id === b.boundUid && x.hp > 0);
+      if (!u) {
+        b.boundUid = null;
+        b.rearmTurn = S.turn + 1;
+      }
+    }
   }
   function queuedPads(owner, type) {
     return S.queue.filter((q) => q.owner === owner && launcherOf(q.kind) === type).length;
@@ -1008,6 +1044,10 @@
     const pad = claimPad(owner, kind);
     if (launcherOf(kind) && !pad) {
       const t = launcherOf(kind);
+      const any = S.buildings.some((b) => b.owner === owner && b.type === t && b.hp > 0 && !b.wrecked);
+      if ((t === "hangar" || t === "factory") && any) {
+        return fail(BLD[t].name + " is in the field or rearming — back one full turn after that unit dies.");
+      }
       return fail("No free " + BLD[t].name + " this salvo — one shot per live pad.");
     }
     if (w.need && !livePads(owner, w.need).length) return fail("Need a live " + BLD[w.need].name + ".");
@@ -1219,6 +1259,7 @@
       fx("aa");
       boom(hx, hy);
       reveal(q.owner, q.x, q.y, 1 + (cmdrFor(q.owner).reveal || 0));
+      if (w.spawn || q.kind === "airstrike") markSortie(q, null);
       return;
     }
     if (w.emp) {
@@ -1230,7 +1271,7 @@
       return;
     }
     if (w.spawn) {
-      if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); boom(q.x, q.y); return; }
+      if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); boom(q.x, q.y); markSortie(q, null); return; }
       let dropped = null;
       const mine = buildingAt(q.x, q.y);
       if (mine && mine.type === "mine" && mine.owner !== q.owner) {
@@ -1251,6 +1292,7 @@
       } else dropped = spawnU(w.spawn, q.owner, q.x, q.y);
       if (dropped && dropped.hp > 0) unitLook(dropped);
       else reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 2);
+      markSortie(q, dropped && dropped.hp > 0 ? dropped : null);
       boom(q.x, q.y);
       return;
     }
@@ -1264,6 +1306,7 @@
       applySplash(q.owner, q.x, q.y, dmg, w.r || 0);
     }
     reveal(q.owner, q.x, q.y, 1 + (w.r || 0) + (cmdrFor(q.owner).reveal || 0));
+    if (q.kind === "airstrike") markSortie(q, null);
     boom(q.x, q.y);
   }
 
@@ -1530,6 +1573,7 @@
 
   function nextTurn() {
     S.turn++;
+    tickSorties();
     S.phase = "defense";
     for (const o of [0, 1]) {
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
@@ -2602,7 +2646,7 @@
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
       <p><b>Council:</b> pick one of the 15 Δ9 champions from <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a>. Each carries Haven lore and a small island bonus. Cycle from the right-rail portrait or the title menu.</p>
       <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
-      <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
+      <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar marines/tanks and factory scouts stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Probes reveal on impact. Each AA fires once per incoming wave.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. In range they shoot the highest-priority closest target (units, then HQs, then guns). Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile. Enter commits the phase. Esc cancels a tool. Hot-seat is local only. A vs-AI win automatically inscribes your commander name on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
