@@ -170,69 +170,76 @@
   }
 
   function genMap(seed) {
-    const R = rng(seed >>> 0);
+    const sid = seed >>> 0;
+    const R = rng(sid);
     const tiles = Array.from({ length: MAP }, () => Array(MAP).fill("water"));
     const n2 = (x, y, salt) => {
-      let n = (Math.imul(x + 13, 374761393) ^ Math.imul(y + 17, 668265263) ^ Math.imul(salt ^ seed, 1274126177)) >>> 0;
-      n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+      let n = sid;
+      n = Math.imul(n ^ Math.imul(x + 19, 374761393), 2246822519);
+      n = Math.imul(n ^ Math.imul(y + 27, 668265263), 3266489917);
+      n = Math.imul(n ^ (salt * 0x9e3779b9), 668265263);
+      n = (n ^ (n >>> 16)) >>> 0;
       return (n & 0xffff) / 65535;
     };
-    const fbm = (x, y, salt) =>
-      n2(x, y, salt) * 0.5 + n2((x / 2) | 0, (y / 2) | 0, salt + 3) * 0.35 + n2((x / 4) | 0, (y / 4) | 0, salt + 9) * 0.15;
-    const ellipse = (cx, cy, rx, ry, salt, thresh) => {
+    const stamp = (cx, cy, rad, warp) => {
+      if (rad < 1.5) rad = 1.5;
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        const dx = (x - cx) / rx, dy = (y - cy) / ry;
-        const d = Math.hypot(dx, dy) + (fbm(x, y, salt) - 0.5) * 0.85;
-        if (d < thresh) tiles[y][x] = "plains";
+        const w = (n2(x, y, (cx * 13 + cy * 7) | 0) - 0.5) * warp * rad;
+        if (Math.hypot(x - cx, y - cy) < rad + w) tiles[y][x] = "plains";
       }
     };
-    const south = {
-      cx: MAP * (0.38 + R() * 0.4),
-      cy: MAP * (0.60 + R() * 0.24),
-      rx: MAP * (0.16 + R() * 0.18),
-      ry: MAP * (0.14 + R() * 0.16)
-    };
-    const north = {
-      cx: MAP * (0.18 + R() * 0.42),
-      cy: MAP * (0.12 + R() * 0.24),
-      rx: MAP * (0.16 + R() * 0.18),
-      ry: MAP * (0.14 + R() * 0.16)
-    };
-    ellipse(south.cx, south.cy, south.rx, south.ry, 11, 0.92 + R() * 0.18);
-    ellipse(north.cx, north.cy, north.rx, north.ry, 23, 0.92 + R() * 0.18);
-    if (R() > 0.35) {
-      ellipse(south.cx + (R() - 0.5) * MAP * 0.22, south.cy - R() * MAP * 0.08, south.rx * 0.55, south.ry * 0.5, 31, 0.9);
-    }
-    if (R() > 0.35) {
-      ellipse(north.cx + (R() - 0.5) * MAP * 0.22, north.cy + R() * MAP * 0.08, north.rx * 0.55, north.ry * 0.5, 41, 0.9);
-    }
-    const extras = MAP >= 64 ? 2 + (R() > 0.5 ? 1 : 0) : (MAP >= 40 && R() > 0.4 ? 1 : 0);
-    for (let i = 0; i < extras; i++) {
-      ellipse(MAP * (0.2 + R() * 0.6), MAP * (0.35 + R() * 0.3), MAP * (0.06 + R() * 0.08), MAP * (0.05 + R() * 0.07), 50 + i * 7, 0.88);
-    }
-    const countHalf = (southSide) => {
+    const STYLES = ["continent", "twin isles", "peninsula", "archipelago", "bay"];
+    const fillHalf = (south) => {
+      const y0 = south ? MAP / 2 : 0;
+      const y1 = south ? MAP : MAP / 2;
+      const style = (R() * 5) | 0;
+      const cx = 3 + R() * (MAP - 6);
+      const cy = y0 + 3 + R() * Math.max(3, y1 - y0 - 6);
+      if (style === 0) {
+        stamp(cx, cy, MAP * (0.16 + R() * 0.16), 0.55);
+      } else if (style === 1) {
+        stamp(cx - MAP * (0.08 + R() * 0.08), cy, MAP * (0.09 + R() * 0.08), 0.5);
+        stamp(cx + MAP * (0.08 + R() * 0.1), cy + (south ? -1 : 1) * MAP * 0.05, MAP * (0.08 + R() * 0.08), 0.5);
+      } else if (style === 2) {
+        const ang = R() * Math.PI * 2;
+        const n = 3 + ((R() * 4) | 0);
+        for (let i = 0; i < n; i++) {
+          stamp(cx + Math.cos(ang) * i * MAP * 0.055, cy + Math.sin(ang) * i * MAP * 0.05, MAP * (0.06 + R() * 0.05), 0.6);
+        }
+      } else if (style === 3) {
+        const n = 4 + ((R() * 5) | 0);
+        for (let i = 0; i < n; i++) {
+          stamp(2 + R() * (MAP - 4), y0 + 2 + R() * Math.max(2, y1 - y0 - 4), MAP * (0.045 + R() * 0.055), 0.4);
+        }
+      } else {
+        stamp(cx, cy, MAP * (0.2 + R() * 0.1), 0.75);
+        const bay = 1 + ((R() * 2) | 0);
+        for (let i = 0; i < bay; i++) {
+          const bx = cx + (R() - 0.5) * MAP * 0.2, by = cy + (R() - 0.5) * MAP * 0.15, br = MAP * (0.04 + R() * 0.05);
+          for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+            if (Math.hypot(x - bx, y - by) < br) tiles[y][x] = "water";
+          }
+        }
+      }
       let n = 0;
-      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        if (tiles[y][x] === "water") continue;
-        if ((y >= MAP / 2) === southSide) n++;
-      }
-      return n;
+      for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) if (tiles[y][x] !== "water") n++;
+      if (n < MAP * 1.6) stamp(cx, cy, MAP * 0.18, 0.35);
+      return STYLES[style];
     };
-    const minLand = Math.round(MAP * 1.8);
-    if (countHalf(true) < minLand) ellipse(MAP * 0.55, MAP * 0.78, MAP * 0.22, MAP * 0.18, 71, 1.05);
-    if (countHalf(false) < minLand) ellipse(MAP * 0.45, MAP * 0.22, MAP * 0.22, MAP * 0.18, 81, 1.05);
-    const hillAmt = 0.08 + R() * 0.1;
-    const forestAmt = 0.16 + R() * 0.14;
-    const ruinAmt = 0.04 + R() * 0.08;
+    const noteS = fillHalf(true);
+    const noteN = fillHalf(false);
+    const hillT = 0.62 + R() * 0.28;
+    const forestT = 0.50 + R() * 0.32;
+    const ruinT = 0.86 + R() * 0.1;
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
-      const h = fbm(x, y, 101);
-      const f = fbm(x + 9, y - 4, 202);
-      if (h > 1 - hillAmt) tiles[y][x] = "hills";
-      else if (f > 1 - forestAmt) tiles[y][x] = "forest";
-      else if (n2(x, y, 303) < ruinAmt) tiles[y][x] = "ruins";
+      const h = n2(x, y, 901) * 0.6 + n2(x >> 1, y >> 1, 902) * 0.4;
+      const f = n2(x + 5, y - 3, 911) * 0.6 + n2(x >> 1, y >> 1, 912) * 0.4;
+      if (h > hillT) tiles[y][x] = "hills";
+      else if (f > forestT) tiles[y][x] = "forest";
+      else if (n2(x, y, 933) > ruinT) tiles[y][x] = "ruins";
     }
-    return tiles;
+    return { tiles, note: `south ${noteS} / north ${noteN}` };
   }
 
   function onHome(owner, x, y) {
@@ -286,12 +293,13 @@
     const size = Number(opts.mapN) || persist.mapN || 48;
     MAP = MAP_SIZES.some((m) => m.n === size) ? size : 48;
     persist.mapN = MAP;
-    const seed = ((opts.seed != null && opts.seed !== "") ? (Number(opts.seed) >>> 0) : ((Math.random() * 0xFFFFFFFF) >>> 0)) || ((Math.random() * 0xFFFFFFFF) >>> 0);
+    const seed = ((opts.seed != null && opts.seed !== "") ? (Number(opts.seed) >>> 0) : ((Math.random() * 0xFFFFFFFF) ^ Date.now()) >>> 0) || ((Math.random() * 0xFFFFFFFF) >>> 0);
     const R = rng(seed);
     const purse = Math.round(700 + MAP * 6);
+    const generated = genMap(seed);
     S = {
-      seed, R, mapN: MAP,
-      tiles: genMap(seed),
+      seed, R, mapN: MAP, mapNote: generated.note,
+      tiles: generated.tiles,
       buildings: [],
       units: [],
       fog: [grid(false), grid(false)],
@@ -320,7 +328,7 @@
     };
     if (S.mode !== "hotseat") placeHQs(1, R);
     requestAnimationFrame(() => { if (S) focusHomeLand(0); });
-    log(`${MAP}×${MAP} theatre. ${S.mode === "hotseat" ? "Southern commander: " : ""}Place your 3 Command Centres — cluster them or spread them.`);
+    log(`${MAP}×${MAP} seed ${seed} · ${generated.note}. Place 3 Command Centres.`);
     sel = null; tool = "hq"; weapon = null;
     overlayMode = null;
     hideOverlay();
@@ -1701,6 +1709,7 @@
       <span>Power <b>${Math.max(0, powerOf(me()))}</b></span>
       <span>Campaign <b>${S.campaign}</b></span>
       <span>Island <b>#${S.seed}</b></span>
+      <span>${S.mapNote ? S.mapNote : ""}</span>
       <span>AI <b>${S.mode === "ai" ? S.ai.profile : "hot-seat"}</b></span>`;
     const ph = hqCount(me()), eh = hqCount(1 - me());
     $("hqPips").innerHTML = `YOU ${pips(ph, "me")} <span style="width:8px"></span> FOE ${pips(eh, "foe")}`;
@@ -1904,7 +1913,7 @@
     savePersist();
     if (resetCamp) persist.campaign = Math.max(1, persist.campaign);
     const typed = ($("sd") && $("sd").value || "").trim();
-    const seed = (!resetCamp && typed) ? (Number(typed) >>> 0 || hashSeed(typed)) : ((Math.random() * 0xFFFFFFFF) >>> 0);
+    const seed = (!resetCamp && typed) ? (Number(typed) >>> 0 || hashSeed(typed)) : (((Math.random() * 0xFFFFFFFF) ^ Date.now()) >>> 0);
     newMatch({
       seed,
       diff: $("df").value,
