@@ -269,7 +269,7 @@
       fogAge: [grid(0), grid(0)],
       players: [
         { credits: purse, fuel: 8, emp: 0, satCD: 0, stats: zeroStats() },
-        { credits: Math.round(purse * DIFF[opts.diff].eco * (1 + (opts.campaign - 1) * 0.12)),
+        { credits: (opts.mode === "hotseat") ? purse : Math.round(purse * DIFF[opts.diff].eco * (1 + (opts.campaign - 1) * 0.12)),
           fuel: 8, emp: 0, satCD: 0, stats: zeroStats() }
       ],
       phase: "deploy",
@@ -288,9 +288,9 @@
       log: [],
       uid: 1
     };
-    placeHQs(1, R);
+    if (S.mode !== "hotseat") placeHQs(1, R);
     requestAnimationFrame(() => { if (S) focusHomeLand(0); });
-    log(`${MAP}×${MAP} theatre. Place your 3 Command Centres — cluster them or spread them.`);
+    log(`${MAP}×${MAP} theatre. ${S.mode === "hotseat" ? "Southern commander: " : ""}Place your 3 Command Centres — cluster them or spread them.`);
     sel = null; tool = "hq"; weapon = null;
     overlayMode = null;
     hideOverlay();
@@ -628,13 +628,53 @@
       fx("error");
       return;
     }
+    if (S.mode === "hotseat" && S.actor === 0) {
+      fx("phase");
+      showPass(
+        "Hand the keyboard to the northern commander. They place 3 Command Centres on their island — same staging as the south.",
+        () => {
+          S.actor = 1;
+          tool = "hq";
+          weapon = null;
+          sel = null;
+          focusHomeLand(1);
+          log("Northern commander — deploy 3 Command Centres.");
+          paintUI();
+        }
+      );
+      return;
+    }
+    const startSouth = S.mode === "hotseat";
+    if (startSouth) S.actor = 0;
     tickEconomy(true);
     for (const o of [0, 1]) radarSweep(o);
     S.phase = "defense";
     tool = null; weapon = null;
-    log("Command net live. Fortify the island.");
     fx("phase");
+    if (startSouth) {
+      showPass("Both command nets are live. Southern commander: fortify first.", () => {
+        focusHomeLand(0);
+        log("Command net live. Southern commander — Defense.");
+        paintUI();
+      });
+      return;
+    }
+    log("Command net live. Fortify the island.");
     paintUI();
+  }
+
+  function showPass(msg, then) {
+    overlayMode = "help";
+    showOverlay(`
+      <h2>Pass the keyboard</h2>
+      <p>${msg}</p>
+      <div class="row"><button class="btn gold" id="ok">Ready</button></div>
+    `);
+    $("ok").onclick = () => {
+      hideOverlay();
+      overlayMode = null;
+      if (then) then();
+    };
   }
 
   function endDefense() {
@@ -957,15 +997,19 @@
       return;
     }
     if (S.actor === 0) {
-      S.actor = 1;
-      S.phase = "defense";
-      tool = null; weapon = null;
-      focusOwner(1);
-      log("Hot-seat — pass the keyboard. Northern commander, fortify.");
-      paintUI();
+      showPass("Northern commander: Defense, then Offense.", () => {
+        S.actor = 1;
+        S.phase = "defense";
+        tool = null; weapon = null;
+        focusHomeLand(1);
+        log("Hot-seat — northern commander, fortify.");
+        paintUI();
+      });
     } else {
-      S.actor = 0;
-      nextTurn();
+      showPass("Southern commander: new turn. Defense first.", () => {
+        S.actor = 0;
+        nextTurn();
+      });
     }
   }
 
@@ -1637,7 +1681,7 @@
     $("btnEnd").textContent = S.phase === "deploy" ? "Lock 3 command centres →"
       : S.phase === "defense" ? "Commit defenses →" : S.phase === "offense" ? "Launch attacks →" : "End phase";
     $("dockStatus").textContent = S.phase === "deploy"
-      ? `Place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up. Clusters are allowed.`
+      ? `${me() === 0 ? "South" : "North"}: place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up.`
       : S.phase === "defense"
       ? "Build in HQ/relay range (green). Place Command Relays to expand. Select a structure to repair or bulldoze."
       : S.phase === "offense"
@@ -1657,7 +1701,7 @@
     if (S.phase === "deploy") {
       const left = 3 - hqCount(me());
       rail.innerHTML = `<div class="panel"><h3>Command net</h3>
-        <p class="sel-meta">Drop ${left} Command Centre${left === 1 ? "" : "s"} on your land. You may cluster all three in a bunker or spread them across the island. Click a placed HQ to pick it up and move it.</p>
+        <p class="sel-meta">${me() === 0 ? "Southern" : "Northern"} commander — drop ${left} Command Centre${left === 1 ? "" : "s"} on your land. Cluster or spread. Click a placed HQ to pick it up.</p>
         ${itemBtn("hq", BLD.hq.name, BLD.hq.desc, left + " left", ASSET + SPR_FILES.hq, true, false)}
       </div>`;
       return;
