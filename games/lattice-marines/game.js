@@ -700,7 +700,8 @@
 
   function spawnU(type, owner, x, y) {
     const def = UNIT[type];
-    const u = { id: S.uid++, type, owner, x, y, hp: def.hp, max: def.hp, vet: 0 };
+    const u = { id: S.uid++, type, owner, x, y, hp: def.hp, max: def.hp, vet: 0, portage: 0 };
+    if (inB(x, y) && S.tiles[y][x] === "water") u.portage = 3;
     S.units.push(u);
     return u;
   }
@@ -1271,7 +1272,6 @@
       return;
     }
     if (w.spawn) {
-      if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); boom(q.x, q.y); markSortie(q, null); return; }
       let dropped = null;
       const mine = buildingAt(q.x, q.y);
       if (mine && mine.type === "mine" && mine.owner !== q.owner) {
@@ -1283,13 +1283,14 @@
         log("Minefield detonates under the drop.");
         boom(q.x, q.y);
       } else if (occupied(q.x, q.y) && !unitAt(q.x, q.y)) {
-        const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !buildingAt(t.x, t.y));
+        const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !buildingAt(t.x, t.y));
         if (n) dropped = spawnU(w.spawn, q.owner, n.x, n.y);
         else log("Drop aborted — no landing zone.");
       } else if (unitAt(q.x, q.y)) {
-        const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water");
+        const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !occupied(t.x, t.y));
         if (n) dropped = spawnU(w.spawn, q.owner, n.x, n.y);
       } else dropped = spawnU(w.spawn, q.owner, q.x, q.y);
+      if (dropped && dropped.portage) log(`${UNIT[dropped.type].name} portaging — 3 turns on that water tile.`);
       if (dropped && dropped.hp > 0) unitLook(dropped);
       else reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 2);
       markSortie(q, dropped && dropped.hp > 0 ? dropped : null);
@@ -1502,10 +1503,15 @@
   }
   function stepToward(u, t) {
     const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
-    dirs.sort((a, b) => dist({ x: u.x + a.x, y: u.y + a.y }, t) - dist({ x: u.x + b.x, y: u.y + b.y }, t));
+    const cost = (p) => {
+      if (!inB(p.x, p.y)) return 1e6;
+      const wet = S.tiles[p.y][p.x] === "water" ? 3 : 0;
+      return dist(p, t) + wet;
+    };
+    dirs.sort((a, b) => cost({ x: u.x + a.x, y: u.y + a.y }) - cost({ x: u.x + b.x, y: u.y + b.y }));
     for (const d of dirs) {
       const nx = u.x + d.x, ny = u.y + d.y;
-      if (!inB(nx, ny) || S.tiles[ny][nx] === "water") continue;
+      if (!inB(nx, ny)) continue;
       const blk = buildingAt(nx, ny);
       if (blk && blk.owner !== u.owner) continue;
       if (unitAt(nx, ny)) continue;
@@ -1517,8 +1523,13 @@
   function marchUnits() {
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const def = UNIT[u.type];
-      const steps = (def.move || 1) + (cmdrFor(u.owner).move || 0);
       unitLook(u);
+      if (inB(u.x, u.y) && S.tiles[u.y][u.x] === "water") {
+        u.portage = (u.portage > 0 ? u.portage : 3) - 1;
+        if (u.portage > 0) continue;
+        u.portage = 0;
+      } else u.portage = 0;
+      const steps = (def.move || 1) + (cmdrFor(u.owner).move || 0);
       for (let s = 0; s < steps; s++) {
         if (def.dmg && unitStrikeTarget(u)) break;
         const t = unitObjective(u);
@@ -1526,6 +1537,11 @@
         const step = stepToward(u, t);
         if (!step) break;
         u.x = step.x; u.y = step.y;
+        if (S.tiles[u.y][u.x] === "water") {
+          u.portage = 3;
+          break;
+        }
+        u.portage = 0;
         unitLook(u);
       }
     }
@@ -2196,7 +2212,17 @@
       ctx.globalAlpha = 1;
     }
     if (u && (u.owner === viewer || vis)) {
-      const bob = Math.sin((tFrame + u.id * 7) / 10) * 2 * cam.z;
+      const wet = S.tiles[y][x] === "water";
+      const bob = Math.sin((tFrame + u.id * 7) / 10) * (wet ? 3.2 : 2) * cam.z;
+      if (wet) {
+        const p = isoTop(x, y);
+        ctx.globalAlpha = 0.35;
+        ctx.beginPath();
+        ctx.ellipse(p.sx, p.sy + 4 * cam.z, 16 * cam.z, 7 * cam.z, 0, 0, 7);
+        ctx.fillStyle = "#7dd3fc";
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       drawSpr(ctx, SPR[u.type], x, y, u.owner !== me(), bob);
       hpBar(ctx, x, y, u.hp / u.max, u.owner);
     }
@@ -2538,7 +2564,7 @@
         </div>`;
       }
     }
-    if (u) html += `<p class="sel-meta">${UNIT[u.type].name} ${u.hp}/${u.max}</p>`;
+    if (u) html += `<p class="sel-meta">${UNIT[u.type].name} ${u.hp}/${u.max}${S.tiles[u.y][u.x] === "water" ? " · portage " + Math.max(1, u.portage || 3) + "/3" : ""}</p>`;
     box.innerHTML = html;
     const bind = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
     bind("upg", () => { tryUpgrade(b); paintUI(); });
@@ -2648,7 +2674,7 @@
       <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
       <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar marines/tanks and factory scouts stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Probes reveal on impact. Each AA fires once per incoming wave.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. In range they shoot the highest-priority closest target (units, then HQs, then guns). Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile. Enter commits the phase. Esc cancels a tool. Hot-seat is local only. A vs-AI win automatically inscribes your commander name on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
+      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. All land units <b>portage</b> water at 3 turns per tile so they never stay trapped on a rock. They prefer land when it exists. In range they shoot the highest-priority closest target. Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
     overlayMode = "help";
