@@ -209,7 +209,11 @@
   function commander() {
     return CMDRS.find((c) => c.id === persist.cmdr) || CMDRS[0];
   }
+  function cmdrLocked() {
+    return !!(S && S.phase && S.phase !== "deploy");
+  }
   function cycleCmdr(dir) {
+    if (cmdrLocked()) return;
     const i = CMDRS.findIndex((c) => c.id === persist.cmdr);
     const n = CMDRS.length;
     persist.cmdr = CMDRS[((i < 0 ? 0 : i) + (dir < 0 ? n - 1 : 1)) % n].id;
@@ -2422,7 +2426,8 @@
     const el = $("cmdPanel");
     if (!el) return;
     const c = commander();
-    const key = c.id + "|" + (persist.name || "") + "|" + (S ? S.campaign : "");
+    const locked = cmdrLocked();
+    const key = c.id + "|" + (persist.name || "") + "|" + (S ? S.campaign : "") + "|" + (locked ? "L" : "U");
     if (el.dataset.k === key) return;
     el.dataset.k = key;
     const opts = CMDRS.map((x) => `<option value="${x.id}" ${x.id === c.id ? "selected" : ""}>${x.seat} · ${esc(x.name)}</option>`).join("");
@@ -2433,18 +2438,24 @@
       <p class="cmd-title">Seat ${esc(c.seat)} · ${esc(c.name)}</p>
       <p class="cmd-lore">${esc(c.title)}. ${esc(c.lore)}</p>
       <p class="cmd-bonus">${esc(c.bonus)}</p>
-      <div class="row">
+      ${locked ? `<p class="sel-meta">Champion locked with the command net.</p>` : `<div class="row">
         <button class="btn" type="button" id="cmdPrev">◀</button>
         <select id="cmdPick" style="flex:1;min-width:0">${opts}</select>
         <button class="btn" type="button" id="cmdNext">▶</button>
       </div>
-      <p class="sel-meta">15 Haven champions · <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a></p>
+      <p class="sel-meta">Pick before you lock 3 HQs. 15 Haven champions · <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a></p>`}
     `;
+    if (locked) return;
     const refresh = () => { const p = $("cmdPanel"); if (p) p.dataset.k = ""; paintPortrait(); };
     const prev = $("cmdPrev"), next = $("cmdNext"), pick = $("cmdPick");
     if (prev) prev.onclick = () => { cycleCmdr(-1); refresh(); };
     if (next) next.onclick = () => { cycleCmdr(1); refresh(); };
-    if (pick) pick.onchange = () => { persist.cmdr = pick.value; savePersist(); refresh(); };
+    if (pick) pick.onchange = () => {
+      if (cmdrLocked()) return;
+      persist.cmdr = pick.value;
+      savePersist();
+      refresh();
+    };
   }
 
   function paintSel() {
@@ -2565,7 +2576,7 @@
     $("fresh").onclick = () => startFromForm(true);
     $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
     const mc = $("menuCmdr");
-    if (mc) mc.onclick = () => { cycleCmdr(1); showMenu(); };
+    if (mc) mc.onclick = () => { if (!cmdrLocked()) { cycleCmdr(1); showMenu(); } };
   }
   function startFromForm(resetCamp) {
     persist.name = ($("nm").value || "Commander").slice(0, 18);
