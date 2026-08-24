@@ -118,8 +118,8 @@
       ld.type = "application/ld+json";
       ld.id = "games-jsonld";
       document.head.appendChild(ld);
+      ld.textContent = JSON.stringify(jsonLd(data));
     }
-    ld.textContent = JSON.stringify(jsonLd(data));
   }
 
   function renderFeatured(root, data) {
