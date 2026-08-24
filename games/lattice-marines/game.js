@@ -43,7 +43,7 @@
     gun:     { name: "Gun Pod", cost: 100, hp: 95, pwr: 0, cat: "defense", spr: "gun",
                desc: "Auto-fires on nearby ground units." },
     aa:      { name: "AA Launcher", cost: 160, hp: 75, pwr: 1, cat: "defense", spr: "aa",
-               desc: "Chance to intercept missiles and ICBMs." },
+               desc: "Intercepts missiles, drops, and jets that fall inside its range (7+Mk, +2 on hills)." },
     mine:    { name: "Minefield", cost: 55, hp: 28, pwr: 0, cat: "defense", spr: "mine",
                desc: "Damages the first ground unit that steps in." },
     shield:  { name: "Shield Generator", cost: 280, hp: 80, pwr: 1, cat: "defense", spr: "shield", unlock: "shield",
@@ -72,7 +72,7 @@
     scout:     { name: "Scout run", cost: 55, fuel: 2, need: "factory", spawn: "scout", unlock: "scout",
                  desc: "Fast. Reveals a line. No attack." },
     airstrike: { name: "Airstrike", cost: 170, fuel: 4, dmg: 78, r: 1, unlock: "airstrike",
-                 desc: "Jet bombs a cluster. Can be flakked." },
+                 desc: "Jet bombs a cluster. AA in range can intercept." },
     emp:       { name: "EMP pulse", cost: 85, fuel: 2, need: "emp", emp: true, unlock: "emp",
                  desc: "Silence radars, AA, silos, sat 1 turn." },
     sat:       { name: "Satellite pass", cost: 40, fuel: 3, need: "sat", unlock: "sat", sat: true,
@@ -591,14 +591,14 @@
     S.fx = S.fx || [];
     const owner = who === "enemy" ? 1 : me();
     const shots = S.queue.filter((q) => q.owner === owner);
-    let t = 8;
+    let t = 16;
     for (const q of shots) {
       S.events.push({ at: t, kind: "shot", q });
-      t += 18;
+      t += 36;
     }
-    S.events.push({ at: t + 8, kind: "autoguns" });
-    S.events.push({ at: t + 20, kind: "march" });
-    S.events.push({ at: t + 34, kind: "done" });
+    S.events.push({ at: t + 16, kind: "autoguns" });
+    S.events.push({ at: t + 40, kind: "march" });
+    S.events.push({ at: t + 68, kind: "done" });
     S.queue = S.queue.filter((q) => q.owner !== owner);
     log(who === "player" ? "Attack execution — watch the sky." : "Enemy salvo incoming.");
     paintUI();
@@ -612,46 +612,97 @@
       if (e.kind === "shot") fireShot(e.q);
       if (e.kind === "autoguns") autoCombat();
       if (e.kind === "march") marchUnits();
-      if (e.kind === "done") finishResolve();
+      if (e.kind === "done") {
+        if (S.fx.some((f) => f.onEnd && f.life > 0)) S.events.push({ at: S.t + 1, kind: "done" });
+        else finishResolve();
+      }
     }
     S.fx = S.fx.filter((f) => {
       f.life--;
-      return f.life > 0;
+      if (f.life > 0) return true;
+      if (typeof f.onEnd === "function") f.onEnd();
+      return false;
     });
+  }
+
+  function aaCovering(defender, tx, ty) {
+    return S.buildings.filter((b) => {
+      if (b.owner !== defender || b.type !== "aa" || b.hp <= 0 || b.offline) return false;
+      const hill = S.tiles[b.y][b.x] === "hills" ? 2 : 0;
+      const range = 7 + b.lvl + hill;
+      return cheb(b, tx, ty) <= range;
+    });
+  }
+
+  function rollIntercept(q) {
+    const w = WPN[q.kind];
+    if (!w) return null;
+    const air = ["missile", "icbm", "airstrike", "drop", "tankdrop"].includes(q.kind);
+    if (!air) return null;
+    const defender = 1 - q.owner;
+    const batteries = aaCovering(defender, q.x, q.y);
+    if (!batteries.length) return null;
+    let skill = 1;
+    if (S.mode === "ai" && defender === 1) {
+      skill = { easy: 0.72, normal: 1, hard: 1.18, insane: 1.32 }[S.diff] || 1;
+    } else if (S.mode === "ai" && defender === 0) {
+      skill = { easy: 1.08, normal: 1, hard: 0.95, insane: 0.9 }[S.diff] || 1;
+    }
+    let kindMul = 1;
+    if (q.kind === "icbm") kindMul = 0.48;
+    else if (q.kind === "airstrike") kindMul = 0.82;
+    else if (q.kind === "drop" || q.kind === "tankdrop") kindMul = 0.62;
+    else if (q.kind === "missile") kindMul = 1;
+    for (const b of batteries) {
+      const hill = S.tiles[b.y][b.x] === "hills" ? 0.08 : 0;
+      const p = Math.min(0.88, (0.20 + 0.11 * b.lvl + hill) * skill * kindMul);
+      if (S.R() < p) return b;
+    }
+    return null;
   }
 
   function fireShot(q) {
     const w = WPN[q.kind];
+    if (!w) return;
     const defender = 1 - q.owner;
-    const from = nearestSilo(q.owner, q.kind, q) || hqCentroid(q.owner);
+    const from = nearestSilo(q.owner, q.kind) || hqCentroid(q.owner);
+    const fly = 32;
+    const intercepted = rollIntercept(q);
+    const hx = intercepted ? from.x + (q.x - from.x) * 0.68 : q.x;
+    const hy = intercepted ? from.y + (q.y - from.y) * 0.68 : q.y;
     S.fx.push({
       kind: q.kind === "airstrike" ? "jet" : q.kind === "drop" || q.kind === "tankdrop" || q.kind === "scout" ? "drop" : "missile",
-      x0: from.x, y0: from.y, x1: q.x, y1: q.y, life: 16, max: 16
+      x0: from.x, y0: from.y, x1: hx, y1: hy, life: fly, max: fly,
+      onEnd: () => resolveImpact(q, intercepted, hx, hy)
     });
+    if (w.emp) {
+      /* EMP still flies then lands */
+    }
+  }
+
+  function resolveImpact(q, aa, hx, hy) {
+    const w = WPN[q.kind];
+    if (!w) return;
+    const defender = 1 - q.owner;
+    if (aa) {
+      log(`${w.name} intercepted by AA Mk${aa.lvl} at ${aa.x},${aa.y}.`);
+      fx("aa");
+      boom(hx, hy);
+      reveal(q.owner, q.x, q.y, 1);
+      return;
+    }
     if (w.emp) {
       S.players[defender].emp = 1;
       for (const b of S.buildings) {
         if (b.owner === defender && ["radar", "aa", "silo", "icbm", "sat", "emp"].includes(b.type)) b.offline = true;
       }
       log("EMP silences enemy electronics.");
-    fx("emp");
-      boom(q.x, q.y);
-      return;
-    }
-    let intercept = false;
-    if (["missile", "icbm", "airstrike"].includes(q.kind)) {
-      const aa = S.buildings.filter((b) => b.owner === defender && b.type === "aa" && b.hp > 0 && !b.offline);
-      const chance = DIFF[S.diff].aa + aa.length * 0.08;
-      if (aa.length && S.R() < chance) intercept = true;
-    }
-    if (intercept) {
-      log(`${w.name} intercepted by AA.`);
-      fx("aa");
+      fx("emp");
       boom(q.x, q.y);
       return;
     }
     if (w.spawn) {
-      if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); return; }
+      if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); boom(q.x, q.y); return; }
       const mine = buildingAt(q.x, q.y);
       if (mine && mine.type === "mine" && mine.owner !== q.owner) {
         const u = spawnU(w.spawn, q.owner, q.x, q.y);
@@ -663,12 +714,10 @@
         const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !buildingAt(t.x, t.y));
         if (n) spawnU(w.spawn, q.owner, n.x, n.y);
         else log("Drop aborted — no landing zone.");
-      } else {
-        if (unitAt(q.x, q.y)) {
-          const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water");
-          if (n) spawnU(w.spawn, q.owner, n.x, n.y);
-        } else spawnU(w.spawn, q.owner, q.x, q.y);
-      }
+      } else if (unitAt(q.x, q.y)) {
+        const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water");
+        if (n) spawnU(w.spawn, q.owner, n.x, n.y);
+      } else spawnU(w.spawn, q.owner, q.x, q.y);
       reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 1);
       boom(q.x, q.y);
       return;
