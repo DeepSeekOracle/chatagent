@@ -19,9 +19,9 @@
 
   const SPR_FILES = {
     plains: "tile-plains.png", hills: "tile-hills.png", forest: "tile-forest.png",
-    water: "tile-water.png", ruins: "tile-ruins.png", fog: "tile-fog.png",
+    water: "tile-water.png", ruins: "tile-ruins.png", desert: "tile-desert.png", fog: "tile-fog.png",
     "tex-plains": "tex-plains.jpg", "tex-hills": "tex-hills.jpg", "tex-forest": "tex-forest.jpg",
-    "tex-water": "tex-water.jpg", "tex-ruins": "tex-ruins.jpg", "tex-fog": "tex-fog.jpg",
+    "tex-water": "tex-water.jpg", "tex-ruins": "tex-ruins.jpg", "tex-desert": "tex-desert.jpg", "tex-fog": "tex-fog.jpg",
     hq: "b-hq.png", energy: "b-energy.png", econ: "b-econ.png", factory: "b-factory.png",
     radar: "b-radar.png", gun: "b-gun.png", aa: "b-aa.png", mine: "b-mine.png",
     shield: "b-shield.png", emp: "b-emp.png", fake: "b-fake.png", silo: "b-silo.png",
@@ -38,7 +38,7 @@
     energy:  { name: "Energy Plant", cost: 120, hp: 85, pwr: -2, cat: "economy", spr: "energy",
                desc: "+2 power and +1 fuel each turn. Grid/Depot Forums nearby stack +50%." },
     econ:    { name: "Economic Centre", cost: 150, hp: 75, pwr: 1, cat: "economy", spr: "econ",
-               desc: "+90 credits each turn. Plains or ruins only. Mint Forums nearby stack +50%." },
+               desc: "+90 credits each turn. Plains, ruins, or desert. Mint Forums nearby stack +50%." },
     city:    { name: "City Square", cost: 200, hp: 90, pwr: 1, cat: "population", spr: "city",
                desc: "+1 People each turn. People buy Forums." },
     warhall: { name: "Ordnance Forum", cost: 0, people: 50, hp: 80, pwr: 1, cat: "population", spr: "warhall",
@@ -270,11 +270,37 @@
       n = (n ^ (n >>> 16)) >>> 0;
       return (n & 0xffff) / 65535;
     };
+    const fade = (t) => t * t * (3 - 2 * t);
+    const vnoise = (x, y, salt, cell) => {
+      const gx = Math.floor(x / cell), gy = Math.floor(y / cell);
+      const fx = x / cell - gx, fy = y / cell - gy;
+      const u = fade(fx), v = fade(fy);
+      const n00 = n2(gx, gy, salt), n10 = n2(gx + 1, gy, salt);
+      const n01 = n2(gx, gy + 1, salt), n11 = n2(gx + 1, gy + 1, salt);
+      return n00 + (n10 - n00) * u + (n01 - n00) * v + (n00 - n10 - n01 + n11) * u * v;
+    };
+    const fbm = (x, y, salt, cell) =>
+      vnoise(x, y, salt, cell) * 0.52
+      + vnoise(x + 3.1, y - 1.7, salt + 19, cell * 0.5) * 0.32
+      + vnoise(x * 1.1, y * 0.9, salt + 41, cell * 0.25) * 0.16;
     const stamp = (cx, cy, rad, warp) => {
       if (rad < 1.5) rad = 1.5;
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
         const w = (n2(x, y, (cx * 13 + cy * 7) | 0) - 0.5) * warp * rad;
         if (Math.hypot(x - cx, y - cy) < rad + w) tiles[y][x] = "plains";
+      }
+    };
+    const stampKind = (cx, cy, rx, ry, ang, kind, warp) => {
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+      if (rx < 1.4) rx = 1.4;
+      if (ry < 1.4) ry = 1.4;
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        if (kind !== "water" && tiles[y][x] === "water") continue;
+        const dx = x - cx, dy = y - cy;
+        const lx = (dx * ca + dy * sa) / rx;
+        const ly = (-dx * sa + dy * ca) / ry;
+        const w = (n2(x, y, ((cx * 9 + cy * 3 + ang * 40) | 0)) - 0.5) * warp;
+        if (lx * lx + ly * ly < 1 + w) tiles[y][x] = kind;
       }
     };
     const STYLES = ["continent", "twin isles", "peninsula", "archipelago", "bay"];
@@ -285,48 +311,157 @@
       const cx = 3 + R() * (MAP - 6);
       const cy = y0 + 3 + R() * Math.max(3, y1 - y0 - 6);
       if (style === 0) {
-        stamp(cx, cy, MAP * (0.16 + R() * 0.16), 0.55);
+        stamp(cx, cy, MAP * (0.18 + R() * 0.16), 0.42);
       } else if (style === 1) {
-        stamp(cx - MAP * (0.08 + R() * 0.08), cy, MAP * (0.09 + R() * 0.08), 0.5);
-        stamp(cx + MAP * (0.08 + R() * 0.1), cy + (south ? -1 : 1) * MAP * 0.05, MAP * (0.08 + R() * 0.08), 0.5);
+        stamp(cx - MAP * (0.08 + R() * 0.08), cy, MAP * (0.1 + R() * 0.08), 0.4);
+        stamp(cx + MAP * (0.08 + R() * 0.1), cy + (south ? -1 : 1) * MAP * 0.05, MAP * (0.09 + R() * 0.08), 0.4);
       } else if (style === 2) {
         const ang = R() * Math.PI * 2;
         const n = 3 + ((R() * 4) | 0);
         for (let i = 0; i < n; i++) {
-          stamp(cx + Math.cos(ang) * i * MAP * 0.055, cy + Math.sin(ang) * i * MAP * 0.05, MAP * (0.06 + R() * 0.05), 0.6);
+          stamp(cx + Math.cos(ang) * i * MAP * 0.055, cy + Math.sin(ang) * i * MAP * 0.05, MAP * (0.07 + R() * 0.05), 0.45);
         }
       } else if (style === 3) {
         const n = 4 + ((R() * 5) | 0);
         for (let i = 0; i < n; i++) {
-          stamp(2 + R() * (MAP - 4), y0 + 2 + R() * Math.max(2, y1 - y0 - 4), MAP * (0.045 + R() * 0.055), 0.4);
+          stamp(2 + R() * (MAP - 4), y0 + 2 + R() * Math.max(2, y1 - y0 - 4), MAP * (0.05 + R() * 0.055), 0.32);
         }
       } else {
-        stamp(cx, cy, MAP * (0.2 + R() * 0.1), 0.75);
+        stamp(cx, cy, MAP * (0.22 + R() * 0.1), 0.55);
         const bay = 1 + ((R() * 2) | 0);
         for (let i = 0; i < bay; i++) {
-          const bx = cx + (R() - 0.5) * MAP * 0.2, by = cy + (R() - 0.5) * MAP * 0.15, br = MAP * (0.04 + R() * 0.05);
-          for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-            if (Math.hypot(x - bx, y - by) < br) tiles[y][x] = "water";
-          }
+          stampKind(cx + (R() - 0.5) * MAP * 0.2, cy + (R() - 0.5) * MAP * 0.15, MAP * (0.045 + R() * 0.05), MAP * (0.03 + R() * 0.04), R() * Math.PI, "water", 0.3);
         }
       }
       let n = 0;
       for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) if (tiles[y][x] !== "water") n++;
-      if (n < MAP * 1.6) stamp(cx, cy, MAP * 0.18, 0.35);
+      if (n < MAP * 1.6) stamp(cx, cy, MAP * 0.18, 0.28);
       return STYLES[style];
     };
     const noteS = fillHalf(true);
     const noteN = fillHalf(false);
-    const hillT = 0.62 + R() * 0.28;
-    const forestT = 0.50 + R() * 0.32;
-    const ruinT = 0.86 + R() * 0.1;
+
+    const cellE = Math.max(5, MAP * 0.17);
+    const cellM = Math.max(5, MAP * 0.15);
+    const cellH = Math.max(5, MAP * 0.2);
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
-      const h = n2(x, y, 901) * 0.6 + n2(x >> 1, y >> 1, 902) * 0.4;
-      const f = n2(x + 5, y - 3, 911) * 0.6 + n2(x >> 1, y >> 1, 912) * 0.4;
-      if (h > hillT) tiles[y][x] = "hills";
-      else if (f > forestT) tiles[y][x] = "forest";
-      else if (n2(x, y, 933) > ruinT) tiles[y][x] = "ruins";
+      const elev = fbm(x, y, 901, cellE);
+      const moist = fbm(x + 8, y - 4, 911, cellM);
+      const heat = fbm(x - 6, y + 5, 921, cellH);
+      if (elev > 0.61) tiles[y][x] = "hills";
+      else if (moist > 0.57 && heat < 0.7) tiles[y][x] = "forest";
+      else if (heat > 0.6 && moist < 0.45) tiles[y][x] = "desert";
+      else tiles[y][x] = "plains";
+    }
+
+    const paintHalf = (south) => {
+      const y0 = south ? MAP / 2 : 0;
+      const y1 = south ? MAP : MAP / 2;
+      const pick = () => ({
+        x: 2 + R() * (MAP - 4),
+        y: y0 + 2 + R() * Math.max(2, y1 - y0 - 4)
+      });
+      const ridges = 1 + ((R() * 2) | 0);
+      for (let i = 0; i < ridges; i++) {
+        const p = pick();
+        stampKind(p.x, p.y, MAP * (0.055 + R() * 0.08), MAP * (0.022 + R() * 0.03), R() * Math.PI, "hills", 0.38);
+      }
+      const groves = 2 + ((R() * 3) | 0);
+      for (let i = 0; i < groves; i++) {
+        const p = pick();
+        const r = MAP * (0.045 + R() * 0.07);
+        stampKind(p.x, p.y, r, r * (0.7 + R() * 0.4), R() * Math.PI, "forest", 0.4);
+      }
+      const basins = 1 + ((R() * 2) | 0);
+      for (let i = 0; i < basins; i++) {
+        const p = pick();
+        const r = MAP * (0.05 + R() * 0.08);
+        stampKind(p.x, p.y, r, r * (0.65 + R() * 0.4), R() * Math.PI, "desert", 0.35);
+      }
+      const ruins = 1 + ((R() * 2) | 0);
+      for (let i = 0; i < ruins; i++) {
+        const p = pick();
+        stampKind(p.x, p.y, 2.2 + R() * 3.5, 1.8 + R() * 2.8, R() * Math.PI, "ruins", 0.25);
+      }
+      if (R() > 0.35) {
+        const p = pick();
+        stampKind(p.x, p.y, MAP * (0.03 + R() * 0.04), MAP * (0.022 + R() * 0.03), R() * Math.PI, "water", 0.28);
+      }
+    };
+    paintHalf(true);
+    paintHalf(false);
+
+    const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    const neighN = (x, y, kind) => {
+      let n = 0;
+      for (const [dx, dy] of N8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < MAP && ny < MAP && tiles[ny][nx] === kind) n++;
+      }
+      return n;
+    };
+    const grow = (kind, need) => {
+      const next = tiles.map((row) => row.slice());
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        if (tiles[y][x] === "water" || tiles[y][x] === kind) continue;
+        if (neighN(x, y, kind) >= need) next[y][x] = kind;
+      }
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) tiles[y][x] = next[y][x];
+    };
+    grow("hills", 4);
+    grow("forest", 4);
+    grow("desert", 4);
+    grow("hills", 5);
+    const despock = () => {
+      const next = tiles.map((row) => row.slice());
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        const self = tiles[y][x];
+        if (self === "water") {
+          if (neighN(x, y, "water") === 0) {
+            const tallies = {};
+            for (const [dx, dy] of N8) {
+              const nx = x + dx, ny = y + dy;
+              if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) continue;
+              const t = tiles[ny][nx];
+              if (t !== "water") tallies[t] = (tallies[t] || 0) + 1;
+            }
+            let best = "plains", bn = 0;
+            for (const k of Object.keys(tallies)) if (tallies[k] > bn) { bn = tallies[k]; best = k; }
+            if (bn >= 4) next[y][x] = best;
+          }
+          continue;
+        }
+        if (neighN(x, y, self) <= 1) {
+          const tallies = {};
+          for (const [dx, dy] of N8) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) continue;
+            const t = tiles[ny][nx];
+            if (t !== "water") tallies[t] = (tallies[t] || 0) + 1;
+          }
+          let best = self, bn = 0;
+          for (const k of Object.keys(tallies)) if (tallies[k] > bn) { bn = tallies[k]; best = k; }
+          if (bn >= 3) next[y][x] = best;
+        }
+      }
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) tiles[y][x] = next[y][x];
+    };
+    despock();
+    despock();
+
+    for (const south of [true, false]) {
+      const y0 = south ? MAP / 2 : 0;
+      const y1 = south ? MAP : MAP / 2;
+      let open = 0;
+      for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) {
+        if (tiles[y][x] === "plains" || tiles[y][x] === "ruins" || tiles[y][x] === "desert") open++;
+      }
+      if (open < MAP * 1.2) {
+        for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) {
+          if (tiles[y][x] === "forest" && neighN(x, y, "plains") >= 2) tiles[y][x] = "plains";
+        }
+      }
     }
     return { tiles, note: `south ${noteS} / north ${noteN}` };
   }
@@ -446,7 +581,10 @@
   function grid(v) { return Array.from({ length: MAP }, () => Array(MAP).fill(v)); }
 
   function placeHQs(owner, R) {
-    const land = landTiles(owner).filter((t) => S.tiles[t.y][t.x] === "plains" || S.tiles[t.y][t.x] === "ruins");
+    const land = landTiles(owner).filter((t) => {
+      const k = S.tiles[t.y][t.x];
+      return k === "plains" || k === "ruins" || k === "desert";
+    });
     land.sort((a, b) => (owner === 0 ? b.y - a.y : a.y - b.y));
     const picks = [];
     for (const t of land) {
@@ -649,11 +787,11 @@
       }
       return null;
     }
-    if (type === "hq" && terr !== "plains" && terr !== "ruins") {
-      return "Command centres need plains or ruins.";
+    if (type === "hq" && terr !== "plains" && terr !== "ruins" && terr !== "desert") {
+      return "Command centres need plains, ruins, or desert.";
     }
-    if (type === "city" && terr !== "plains" && terr !== "ruins") {
-      return "City Squares need plains or ruins.";
+    if (type === "city" && terr !== "plains" && terr !== "ruins" && terr !== "desert") {
+      return "City Squares need plains, ruins, or desert.";
     }
     if (type === "relay" && terr === "hills") return "Relays cannot sit on mountains.";
     return null;
@@ -1402,6 +1540,7 @@
         const plants = S.buildings.filter((b) => b.owner === owner && b.type === "energy" && b.hp > 0);
         s += plants.length ? 18 - Math.min(...plants.map((e) => dist(e, t))) * 3 : -6;
       }
+      if ((type === "econ" || type === "city") && (terr === "plains" || terr === "desert")) s += 4;
       return s;
     };
     legal.sort((a, b) => score(b) - score(a));
@@ -1685,7 +1824,7 @@
   function terrainColor(t) {
     return {
       plains: "#4d7330", hills: "#6e726c", forest: "#1d3d20",
-      water: "#0e4a5c", ruins: "#6b645a", fog: "#070c14"
+      water: "#0e4a5c", ruins: "#6b645a", desert: "#c4a46a", fog: "#070c14"
     }[t] || "#0a121c";
   }
   function terrainShade(t, k) {
@@ -1834,6 +1973,15 @@
       ctx.fillRect(px - 2.5 * cam.z, py - 5 * cam.z, 5 * cam.z, 6 * cam.z);
       ctx.fillStyle = "#6d6558";
       ctx.fillRect(px - 2 * cam.z, py - 7 * cam.z, 4 * cam.z, 3 * cam.z);
+    } else if (terr === "desert") {
+      const u = hash01(x, y, 80) - 0.5;
+      const v = hash01(x, y, 81) - 0.5;
+      const px = top.sx + u * tw * 0.28;
+      const py = top.sy + v * th * 0.22;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 5.5 * cam.z, 2.2 * cam.z, 0.3, 0, 7);
+      ctx.fillStyle = hash01(x, y, 82) > 0.5 ? "#d4b57a" : "#b8894c";
+      ctx.fill();
     } else if (terr === "plains" && hash01(x, y, 9) > 0.82) {
       ctx.fillStyle = "#3d5c28";
       ctx.fillRect(top.sx + 4 * cam.z, top.sy, 2 * cam.z, 5 * cam.z);
@@ -2156,7 +2304,7 @@
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>LATTICE MARINES</h1>
           <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
-          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps go up to 192×192 (Maximum). Zoom out on the huge boards. Radio from the listen portal keeps playing if you hide the dock.</p>
+          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps go up to 192×192 (Maximum). Forests, ranges, deserts, and lakes grow in clusters. Zoom out on the huge boards. Radio from the listen portal keeps playing if you hide the dock.</p>
           <div class="row">
             <label>Commander <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
             <label>Map
