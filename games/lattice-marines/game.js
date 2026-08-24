@@ -26,6 +26,8 @@
     radar: "b-radar.png", gun: "b-gun.png", aa: "b-aa.png", mine: "b-mine.png",
     shield: "b-shield.png", emp: "b-emp.png", fake: "b-fake.png", silo: "b-silo.png",
     icbm: "b-icbm.png", hangar: "b-hangar.png", sat: "b-sat.png",
+    city: "b-city.png", warhall: "b-warhall.png", bastion: "b-bastion.png",
+    mint: "b-mint.png", depot: "b-depot.png", grid: "b-grid.png",
     marine: "u-marine.png", scout: "u-scout.png", tank: "u-tank.png", jet: "u-jet.png",
     missile: "fx-missile.png", boom: "fx-boom.png"
   };
@@ -34,9 +36,21 @@
     hq:      { name: "Command Centre", cost: 0, hp: 240, pwr: 0, cat: "core", spr: "hq",
                desc: "Lose all three and the island falls." },
     energy:  { name: "Energy Plant", cost: 120, hp: 85, pwr: -2, cat: "economy", spr: "energy",
-               desc: "+2 power and +1 fuel each turn." },
+               desc: "+2 power and +1 fuel each turn. Grid/Depot Forums nearby stack +50%." },
     econ:    { name: "Economic Centre", cost: 150, hp: 75, pwr: 1, cat: "economy", spr: "econ",
-               desc: "+90 credits each turn. Plains or ruins only." },
+               desc: "+90 credits each turn. Plains or ruins only. Mint Forums nearby stack +50%." },
+    city:    { name: "City Square", cost: 200, hp: 90, pwr: 1, cat: "population", spr: "city",
+               desc: "+1 People each turn. People buy Forums." },
+    warhall: { name: "Ordnance Forum", cost: 0, people: 50, hp: 80, pwr: 1, cat: "population", spr: "warhall",
+               desc: "Aura 3: missiles/ICBMs launched inside deal +50% damage. Stacks." },
+    bastion: { name: "Bastion Forum", cost: 0, people: 50, hp: 95, pwr: 1, cat: "population", spr: "bastion",
+               desc: "Aura 3: +50% defense (less damage taken, stronger guns/AA). Stacks." },
+    mint:    { name: "Mint Forum", cost: 0, people: 50, hp: 70, pwr: 1, cat: "population", spr: "mint",
+               desc: "Aura 3: Economic Centres inside yield +50% credits. Stacks." },
+    depot:   { name: "Depot Forum", cost: 0, people: 50, hp: 70, pwr: 1, cat: "population", spr: "depot",
+               desc: "Aura 3: Energy Plants inside yield +50% fuel. Stacks." },
+    grid:    { name: "Grid Forum", cost: 0, people: 50, hp: 70, pwr: 1, cat: "population", spr: "grid",
+               desc: "Aura 3: Energy Plants inside yield +50% power. Stacks." },
     factory: { name: "Factory", cost: 200, hp: 110, pwr: 1, cat: "production", spr: "factory",
                desc: "Train Marines and scouts on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
@@ -363,7 +377,7 @@
     let have = 0, need = 0;
     for (const b of S.buildings) {
       if (b.owner !== owner || b.hp <= 0 || b.wrecked) continue;
-      if (b.type === "energy") have += 2 * b.lvl;
+      if (b.type === "energy") have += Math.round(2 * b.lvl * auraMul(owner, b.x, b.y, "grid"));
       else if (BLD[b.type].pwr > 0) need += BLD[b.type].pwr;
     }
     return { have, need };
@@ -395,9 +409,9 @@
       lastSeen: [grid(null), grid(null)],
       fogAge: [grid(0), grid(0)],
       players: [
-        { credits: purse, fuel: 8, emp: 0, satCD: 0, stats: zeroStats() },
+        { credits: purse, fuel: 8, people: 0, emp: 0, satCD: 0, stats: zeroStats() },
         { credits: (opts.mode === "hotseat") ? purse : Math.round(purse * DIFF[opts.diff].eco * (1 + (opts.campaign - 1) * 0.12)),
-          fuel: 8, emp: 0, satCD: 0, stats: zeroStats() }
+          fuel: 8, people: 0, emp: 0, satCD: 0, stats: zeroStats() }
       ],
       phase: "deploy",
       turn: 1,
@@ -522,25 +536,27 @@
   function tickEconomy(first) {
     for (const o of [0, 1]) {
       const p = S.players[o];
-      let inc = 40;
+      let inc = 150;
+      let people = 0;
       for (const b of S.buildings) {
         if (b.owner !== o || b.hp <= 0 || b.offline || b.wrecked) continue;
         if (b.type === "econ") {
-          inc += 90 + (b.lvl - 1) * 25;
+          inc += Math.round((90 + (b.lvl - 1) * 25) * auraMul(o, b.x, b.y, "mint"));
         }
-        if (b.type === "energy") p.fuel = Math.min(24, p.fuel + 1 + (b.lvl - 1));
+        if (b.type === "energy") {
+          const add = Math.round((1 + (b.lvl - 1)) * auraMul(o, b.x, b.y, "depot"));
+          p.fuel = Math.min(24, p.fuel + add);
+        }
+        if (b.type === "city") people += 1;
         if (b.cd > 0) b.cd--;
       }
       if (S.players[o].satCD > 0) S.players[o].satCD--;
-      if (!first) {
-        p.credits += inc;
-        p.stats.income += inc;
-      }
-      const need = S.buildings.filter((b) => b.owner === o && b.hp > 0 && BLD[b.type].pwr > 0)
-        .reduce((a, b) => a + BLD[b.type].pwr, 0);
-      const have = S.buildings.filter((b) => b.owner === o && b.hp > 0 && b.type === "energy")
-        .reduce((a, b) => a + 2 * b.lvl, 0);
-      const ok = have >= need;
+      p.credits += inc;
+      p.stats.income += inc;
+      p.people = (p.people || 0) + people;
+      void first;
+      const pw = powerBudget(o);
+      const ok = pw.have >= pw.need;
       for (const b of S.buildings) {
         if (b.owner !== o) continue;
         if (BLD[b.type].pwr > 0) b.offline = !ok && S.turn > 1;
@@ -552,10 +568,11 @@
     const p = S.players[owner];
     return p.credits >= cred && p.fuel >= fuel;
   }
-  function pay(owner, cred, fuel) {
-    S.players[owner].credits -= cred;
-    S.players[owner].fuel -= fuel;
-    S.players[owner].stats.spent += cred;
+  function pay(owner, cred, fuel, people) {
+    S.players[owner].credits -= cred || 0;
+    S.players[owner].fuel -= fuel || 0;
+    if (people) S.players[owner].people = Math.max(0, (S.players[owner].people || 0) - people);
+    S.players[owner].stats.spent += cred || 0;
   }
 
   function canBuild(type, owner, x, y) {
@@ -563,7 +580,10 @@
     if (!onHome(owner, x, y)) return "Build only on your half.";
     if (occupied(x, y)) return "Tile occupied.";
     if (!unlocked(BLD[type].unlock)) return "Locked.";
-    if (S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
+    if ((BLD[type].cost || 0) > 0 && S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
+    if ((BLD[type].people || 0) > 0 && (S.players[owner].people || 0) < BLD[type].people) {
+      return "Need " + BLD[type].people + " People. Raise City Squares.";
+    }
     const terrErr = terrainAllows(type, S.tiles[y][x]);
     if (terrErr) return terrErr;
     if (type === "hq") {
@@ -587,6 +607,28 @@
   function cheb(a, x, y) {
     return Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
   }
+  const AURA_R = 3;
+  const AURA_TYPES = ["warhall", "bastion", "mint", "depot", "grid"];
+  function liveAura(b) {
+    return !!(b && b.hp > 0 && !b.wrecked && !b.offline);
+  }
+  function auraReach(b) {
+    return AURA_R + Math.max(0, (b.lvl || 1) - 1);
+  }
+  function auraStacks(owner, x, y, type) {
+    let n = 0;
+    for (const b of S.buildings) {
+      if (b.owner !== owner || b.type !== type || !liveAura(b)) continue;
+      if (cheb(b, x, y) <= auraReach(b)) n++;
+    }
+    return n;
+  }
+  function auraMul(owner, x, y, type) {
+    return 1 + 0.5 * auraStacks(owner, x, y, type);
+  }
+  function defenseTaken(owner, x, y) {
+    return 1 / auraMul(owner, x, y, "bastion");
+  }
   function inBuildNet(owner, x, y) {
     for (const b of S.buildings) {
       if (b.owner !== owner || b.hp <= 0) continue;
@@ -602,13 +644,16 @@
       return "Mountains: gun pods, AA launchers, and mines only.";
     }
     if (terr === "forest") {
-      if (type === "hq" || type === "factory" || type === "hangar" || type === "silo" || type === "icbm" || type === "sat" || type === "econ") {
-        return "Forest is too dense. Use plains for HQs and industry. Guns, mines, radar, energy, shields, EMP, AA, decoys OK.";
+      if (type === "hq" || type === "factory" || type === "hangar" || type === "silo" || type === "icbm" || type === "sat" || type === "econ" || type === "city") {
+        return "Forest is too dense. Use plains for HQs, cities, and industry. Guns, mines, radar, energy, shields, EMP, AA, decoys, Forums OK.";
       }
       return null;
     }
     if (type === "hq" && terr !== "plains" && terr !== "ruins") {
       return "Command centres need plains or ruins.";
+    }
+    if (type === "city" && terr !== "plains" && terr !== "ruins") {
+      return "City Squares need plains or ruins.";
     }
     if (type === "relay" && terr === "hills") return "Relays cannot sit on mountains.";
     return null;
@@ -617,7 +662,7 @@
   function tryBuild(type, owner, x, y) {
     const err = canBuild(type, owner, x, y);
     if (err) { if (owner === me()) { toast(err); fx("error"); } return false; }
-    pay(owner, BLD[type].cost, 0);
+    pay(owner, BLD[type].cost || 0, 0, BLD[type].people || 0);
     spawnB(type, owner, x, y);
     log(`${sideName(owner)} raise a ${BLD[type].name} at ${x},${y}.`);
     if (owner === me()) fx("build");
@@ -626,16 +671,19 @@
 
   function tryUpgrade(b) {
     if (!b || b.lvl >= 3) return;
-    const cost = Math.round(BLD[b.type].cost * 0.55 * b.lvl);
-    if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need " + cost + "c to upgrade."); return; }
-    pay(b.owner, cost, 0);
+    const cred = BLD[b.type].cost ? Math.round(BLD[b.type].cost * 0.55 * b.lvl) : 0;
+    const peo = BLD[b.type].people ? 25 * b.lvl : 0;
+    if (cred && S.players[b.owner].credits < cred) { if (b.owner === me()) toast("Need " + cred + "c to upgrade."); return; }
+    if (peo && (S.players[b.owner].people || 0) < peo) { if (b.owner === me()) toast("Need " + peo + " People to upgrade."); return; }
+    pay(b.owner, cred, 0, peo);
     b.lvl++;
     b.max += 25; b.hp += 25;
-    log(`Upgrade ${BLD[b.type].name} → Mk${b.lvl}.`);
+    log(`Upgrade ${BLD[b.type].name} → Mk${b.lvl}${peo ? " (aura " + auraReach(b) + ")" : ""}.`);
   }
 
   function repairCost(b) {
-    return Math.max(10, Math.round((BLD[b.type].cost || 80) * 0.25));
+    const base = BLD[b.type].cost || (BLD[b.type].people ? 100 : 80);
+    return Math.max(10, Math.round(base * 0.25));
   }
   function tryRepair(b) {
     if (!b) return;
@@ -890,7 +938,7 @@
     for (const b of batteries) {
       if (b.shotThis) continue;
       const hill = S.tiles[b.y][b.x] === "hills" ? 0.08 : 0;
-      const p = Math.min(0.88, (0.22 + 0.12 * b.lvl + hill) * skill * kindMul);
+      const p = Math.min(0.92, (0.22 + 0.12 * b.lvl + hill) * skill * kindMul * auraMul(defender, b.x, b.y, "bastion"));
       if (S.R() < p) {
         b.shotThis = true;
         return b;
@@ -961,7 +1009,15 @@
       boom(q.x, q.y);
       return;
     }
-    if (w.dmg) applySplash(q.owner, q.x, q.y, w.dmg, w.r || 0);
+    if (w.dmg) {
+      let dmg = w.dmg;
+      if (q.kind === "missile" || q.kind === "icbm") {
+        const padB = q.pad && S.buildings.find((b) => b.id === q.pad);
+        const ox = padB ? padB.x : q.x, oy = padB ? padB.y : q.y;
+        dmg = Math.round(dmg * auraMul(q.owner, ox, oy, "warhall"));
+      }
+      applySplash(q.owner, q.x, q.y, dmg, w.r || 0);
+    }
     reveal(q.owner, q.x, q.y, 1 + (w.r || 0));
     boom(q.x, q.y);
   }
@@ -998,6 +1054,7 @@
 
   function hurtB(b, dmg, attacker) {
     if (b.offline && b.type === "shield") { /* still takes */ }
+    dmg = Math.round(dmg * defenseTaken(b.owner, b.x, b.y));
     b.hp -= dmg;
     if (b.hp <= 0) {
       b.hp = 0;
@@ -1021,6 +1078,7 @@
     }
   }
   function hurtU(u, dmg, attacker) {
+    dmg = Math.round(dmg * defenseTaken(u.owner, u.x, u.y));
     u.hp -= dmg;
     if (u.hp <= 0) {
       u.hp = 0;
@@ -1040,7 +1098,7 @@
       const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2 + (hill ? 1 : 0));
       if (!foes.length) continue;
       foes.sort((a, b) => dist(a, g) - dist(b, g));
-      hurtU(foes[0], 18 + g.lvl * 4 + (hill ? 8 : 0), g.owner);
+      hurtU(foes[0], Math.round((18 + g.lvl * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
       S.fx.push({ kind: "flash", x: foes[0].x, y: foes[0].y, life: 8, max: 8 });
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
@@ -1227,6 +1285,7 @@
     const tab = {
       hq: 100, icbm: 78, silo: 70, hangar: 66, relay: 62, aa: 58,
       radar: 52, sat: 50, emp: 46, econ: 42, energy: 36, factory: 32,
+      city: 50, warhall: 60, bastion: 55, mint: 48, depot: 40, grid: 44,
       shield: 28, gun: 18, mine: 8, fake: 100
     };
     let s = tab[t] || 10;
@@ -1263,6 +1322,19 @@
         s += 8 - hqD * 3;
       } else if (type === "emp") {
         s += rear * 0.5;
+      } else if (type === "city") {
+        s += rear * 1.1 + hqD * 0.4;
+      } else if (type === "mint") {
+        const ecos = S.buildings.filter((b) => b.owner === owner && b.type === "econ" && b.hp > 0);
+        s += ecos.length ? 20 - Math.min(...ecos.map((e) => dist(e, t))) * 3 : -8;
+      } else if (type === "warhall") {
+        const pads = S.buildings.filter((b) => b.owner === owner && (b.type === "silo" || b.type === "icbm") && b.hp > 0);
+        s += pads.length ? 22 - Math.min(...pads.map((e) => dist(e, t))) * 3 : -6;
+      } else if (type === "bastion") {
+        s += 12 - hqD * 2.2;
+      } else if (type === "depot" || type === "grid") {
+        const plants = S.buildings.filter((b) => b.owner === owner && b.type === "energy" && b.hp > 0);
+        s += plants.length ? 18 - Math.min(...plants.map((e) => dist(e, t))) * 3 : -6;
       }
       return s;
     };
@@ -1271,9 +1343,11 @@
   }
 
   function aiPlace(type, owner) {
-    if (!BLD[type] || S.players[owner].credits < BLD[type].cost) return false;
+    if (!BLD[type]) return false;
+    if ((BLD[type].cost || 0) > 0 && S.players[owner].credits < BLD[type].cost) return false;
+    if ((BLD[type].people || 0) > 0 && (S.players[owner].people || 0) < BLD[type].people) return false;
     if (BLD[type].unlock && !unlocked(BLD[type].unlock)) return false;
-    const sep = type === "gun" || type === "mine" || type === "aa" ? 2 : 3;
+    const sep = type === "gun" || type === "mine" || type === "aa" || AURA_TYPES.includes(type) ? 2 : 3;
     const spots = aiPickSpots(type, owner, sep);
     if (!spots.length) return false;
     return tryBuild(type, owner, spots[0].x, spots[0].y);
@@ -1285,10 +1359,13 @@
     for (const w of S.buildings.filter((b) => b.owner === o && (b.wrecked || b.hp < b.max * 0.7))) tryRepair(w);
     const n = (t) => countB(t, o);
     const hqN = Math.max(1, hqCount(o));
+    const peo = S.players[o].people || 0;
     const plan = [];
     if (n("energy") < 2) plan.push("energy", "energy");
     else if (n("energy") < 3 + (profile === "Economist" ? 1 : 0)) plan.push("energy");
     if (n("econ") < (profile === "Economist" ? 4 : 2)) plan.push("econ");
+    if (n("city") < 1) plan.push("city");
+    else if (n("city") < (profile === "Economist" ? 3 : 2) && S.turn >= 2) plan.push("city");
     if (n("relay") < 1 + Math.floor(S.turn / 3)) plan.push("relay");
     if (n("aa") < hqN) plan.push("aa");
     if (n("gun") < hqN) plan.push("gun");
@@ -1300,7 +1377,14 @@
     if (n("silo") < 1) plan.push("silo");
     if (unlocked("icbm") && S.turn >= 4 && n("icbm") < 1) plan.push("icbm");
     if (n("fake") < 1 && profile !== "Aggressor") plan.push("fake");
-    const cap = profile === "Turtle" ? 4 : 3;
+    if (peo >= 50) {
+      if (profile === "Aggressor" || n("silo") + n("icbm") > 0) plan.push("warhall");
+      if (profile === "Turtle" || n("hq") >= 1) plan.push("bastion");
+      if (n("econ") > 0) plan.push("mint");
+      if (n("energy") > 0) plan.push("grid", "depot");
+      if (profile === "Economist") plan.push("mint", "grid");
+    }
+    const cap = (profile === "Turtle" ? 4 : 3) + (peo >= 50 ? 1 : 0);
     let built = 0;
     for (const type of plan) {
       if (built >= cap) break;
@@ -1500,6 +1584,7 @@
         drawDiamondLift(ctx, t.x, t.y, "rgba(52,211,153,.45)");
       }
     }
+    drawAuraOverlay(ctx, order);
     for (const t of order) drawOcc(ctx, t.x, t.y);
     for (const f of S.fx) drawFx(ctx, f);
     if (hover && inB(hover.x, hover.y)) drawDiamondLift(ctx, hover.x, hover.y, "rgba(34,211,238,.95)");
@@ -1507,6 +1592,30 @@
     tFrame++;
   }
 
+  function auraColor(type) {
+    return {
+      warhall: "rgba(251,146,60,.42)",
+      bastion: "rgba(56,189,248,.42)",
+      mint: "rgba(250,204,21,.42)",
+      depot: "rgba(251,191,36,.35)",
+      grid: "rgba(45,212,191,.42)"
+    }[type] || "rgba(167,139,250,.35)";
+  }
+  function drawAuraOverlay(ctx, order) {
+    let src = null, type = null;
+    const b = sel && inB(sel.x, sel.y) ? buildingAt(sel.x, sel.y) : null;
+    if (b && b.owner === me() && AURA_TYPES.includes(b.type) && liveAura(b)) {
+      src = b; type = b.type;
+    } else if (S.phase === "defense" && tool && AURA_TYPES.includes(tool) && hover && inB(hover.x, hover.y) && onHome(me(), hover.x, hover.y)) {
+      src = { x: hover.x, y: hover.y, lvl: 1 }; type = tool;
+    }
+    if (!src) return;
+    const r = auraReach(src);
+    const col = auraColor(type);
+    for (const t of order) {
+      if (cheb(src, t.x, t.y) <= r) drawDiamondLift(ctx, t.x, t.y, col);
+    }
+  }
   function terrainColor(t) {
     return {
       plains: "#4d7330", hills: "#6e726c", forest: "#1d3d20",
@@ -1804,6 +1913,7 @@
     $("resHud").innerHTML = `
       <span>Turn <b>${S.turn}</b></span>
       <span>Credits <b>${p.credits}</b></span>
+      <span>People <b>${p.people || 0}</b></span>
       <span>Fuel <b>${p.fuel}</b></span>
       <span>Power <b>${pw.have}/${pw.need}${pw.have < pw.need ? " BROWN" : ""}</b></span>
       <span>Campaign <b>${S.campaign}</b></span>
@@ -1822,7 +1932,7 @@
     $("dockStatus").textContent = S.phase === "deploy"
       ? `${me() === 0 ? "South" : "North"}: place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up.`
       : S.phase === "defense"
-      ? "Build in HQ/relay range (green). Place Command Relays to expand. Select a structure to repair or bulldoze."
+      ? "Cities mint People. Forums cost 50 People and stack +50% auras (radius 3). 150c stipend each turn."
       : S.phase === "offense"
         ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
         : S.phase === "resolve" ? "Playback — or skip." : "";
@@ -1846,14 +1956,15 @@
       return;
     }
     if (S.phase === "defense") {
-      const cats = ["core", "economy", "production", "intel", "defense", "decoy", "offense"];
+      const cats = ["core", "economy", "population", "production", "intel", "defense", "decoy", "offense"];
       let html = `<p class="cat">Build</p>`;
       for (const c of cats) {
         html += `<div class="cat">${c}</div>`;
         for (const [k, b] of Object.entries(BLD)) {
           if (b.cat !== c || k === "hq") continue;
           const lock = b.unlock && !unlocked(b.unlock);
-          html += itemBtn(k, b.name, b.desc, b.cost + "c", ASSET + SPR_FILES[b.spr], tool === k, lock, lock);
+          const cost = b.people ? (b.people + "p") : (b.cost + "c");
+          html += itemBtn(k, b.name, b.desc, cost, ASSET + SPR_FILES[b.spr], tool === k, lock, lock);
         }
       }
       rail.innerHTML = html;
@@ -1920,10 +2031,10 @@
     if (b) {
       html += `<p class="nm">${b.fake && b.owner !== me() ? BLD.hq.name : BLD[b.type].name} Mk${b.lvl}${b.wrecked ? " · WRECK" : ""}</p>
         <div class="hpbar"><i style="width:${(b.hp / b.max) * 100}%"></i></div>
-        <p class="sel-meta">${b.hp}/${b.max} HP · ${b.owner === me() ? "friendly" : "hostile"}${b.offline ? " · OFFLINE" : ""}${b.wrecked ? " · wrecked" : ""}</p>`;
+        <p class="sel-meta">${b.hp}/${b.max} HP · ${b.owner === me() ? "friendly" : "hostile"}${b.offline ? " · OFFLINE" : ""}${b.wrecked ? " · wrecked" : ""}${AURA_TYPES.includes(b.type) ? " · aura r" + auraReach(b) : ""}${b.type === "econ" ? " · mint ×" + auraMul(b.owner, b.x, b.y, "mint").toFixed(1) : ""}${b.type === "energy" ? " · fuel ×" + auraMul(b.owner, b.x, b.y, "depot").toFixed(1) + " · power ×" + auraMul(b.owner, b.x, b.y, "grid").toFixed(1) : ""}${(b.type === "silo" || b.type === "icbm") ? " · ordnance ×" + auraMul(b.owner, b.x, b.y, "warhall").toFixed(1) : ""}</p>`;
       if (b.owner === me() && S.phase === "defense") {
         html += `<div class="row">
-          ${!b.wrecked && b.lvl < 3 ? `<button class="btn" id="upg">Upgrade (${Math.round(BLD[b.type].cost * 0.55 * b.lvl)}c)</button>` : ""}
+          ${!b.wrecked && b.lvl < 3 ? `<button class="btn" id="upg">Upgrade (${BLD[b.type].people ? (25 * b.lvl) + "p" : Math.round(BLD[b.type].cost * 0.55 * b.lvl) + "c"})</button>` : ""}
           ${(b.wrecked || b.hp < b.max) ? `<button class="btn" id="rep">${b.repairTick ? "Repairing…" : "Repair 25% (" + repairCost(b) + "c)"}</button>` : ""}
           ${b.type !== "hq" ? `<button class="btn" id="doze">Bulldoze (no refund)</button>` : ""}
           ${!b.wrecked && (b.type === "factory" || b.type === "hangar") ? `<button class="btn" id="trM">Train marine</button>` : ""}
@@ -2032,6 +2143,8 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
+      <p><b>Population:</b> City Squares mint 1 People per turn. Spend 50 People on a Forum. Each standing Forum auras Chebyshev 3 (Mk2→4, Mk3→5) and stacks +50%: Ordnance (missile/ICBM damage from pads inside), Bastion (defense + guns/AA), Mint (econ credits), Depot (fuel), Grid (power). Overlap is the point — clustered Forums go unfair; misplaced ones waste the census.</p>
+      <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
       <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence. A vs-AI win automatically inscribes your commander name and match metadata on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
@@ -2114,7 +2227,10 @@
         if (S.phase === "defense" && tool && tool !== "hq" && home && S.tiles[hover.y][hover.x] !== "water") {
           const te = terrainAllows(tool, S.tiles[hover.y][hover.x]);
           if (te) label += "  · " + te;
-          else label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
+          else {
+            label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
+            if (AURA_TYPES.includes(tool)) label += "  · aura r" + AURA_R;
+          }
         }
       }
       else if (mem) label = `${hover.x},${hover.y} last seen ${S.lastSeen[me()][hover.y][hover.x].terr}`;
