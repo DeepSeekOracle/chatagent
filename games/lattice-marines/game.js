@@ -420,11 +420,11 @@
 
   function tryBuild(type, owner, x, y) {
     const err = canBuild(type, owner, x, y);
-    if (err) { toast(err); return false; }
+    if (err) { toast(err); if (owner === me()) fx("error"); return false; }
     pay(owner, BLD[type].cost, 0);
     spawnB(type, owner, x, y);
     log(`${owner === 0 ? "You" : "Enemy"} raise a ${BLD[type].name} at ${x},${y}.`);
-    beep(440, 0.06);
+    if (owner === me()) fx("build");
     return true;
   }
 
@@ -469,7 +469,7 @@
       }
       S.players[owner].satCD = 4;
       log("Spy satellite paints the theatre.");
-      beep(880, 0.08);
+      fx("radar");
       paintUI();
       return;
     }
@@ -483,7 +483,7 @@
     S.queue.push({ owner, kind, x, y });
     if (w.reveal) reveal(owner, x, y, w.reveal);
     log(`${owner === 0 ? "You" : "Enemy"} queued ${w.name} @ ${x},${y}.`);
-    beep(660, 0.05);
+    if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
   }
 
   function endDefense() {
@@ -491,6 +491,7 @@
     S.phase = "offense";
     tool = null; weapon = "probe";
     log("Offense phase — probe the fog or fire what you built.");
+    fx("phase");
     paintUI();
   }
 
@@ -550,6 +551,7 @@
         if (b.owner === defender && ["radar", "aa", "silo", "icbm", "sat", "emp"].includes(b.type)) b.offline = true;
       }
       log("EMP silences enemy electronics.");
+    fx("emp");
       boom(q.x, q.y);
       return;
     }
@@ -561,6 +563,7 @@
     }
     if (intercept) {
       log(`${w.name} intercepted by AA.`);
+      fx("aa");
       boom(q.x, q.y);
       return;
     }
@@ -726,6 +729,7 @@
       S.phase = "end";
       tally();
       paintUI();
+      fx(S.over === "win" ? "win" : "lose");
       showEnd();
       return;
     }
@@ -1263,6 +1267,11 @@
       <p class="sel-meta">Unlocked: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit (probe, silo, hangar, radar, AA, mines, decoys)"} · Wins ${persist.wins}</p>
       <h3>How a turn works</h3>
       <p><b>Defense</b> — spend credits on plants, guns, radars, silos. Train units. <b>Offense</b> — click fog to probe or fire. <b>Playback</b> — everything flies. Then the enemy answers.</p>
+      <div class="row">
+        <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate via PayPal.me/ExcavationPro</a>
+        <a class="btn ghost" href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener">Full listen portal</a>
+        <a class="btn ghost" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html" target="_blank" rel="noopener">Haven Star Chart</a>
+      </div>
     `);
     $("go").onclick = () => startFromForm(false);
     $("fresh").onclick = () => startFromForm(true);
@@ -1300,6 +1309,7 @@
       <div class="row">
         <button class="btn gold" id="again">${S.over === "win" ? "Next campaign island" : "Retry island"}</button>
         <button class="btn" id="mm">Main menu</button>
+        <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal tip</a>
       </div>
     `);
     $("again").onclick = () => newMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode });
@@ -1316,7 +1326,7 @@
       tryBuild(tool, me(), t.x, t.y);
     } else if (S.phase === "offense" && weapon) {
       queueStrike(me(), weapon, t.x, t.y);
-    }
+    } else fx("select");
     paintUI();
   }
   function onDown(e) {
@@ -1389,28 +1399,64 @@
     if (S) S.skipping = false;
   }
 
-  /* ---------- audio ---------- */
+  /* ---------- game SFX (WebAudio, independent of radio mute) ---------- */
   let AC = null;
-  function ac() { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); return AC; }
-  function beep(f, d) {
-    try {
-      const a = ac(); const o = a.createOscillator(); const g = a.createGain();
-      o.frequency.value = f; o.type = "triangle";
-      g.gain.value = 0.04; o.connect(g); g.connect(a.destination);
-      o.start(); o.stop(a.currentTime + d);
-    } catch (_) {}
+  function ac() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume().catch(() => {});
+    return AC;
   }
-  function bang() {
+  function envGain(a, peak, attack, dur) {
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(peak, a.currentTime + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    g.connect(a.destination);
+    return g;
+  }
+  function osc(a, type, f0, f1, dur, peak) {
+    const o = a.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, a.currentTime);
+    if (f1 != null) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), a.currentTime + dur);
+    o.connect(envGain(a, peak, 0.008, dur));
+    o.start(); o.stop(a.currentTime + dur + 0.02);
+  }
+  function noiseBurst(a, dur, peak, hp) {
+    const n = a.sampleRate * dur | 0;
+    const buf = a.createBuffer(1, n, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.4);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const f = a.createBiquadFilter(); f.type = hp ? "highpass" : "lowpass"; f.frequency.value = hp || 420;
+    src.connect(f); f.connect(envGain(a, peak, 0.004, dur));
+    src.start();
+  }
+  function fx(kind) {
     if (S && S.skipping) return;
     try {
-      const a = ac(); const o = a.createOscillator(); const g = a.createGain();
-      o.type = "sawtooth"; o.frequency.setValueAtTime(180, a.currentTime);
-      o.frequency.exponentialRampToValueAtTime(40, a.currentTime + 0.18);
-      g.gain.setValueAtTime(0.05, a.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.2);
-      o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.22);
+      const a = ac();
+      switch (kind) {
+        case "ui": osc(a, "triangle", 880, 880, 0.05, 0.03); break;
+        case "build": osc(a, "square", 180, 90, 0.12, 0.04); osc(a, "triangle", 520, 260, 0.1, 0.02); break;
+        case "select": osc(a, "sine", 640, 720, 0.06, 0.025); break;
+        case "error": osc(a, "sawtooth", 140, 70, 0.16, 0.04); break;
+        case "probe": osc(a, "sine", 920, 420, 0.22, 0.045); osc(a, "sine", 1380, 700, 0.18, 0.02); break;
+        case "launch": osc(a, "sawtooth", 240, 70, 0.28, 0.05); noiseBurst(a, 0.18, 0.03, 900); break;
+        case "drop": osc(a, "triangle", 110, 48, 0.2, 0.05); noiseBurst(a, 0.12, 0.025, 200); break;
+        case "boom": noiseBurst(a, 0.28, 0.07, 180); osc(a, "sawtooth", 90, 32, 0.26, 0.05); break;
+        case "aa": osc(a, "square", 1400, 400, 0.12, 0.035); break;
+        case "emp": osc(a, "square", 80, 40, 0.35, 0.04); noiseBurst(a, 0.3, 0.04, 1200); break;
+        case "radar": osc(a, "sine", 480, 1600, 0.4, 0.02); break;
+        case "phase": osc(a, "triangle", 330, 990, 0.18, 0.03); break;
+        case "win": osc(a, "triangle", 523, 784, 0.35, 0.04); setTimeout(() => { try { osc(ac(), "triangle", 659, 1046, 0.4, 0.04); } catch (_) {} }, 140); break;
+        case "lose": osc(a, "sawtooth", 196, 80, 0.5, 0.045); break;
+        default: osc(a, "sine", 440, 440, 0.05, 0.03);
+      }
     } catch (_) {}
   }
+  function beep(f, d) { fx(f > 700 ? "probe" : f > 500 ? "launch" : "build"); void d; }
+  function bang() { fx("boom"); }
 
   /* ---------- loop / boot ---------- */
   function loop() {
