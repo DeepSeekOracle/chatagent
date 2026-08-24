@@ -62,7 +62,7 @@
     sat:     { name: "Spy Satellite", cost: 520, hp: 55, pwr: 3, cat: "intel", spr: "sat", unlock: "sat",
                desc: "Reveal the whole map for 1 turn. Cooldown 4." },
     gun:     { name: "Gun Pod", cost: 100, hp: 95, pwr: 0, cat: "defense", spr: "gun",
-               desc: "Auto-fires on nearby ground units." },
+               desc: "Auto-fires on nearby ground units. Slightly stronger than a Lattice Marine." },
     aa:      { name: "AA Launcher", cost: 160, hp: 75, pwr: 1, cat: "defense", spr: "aa",
                desc: "Intercepts missiles, drops, and jets that fall inside its range (7+Mk, +2 on hills)." },
     mine:    { name: "Minefield", cost: 55, hp: 28, pwr: 0, cat: "defense", spr: "mine",
@@ -101,9 +101,9 @@
   };
 
   const UNIT = {
-    marine: { name: "Lattice Marine", hp: 42, dmg: 14, mdmg: 20, range: 1, move: 1 },
-    scout:  { name: "Scout", hp: 24, dmg: 0, mdmg: 0, range: 0, move: 2, reveal: true },
-    tank:   { name: "Tank", hp: 95, dmg: 30, mdmg: 22, range: 2, move: 1 }
+    marine: { name: "Lattice Marine", hp: 42, dmg: 14, mdmg: 20, range: 1, move: 1, vision: 2 },
+    scout:  { name: "Scout", hp: 24, dmg: 0, mdmg: 0, range: 0, move: 2, vision: 2 },
+    tank:   { name: "Tank", hp: 95, dmg: 30, mdmg: 22, range: 2, move: 1, vision: 1 }
   };
 
   const PROFILES = ["Aggressor", "Turtle", "Economist", "Intelligence"];
@@ -718,7 +718,8 @@
     const n = neighbors(b.x, b.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !occupied(t.x, t.y));
     if (!n) { if (b.owner === me()) toast("No free adjacent tile."); return; }
     pay(b.owner, cost, 0);
-    spawnU(utype, b.owner, n.x, n.y);
+    const nu = spawnU(utype, b.owner, n.x, n.y);
+    unitLook(nu);
     log(`Trained ${UNIT[utype].name}.`);
   }
 
@@ -988,10 +989,11 @@
     }
     if (w.spawn) {
       if (S.tiles[q.y][q.x] === "water") { log("Drop lost at sea."); boom(q.x, q.y); return; }
+      let dropped = null;
       const mine = buildingAt(q.x, q.y);
       if (mine && mine.type === "mine" && mine.owner !== q.owner) {
-        const u = spawnU(w.spawn, q.owner, q.x, q.y);
-        hurtU(u, 40, mine.owner);
+        dropped = spawnU(w.spawn, q.owner, q.x, q.y);
+        hurtU(dropped, 40, mine.owner);
         mine.hp = 0;
         mine.wrecked = false;
         S.buildings = S.buildings.filter((x) => x.id !== mine.id);
@@ -999,13 +1001,14 @@
         boom(q.x, q.y);
       } else if (occupied(q.x, q.y) && !unitAt(q.x, q.y)) {
         const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !buildingAt(t.x, t.y));
-        if (n) spawnU(w.spawn, q.owner, n.x, n.y);
+        if (n) dropped = spawnU(w.spawn, q.owner, n.x, n.y);
         else log("Drop aborted — no landing zone.");
       } else if (unitAt(q.x, q.y)) {
         const n = neighbors(q.x, q.y).find((t) => inB(t.x, t.y) && !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water");
-        if (n) spawnU(w.spawn, q.owner, n.x, n.y);
-      } else spawnU(w.spawn, q.owner, q.x, q.y);
-      reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 1);
+        if (n) dropped = spawnU(w.spawn, q.owner, n.x, n.y);
+      } else dropped = spawnU(w.spawn, q.owner, q.x, q.y);
+      if (dropped && dropped.hp > 0) unitLook(dropped);
+      else reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 2);
       boom(q.x, q.y);
       return;
     }
@@ -1098,29 +1101,19 @@
       const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2 + (hill ? 1 : 0));
       if (!foes.length) continue;
       foes.sort((a, b) => dist(a, g) - dist(b, g));
-      hurtU(foes[0], Math.round((18 + g.lvl * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
+      hurtU(foes[0], Math.round((24 + (g.lvl - 1) * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
       S.fx.push({ kind: "flash", x: foes[0].x, y: foes[0].y, life: 8, max: 8 });
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
+      unitLook(u);
       const def = UNIT[u.type];
-      if (!def.dmg) {
-        if (def.reveal) reveal(u.owner, u.x, u.y, 2);
-        continue;
-      }
-      const targets = [
-        ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0),
-        ...S.buildings.filter((o) => o.owner !== u.owner && o.hp > 0)
-      ];
-      targets.sort((a, b) => dist(a, u) - dist(b, u));
-      const t = targets[0];
-      if (!t || dist(t, u) > def.range + (dist(t, u) === 1 ? 0 : 0)) continue;
-      if (dist(t, u) <= 1) {
-        if (t.max && t.type && UNIT[t.type]) hurtU(t, def.mdmg, u.owner);
-        else hurtB(t, def.mdmg, u.owner);
-      } else if (dist(t, u) <= def.range) {
-        if (UNIT[t.type]) hurtU(t, def.dmg, u.owner);
-        else hurtB(t, def.dmg, u.owner);
-      }
+      if (!def.dmg) continue;
+      const t = unitStrikeTarget(u);
+      if (!t) continue;
+      const melee = dist(t, u) <= 1;
+      const dmg = melee ? def.mdmg : def.dmg;
+      if (UNIT[t.type]) hurtU(t, dmg, u.owner);
+      else hurtB(t, dmg, u.owner);
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const mine = buildingAt(u.x, u.y);
@@ -1134,36 +1127,109 @@
     }
   }
 
+  function unitVision(u) {
+    return (UNIT[u.type] && UNIT[u.type].vision) || 0;
+  }
+  function unitLook(u) {
+    const r = unitVision(u);
+    if (r > 0 && u.hp > 0) reveal(u.owner, u.x, u.y, r);
+  }
+  function strikePri(t) {
+    if (!t) return 99;
+    if (UNIT[t.type]) return 0;
+    if (t.type === "hq") return 1;
+    if (t.type === "gun" || t.type === "aa" || t.type === "mine") return 2;
+    if (t.type === "silo" || t.type === "icbm" || t.type === "warhall" || t.type === "hangar") return 3;
+    return 4;
+  }
+  function unitStrikeTarget(u) {
+    const def = UNIT[u.type];
+    if (!def || !def.dmg) return null;
+    const range = Math.max(def.range || 1, 1);
+    const list = [
+      ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0),
+      ...S.buildings.filter((o) => o.owner !== u.owner && o.hp > 0)
+    ].filter((t) => dist(t, u) <= range);
+    list.sort((a, b) => strikePri(a) - strikePri(b) || dist(a, u) - dist(b, u));
+    return list[0] || null;
+  }
+  function knownEnemyHQs(viewer) {
+    const out = [];
+    const seen = new Set();
+    for (const b of S.buildings) {
+      if (b.owner === viewer || b.type !== "hq" || b.hp <= 0) continue;
+      if (!visible(viewer, b.x, b.y) && !(S.lastSeen[viewer][b.y] && S.lastSeen[viewer][b.y][b.x] && S.lastSeen[viewer][b.y][b.x].b)) continue;
+      out.push(b);
+      seen.add(b.x + "," + b.y);
+    }
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (onHome(viewer, x, y) || seen.has(x + "," + y)) continue;
+      const ls = S.lastSeen[viewer][y] && S.lastSeen[viewer][y][x];
+      if (ls && ls.b && ls.b.type === "hq") out.push({ x, y, type: "hq", ghost: true });
+    }
+    return out;
+  }
+  function fogHuntTile(u) {
+    const foe = 1 - u.owner;
+    let best = null, bd = 1e9, bu = 1e9;
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (!onHome(foe, x, y) || S.tiles[y][x] === "water") continue;
+      const unknown = !visible(u.owner, x, y) && !hasMemory(u.owner, x, y);
+      const stale = !visible(u.owner, x, y) && hasMemory(u.owner, x, y);
+      if (!unknown && !stale) continue;
+      const d = dist(u, { x, y });
+      const urg = unknown ? 0 : 1;
+      if (urg < bu || (urg === bu && d < bd)) { bu = urg; bd = d; best = { x, y }; }
+    }
+    return best;
+  }
+  function unitObjective(u) {
+    const hqs = knownEnemyHQs(u.owner);
+    if (hqs.length) {
+      hqs.sort((a, b) => dist(a, u) - dist(b, u));
+      return hqs[0];
+    }
+    const hunt = fogHuntTile(u);
+    if (hunt) return hunt;
+    const blds = S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0);
+    if (blds.length) {
+      blds.sort((a, b) => strikePri(a) - strikePri(b) || dist(a, u) - dist(b, u));
+      return blds[0];
+    }
+    const foes = S.units.filter((o) => o.owner !== u.owner && o.hp > 0);
+    if (foes.length) {
+      foes.sort((a, b) => dist(a, u) - dist(b, u));
+      return foes[0];
+    }
+    return null;
+  }
+  function stepToward(u, t) {
+    const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+    dirs.sort((a, b) => dist({ x: u.x + a.x, y: u.y + a.y }, t) - dist({ x: u.x + b.x, y: u.y + b.y }, t));
+    for (const d of dirs) {
+      const nx = u.x + d.x, ny = u.y + d.y;
+      if (!inB(nx, ny) || S.tiles[ny][nx] === "water") continue;
+      const blk = buildingAt(nx, ny);
+      if (blk && blk.owner !== u.owner) continue;
+      if (unitAt(nx, ny)) continue;
+      return { x: nx, y: ny };
+    }
+    return null;
+  }
+
   function marchUnits() {
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const def = UNIT[u.type];
       const steps = def.move || 1;
+      unitLook(u);
       for (let s = 0; s < steps; s++) {
-        const enemies = [
-          ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0 && b.type === "hq"),
-          ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0),
-          ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0)
-        ];
-        if (!enemies.length) break;
-        enemies.sort((a, b) => dist(a, u) - dist(b, u));
-        const t = enemies[0];
-        if (def.dmg && dist(t, u) <= (def.range || 1)) break;
-        const cands = [];
-        if (t.x !== u.x) cands.push({ x: u.x + Math.sign(t.x - u.x), y: u.y });
-        if (t.y !== u.y) cands.push({ x: u.x, y: u.y + Math.sign(t.y - u.y) });
-        if (Math.abs(t.x - u.x) <= Math.abs(t.y - u.y)) cands.reverse();
-        let moved = false;
-        for (const step of cands) {
-          if (!inB(step.x, step.y) || S.tiles[step.y][step.x] === "water") continue;
-          const blk = buildingAt(step.x, step.y);
-          if (blk && blk.owner !== u.owner) continue;
-          if (unitAt(step.x, step.y)) continue;
-          u.x = step.x; u.y = step.y;
-          moved = true;
-          break;
-        }
-        if (!moved) break;
-        if (def.reveal) reveal(u.owner, u.x, u.y, 2);
+        if (def.dmg && unitStrikeTarget(u)) break;
+        const t = unitObjective(u);
+        if (!t) break;
+        const step = stepToward(u, t);
+        if (!step) break;
+        u.x = step.x; u.y = step.y;
+        unitLook(u);
       }
     }
   }
@@ -2147,7 +2213,7 @@
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
       <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence. A vs-AI win automatically inscribes your commander name and match metadata on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
+      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. In range they shoot the highest-priority closest target (units, then HQs, then guns). Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile. Enter commits the phase. Esc cancels a tool. Hot-seat is local only. A vs-AI win automatically inscribes your commander name on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
     overlayMode = "help";
