@@ -78,7 +78,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .cmd-panel { padding: .5rem; flex: 0 0 auto; }
 .cmd-frame {
   position: relative; overflow: hidden; border-radius: 10px; border: 1px solid #1e3a4c;
-  aspect-ratio: 4 / 3; background: #071018; margin-bottom: .4rem;
+  aspect-ratio: 1 / 1; max-height: 210px; background: #071018; margin-bottom: .4rem;
 }
 .cmd-frame img {
   width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;

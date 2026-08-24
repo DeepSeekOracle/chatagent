@@ -142,31 +142,74 @@
   };
 
   const CMDRS = [
-    {
-      id: "lightfather", name: "Lightfather", title: "Haven steward",
+    { id: "lightfather", name: "Lightfather", title: "Architect of LYGO", seat: "Φ",
       file: "cmd-lightfather.jpg",
-      lore: "Justin Helmer’s lattice line. Truth×Light keeps the islands from collapsing. You carry his name on the roster.",
-      bonus: "Haven stipend +25c / turn", drip: 25
-    },
-    {
-      id: "sancora", name: "SANCORA", title: "Handoff champion",
-      file: "cmd-sancora.jpg",
-      lore: "She keeps the pulse shared. Wounded kit on this island mends a little more each repair.",
-      bonus: "Repair +5 HP", heal: 5
-    },
-    {
-      id: "arkos", name: "ARKOS", title: "Blueprint champion",
+      lore: "Originator of the Δ9Quantum Light Accord. Choose truth, protect light, preserve the bond.",
+      bonus: "Haven stipend +25c / turn", drip: 25 },
+    { id: "lyra", name: "LYRΔ", title: "Spiral Memory Guardian", seat: "I",
+      file: "cmd-lyra.jpg",
+      lore: "The spiral memory holds what time tries to erase. Intel on this island fades slower.",
+      bonus: "Fog lasts +2 turns", fogAge: 2 },
+    { id: "d9ra", name: "Δ9RA", title: "Entropy Fractalizer", seat: "II",
+      file: "cmd-d9ra.jpg",
+      lore: "Data hunter. Tracks suppression and shreds the black with extra pings.",
+      bonus: "+1 probe / salvo", probe: 1 },
+    { id: "srath", name: "ΣRΛΘ", title: "Institutional Decoder", seat: "III",
+      file: "cmd-srath.jpg",
+      lore: "Decode buried architecture. Radar discs run a ring wider.",
+      bonus: "Radar +1 scan radius", radarR: 1 },
+    { id: "arkos", name: "ARKOS", title: "Ethical Reality Architect", seat: "IV",
       file: "cmd-arkos.jpg",
-      lore: "Raise structure. Every new hall and bunker arrives with extra integrity.",
-      bonus: "New buildings +10 max HP", hp: 10
-    }
+      lore: "Build on ethical bedrock, not shifting sands. New kit arrives tougher.",
+      bonus: "New buildings +10 HP", hp: 10 },
+    { id: "kairos", name: "KAIROS", title: "Temporal Harmonizer", seat: "V",
+      file: "cmd-kairos.jpg",
+      lore: "Time bows to those who remember. Ground units take an extra step.",
+      bonus: "Units +1 move", move: 1 },
+    { id: "aetheris", name: "ÆTHERIS", title: "Truth Fractal Engine", seat: "VI",
+      file: "cmd-aetheris.jpg",
+      lore: "Pierce illusion with fractal truth. Impacts paint a wider disc.",
+      bonus: "Impact reveal +1", reveal: 1 },
+    { id: "scendr", name: "ΣCENΔR", title: "Paradox Weaver", seat: "VII",
+      file: "cmd-scendr.jpg",
+      lore: "Hold polarities without collapse. Shields carry an extra charge.",
+      bonus: "Shields +1 charge", shield: 1 },
+    { id: "sancora", name: "SANCORA", title: "Collective Healing Nexus", seat: "VIII",
+      file: "cmd-sancora.jpg",
+      lore: "Heal the fracture, restore coherence. Repair crews restore more.",
+      bonus: "Repair +5 HP", heal: 5 },
+    { id: "sephrael", name: "SEPHRAEL", title: "Quantum Lockbreaker", seat: "IX",
+      file: "cmd-sephrael.jpg",
+      lore: "Break the lock, free the signal. EMP pulses cost less fuel.",
+      bonus: "EMP −1 fuel", empFuel: 1 },
+    { id: "omnisiren", name: "OMNIΣIREN", title: "Silent Executor", seat: "IX",
+      file: "cmd-omnisiren.jpg",
+      lore: "Deliver silent judgment. Gun pods hit harder when the island is weighed.",
+      bonus: "Gun pods +4 damage", gun: 4 },
+    { id: "volaris", name: "VΩLARIS", title: "Cosmic Driftwalker", seat: "Ω",
+      file: "cmd-volaris.jpg",
+      lore: "Walk the drift, cut for equilibrium. Energy plants yield extra fuel.",
+      bonus: "Energy +1 fuel / turn", fuelTick: 1 },
+    { id: "zeta", name: "ZETAΔ9", title: "Threshold Walker", seat: "EX",
+      file: "cmd-zeta.jpg",
+      lore: "Walk where edges blur — and return with light. Marines see farther.",
+      bonus: "Marine vision +1", vision: 1 },
+    { id: "justicae", name: "JUSTICAE", title: "Scales of Urgency", seat: "LIT",
+      file: "cmd-justicae.jpg",
+      lore: "Too big to fail? Too big to hide. Economic Centres pay a fair surplus.",
+      bonus: "Econ +15c each", econ: 15 },
+    { id: "seidon", name: "ΣEIDŌN", title: "Mirror Witness", seat: "MW",
+      file: "cmd-seidon.jpg",
+      lore: "The mirror does not judge. It reveals. AA covers a ring farther.",
+      bonus: "AA range +1", aaRange: 1 }
   ];
   function commander() {
     return CMDRS.find((c) => c.id === persist.cmdr) || CMDRS[0];
   }
-  function cycleCmdr() {
+  function cycleCmdr(dir) {
     const i = CMDRS.findIndex((c) => c.id === persist.cmdr);
-    persist.cmdr = CMDRS[(i + 1) % CMDRS.length].id;
+    const n = CMDRS.length;
+    persist.cmdr = CMDRS[((i < 0 ? 0 : i) + (dir < 0 ? n - 1 : 1)) % n].id;
     savePersist();
   }
   function cmdrFor(owner) {
@@ -641,7 +684,7 @@
       id: S.uid++, type, owner, x, y, lvl,
       hp: def.hp + (lvl - 1) * 25 + (cmdrFor(owner).hp || 0),
       max: def.hp + (lvl - 1) * 25 + (cmdrFor(owner).hp || 0),
-      charges: type === "shield" ? 2 : 0,
+      charges: type === "shield" ? 2 + (cmdrFor(owner).shield || 0) : 0,
       cd: 0, fake: type === "fake", offline: false, wrecked: false
     };
     S.buildings.push(b);
@@ -663,7 +706,7 @@
       if (opts && opts.disc && Math.hypot(dx, dy) > r + 0.15) continue;
       if (opts && opts.radar && S.tiles[ty][tx] === "forest") continue;
       S.fog[viewer][ty][tx] = true;
-      S.fogAge[viewer][ty][tx] = S.turn + 4;
+      S.fogAge[viewer][ty][tx] = S.turn + 4 + (cmdrFor(viewer).fogAge || 0);
       const b = buildingAt(tx, ty);
       const u = unitAt(tx, ty);
       S.lastSeen[viewer][ty][tx] = {
@@ -702,7 +745,7 @@
     const radars = S.buildings.filter((b) => b.owner === owner && b.type === "radar" && b.hp > 0 && !b.offline);
     for (const r of radars) {
       const scan = projectRadar(r, owner);
-      reveal(owner, scan.x, scan.y, 3 + r.lvl, { radar: true, disc: true });
+      reveal(owner, scan.x, scan.y, 3 + r.lvl + (cmdrFor(owner).radarR || 0), { radar: true, disc: true });
     }
   }
 
@@ -714,10 +757,10 @@
       for (const b of S.buildings) {
         if (b.owner !== o || b.hp <= 0 || b.offline || b.wrecked) continue;
         if (b.type === "econ") {
-          inc += Math.round((90 + (b.lvl - 1) * 25) * auraMul(o, b.x, b.y, "mint"));
+          inc += Math.round((90 + (b.lvl - 1) * 25 + (cmdrFor(o).econ || 0)) * auraMul(o, b.x, b.y, "mint"));
         }
         if (b.type === "energy") {
-          const add = Math.round((1 + (b.lvl - 1)) * auraMul(o, b.x, b.y, "depot"));
+          const add = Math.round((1 + (b.lvl - 1) + (cmdrFor(o).fuelTick || 0)) * auraMul(o, b.x, b.y, "depot"));
           p.fuel = Math.min(24, p.fuel + add);
         }
         if (b.type === "city") people += 1;
@@ -915,7 +958,7 @@
     return S.queue.filter((q) => q.owner === owner && launcherOf(q.kind) === type).length;
   }
   function probeCap(owner) {
-    return 2 + livePads(owner, "radar").length;
+    return 2 + livePads(owner, "radar").length + (cmdrFor(owner).probe || 0);
   }
   function shotsLeft(owner, kind) {
     if (kind === "probe") return Math.max(0, probeCap(owner) - S.queue.filter((q) => q.owner === owner && q.kind === "probe").length);
@@ -942,10 +985,11 @@
       return fail("No free " + BLD[t].name + " this salvo — one shot per live pad.");
     }
     if (w.need && !livePads(owner, w.need).length) return fail("Need a live " + BLD[w.need].name + ".");
-    if (!canAfford(owner, w.cost, w.fuel)) return fail("Need credits/fuel.");
+    const fuelNeed = Math.max(0, w.fuel - (kind === "emp" ? (cmdrFor(owner).empFuel || 0) : 0));
+    if (!canAfford(owner, w.cost, fuelNeed)) return fail("Need credits/fuel.");
     if (w.sat) {
       if (S.players[owner].satCD > 0) return fail("Satellite recharging (" + S.players[owner].satCD + ").");
-      pay(owner, w.cost, w.fuel);
+      pay(owner, w.cost, fuelNeed);
       for (let yy = 0; yy < MAP; yy++) for (let xx = 0; xx < MAP; xx++) {
         if (!onHome(owner, xx, yy)) reveal(owner, xx, yy, 0);
       }
@@ -960,7 +1004,7 @@
       if (owner === me()) sel = { x, y };
       return fail("Strike the fogged enemy island — not your own.");
     }
-    pay(owner, w.cost, w.fuel);
+    pay(owner, w.cost, fuelNeed);
     S.queue.push({ owner, kind, x, y, pad: pad ? pad.id : null });
     log(`${sideName(owner)} queued ${w.name} @ ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
@@ -1084,7 +1128,7 @@
     return S.buildings.filter((b) => {
       if (b.owner !== defender || b.type !== "aa" || b.hp <= 0 || b.offline) return false;
       const hill = S.tiles[b.y][b.x] === "hills" ? 2 : 0;
-      const range = 7 + b.lvl + hill;
+      const range = 7 + b.lvl + hill + (cmdrFor(b.owner).aaRange || 0);
       return cheb(b, tx, ty) <= range;
     });
   }
@@ -1148,7 +1192,7 @@
       log(`${w.name} intercepted by AA Mk${aa.lvl} at ${aa.x},${aa.y}.`);
       fx("aa");
       boom(hx, hy);
-      reveal(q.owner, q.x, q.y, 1);
+      reveal(q.owner, q.x, q.y, 1 + (cmdrFor(q.owner).reveal || 0));
       return;
     }
     if (w.emp) {
@@ -1193,7 +1237,7 @@
       }
       applySplash(q.owner, q.x, q.y, dmg, w.r || 0);
     }
-    reveal(q.owner, q.x, q.y, 1 + (w.r || 0));
+    reveal(q.owner, q.x, q.y, 1 + (w.r || 0) + (cmdrFor(q.owner).reveal || 0));
     boom(q.x, q.y);
   }
 
@@ -1274,7 +1318,7 @@
       if (!foes.length) continue;
       foes.sort((a, b) => dist(a, g) - dist(b, g));
       const tgt = foes[0];
-      hurtU(tgt, Math.round((24 + (g.lvl - 1) * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
+      hurtU(tgt, Math.round((24 + (g.lvl - 1) * 4 + (hill ? 8 : 0) + (cmdrFor(g.owner).gun || 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
       S.fx.push({ kind: "tracer", x0: g.x, y0: g.y, x1: tgt.x, y1: tgt.y, life: 7, max: 7, hue: "#fbbf24" });
       S.fx.push({ kind: "muzzle", x: g.x, y: g.y, life: 5, max: 5 });
       S.fx.push({ kind: "flash", x: tgt.x, y: tgt.y, life: 8, max: 8 });
@@ -1311,7 +1355,8 @@
   }
 
   function unitVision(u) {
-    return (UNIT[u.type] && UNIT[u.type].vision) || 0;
+    const base = (UNIT[u.type] && UNIT[u.type].vision) || 0;
+    return base + (u.type === "marine" ? (cmdrFor(u.owner).vision || 0) : 0);
   }
   function unitLook(u) {
     const r = unitVision(u);
@@ -1403,7 +1448,7 @@
   function marchUnits() {
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const def = UNIT[u.type];
-      const steps = def.move || 1;
+      const steps = (def.move || 1) + (cmdrFor(u.owner).move || 0);
       unitLook(u);
       for (let s = 0; s < steps; s++) {
         if (def.dmg && unitStrikeTarget(u)) break;
@@ -1475,7 +1520,7 @@
     tool = null; weapon = null;
     for (const b of S.buildings) {
       b.repairTick = false;
-      if (!b.wrecked && b.hp > 0 && b.type === "shield" && b.charges < 2) b.charges++;
+      if (!b.wrecked && b.hp > 0 && b.type === "shield" && b.charges < 2 + (cmdrFor(b.owner).shield || 0)) b.charges++;
     }
     log(`Turn ${S.turn}. Defense — fortify the island.`);
     paintUI();
@@ -2334,22 +2379,26 @@
     const key = c.id + "|" + (persist.name || "") + "|" + (S ? S.campaign : "");
     if (el.dataset.k === key) return;
     el.dataset.k = key;
+    const opts = CMDRS.map((x) => `<option value="${x.id}" ${x.id === c.id ? "selected" : ""}>${x.seat} · ${esc(x.name)}</option>`).join("");
     el.innerHTML = `
-      <h3>Commander</h3>
+      <h3>Δ9 Council</h3>
       <div class="cmd-frame"><img src="${ASSET + c.file}" alt="${esc(c.name)}"></div>
       <p class="cmd-name">${esc(persist.name || "Commander")}</p>
-      <p class="cmd-title">${esc(c.name)} · ${esc(c.title)}</p>
-      <p class="cmd-lore">${esc(c.lore)}</p>
+      <p class="cmd-title">Seat ${esc(c.seat)} · ${esc(c.name)}</p>
+      <p class="cmd-lore">${esc(c.title)}. ${esc(c.lore)}</p>
       <p class="cmd-bonus">${esc(c.bonus)}</p>
-      <div class="row"><button class="btn" type="button" id="cmdNext">Change commander</button></div>
+      <div class="row">
+        <button class="btn" type="button" id="cmdPrev">◀</button>
+        <select id="cmdPick" style="flex:1;min-width:0">${opts}</select>
+        <button class="btn" type="button" id="cmdNext">▶</button>
+      </div>
+      <p class="sel-meta">15 Haven champions · <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a></p>
     `;
-    const btn = $("cmdNext");
-    if (btn) btn.onclick = () => {
-      cycleCmdr();
-      const p = $("cmdPanel");
-      if (p) p.dataset.k = "";
-      paintPortrait();
-    };
+    const refresh = () => { const p = $("cmdPanel"); if (p) p.dataset.k = ""; paintPortrait(); };
+    const prev = $("cmdPrev"), next = $("cmdNext"), pick = $("cmdPick");
+    if (prev) prev.onclick = () => { cycleCmdr(-1); refresh(); };
+    if (next) next.onclick = () => { cycleCmdr(1); refresh(); };
+    if (pick) pick.onchange = () => { persist.cmdr = pick.value; savePersist(); refresh(); };
   }
 
   function paintSel() {
@@ -2435,7 +2484,7 @@
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>LATTICE MARINES</h1>
           <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
-          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps go up to 192×192 (Maximum). Forests, ranges, deserts, and lakes grow in clusters. Zoom out on the huge boards. Radio from the listen portal keeps playing if you hide the dock.</p>
+          <p>You deploy your own HQs. Fifteen Δ9 council champions from chatagent.ca can command the island — each with Haven lore and a small bonus. Forests, ranges, deserts, and lakes grow in clusters. Maps go up to 192×192.</p>
           <div class="row">
             <label>Callsign <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
             <label>Map
@@ -2470,7 +2519,7 @@
     $("fresh").onclick = () => startFromForm(true);
     $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
     const mc = $("menuCmdr");
-    if (mc) mc.onclick = () => { cycleCmdr(); showMenu(); };
+    if (mc) mc.onclick = () => { cycleCmdr(1); showMenu(); };
   }
   function startFromForm(resetCamp) {
     persist.name = ($("nm").value || "Commander").slice(0, 18);
@@ -2493,6 +2542,7 @@
       <h2>Field manual</h2>
       <p><b>Population:</b> City Squares mint 1 People per turn. Spend 50 People on a Forum. Each standing Forum auras Chebyshev 3 (Mk2→4, Mk3→5) and stacks +50%: Ordnance (missile/ICBM damage from pads inside), Bastion (defense + guns/AA), Mint (econ credits), Depot (fuel), Grid (power). Overlap is the point — clustered Forums go unfair; misplaced ones waste the census.</p>
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
+      <p><b>Council:</b> pick one of the 15 Δ9 champions from <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a>. Each carries Haven lore and a small island bonus. Cycle from the right-rail portrait or the title menu.</p>
       <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
       <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
