@@ -131,6 +131,12 @@
     localStorage.setItem(SAVE, JSON.stringify(persist));
   }
 
+  function hashSeed(s) {
+    let h = 2166136261;
+    const str = String(s);
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
   function rng(seed) {
     let s = seed >>> 0;
     return () => {
@@ -164,43 +170,67 @@
   }
 
   function genMap(seed) {
-    const R = rng(seed);
+    const R = rng(seed >>> 0);
     const tiles = Array.from({ length: MAP }, () => Array(MAP).fill("water"));
-    const paint = (cx, cy, rad) => {
+    const n2 = (x, y, salt) => {
+      let n = (Math.imul(x + 13, 374761393) ^ Math.imul(y + 17, 668265263) ^ Math.imul(salt ^ seed, 1274126177)) >>> 0;
+      n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+      return (n & 0xffff) / 65535;
+    };
+    const fbm = (x, y, salt) =>
+      n2(x, y, salt) * 0.5 + n2((x / 2) | 0, (y / 2) | 0, salt + 3) * 0.35 + n2((x / 4) | 0, (y / 4) | 0, salt + 9) * 0.15;
+    const ellipse = (cx, cy, rx, ry, salt, thresh) => {
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        const n = (R() - 0.5) * 3.2;
-        if (Math.hypot(x - cx, y - cy) < rad + n) tiles[y][x] = "plains";
+        const dx = (x - cx) / rx, dy = (y - cy) / ry;
+        const d = Math.hypot(dx, dy) + (fbm(x, y, salt) - 0.5) * 0.85;
+        if (d < thresh) tiles[y][x] = "plains";
       }
     };
-    const rad = MAP * 0.27;
-    paint(MAP * 0.70, MAP * 0.76, rad);
-    paint(MAP * 0.28, MAP * 0.24, rad);
-    if (MAP >= 40) paint(MAP * 0.52, MAP * 0.50, MAP * 0.08);
-    if (MAP >= 64) {
-      paint(MAP * 0.18, MAP * 0.55, MAP * 0.09);
-      paint(MAP * 0.82, MAP * 0.42, MAP * 0.09);
+    const south = {
+      cx: MAP * (0.38 + R() * 0.4),
+      cy: MAP * (0.60 + R() * 0.24),
+      rx: MAP * (0.16 + R() * 0.18),
+      ry: MAP * (0.14 + R() * 0.16)
+    };
+    const north = {
+      cx: MAP * (0.18 + R() * 0.42),
+      cy: MAP * (0.12 + R() * 0.24),
+      rx: MAP * (0.16 + R() * 0.18),
+      ry: MAP * (0.14 + R() * 0.16)
+    };
+    ellipse(south.cx, south.cy, south.rx, south.ry, 11, 0.92 + R() * 0.18);
+    ellipse(north.cx, north.cy, north.rx, north.ry, 23, 0.92 + R() * 0.18);
+    if (R() > 0.35) {
+      ellipse(south.cx + (R() - 0.5) * MAP * 0.22, south.cy - R() * MAP * 0.08, south.rx * 0.55, south.ry * 0.5, 31, 0.9);
     }
-    if (MAP >= 80) {
-      paint(MAP * 0.48, MAP * 0.18, MAP * 0.08);
-      paint(MAP * 0.55, MAP * 0.84, MAP * 0.08);
+    if (R() > 0.35) {
+      ellipse(north.cx + (R() - 0.5) * MAP * 0.22, north.cy + R() * MAP * 0.08, north.rx * 0.55, north.ry * 0.5, 41, 0.9);
     }
-    const countHalf = (south) => {
+    const extras = MAP >= 64 ? 2 + (R() > 0.5 ? 1 : 0) : (MAP >= 40 && R() > 0.4 ? 1 : 0);
+    for (let i = 0; i < extras; i++) {
+      ellipse(MAP * (0.2 + R() * 0.6), MAP * (0.35 + R() * 0.3), MAP * (0.06 + R() * 0.08), MAP * (0.05 + R() * 0.07), 50 + i * 7, 0.88);
+    }
+    const countHalf = (southSide) => {
       let n = 0;
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
         if (tiles[y][x] === "water") continue;
-        if ((y >= MAP / 2) === south) n++;
+        if ((y >= MAP / 2) === southSide) n++;
       }
       return n;
     };
-    const minLand = Math.round(MAP * 1.6);
-    if (countHalf(true) < minLand) paint(MAP * 0.72, MAP * 0.80, rad * 1.15);
-    if (countHalf(false) < minLand) paint(MAP * 0.26, MAP * 0.18, rad * 1.15);
+    const minLand = Math.round(MAP * 1.8);
+    if (countHalf(true) < minLand) ellipse(MAP * 0.55, MAP * 0.78, MAP * 0.22, MAP * 0.18, 71, 1.05);
+    if (countHalf(false) < minLand) ellipse(MAP * 0.45, MAP * 0.22, MAP * 0.22, MAP * 0.18, 81, 1.05);
+    const hillAmt = 0.08 + R() * 0.1;
+    const forestAmt = 0.16 + R() * 0.14;
+    const ruinAmt = 0.04 + R() * 0.08;
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
-      const r = R();
-      if (r < 0.14) tiles[y][x] = "hills";
-      else if (r < 0.26) tiles[y][x] = "forest";
-      else if (r < 0.32) tiles[y][x] = "ruins";
+      const h = fbm(x, y, 101);
+      const f = fbm(x + 9, y - 4, 202);
+      if (h > 1 - hillAmt) tiles[y][x] = "hills";
+      else if (f > 1 - forestAmt) tiles[y][x] = "forest";
+      else if (n2(x, y, 303) < ruinAmt) tiles[y][x] = "ruins";
     }
     return tiles;
   }
@@ -256,7 +286,7 @@
     const size = Number(opts.mapN) || persist.mapN || 48;
     MAP = MAP_SIZES.some((m) => m.n === size) ? size : 48;
     persist.mapN = MAP;
-    const seed = (opts.seed >>> 0) || (Math.floor(Math.random() * 1e9) | 0);
+    const seed = ((opts.seed != null && opts.seed !== "") ? (Number(opts.seed) >>> 0) : ((Math.random() * 0xFFFFFFFF) >>> 0)) || ((Math.random() * 0xFFFFFFFF) >>> 0);
     const R = rng(seed);
     const purse = Math.round(700 + MAP * 6);
     S = {
@@ -1670,6 +1700,7 @@
       <span>Fuel <b>${p.fuel}</b></span>
       <span>Power <b>${Math.max(0, powerOf(me()))}</b></span>
       <span>Campaign <b>${S.campaign}</b></span>
+      <span>Island <b>#${S.seed}</b></span>
       <span>AI <b>${S.mode === "ai" ? S.ai.profile : "hot-seat"}</b></span>`;
     const ph = hqCount(me()), eh = hqCount(1 - me());
     $("hqPips").innerHTML = `YOU ${pips(ph, "me")} <span style="width:8px"></span> FOE ${pips(eh, "foe")}`;
@@ -1846,6 +1877,7 @@
             <label>Mode
               <select id="md"><option value="ai">vs Adaptive AI</option><option value="hotseat">Hot-seat</option></select>
             </label>
+            <label>Seed <input id="sd" placeholder="blank = new random" value=""></label>
           </div>
           <div class="row">
             <button class="btn gold" id="go">Deploy campaign ${persist.campaign}</button>
@@ -1871,8 +1903,10 @@
     persist.mapN = Number($("ms").value) || 48;
     savePersist();
     if (resetCamp) persist.campaign = Math.max(1, persist.campaign);
+    const typed = ($("sd") && $("sd").value || "").trim();
+    const seed = (!resetCamp && typed) ? (Number(typed) >>> 0 || hashSeed(typed)) : ((Math.random() * 0xFFFFFFFF) >>> 0);
     newMatch({
-      seed: Math.floor(Math.random() * 1e9),
+      seed,
       diff: $("df").value,
       campaign: persist.campaign,
       mode: $("md").value,
