@@ -1,0 +1,88 @@
+.games-arcade { margin: 1.1rem 0 0; }
+.ggrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.gcard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line, #ddd);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--card, #fff);
+  min-height: 100%;
+}
+.gcard.is-coming { opacity: .88; border-style: dashed; }
+.gcard-cover {
+  width: 100%;
+  aspect-ratio: 1200 / 630;
+  object-fit: cover;
+  display: block;
+  background: #1a140c;
+}
+.gcard-cover-empty {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(224,179,106,.35), transparent 55%),
+    linear-gradient(160deg, #1a140c, #2a2218);
+}
+.gcard-body { padding: 1rem 1.05rem 1.1rem; flex: 1; display: flex; flex-direction: column; }
+.gcard-kicker {
+  font-family: system-ui, sans-serif;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted, #6b6258);
+  margin: 0 0 .35rem;
+}
+.gcard h2, .gcard h3 { margin: 0 0 .4rem; font-size: 1.2rem; }
+.gcard p { margin: 0 0 .85rem; color: var(--muted, #5c534a); font-size: .95rem; flex: 1; }
+.gcard .cta-row { margin-top: auto; }
+.gcard-soon {
+  display: inline-block;
+  padding: .55rem .9rem;
+  border-radius: 8px;
+  border: 1px dashed var(--line, #ccc);
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--muted, #6b6258);
+}
+.gfilters { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.gfilters button {
+  font: inherit;
+  font-size: .8rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  border: 1px solid var(--line, #ddd);
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+.gfilters button[aria-pressed="true"] {
+  background: var(--accent, #2f6f4e);
+  border-color: var(--accent, #2f6f4e);
+  color: #fff;
+}
+.home .gcard { background: rgba(255,255,255,.04); }
+.home .gcard h2, .home .gcard h3 { color: var(--gold, #e0b36a); }
+.home .gcard p { color: #ddd4c8; }
+
+.games-exit {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 9999;
+  font: 700 12px/1 system-ui, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #f3ece3;
+  background: rgba(8, 10, 16, .78);
+  border: 1px solid rgba(255,255,255,.2);
+  padding: .48rem .75rem;
+  border-radius: 999px;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+}
+.games-exit:hover { color: #fbbf24; border-color: #fbbf24; }

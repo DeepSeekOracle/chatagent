@@ -1,0 +1,73 @@
+{
+  "updated": "2026-08-24",
+  "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
+  "listen": "https://asiancoastline.com/listen.html",
+  "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
+  "games": [
+    {
+      "id": "lattice-marines",
+      "slug": "lattice-marines",
+      "title": "Lattice Marines",
+      "tagline": "Isometric island war",
+      "blurb": "Place three HQs, branch build range, probe Battleship fog, and fight a never-ending campaign vs local AI or hot-seat. Δ9 commanders from this site.",
+      "status": "live",
+      "featured": true,
+      "order": 1,
+      "href": "/games/lattice-marines/",
+      "cover": "/games/lattice-marines/assets/og.jpg",
+      "coverAlt": "Lattice Marines island fortress",
+      "genre": ["strategy", "isometric"],
+      "players": "1 vs AI or 2 hot-seat",
+      "links": [
+        { "label": "Win ledger", "href": "/games/lattice-marines/ledger.html" }
+      ]
+    },
+    {
+      "id": "lattice-swarm",
+      "slug": "lattice-swarm",
+      "title": "Lattice Swarm",
+      "tagline": "Hex-grid command",
+      "blurb": "Command node agents across a hexagonal resonance grid. Build, defend, and keep entropy from unraveling the lattice.",
+      "status": "live",
+      "featured": true,
+      "order": 2,
+      "href": "/games/lattice-swarm/",
+      "cover": "/games/lattice-swarm/og.jpg",
+      "coverAlt": "Lattice Swarm hex command",
+      "genre": ["strategy", "hex"],
+      "players": "1",
+      "links": [
+        { "label": "Hub + demo", "href": "/lygo-apps.html" }
+      ]
+    },
+    {
+      "id": "eternal-lattice",
+      "slug": "eternal-lattice",
+      "title": "Eternal Lattice",
+      "tagline": "Δ9 champion cards",
+      "blurb": "Champion card battles on the Eternal Haven playmat — campaign, Deckwright, Lattice Forge. Local-first.",
+      "status": "live",
+      "featured": true,
+      "order": 3,
+      "href": "/games/eternal-lattice/",
+      "cover": "/games/eternal-lattice/og.jpg",
+      "coverAlt": "Eternal Lattice playmat",
+      "genre": ["cards", "campaign"],
+      "players": "1",
+      "links": [
+        { "label": "About", "href": "/lygo-eternal-lattice.html" }
+      ]
+    },
+    {
+      "id": "slot-next",
+      "slug": "",
+      "title": "More games coming",
+      "tagline": "Open slot",
+      "blurb": "New HTML5 titles drop into /games/<slug>/ and this catalog. The arcade reads one JSON file — no store, no account.",
+      "status": "coming",
+      "featured": false,
+      "order": 90,
+      "genre": ["upcoming"]
+    }
+  ]
+}

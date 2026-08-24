@@ -2637,6 +2637,7 @@
             <button class="btn" id="fresh">New island</button>
             <button class="btn" id="menuRadio">Play radio</button>
             <button class="btn" id="menuCmdr">Commander: ${esc(commander().name)}</button>
+            <a class="btn ghost" href="/games/">All games</a>
             <a class="btn ghost" href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal ledger</a>
           </div>
           <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige} · Unlocks: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit"}</p>

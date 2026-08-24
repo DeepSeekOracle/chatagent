@@ -3,21 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Games — chatagent.ca</title>
-<meta name="description" content="Play Lattice Marines, Lattice Swarm, and Eternal Lattice in the browser. No account required. Eternal win ledger for Marines vs AI.">
+<title>Games — chatagent.ca arcade</title>
+<meta name="description" content="Play Lattice Marines, Lattice Swarm, and Eternal Lattice in the browser. No account required. New HTML5 titles join this arcade from one catalog.">
 <meta name="author" content="Justin Helmer">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://chatagent.ca/games/">
 <meta name="google-adsense-account" content="ca-pub-0646320966060599">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
 <meta property="og:title" content="Games — chatagent.ca">
-<meta property="og:description" content="Browser games: Lattice Marines, Lattice Swarm, Eternal Lattice. No account required.">
+<meta property="og:description" content="Browser arcade: Lattice Marines, Lattice Swarm, Eternal Lattice. No account required.">
 <meta property="og:url" content="https://chatagent.ca/games/">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-marines/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/games/hub.css">
 </head>
 <body>
 
@@ -38,37 +39,73 @@
 <div class="wrap prose">
 
 <p class="breadcrumb"><a href="/">Home</a> · Games</p>
-<article class="card">
-<h1 style="margin-top:0;font-size:1.75rem;color:var(--accent2)">Games</h1>
-<p class="meta">Browser titles on chatagent.ca · no account · updated August 2026</p>
-<p>Free HTML5 games on this domain. They run in the browser. Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> tips keep hosting up.</p>
+<article class="card" data-games-catalog>
+<h1 style="margin-top:0;font-size:1.75rem;color:var(--accent2)">Games arcade</h1>
+<p class="meta">Browser titles on chatagent.ca · no account · catalog updated August 2026</p>
+<p>Free HTML5 games on this domain. They run in the browser. Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> tips keep hosting up. New titles are added as a folder under <code>/games/</code> plus one line in the <a href="/games/catalog.json">catalog</a>.</p>
 
 <div class="stat-row">
-  <div class="stat"><b>3</b><span>titles</span></div>
+  <div class="stat"><b data-games-count>3</b><span>live titles</span></div>
   <div class="stat"><b>0</b><span>account required</span></div>
-  <div class="stat"><b>vs AI</b><span>Marines ledger</span></div>
+  <div class="stat"><b>HTML5</b><span>no install</span></div>
 </div>
 
-<h2>Lattice Marines</h2>
-<p>Isometric island war in the Metal Marines vein: place three HQs, branch build range from command, Battleship fog, missiles, marines, and a never-ending campaign vs local AI or hot-seat. Commanders use the Δ9 champion seats.</p>
-<p>
-  <a class="btn primary" href="/games/lattice-marines/">Play Lattice Marines</a>
-  <a class="btn" href="/games/lattice-marines/ledger.html">Eternal ledger</a>
-</p>
+<div class="gfilters" data-games-filters role="toolbar" aria-label="Filter games">
+  <button type="button" data-filter="all" aria-pressed="true">All</button>
+  <button type="button" data-filter="strategy">Strategy</button>
+  <button type="button" data-filter="cards">Cards</button>
+  <button type="button" data-filter="coming">Coming</button>
+</div>
 
-<h2>Lattice Swarm</h2>
-<p>Hex-grid command. Build nodes, field agents, and keep entropy from unraveling the lattice.</p>
-<p>
-  <a class="btn primary" href="/games/lattice-swarm/">Play Lattice Swarm</a>
-  <a class="btn" href="/lygo-apps.html">Hub + demo</a>
-</p>
-
-<h2>Eternal Lattice</h2>
-<p>Δ9 champion card battles on the Eternal Haven playmat.</p>
-<p>
-  <a class="btn primary" href="/games/eternal-lattice/">Play Eternal Lattice</a>
-  <a class="btn" href="/lygo-eternal-lattice.html">About</a>
-</p>
+<div class="games-arcade">
+  <div class="ggrid" data-games-grid>
+    <article class="gcard">
+      <img class="gcard-cover" src="/games/lattice-marines/assets/og.jpg" alt="Lattice Marines island fortress" width="640" height="336">
+      <div class="gcard-body">
+        <p class="gcard-kicker">strategy · isometric</p>
+        <h2>Lattice Marines</h2>
+        <p>Place three HQs, branch build range, probe Battleship fog, and fight a never-ending campaign vs local AI or hot-seat.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/games/lattice-marines/">Play</a>
+          <a class="btn" href="/games/lattice-marines/ledger.html">Win ledger</a>
+        </div>
+      </div>
+    </article>
+    <article class="gcard">
+      <img class="gcard-cover" src="/games/lattice-swarm/og.jpg" alt="Lattice Swarm hex command" width="640" height="336">
+      <div class="gcard-body">
+        <p class="gcard-kicker">strategy · hex</p>
+        <h2>Lattice Swarm</h2>
+        <p>Command node agents across a hexagonal resonance grid. Build, defend, and keep entropy from unraveling the lattice.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/games/lattice-swarm/">Play</a>
+          <a class="btn" href="/lygo-apps.html">Hub + demo</a>
+        </div>
+      </div>
+    </article>
+    <article class="gcard">
+      <img class="gcard-cover" src="/games/eternal-lattice/og.jpg" alt="Eternal Lattice playmat" width="640" height="336">
+      <div class="gcard-body">
+        <p class="gcard-kicker">cards · campaign</p>
+        <h2>Eternal Lattice</h2>
+        <p>Champion card battles on the Eternal Haven playmat — campaign, Deckwright, Lattice Forge. Local-first.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/games/eternal-lattice/">Play</a>
+          <a class="btn" href="/lygo-eternal-lattice.html">About</a>
+        </div>
+      </div>
+    </article>
+    <article class="gcard is-coming">
+      <div class="gcard-cover gcard-cover-empty" aria-hidden="true"></div>
+      <div class="gcard-body">
+        <p class="gcard-kicker">upcoming</p>
+        <h2>More games coming</h2>
+        <p>New HTML5 titles drop into /games/&lt;slug&gt;/ and this catalog. The arcade updates from one JSON file.</p>
+        <div class="cta-row"><span class="gcard-soon">Coming next</span></div>
+      </div>
+    </article>
+  </div>
+</div>
 
 <div class="ad-slot" aria-label="Advertisement">
   <div class="ad-label">Advertisement</div>
@@ -94,5 +131,6 @@
   </div>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
+<script src="/games/hub.js" defer></script>
 </body>
 </html>
