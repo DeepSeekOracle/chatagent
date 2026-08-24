@@ -55,28 +55,28 @@
     fake:    { name: "Decoy HQ", cost: 80, hp: 42, pwr: 0, cat: "decoy", spr: "fake",
                desc: "Looks like a command centre until it detonates." },
     silo:    { name: "Missile Silo", cost: 220, hp: 90, pwr: 1, cat: "offense", spr: "silo",
-               desc: "Queue conventional missiles (medium damage)." },
+               desc: "One cruise missile per silo, per salvo." },
     icbm:    { name: "ICBM Silo", cost: 420, hp: 95, pwr: 2, cat: "offense", spr: "icbm", unlock: "icbm",
-               desc: "Cross-map devastation. Costly. Interceptable." }
+               desc: "One ICBM per silo, per salvo. Costly. Interceptable." }
   };
 
   const WPN = {
     probe:     { name: "Probe shot", cost: 25, fuel: 0, dmg: 10, r: 0, reveal: 1,
-                 desc: "Battleship ping — reveal 3×3, light damage." },
+                 desc: "Battleship ping — 3×3. Limited: 2 + radars per salvo." },
     missile:   { name: "Cruise missile", cost: 90, fuel: 2, dmg: 52, r: 1, need: "silo",
-                 desc: "Needs a Missile Silo. Area blast." },
+                 desc: "One shot per live Missile Silo." },
     icbm:      { name: "ICBM", cost: 190, fuel: 6, dmg: 135, r: 2, need: "icbm",
-                 desc: "Needs an ICBM Silo. Huge crater." },
+                 desc: "One shot per live ICBM Silo. Huge crater." },
     drop:      { name: "Marine drop", cost: 75, fuel: 3, need: "hangar", spawn: "marine",
-                 desc: "Drop an autonomous marine on a tile." },
+                 desc: "One drop per hangar (shared with tanks/airstrike)." },
     tankdrop:  { name: "Tank drop", cost: 150, fuel: 4, need: "hangar", spawn: "tank", unlock: "tank",
-                 desc: "Heavy armour. Slow cannon." },
+                 desc: "Uses that hangar’s one launch this salvo." },
     scout:     { name: "Scout run", cost: 55, fuel: 2, need: "factory", spawn: "scout", unlock: "scout",
-                 desc: "Fast. Reveals a line. No attack." },
-    airstrike: { name: "Airstrike", cost: 170, fuel: 4, dmg: 78, r: 1, unlock: "airstrike",
-                 desc: "Jet bombs a cluster. AA in range can intercept." },
+                 desc: "One scout per live Factory." },
+    airstrike: { name: "Airstrike", cost: 170, fuel: 4, dmg: 78, r: 1, need: "hangar", unlock: "airstrike",
+                 desc: "Uses a hangar launch. AA can intercept." },
     emp:       { name: "EMP pulse", cost: 85, fuel: 2, need: "emp", emp: true, unlock: "emp",
-                 desc: "Silence radars, AA, silos, sat 1 turn." },
+                 desc: "One pulse per live EMP Tower." },
     sat:       { name: "Satellite pass", cost: 40, fuel: 3, need: "sat", unlock: "sat", sat: true,
                  desc: "Paint the whole enemy half. Cooldown 4 turns." }
   };
@@ -509,22 +509,22 @@
   }
 
   function repairCost(b) {
-    const base = BLD[b.type].cost || 80;
-    if (b.wrecked || b.hp <= 0) return Math.max(20, Math.round(base * 0.55));
-    const miss = (b.max - b.hp) / Math.max(1, b.max);
-    return Math.max(8, Math.round(base * 0.45 * miss));
+    return Math.max(10, Math.round((BLD[b.type].cost || 80) * 0.25));
   }
   function tryRepair(b) {
     if (!b) return;
     if (!b.wrecked && b.hp >= b.max) { if (b.owner === me()) toast("Already at full integrity."); return; }
+    if (b.repairTick) { if (b.owner === me()) toast("Already repairing this turn — 25% per turn."); return; }
     const cost = repairCost(b);
-    if (S.players[b.owner].credits < cost) { toast("Need " + cost + "c to repair."); return; }
+    if (S.players[b.owner].credits < cost) { toast("Need " + cost + "c (25% of build cost) to repair."); return; }
     pay(b.owner, cost, 0);
-    b.wrecked = false;
-    b.hp = b.max;
+    const heal = Math.max(1, Math.round(b.max * 0.25));
+    b.hp = Math.min(b.max, (b.hp || 0) + heal);
+    if (b.hp > 0) b.wrecked = false;
     b.offline = false;
-    log(`Repaired ${BLD[b.type].name} for ${cost}c.`);
-    fx("build");
+    b.repairTick = true;
+    log(`Repair crew on ${BLD[b.type].name} +${heal} HP (${cost}c).`);
+    if (b.owner === me()) fx("build");
   }
   function tryBulldoze(b) {
     if (!b || b.owner !== me()) return;
@@ -552,12 +552,49 @@
     return [{ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 }];
   }
 
+  function launcherOf(kind) {
+    if (kind === "missile") return "silo";
+    if (kind === "icbm") return "icbm";
+    if (kind === "drop" || kind === "tankdrop" || kind === "airstrike") return "hangar";
+    if (kind === "emp") return "emp";
+    if (kind === "scout") return "factory";
+    return null;
+  }
+  function livePads(owner, type) {
+    return S.buildings.filter((b) => b.owner === owner && b.type === type && b.hp > 0 && !b.wrecked && !b.offline);
+  }
+  function queuedPads(owner, type) {
+    return S.queue.filter((q) => q.owner === owner && launcherOf(q.kind) === type).length;
+  }
+  function probeCap(owner) {
+    return 2 + livePads(owner, "radar").length;
+  }
+  function shotsLeft(owner, kind) {
+    if (kind === "probe") return Math.max(0, probeCap(owner) - S.queue.filter((q) => q.owner === owner && q.kind === "probe").length);
+    const type = launcherOf(kind);
+    if (!type) return 1;
+    return Math.max(0, livePads(owner, type).length - queuedPads(owner, type));
+  }
+  function claimPad(owner, kind) {
+    const type = launcherOf(kind);
+    if (!type) return null;
+    const used = new Set(S.queue.filter((q) => q.owner === owner && q.pad).map((q) => q.pad));
+    return livePads(owner, type).find((b) => !used.has(b.id)) || null;
+  }
+
   function queueStrike(owner, kind, x, y) {
     const w = WPN[kind];
     if (!w) return;
-    if (w.unlock && !unlocked(w.unlock)) return toast("Weapon locked.");
-    if (w.need && !countB(w.need, owner)) return toast("Need a " + BLD[w.need].name + ".");
-    if (!canAfford(owner, w.cost, w.fuel)) return toast("Need credits/fuel.");
+    const fail = (msg) => { if (owner === me()) toast(msg); return false; };
+    if (w.unlock && !unlocked(w.unlock)) return fail("Weapon locked.");
+    if (kind === "probe" && shotsLeft(owner, "probe") <= 0) return fail("Probe limit this salvo (2 + radars).");
+    const pad = claimPad(owner, kind);
+    if (launcherOf(kind) && !pad) {
+      const t = launcherOf(kind);
+      return fail("No free " + BLD[t].name + " this salvo — one shot per live pad.");
+    }
+    if (w.need && !livePads(owner, w.need).length) return fail("Need a live " + BLD[w.need].name + ".");
+    if (!canAfford(owner, w.cost, w.fuel)) return fail("Need credits/fuel.");
     if (w.sat) {
       if (S.players[owner].satCD > 0) return toast("Satellite recharging (" + S.players[owner].satCD + ").");
       pay(owner, w.cost, w.fuel);
@@ -568,7 +605,7 @@
       log("Spy satellite paints the theatre.");
       fx("radar");
       paintUI();
-      return;
+      return true;
     }
     if (!inB(x, y)) return;
     if (onHome(owner, x, y)) {
@@ -577,10 +614,11 @@
       return;
     }
     pay(owner, w.cost, w.fuel);
-    S.queue.push({ owner, kind, x, y });
+    S.queue.push({ owner, kind, x, y, pad: pad ? pad.id : null });
     if (w.reveal) reveal(owner, x, y, w.reveal);
     log(`${owner === 0 ? "You" : "Enemy"} queued ${w.name} @ ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
+    return true;
   }
 
   function endDeploy() {
@@ -630,6 +668,7 @@
     S.events.push({ at: t + 40, kind: "march" });
     S.events.push({ at: t + 68, kind: "done" });
     S.queue = S.queue.filter((q) => q.owner !== owner);
+    for (const b of S.buildings) b.shotThis = false;
     log(who === "player" ? "Attack execution — watch the sky." : "Enemy salvo incoming.");
     paintUI();
   }
@@ -684,9 +723,13 @@
     else if (q.kind === "drop" || q.kind === "tankdrop") kindMul = 0.62;
     else if (q.kind === "missile") kindMul = 1;
     for (const b of batteries) {
+      if (b.shotThis) continue;
       const hill = S.tiles[b.y][b.x] === "hills" ? 0.08 : 0;
-      const p = Math.min(0.88, (0.20 + 0.11 * b.lvl + hill) * skill * kindMul);
-      if (S.R() < p) return b;
+      const p = Math.min(0.88, (0.22 + 0.12 * b.lvl + hill) * skill * kindMul);
+      if (S.R() < p) {
+        b.shotThis = true;
+        return b;
+      }
     }
     return null;
   }
@@ -695,7 +738,8 @@
     const w = WPN[q.kind];
     if (!w) return;
     const defender = 1 - q.owner;
-    const from = nearestSilo(q.owner, q.kind) || hqCentroid(q.owner);
+    const padB = q.pad && S.buildings.find((b) => b.id === q.pad);
+    const from = padB || nearestSilo(q.owner, q.kind) || hqCentroid(q.owner);
     const fly = 32;
     const intercepted = rollIntercept(q);
     const hx = intercepted ? from.x + (q.x - from.x) * 0.68 : q.x;
@@ -942,6 +986,10 @@
     tickEconomy(false);
     maybeSwitchAI();
     tool = null; weapon = null;
+    for (const b of S.buildings) {
+      b.repairTick = false;
+      if (!b.wrecked && b.hp > 0 && b.type === "shield" && b.charges < 2) b.charges++;
+    }
     log(`Turn ${S.turn}. Defense — fortify the island.`);
     paintUI();
   }
@@ -974,7 +1022,7 @@
     const want = [];
     const nE = countB("energy", o), nC = countB("econ", o), nR = countB("radar", o);
     const nG = countB("gun", o), nS = countB("silo", o), nH = countB("hangar", o), nA = countB("aa", o);
-    for (const w of S.buildings.filter((b) => b.owner === o && b.wrecked)) tryRepair(w);
+    for (const w of S.buildings.filter((b) => b.owner === o && (b.wrecked || b.hp < b.max))) tryRepair(w);
     if (countB("relay", o) < 2) want.push("relay", "relay");
     if (nE < 3) want.push("energy", "energy");
     if (nC < (profile === "Economist" ? 5 : 3)) want.push("econ", "econ");
@@ -1018,21 +1066,15 @@
     }
     const aims = hqs.length ? hqs : (valuable.length ? valuable : []);
     const profile = S.ai.profile;
-    const fire = (kind, t) => queueStrike(o, kind, t.x, t.y);
-    let shots = profile === "Aggressor" ? 4 : profile === "Turtle" ? 2 : 3;
-    shots = Math.round(shots * DIFF[S.diff].aim);
-    if (countB("silo", o) && aims.length) {
-      for (let i = 0; i < Math.min(shots, aims.length); i++) fire("missile", aims[i]);
-    }
-    if (countB("icbm", o) && hqs.length && (profile === "Turtle" || S.turn > 3)) fire("icbm", hqs[0]);
-    if (countB("hangar", o) && (profile === "Aggressor" || S.R() > 0.5)) {
-      const t = aims[0] || fogTiles[Math.floor(S.R() * fogTiles.length)];
-      if (t) fire("drop", t);
-    }
-    while (S.players[o].credits >= 25 && shots-- > 0) {
-      const t = fogTiles.length ? fogTiles.splice(Math.floor(S.R() * fogTiles.length), 1)[0] : aims[0];
-      if (!t) break;
-      fire("probe", t);
+    const fire = (kind, t) => t && queueStrike(o, kind, t.x, t.y);
+    const pick = () => aims[0] || (fogTiles.length ? fogTiles[Math.floor(S.R() * fogTiles.length)] : null);
+    for (let i = 0; i < livePads(o, "silo").length; i++) fire("missile", aims[i] || pick());
+    if (livePads(o, "icbm").length && (profile === "Turtle" || S.turn > 3)) fire("icbm", hqs[0] || pick());
+    if (livePads(o, "hangar").length && (profile === "Aggressor" || S.R() > 0.45)) fire("drop", pick());
+    if (livePads(o, "emp").length) fire("emp", pick());
+    while (shotsLeft(o, "probe") > 0 && S.players[o].credits >= 25) {
+      const t = fogTiles.length ? fogTiles.splice(Math.floor(S.R() * fogTiles.length), 1)[0] : pick();
+      if (!t || !fire("probe", t)) break;
     }
   }
 
@@ -1504,8 +1546,9 @@
       let html = `<p class="cat">Strike package</p>`;
       for (const [k, w] of Object.entries(WPN)) {
         const lock = w.unlock && !unlocked(w.unlock);
-        const need = w.need && !countB(w.need, me());
-        html += itemBtn(k, w.name, w.desc, `${w.cost}c · ${w.fuel}f`, ASSET + (k === "airstrike" ? SPR_FILES.jet : SPR_FILES.missile), weapon === k, lock || need);
+        const left = shotsLeft(me(), k);
+        const need = (w.need && !livePads(me(), w.need).length) || left <= 0;
+        html += itemBtn(k, w.name, w.desc, left < 99 ? `${w.cost}c · ${left} left` : `${w.cost}c · ${w.fuel}f`, ASSET + (k === "airstrike" ? SPR_FILES.jet : SPR_FILES.missile), weapon === k, lock || need);
       }
       rail.innerHTML = html;
       rail.querySelectorAll("[data-k]").forEach((el) => {
@@ -1558,7 +1601,7 @@
       if (b.owner === me() && S.phase === "defense") {
         html += `<div class="row">
           ${!b.wrecked && b.lvl < 3 ? `<button class="btn" id="upg">Upgrade (${Math.round(BLD[b.type].cost * 0.55 * b.lvl)}c)</button>` : ""}
-          ${(b.wrecked || b.hp < b.max) ? `<button class="btn" id="rep">Repair (${repairCost(b)}c)</button>` : ""}
+          ${(b.wrecked || b.hp < b.max) ? `<button class="btn" id="rep">${b.repairTick ? "Repairing…" : "Repair 25% (" + repairCost(b) + "c)"}</button>` : ""}
           ${b.type !== "hq" ? `<button class="btn" id="doze">Bulldoze (no refund)</button>` : ""}
           ${!b.wrecked && (b.type === "factory" || b.type === "hangar") ? `<button class="btn" id="trM">Train marine</button>` : ""}
           ${!b.wrecked && b.type === "factory" && unlocked("scout") ? `<button class="btn" id="trS">Train scout</button>` : ""}
@@ -1661,7 +1704,7 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p><b>Relays:</b> Command Relays stretch your build area. If a relay is wrecked, that radius dies until you repair it. Select any building to Repair (paid) or Bulldoze (no refund). HQs cannot be bulldozed.</p>
+      <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Each AA fires once per incoming wave. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
