@@ -87,40 +87,50 @@ def build(kind: str, seed: int) -> Image.Image:
             if not in_diamond(x, y):
                 continue
             u, v = diamond_uv(x, y)
-            n = fbm(u * 8, v * 8, seed)
-            n2 = fbm(u * 18 + 3, v * 18, seed + 7)
+            n = fbm(u * 10, v * 10, seed)
+            n2 = fbm(u * 22 + 3, v * 22, seed + 7)
+            n3 = fbm(u * 40, v * 40, seed + 13)
             if kind == "water":
-                wave = 0.5 + 0.5 * math.sin((u * 18 + v * 6) * math.pi)
-                col = mix(lo, hi, n * 0.55 + wave * 0.45)
-                if n2 > 0.72:
-                    col = mix(col, acc, 0.35)
+                wave = 0.5 + 0.5 * math.sin((u * 22 + v * 7) * math.pi)
+                col = mix(lo, hi, n * 0.4 + wave * 0.6)
+                if n2 > 0.74:
+                    col = mix(col, acc, 0.4)
+                if n3 > 0.82:
+                    col = mix(col, (180, 230, 235), 0.22)
             elif kind == "forest":
                 col = mix(lo, hi, n)
-                if n2 > 0.55:
-                    col = mix(col, acc, 0.5)
-                # canopy clumps
-                if ((int(u * 12) ^ int(v * 12) ^ seed) & 3) == 0:
-                    col = mix(col, lo, 0.4)
-            elif kind == "hills":
-                ridge = abs(n - 0.5) * 2
-                col = mix(base, hi, ridge)
-                if n2 < 0.35:
+                if n2 > 0.5:
+                    col = mix(col, acc, 0.55)
+                if ((int(u * 14) ^ int(v * 14) ^ seed) & 3) == 0:
                     col = mix(col, lo, 0.45)
+                if n3 > 0.7:
+                    col = mix(col, (20, 60, 22), 0.3)
+            elif kind == "hills":
+                ridge = abs(n - 0.48) * 2
+                col = mix(base, hi, ridge)
+                if n2 < 0.32:
+                    col = mix(col, lo, 0.5)
+                if n3 > 0.8:
+                    col = mix(col, (160, 158, 148), 0.35)
             elif kind == "ruins":
                 col = mix(base, hi, n)
-                grid = (int(u * 10) + int(v * 10)) % 2
-                if grid and n2 > 0.5:
-                    col = mix(col, acc, 0.25)
-            elif kind == "fog":
-                col = mix(lo, hi, n * 0.4)
-                if (int(u * 16) + int(v * 16)) % 6 == 0:
-                    col = mix(col, acc, 0.2)
-            else:  # plains
-                col = mix(base, hi, n)
-                if n2 > 0.78:
-                    col = mix(col, acc, 0.35)  # dirt patches
-                if n2 < 0.22:
+                grid = (int(u * 12) + int(v * 12)) % 2
+                if grid:
+                    col = mix(col, acc, 0.18)
+                if n2 > 0.62:
                     col = mix(col, lo, 0.35)
+            elif kind == "fog":
+                col = mix(lo, hi, n * 0.35)
+                if (int(u * 18) + int(v * 18)) % 7 == 0:
+                    col = mix(col, acc, 0.28)
+            else:
+                col = mix(base, hi, n * 0.75 + n3 * 0.25)
+                if n2 > 0.76:
+                    col = mix(col, acc, 0.4)
+                if n2 < 0.2:
+                    col = mix(col, lo, 0.4)
+                if n3 > 0.85:
+                    col = mix(col, (70, 110, 40), 0.25)
             col = shade_iso(col, x, y)
             px[x, y] = (*col, 255)
     # crisp diamond edge

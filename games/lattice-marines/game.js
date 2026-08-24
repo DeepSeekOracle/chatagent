@@ -439,7 +439,27 @@
       return null;
     }
     if (S.phase === "deploy") return "Lock your 3 HQs first.";
+    if (!inBuildNet(owner, x, y)) {
+      return "Out of command range. Expand from an HQ or a linked building.";
+    }
     return null;
+  }
+
+  function reachOf(b) {
+    if (b.type === "hq") return 5 + b.lvl;
+    if (b.type === "fake") return 3;
+    if (b.type === "energy" || b.type === "econ" || b.type === "factory" || b.type === "hangar") return 2;
+    return 1;
+  }
+  function cheb(a, x, y) {
+    return Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
+  }
+  function inBuildNet(owner, x, y) {
+    for (const b of S.buildings) {
+      if (b.owner !== owner || b.hp <= 0) continue;
+      if (cheb(b, x, y) <= reachOf(b)) return true;
+    }
+    return false;
   }
 
   function tryBuild(type, owner, x, y) {
@@ -848,7 +868,7 @@
     if (profile === "Intelligence") want.push("radar", "aa", "emp");
     want.push("silo", "gun", "aa", "hangar", "factory", "fake");
     if (unlocked("icbm") && (profile === "Turtle" || S.turn > 4)) want.push("icbm");
-    const spots = landTiles(o).filter((t) => !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water");
+    const spots = landTiles(o).filter((t) => !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && inBuildNet(o, t.x, t.y));
     const hqs = S.buildings.filter((b) => b.owner === o && b.type === "hq");
     spots.sort((a, b) => Math.min(...hqs.map((h) => dist(h, a))) - Math.min(...hqs.map((h) => dist(h, b))));
     for (const type of want) {
@@ -993,10 +1013,17 @@
     }
     order.sort((a, b) => a.k - b.k);
     for (const t of order) drawTile(ctx, t.x, t.y);
+    if (S.phase === "defense" && tool && tool !== "hq") {
+      for (const t of order) {
+        if (S.tiles[t.y][t.x] === "water" || occupied(t.x, t.y) || !onHome(me(), t.x, t.y)) continue;
+        if (!inBuildNet(me(), t.x, t.y)) continue;
+        drawDiamondLift(ctx, t.x, t.y, "rgba(52,211,153,.45)");
+      }
+    }
     for (const t of order) drawOcc(ctx, t.x, t.y);
     for (const f of S.fx) drawFx(ctx, f);
-    if (hover && inB(hover.x, hover.y)) drawDiamond(ctx, hover.x, hover.y, "rgba(34,211,238,.85)", false);
-    if (sel) drawDiamond(ctx, sel.x, sel.y, "rgba(251,191,36,.95)", false);
+    if (hover && inB(hover.x, hover.y)) drawDiamondLift(ctx, hover.x, hover.y, "rgba(34,211,238,.95)");
+    if (sel) drawDiamondLift(ctx, sel.x, sel.y, "rgba(251,191,36,.95)");
     tFrame++;
   }
 
@@ -1016,57 +1043,149 @@
     return `rgb(${r},${g},${b})`;
   }
 
+  function tileLiftAmt(terr) {
+    return ({ fog: 0, water: 3, plains: 7, ruins: 10, forest: 12, hills: 20 }[terr] || 6) * cam.z;
+  }
+  function visTerr(x, y) {
+    const viewer = me();
+    const vis = visible(viewer, x, y);
+    const mem = hasMemory(viewer, x, y);
+    if (!vis && !mem) return "fog";
+    return vis ? S.tiles[y][x] : ((S.lastSeen[viewer][y] && S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].terr) || "fog");
+  }
+  function isoTop(x, y) {
+    const p = iso(x, y);
+    return { sx: p.sx, sy: p.sy - tileLiftAmt(visTerr(x, y)) };
+  }
+  function hash01(x, y, k) {
+    let n = (x * 374761393 + y * 668265263 + k * 1274126177) >>> 0;
+    n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+    return (n & 0xffff) / 65535;
+  }
+
   function drawTile(ctx, x, y) {
     const viewer = me();
     const vis = visible(viewer, x, y);
     const mem = hasMemory(viewer, x, y);
     const unknown = !vis && !mem;
     const terr = unknown ? "fog" : (vis ? S.tiles[y][x] : (S.lastSeen[viewer][y][x].terr || "fog"));
-    const p = iso(x, y);
+    const base = iso(x, y);
+    const lift = tileLiftAmt(terr);
+    const top = { sx: base.sx, sy: base.sy - lift };
     const tw = TW * cam.z, th = TH * cam.z;
-    const land = terr !== "water" && terr !== "fog";
-    const depth = land ? Math.max(2, 5 * cam.z) : (terr === "water" ? Math.max(1, 2 * cam.z) : 0);
+    const T = { n: [top.sx, top.sy - th / 2], e: [top.sx + tw / 2, top.sy], s: [top.sx, top.sy + th / 2], w: [top.sx - tw / 2, top.sy] };
+    const B = { n: [base.sx, base.sy - th / 2], e: [base.sx + tw / 2, base.sy], s: [base.sx, base.sy + th / 2], w: [base.sx - tw / 2, base.sy] };
 
-    if (depth) {
+    if (lift > 0.5) {
       ctx.beginPath();
-      ctx.moveTo(p.sx, p.sy + th / 2);
-      ctx.lineTo(p.sx + tw / 2, p.sy);
-      ctx.lineTo(p.sx + tw / 2, p.sy + depth);
-      ctx.lineTo(p.sx, p.sy + th / 2 + depth);
+      ctx.moveTo(T.e[0], T.e[1]); ctx.lineTo(T.s[0], T.s[1]);
+      ctx.lineTo(B.s[0], B.s[1]); ctx.lineTo(B.e[0], B.e[1]);
       ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.28);
+      ctx.fillStyle = terrainShade(terr, -0.22);
       ctx.fill();
       ctx.beginPath();
-      ctx.moveTo(p.sx, p.sy + th / 2);
-      ctx.lineTo(p.sx - tw / 2, p.sy);
-      ctx.lineTo(p.sx - tw / 2, p.sy + depth);
-      ctx.lineTo(p.sx, p.sy + th / 2 + depth);
+      ctx.moveTo(T.w[0], T.w[1]); ctx.lineTo(T.s[0], T.s[1]);
+      ctx.lineTo(B.s[0], B.s[1]); ctx.lineTo(B.w[0], B.w[1]);
       ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.45);
+      ctx.fillStyle = terrainShade(terr, -0.42);
       ctx.fill();
+      const stripes = Math.max(1, Math.floor(lift / 4));
+      ctx.strokeStyle = "rgba(0,0,0,.12)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < stripes; i++) {
+        const t = i / stripes;
+        ctx.beginPath();
+        ctx.moveTo(T.w[0] + (B.w[0] - T.w[0]) * t, T.w[1] + (B.w[1] - T.w[1]) * t);
+        ctx.lineTo(T.s[0] + (B.s[0] - T.s[0]) * t, T.s[1] + (B.s[1] - T.s[1]) * t);
+        ctx.stroke();
+      }
     }
 
     const img = SPR[terr];
     if (img) {
       ctx.globalAlpha = vis || unknown ? 1 : 0.55;
-      ctx.drawImage(img, p.sx - tw / 2, p.sy - th / 2, tw, th);
+      ctx.drawImage(img, top.sx - tw / 2, top.sy - th / 2, tw, th);
       ctx.globalAlpha = 1;
     } else {
-      fillDiamond(ctx, x, y, terrainColor(terr));
+      diamondPathAt(ctx, top.sx, top.sy);
+      ctx.fillStyle = terrainColor(terr);
+      ctx.fill();
     }
 
-    if (!vis && mem) fillDiamond(ctx, x, y, "rgba(4,10,18,.4)");
+    if (vis && terr === "water") {
+      const foam = neighbors(x, y).some((n) => inB(n.x, n.y) && S.tiles[n.y][n.x] !== "water");
+      if (foam) {
+        diamondPathAt(ctx, top.sx, top.sy);
+        ctx.strokeStyle = "rgba(200,240,255,.35)";
+        ctx.lineWidth = 1.5 * cam.z;
+        ctx.stroke();
+      }
+    }
+
+    if (vis && !unknown) drawProps(ctx, x, y, terr, top, tw, th);
+
+    if (!vis && mem) {
+      diamondPathAt(ctx, top.sx, top.sy);
+      ctx.fillStyle = "rgba(4,10,18,.4)";
+      ctx.fill();
+    }
 
     ctx.lineWidth = 1;
-    diamondPath(ctx, x, y);
-    if (unknown) {
-      ctx.strokeStyle = "rgba(18, 42, 64, 0.9)";
-    } else if (vis && !onHome(viewer, x, y)) {
-      ctx.strokeStyle = "rgba(34,211,238,.28)";
-    } else {
-      ctx.strokeStyle = "rgba(0,0,0,.22)";
-    }
+    diamondPathAt(ctx, top.sx, top.sy);
+    if (unknown) ctx.strokeStyle = "rgba(18, 42, 64, 0.85)";
+    else if (vis && !onHome(viewer, x, y)) ctx.strokeStyle = "rgba(34,211,238,.28)";
+    else ctx.strokeStyle = "rgba(0,0,0,.2)";
     ctx.stroke();
+  }
+
+  function drawProps(ctx, x, y, terr, top, tw, th) {
+    const n = 1 + ((x * 13 + y * 7) % 3);
+    if (terr === "forest") {
+      for (let i = 0; i < n + 1; i++) {
+        const u = hash01(x, y, 10 + i) - 0.5;
+        const v = hash01(x, y, 20 + i) - 0.5;
+        const px = top.sx + u * tw * 0.35;
+        const py = top.sy + v * th * 0.35;
+        const r = (4 + hash01(x, y, 30 + i) * 5) * cam.z;
+        ctx.beginPath();
+        ctx.ellipse(px, py + r * 0.15, r * 0.35, r * 0.2, 0, 0, 7);
+        ctx.fillStyle = "rgba(0,0,0,.25)";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px, py - r * 0.2, r, 0, 7);
+        ctx.fillStyle = hash01(x, y, 40 + i) > 0.5 ? "#163c1a" : "#1f5a24";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(px - r * 0.2, py - r * 0.35, r * 0.55, 0, 7);
+        ctx.fillStyle = "#2a6b32";
+        ctx.fill();
+      }
+    } else if (terr === "hills") {
+      for (let i = 0; i < n; i++) {
+        const u = hash01(x, y, 50 + i) - 0.5;
+        const v = hash01(x, y, 60 + i) - 0.5;
+        const px = top.sx + u * tw * 0.3;
+        const py = top.sy + v * th * 0.25;
+        const s = (3 + hash01(x, y, 70 + i) * 4) * cam.z;
+        ctx.beginPath();
+        ctx.moveTo(px, py - s);
+        ctx.lineTo(px + s, py + s * 0.4);
+        ctx.lineTo(px - s, py + s * 0.4);
+        ctx.closePath();
+        ctx.fillStyle = "#8a8880";
+        ctx.fill();
+      }
+    } else if (terr === "ruins") {
+      const px = top.sx + (hash01(x, y, 1) - 0.5) * tw * 0.2;
+      const py = top.sy;
+      ctx.fillStyle = "#4b463e";
+      ctx.fillRect(px - 4 * cam.z, py - 8 * cam.z, 8 * cam.z, 10 * cam.z);
+      ctx.fillStyle = "#6d6558";
+      ctx.fillRect(px - 3 * cam.z, py - 12 * cam.z, 6 * cam.z, 5 * cam.z);
+    } else if (terr === "plains" && hash01(x, y, 9) > 0.82) {
+      ctx.fillStyle = "#3d5c28";
+      ctx.fillRect(top.sx + 4 * cam.z, top.sy, 2 * cam.z, 5 * cam.z);
+    }
   }
 
   function drawOcc(ctx, x, y) {
@@ -1097,39 +1216,50 @@
   }
 
   function drawSpr(ctx, img, x, y, enemy, bob = 0) {
-    const p = iso(x, y);
+    const p = isoTop(x, y);
     const tw = TW * cam.z * 1.05;
+    ctx.beginPath();
+    ctx.ellipse(p.sx, p.sy + 8 * cam.z, 14 * cam.z, 6 * cam.z, 0, 0, 7);
+    ctx.fillStyle = "rgba(0,0,0,.28)";
+    ctx.fill();
     if (!img) {
       ctx.fillStyle = enemy ? "#a78bfa" : "#22d3ee";
       ctx.fillRect(p.sx - 8, p.sy - 18 - bob, 16, 18);
       return;
     }
     const ih = tw * (img.height / img.width);
-    if (enemy) {
-      ctx.filter = "hue-rotate(70deg) saturate(1.15)";
-    }
-    ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.82 - bob, tw, ih);
+    if (enemy) ctx.filter = "hue-rotate(70deg) saturate(1.15)";
+    ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.88 - bob, tw, ih);
     ctx.filter = "none";
   }
 
   function hpBar(ctx, x, y, r, owner) {
-    const p = iso(x, y);
+    const p = isoTop(x, y);
     const w = 28 * cam.z, h = 4 * cam.z;
     ctx.fillStyle = "#0b1220";
-    ctx.fillRect(p.sx - w / 2, p.sy + 6 * cam.z, w, h);
+    ctx.fillRect(p.sx - w / 2, p.sy + 8 * cam.z, w, h);
     ctx.fillStyle = owner === me() ? "#22d3ee" : "#c084fc";
-    ctx.fillRect(p.sx - w / 2, p.sy + 6 * cam.z, w * Math.max(0, Math.min(1, r)), h);
+    ctx.fillRect(p.sx - w / 2, p.sy + 8 * cam.z, w * Math.max(0, Math.min(1, r)), h);
   }
 
-  function diamondPath(ctx, x, y) {
-    const p = iso(x, y);
+  function diamondPathAt(ctx, sx, sy) {
     const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
     ctx.beginPath();
-    ctx.moveTo(p.sx, p.sy - hh);
-    ctx.lineTo(p.sx + hw, p.sy);
-    ctx.lineTo(p.sx, p.sy + hh);
-    ctx.lineTo(p.sx - hw, p.sy);
+    ctx.moveTo(sx, sy - hh);
+    ctx.lineTo(sx + hw, sy);
+    ctx.lineTo(sx, sy + hh);
+    ctx.lineTo(sx - hw, sy);
     ctx.closePath();
+  }
+  function diamondPath(ctx, x, y) {
+    const p = isoTop(x, y);
+    diamondPathAt(ctx, p.sx, p.sy);
+  }
+  function drawDiamondLift(ctx, x, y, color) {
+    diamondPath(ctx, x, y);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
   function fillDiamond(ctx, x, y, color) {
     diamondPath(ctx, x, y);
@@ -1208,7 +1338,7 @@
     $("dockStatus").textContent = S.phase === "deploy"
       ? `Place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up. Clusters are allowed.`
       : S.phase === "defense"
-      ? "Select a building, then click your island. Enemy island stays black until radar or probes."
+      ? "Build only in HQ range (green tiles). Energy/factories extend the net. Upgrade HQs for more reach."
       : S.phase === "offense"
         ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
         : S.phase === "resolve" ? "Playback — or skip." : "";
@@ -1403,7 +1533,7 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p><b>Deploy:</b> you place all 3 Command Centres yourself — cluster for a bunker or spread for survival. Then defense, then offense. Enemy land is black until radar or probes. A probe is Battleship: light a 3×3 even on a miss. Forests hide from radar until struck.</p>
+      <p><b>Deploy:</b> place 3 Command Centres. Cluster for a bunker or spread for a wide net. After lock, you only build inside HQ range (green outline). Energy, econ, factories and hangars extend the net by 2; other buildings by 1. Upgrade an HQ to push the frontier.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
@@ -1474,7 +1604,12 @@
       const mem = hasMemory(me(), hover.x, hover.y);
       const home = onHome(me(), hover.x, hover.y);
       let label;
-      if (home || vis) label = `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}`;
+      if (home || vis) {
+        label = `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}`;
+        if (S.phase === "defense" && tool && tool !== "hq" && home && S.tiles[hover.y][hover.x] !== "water") {
+          label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
+        }
+      }
       else if (mem) label = `${hover.x},${hover.y} last seen ${S.lastSeen[me()][hover.y][hover.x].terr}`;
       else label = `${hover.x},${hover.y}  unknown fog`;
       $("hint").textContent = label;
