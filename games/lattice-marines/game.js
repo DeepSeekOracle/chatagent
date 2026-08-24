@@ -303,7 +303,7 @@
   function grid(v) { return Array.from({ length: MAP }, () => Array(MAP).fill(v)); }
 
   function placeHQs(owner, R) {
-    const land = landTiles(owner).filter((t) => S.tiles[t.y][t.x] !== "water");
+    const land = landTiles(owner).filter((t) => S.tiles[t.y][t.x] === "plains" || S.tiles[t.y][t.x] === "ruins");
     land.sort((a, b) => (owner === 0 ? b.y - a.y : a.y - b.y));
     const picks = [];
     for (const t of land) {
@@ -436,6 +436,8 @@
     if (occupied(x, y)) return "Tile occupied.";
     if (!unlocked(BLD[type].unlock)) return "Locked.";
     if (S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
+    const terrErr = terrainAllows(type, S.tiles[y][x]);
+    if (terrErr) return terrErr;
     if (type === "hq") {
       if (S.phase !== "deploy") return "Command centres are already locked in.";
       if (countB("hq", owner) >= 3) return "All 3 command centres are placed. Pick one up to move it.";
@@ -463,6 +465,24 @@
       if (cheb(b, x, y) <= reachOf(b)) return true;
     }
     return false;
+  }
+
+  function terrainAllows(type, terr) {
+    if (terr === "water") return "Need land.";
+    if (terr === "hills") {
+      if (type === "gun" || type === "aa" || type === "mine") return null;
+      return "Mountains: gun pods, AA launchers, and mines only.";
+    }
+    if (terr === "forest") {
+      if (type === "hq" || type === "factory" || type === "hangar" || type === "silo" || type === "icbm" || type === "sat" || type === "econ") {
+        return "Forest is too dense. Use plains for HQs and industry. Guns, mines, radar, energy, shields, EMP, AA, decoys OK.";
+      }
+      return null;
+    }
+    if (type === "hq" && terr !== "plains" && terr !== "ruins") {
+      return "Command centres need plains or ruins.";
+    }
+    return null;
   }
 
   function tryBuild(type, owner, x, y) {
@@ -720,10 +740,11 @@
   function autoCombat() {
     const guns = S.buildings.filter((b) => b.type === "gun" && b.hp > 0 && !b.offline);
     for (const g of guns) {
-      const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2);
+      const hill = S.tiles[g.y][g.x] === "hills";
+      const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2 + (hill ? 1 : 0));
       if (!foes.length) continue;
       foes.sort((a, b) => dist(a, g) - dist(b, g));
-      hurtU(foes[0], 18 + g.lvl * 4, g.owner);
+      hurtU(foes[0], 18 + g.lvl * 4 + (hill ? 8 : 0), g.owner);
       S.fx.push({ kind: "flash", x: foes[0].x, y: foes[0].y, life: 8, max: 8 });
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
@@ -877,8 +898,9 @@
     for (const type of want) {
       if (!BLD[type] || (BLD[type].unlock && persist.wins < unlockWins(BLD[type].unlock) && S.campaign < unlockWins(BLD[type].unlock))) continue;
       if (p.credits < BLD[type].cost) continue;
-      const tile = spots.shift();
-      if (!tile) break;
+      const idx = spots.findIndex((t) => !terrainAllows(type, S.tiles[t.y][t.x]));
+      if (idx < 0) continue;
+      const tile = spots.splice(idx, 1)[0];
       tryBuild(type, o, tile.x, tile.y);
     }
     const fac = S.buildings.find((b) => b.owner === o && b.type === "factory" && b.hp > 0);
@@ -1026,6 +1048,7 @@
       for (const t of order) {
         if (S.tiles[t.y][t.x] === "water" || occupied(t.x, t.y) || !onHome(me(), t.x, t.y)) continue;
         if (!inBuildNet(me(), t.x, t.y)) continue;
+        if (terrainAllows(tool, S.tiles[t.y][t.x])) continue;
         drawDiamondLift(ctx, t.x, t.y, "rgba(52,211,153,.45)");
       }
     }
@@ -1053,7 +1076,8 @@
   }
 
   function tileLiftAmt(terr) {
-    return ({ fog: 0, water: 1.2, plains: 2.4, ruins: 2.6, forest: 3.2, hills: 4.8 }[terr] || 2.4) * cam.z;
+    void terr;
+    return 0;
   }
   function visTerr(x, y) {
     const viewer = me();
@@ -1082,36 +1106,6 @@
     const lift = tileLiftAmt(terr);
     const top = { sx: base.sx, sy: base.sy - lift };
     const tw = TW * cam.z, th = TH * cam.z;
-    const T = { n: [top.sx, top.sy - th / 2], e: [top.sx + tw / 2, top.sy], s: [top.sx, top.sy + th / 2], w: [top.sx - tw / 2, top.sy] };
-    function faceBottom(nx, ny) {
-      const nLift = inB(nx, ny) ? tileLiftAmt(visTerr(nx, ny)) : 0;
-      if (lift <= nLift + 0.6) return null;
-      const by = base.sy - nLift;
-      return {
-        e: [base.sx + tw / 2, by],
-        s: [base.sx, by + th / 2],
-        w: [base.sx - tw / 2, by]
-      };
-    }
-    const east = faceBottom(x + 1, y);
-    if (east) {
-      ctx.beginPath();
-      ctx.moveTo(T.e[0], T.e[1]); ctx.lineTo(T.s[0], T.s[1]);
-      ctx.lineTo(east.s[0], east.s[1]); ctx.lineTo(east.e[0], east.e[1]);
-      ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.18);
-      ctx.fill();
-    }
-    const west = faceBottom(x, y + 1);
-    if (west) {
-      ctx.beginPath();
-      ctx.moveTo(T.w[0], T.w[1]); ctx.lineTo(T.s[0], T.s[1]);
-      ctx.lineTo(west.s[0], west.s[1]); ctx.lineTo(west.w[0], west.w[1]);
-      ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.34);
-      ctx.fill();
-    }
-
     fillWorldTile(ctx, x, y, terr, top.sx, top.sy, vis || unknown ? 1 : 0.55);
     const light = ctx.createLinearGradient(top.sx - tw / 2, top.sy - th / 2, top.sx + tw / 2, top.sy + th / 2);
     light.addColorStop(0, "rgba(255,255,255,0.10)");
@@ -1587,7 +1581,7 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p><b>Deploy:</b> place 3 Command Centres. Cluster for a bunker or spread for a wide net. After lock, you only build inside HQ range (green outline). Energy, econ, factories and hangars extend the net by 2; other buildings by 1. Upgrade an HQ to push the frontier.</p>
+      <p><b>Terrain:</b> HQs only on plains or ruins. Mountains: guns, AA, mines only (high ground bonus). Forest: no HQs or heavy industry. After lock, build only inside HQ range (green tiles).</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
@@ -1661,7 +1655,9 @@
       if (home || vis) {
         label = `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}`;
         if (S.phase === "defense" && tool && tool !== "hq" && home && S.tiles[hover.y][hover.x] !== "water") {
-          label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
+          const te = terrainAllows(tool, S.tiles[hover.y][hover.x]);
+          if (te) label += "  · " + te;
+          else label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
         }
       }
       else if (mem) label = `${hover.x},${hover.y} last seen ${S.lastSeen[me()][hover.y][hover.x].terr}`;
