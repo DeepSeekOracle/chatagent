@@ -92,9 +92,10 @@
   let cam = { x: 0, y: 0, z: 1 };
   let S = null;
   let hover = null, sel = null, tool = null, weapon = null;
-  let dragging = false, lastM = null;
+  let dragging = false, lastM = null, downPt = null, didDrag = false;
   let tFrame = 0, raf = 0;
   let overlayMode = "menu";
+  let enemyTimer = 0;
 
   const persist = {
     name: "Commander",
@@ -161,6 +162,16 @@
     paint(MAP * 0.68, MAP * 0.72, 8.2);
     paint(MAP * 0.30, MAP * 0.28, 8.2);
     if (R() > 0.35) paint(MAP * 0.5, MAP * 0.5, 3.4);
+    const countHalf = (south) => {
+      let n = 0;
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        if (tiles[y][x] === "water") continue;
+        if ((y >= MAP / 2) === south) n++;
+      }
+      return n;
+    };
+    if (countHalf(true) < 36) paint(MAP * 0.70, MAP * 0.78, 9.5);
+    if (countHalf(false) < 36) paint(MAP * 0.30, MAP * 0.20, 9.5);
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
       const r = R();
@@ -171,12 +182,16 @@
     return tiles;
   }
 
+  function onHome(owner, x, y) {
+    if (!inB(x, y)) return false;
+    const south = y >= MAP / 2;
+    return owner === 0 ? south : !south;
+  }
   function landTiles(owner) {
     const out = [];
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (S.tiles[y][x] === "water") continue;
-      const south = y >= MAP / 2;
-      if ((owner === 0 && south) || (owner === 1 && !south)) out.push({ x, y });
+      if (onHome(owner, x, y)) out.push({ x, y });
     }
     return out;
   }
@@ -213,6 +228,8 @@
   }
 
   function newMatch(opts) {
+    opts = opts || {};
+    if (!DIFF[opts.diff]) opts.diff = "normal";
     const seed = (opts.seed >>> 0) || (Math.floor(Math.random() * 1e9) | 0);
     const R = rng(seed);
     S = {
@@ -246,12 +263,9 @@
     };
     placeHQs(0, R);
     placeHQs(1, R);
-    for (const o of [0, 1]) {
-      for (const t of landTiles(o)) reveal(o, t.x, t.y, 0);
-      radarSweep(o);
-    }
+    for (const o of [0, 1]) radarSweep(o);
     tickEconomy(true);
-    focusOwner(me());
+    requestAnimationFrame(() => { if (S) focusOwner(me()); });
     log(`Island seeded ${seed}. Enemy profile: ${S.ai.profile}. Campaign ${S.campaign}.`);
     sel = null; tool = null; weapon = null;
     overlayMode = null;
@@ -268,10 +282,7 @@
 
   function placeHQs(owner, R) {
     const land = landTiles(owner).filter((t) => S.tiles[t.y][t.x] !== "water");
-    land.sort((a, b) => {
-      const ca = owner === 0 ? a.y - b.y : b.y - a.y;
-      return ca;
-    });
+    land.sort((a, b) => (owner === 0 ? b.y - a.y : a.y - b.y));
     const picks = [];
     for (const t of land) {
       if (picks.length >= 3) break;
@@ -283,6 +294,7 @@
       const t = land[Math.floor(R() * land.length)];
       if (!picks.some((p) => p.x === t.x && p.y === t.y)) picks.push(t);
     }
+    if (!land.length) return;
     for (const t of picks.slice(0, 3)) spawnB("hq", owner, t.x, t.y);
   }
 
@@ -306,15 +318,18 @@
   }
 
   function reveal(viewer, x, y, r, opts) {
+    r = r || 0;
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const tx = x + dx, ty = y + dy;
       if (!inB(tx, ty)) continue;
+      if (opts && opts.disc && Math.hypot(dx, dy) > r + 0.15) continue;
       if (opts && opts.radar && S.tiles[ty][tx] === "forest") continue;
       S.fog[viewer][ty][tx] = true;
-      S.fogAge[viewer][ty][tx] = S.turn + 3;
+      S.fogAge[viewer][ty][tx] = S.turn + 4;
       const b = buildingAt(tx, ty);
       const u = unitAt(tx, ty);
       S.lastSeen[viewer][ty][tx] = {
+        terr: S.tiles[ty][tx],
         b: b && b.owner !== viewer ? { type: b.fake ? "hq" : b.type, hp: b.hp } : null,
         u: u && u.owner !== viewer ? { type: u.type } : null
       };
@@ -323,22 +338,34 @@
 
   function visible(viewer, x, y) {
     if (!inB(x, y)) return false;
-    const south = y >= MAP / 2;
-    if ((viewer === 0 && south) || (viewer === 1 && !south)) return true;
-    return S.fog[viewer][y][x];
+    if (onHome(viewer, x, y)) return true;
+    return !!S.fog[viewer][y][x];
+  }
+
+  function hasMemory(viewer, x, y) {
+    const ls = S.lastSeen[viewer][y] && S.lastSeen[viewer][y][x];
+    return !!(ls && ls.terr);
+  }
+
+  function projectRadar(radar, owner) {
+    const mx = radar.x;
+    const my = MAP - 1 - radar.y;
+    const land = landTiles(1 - owner);
+    if (!land.length) return { x: mx, y: Math.max(0, Math.min(MAP - 1, my)) };
+    let best = land[0], bd = 1e9;
+    for (const t of land) {
+      const d = Math.abs(t.x - mx) * 2 + Math.abs(t.y - my);
+      if (d < bd) { bd = d; best = t; }
+    }
+    return best;
   }
 
   function radarSweep(owner) {
     const radars = S.buildings.filter((b) => b.owner === owner && b.type === "radar" && b.hp > 0 && !b.offline);
     for (const r of radars) {
-      const scanX = r.x;
-      const scanY = owner === 0 ? Math.round(MAP * 0.28) : Math.round(MAP * 0.72);
-      const range = 3 + r.lvl;
-      reveal(owner, scanX, scanY, range, { radar: true });
+      const scan = projectRadar(r, owner);
+      reveal(owner, scan.x, scan.y, 3 + r.lvl, { radar: true, disc: true });
     }
-    const sats = S.buildings.filter((b) => b.owner === owner && b.type === "sat" && b.hp > 0 && b.cd === 0 && !b.offline);
-    /* sat is an offense action, not auto */
-    void sats;
   }
 
   function tickEconomy(first) {
@@ -383,8 +410,7 @@
 
   function canBuild(type, owner, x, y) {
     if (!inB(x, y) || S.tiles[y][x] === "water") return "Need land.";
-    const south = y >= MAP / 2;
-    if ((owner === 0 && !south) || (owner === 1 && south)) return "Build only on your half.";
+    if (!onHome(owner, x, y)) return "Build only on your half.";
     if (occupied(x, y)) return "Tile occupied.";
     if (!unlocked(BLD[type].unlock)) return "Locked.";
     if (S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
@@ -439,8 +465,7 @@
       if (S.players[owner].satCD > 0) return toast("Satellite recharging (" + S.players[owner].satCD + ").");
       pay(owner, w.cost, w.fuel);
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        const south = y >= MAP / 2;
-        if ((owner === 0 && !south) || (owner === 1 && south)) reveal(owner, x, y, 0);
+        if (!onHome(owner, x, y)) reveal(owner, x, y, 0);
       }
       S.players[owner].satCD = 4;
       log("Spy satellite paints the theatre.");
@@ -449,11 +474,14 @@
       return;
     }
     if (!inB(x, y)) return;
-    const south = y >= MAP / 2;
-    if ((owner === 0 && south) || (owner === 1 && !south)) return toast("Strike the enemy half.");
+    if (onHome(owner, x, y)) {
+      sel = { x, y };
+      toast("Strike the fogged enemy island — not your own.");
+      return;
+    }
     pay(owner, w.cost, w.fuel);
     S.queue.push({ owner, kind, x, y });
-    reveal(owner, x, y, w.reveal || 0);
+    if (w.reveal) reveal(owner, x, y, w.reveal);
     log(`${owner === 0 ? "You" : "Enemy"} queued ${w.name} @ ${x},${y}.`);
     beep(660, 0.05);
   }
@@ -576,18 +604,17 @@
   }
 
   function applySplash(attacker, x, y, dmg, r) {
+    const sh = S.buildings.find((b) => b.owner !== attacker && b.type === "shield" && b.hp > 0 && b.charges > 0 && dist(b, { x, y }) <= 2);
+    if (sh) {
+      sh.charges--;
+      dmg = Math.max(0, dmg - 80);
+      if (sh.charges <= 0) log("Shield generator exhausted.");
+    }
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const tx = x + dx, ty = y + dy;
       if (!inB(tx, ty)) continue;
       const fall = 1 - Math.max(Math.abs(dx), Math.abs(dy)) * 0.28;
-      const d = Math.round(dmg * Math.max(0.4, fall));
-      const sh = S.buildings.find((b) => b.owner !== attacker && b.type === "shield" && b.hp > 0 && b.charges > 0 && dist(b, { x: tx, y: ty }) <= 2);
-      let dealt = d;
-      if (sh) {
-        sh.charges--;
-        dealt = Math.max(0, d - 80);
-        if (sh.charges <= 0) log("Shield generator exhausted.");
-      }
+      const dealt = Math.round(dmg * Math.max(0.4, fall));
       const b = buildingAt(tx, ty);
       const u = unitAt(tx, ty);
       if (b && b.owner !== attacker) hurtB(b, dealt, attacker);
@@ -667,23 +694,26 @@
   function marchUnits() {
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const def = UNIT[u.type];
-      const enemies = [
-        ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0 && b.type === "hq"),
-        ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0),
-        ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0)
-      ];
-      if (!enemies.length) continue;
-      enemies.sort((a, b) => dist(a, u) - dist(b, u));
-      const t = enemies[0];
-      if (dist(t, u) <= (def.range || 1)) continue;
-      let step = { x: u.x, y: u.y };
-      if (Math.abs(t.x - u.x) > Math.abs(t.y - u.y)) step.x += Math.sign(t.x - u.x);
-      else step.y += Math.sign(t.y - u.y);
-      if (!inB(step.x, step.y) || S.tiles[step.y][step.x] === "water") continue;
-      if (buildingAt(step.x, step.y) && buildingAt(step.x, step.y).owner !== u.owner) continue;
-      if (unitAt(step.x, step.y)) continue;
-      u.x = step.x; u.y = step.y;
-      if (def.reveal) reveal(u.owner, u.x, u.y, 2);
+      const steps = def.move || 1;
+      for (let s = 0; s < steps; s++) {
+        const enemies = [
+          ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0 && b.type === "hq"),
+          ...S.buildings.filter((b) => b.owner !== u.owner && b.hp > 0),
+          ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0)
+        ];
+        if (!enemies.length) break;
+        enemies.sort((a, b) => dist(a, u) - dist(b, u));
+        const t = enemies[0];
+        if (def.dmg && dist(t, u) <= (def.range || 1)) break;
+        let step = { x: u.x, y: u.y };
+        if (Math.abs(t.x - u.x) > Math.abs(t.y - u.y)) step.x += Math.sign(t.x - u.x);
+        else step.y += Math.sign(t.y - u.y);
+        if (!inB(step.x, step.y) || S.tiles[step.y][step.x] === "water") break;
+        if (buildingAt(step.x, step.y) && buildingAt(step.x, step.y).owner !== u.owner) break;
+        if (unitAt(step.x, step.y)) break;
+        u.x = step.x; u.y = step.y;
+        if (def.reveal) reveal(u.owner, u.x, u.y, 2);
+      }
     }
   }
 
@@ -707,7 +737,7 @@
     if (S.actor === 0) {
       S.actor = 1;
       S.phase = "defense";
-      tool = "energy"; weapon = null;
+      tool = null; weapon = null;
       focusOwner(1);
       log("Hot-seat — pass the keyboard. Northern commander, fortify.");
       paintUI();
@@ -722,7 +752,9 @@
     S.phase = "defense";
     for (const o of [0, 1]) {
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        if (S.fogAge[o][y][x] && S.fogAge[o][y][x] < S.turn) S.fog[o][y][x] = false;
+        if (!onHome(o, x, y) && S.fogAge[o][y][x] && S.fogAge[o][y][x] < S.turn) {
+          S.fog[o][y][x] = false;
+        }
       }
       radarSweep(o);
     }
@@ -731,7 +763,7 @@
     for (const b of S.buildings) b.offline = false;
     tickEconomy(false);
     maybeSwitchAI();
-    tool = "energy"; weapon = null;
+    tool = null; weapon = null;
     log(`Turn ${S.turn}. Defense — fortify the island.`);
     paintUI();
   }
@@ -750,7 +782,11 @@
     paintUI();
     aiDefense();
     aiOffense();
-    setTimeout(() => startResolve("enemy"), 700);
+    if (enemyTimer) clearTimeout(enemyTimer);
+    enemyTimer = setTimeout(() => {
+      enemyTimer = 0;
+      if (S && S.phase === "enemy") startResolve("enemy");
+    }, 700);
   }
 
   function aiDefense() {
@@ -772,7 +808,7 @@
     const hqs = S.buildings.filter((b) => b.owner === o && b.type === "hq");
     spots.sort((a, b) => Math.min(...hqs.map((h) => dist(h, a))) - Math.min(...hqs.map((h) => dist(h, b))));
     for (const type of want) {
-      if (!BLD[type] || (BLD[type].unlock && !unlocked(BLD[type].unlock))) continue;
+      if (!BLD[type] || (BLD[type].unlock && persist.wins < unlockWins(BLD[type].unlock) && S.campaign < unlockWins(BLD[type].unlock))) continue;
       if (p.credits < BLD[type].cost) continue;
       const tile = spots.shift();
       if (!tile) break;
@@ -871,9 +907,11 @@
     const c = hqCentroid(o);
     const w = worldIso(c.x, c.y);
     const cv = canvas();
-    cam.z = Math.max(0.7, Math.min(1.4, cv.height / 720));
-    cam.x = cv.width / 2 - w.sx * cam.z;
-    cam.y = cv.height / 2 - w.sy * cam.z;
+    const cw = cv.clientWidth || 960;
+    const ch = cv.clientHeight || 640;
+    cam.z = Math.max(0.7, Math.min(1.4, ch / 720));
+    cam.x = cw / 2 - w.sx * cam.z;
+    cam.y = ch / 2 - w.sy * cam.z;
   }
 
   function draw() {
@@ -899,21 +937,49 @@
   }
 
   function drawTile(ctx, x, y) {
-    const vis = visible(me(), x, y);
-    const terr = S.tiles[y][x];
-    const img = SPR[terr];
+    const viewer = me();
+    const vis = visible(viewer, x, y);
+    const mem = hasMemory(viewer, x, y);
+    const terr = vis ? S.tiles[y][x] : (mem ? S.lastSeen[viewer][y][x].terr : null);
     const p = iso(x, y);
-    const tw = TW * cam.z, th = TH * cam.z;
+    const tw = TW * cam.z;
+
+    if (!vis && !mem) {
+      fillDiamond(ctx, x, y, "#050910");
+      ctx.strokeStyle = "rgba(15, 35, 55, 0.85)";
+      ctx.lineWidth = 1;
+      const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
+      ctx.beginPath();
+      ctx.moveTo(p.sx, p.sy - hh);
+      ctx.lineTo(p.sx + hw, p.sy);
+      ctx.lineTo(p.sx, p.sy + hh);
+      ctx.lineTo(p.sx - hw, p.sy);
+      ctx.closePath();
+      ctx.stroke();
+      return;
+    }
+
+    const img = terr ? SPR[terr] : null;
     if (img) {
       const ih = tw * (img.height / img.width);
-      ctx.globalAlpha = vis ? 1 : 0.22;
+      ctx.globalAlpha = vis ? 1 : 0.4;
       ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.55, tw, ih);
       ctx.globalAlpha = 1;
     } else {
-      fillDiamond(ctx, x, y, vis ? terrainColor(terr) : "#0b1220");
+      fillDiamond(ctx, x, y, terrainColor(terr || "water"));
     }
-    if (!vis) {
-      fillDiamond(ctx, x, y, "rgba(4,8,16,.62)");
+    if (!vis && mem) fillDiamond(ctx, x, y, "rgba(4,10,18,.45)");
+    if (vis && !onHome(viewer, x, y) && S.fog[viewer][y][x]) {
+      ctx.strokeStyle = "rgba(34,211,238,.22)";
+      ctx.lineWidth = 1;
+      const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
+      ctx.beginPath();
+      ctx.moveTo(p.sx, p.sy - hh);
+      ctx.lineTo(p.sx + hw, p.sy);
+      ctx.lineTo(p.sx, p.sy + hh);
+      ctx.lineTo(p.sx - hw, p.sy);
+      ctx.closePath();
+      ctx.stroke();
     }
   }
 
@@ -922,21 +988,26 @@
   }
 
   function drawOcc(ctx, x, y) {
-    const vis = visible(me(), x, y);
+    const viewer = me();
+    const vis = visible(viewer, x, y);
     const b = buildingAt(x, y);
     const u = unitAt(x, y);
     if (b) {
-      if (b.owner === me() || vis) {
-        const key = b.fake && b.owner !== me() && vis ? "hq" : b.type;
-        drawSpr(ctx, SPR[BLD[key] ? BLD[key].spr : b.type] || SPR[b.type], x, y, b.owner !== me());
+      if (b.owner === viewer || vis) {
+        const key = b.fake && b.owner !== viewer && vis ? "hq" : b.type;
+        drawSpr(ctx, SPR[BLD[key] ? BLD[key].spr : b.type] || SPR[b.type], x, y, b.owner !== viewer);
         hpBar(ctx, x, y, b.hp / b.max, b.owner);
-      } else if (S.lastSeen[me()][y][x] && S.lastSeen[me()][y][x].b) {
-        ctx.globalAlpha = 0.35;
-        drawSpr(ctx, SPR[S.lastSeen[me()][y][x].b.type] || SPR.hq, x, y, 1);
+      } else if (S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].b) {
+        ctx.globalAlpha = 0.4;
+        drawSpr(ctx, SPR[S.lastSeen[viewer][y][x].b.type] || SPR.hq, x, y, true);
         ctx.globalAlpha = 1;
       }
+    } else if (!vis && S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].b) {
+      ctx.globalAlpha = 0.4;
+      drawSpr(ctx, SPR[S.lastSeen[viewer][y][x].b.type] || SPR.hq, x, y, true);
+      ctx.globalAlpha = 1;
     }
-    if (u && (u.owner === me() || vis)) {
+    if (u && (u.owner === viewer || vis)) {
       const bob = Math.sin((tFrame + u.id * 7) / 10) * 2 * cam.z;
       drawSpr(ctx, SPR[u.type], x, y, u.owner !== me(), bob);
       hpBar(ctx, x, y, u.hp / u.max, u.owner);
@@ -1048,9 +1119,9 @@
     $("btnSkip").disabled = S.phase !== "resolve";
     $("btnEnd").textContent = S.phase === "defense" ? "Commit defenses →" : S.phase === "offense" ? "Launch attacks →" : "End phase";
     $("dockStatus").textContent = S.phase === "defense"
-      ? "Place and upgrade on your half, then commit."
+      ? "Select a building, then click your island. Enemy island stays black until radar or probes."
       : S.phase === "offense"
-        ? "Click enemy fog to probe or fire. Launch when ready."
+        ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
         : S.phase === "resolve" ? "Playback — or skip." : "";
     const el = $("log");
     if (el) el.textContent = (S.log || []).join("\n");
@@ -1087,7 +1158,13 @@
       }
       rail.innerHTML = html;
       rail.querySelectorAll("[data-k]").forEach((el) => {
-        el.onclick = () => { if (el.disabled) return; weapon = el.dataset.k; tool = null; paintUI(); };
+        el.onclick = () => {
+          if (el.disabled) return;
+          weapon = el.dataset.k;
+          tool = null;
+          if (weapon === "sat") queueStrike(me(), "sat", 0, 0);
+          paintUI();
+        };
       });
     } else {
       rail.innerHTML = `<div class="panel"><h3>Playback</h3><p class="sel-meta">Missiles, drops, and gunfire resolve in sequence. Marines march toward enemy command centres on their own.</p></div>`;
@@ -1105,16 +1182,22 @@
   function paintSel() {
     const box = $("selPanel");
     if (!sel || !inB(sel.x, sel.y)) {
-      box.innerHTML = `<h3>Tile</h3><p class="sel-meta">Click the island. Your half is always visible. Enemy fog lifts with radar, probes, and strikes — like Battleship.</p>`;
+      box.innerHTML = `<h3>Tile</h3><p class="sel-meta">Your island is clear. The enemy island is black until a radar disc, probe, or strike lights a tile — like Battleship. Stale scans fade after a few turns but leave a ghost.</p>`;
       return;
     }
     const vis = visible(me(), sel.x, sel.y);
-    const terr = S.tiles[sel.y][sel.x];
+    const mem = hasMemory(me(), sel.x, sel.y);
+    const terr = vis ? S.tiles[sel.y][sel.x] : (mem ? S.lastSeen[me()][sel.y][sel.x].terr : "unknown");
     const b = buildingAt(sel.x, sel.y);
     const u = unitAt(sel.x, sel.y);
-    let html = `<h3>${sel.x},${sel.y} · ${terr}${vis ? "" : " · FOG"}</h3>`;
-    if (!vis && (!b || b.owner !== 0) && (!u || u.owner !== 0)) {
-      html += `<p class="sel-meta">Unknown. Probe it or wait for radar.</p>`;
+    let html = `<h3>${sel.x},${sel.y} · ${terr}${vis ? "" : (mem ? " · last seen" : " · FOG")}</h3>`;
+    if (!vis && !onHome(me(), sel.x, sel.y)) {
+      if (!mem) {
+        html += `<p class="sel-meta">Unknown water or land. Probe this tile or raise a radar.</p>`;
+        box.innerHTML = html; return;
+      }
+      const ghost = S.lastSeen[me()][sel.y][sel.x];
+      html += `<p class="sel-meta">Stale intel. ${ghost.b ? "Last contact: " + (BLD[ghost.b.type] ? BLD[ghost.b.type].name : ghost.b.type) : "No structure when last scanned."} Probe again to refresh.</p>`;
       box.innerHTML = html; return;
     }
     if (b) {
@@ -1199,11 +1282,12 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p>You always see your southern island. The north is fog. Radar paints a disc each turn. A probe or any strike reveals the blast area — same idea as Battleship. Forests hide from radar until something actually hits them (still revealed by strikes).</p>
+      <p>You always see your southern island. The enemy island is <b>black</b> until intel hits it. Radar paints a disc onto their land (aligned to that tower’s column). A probe is Battleship: you pay to light a 3×3 even if nothing is there. Strikes reveal the blast. Forests hide from radar until something actually hits them. Scans go stale after a few turns and leave a ghost — not live vision.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Drag / WASD pan, wheel zoom. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
+      <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
+    overlayMode = "help";
     $("ok").onclick = () => { hideOverlay(); overlayMode = null; };
   }
 
@@ -1225,14 +1309,7 @@
   /* ---------- input ---------- */
   function resize() { /* canvas tracks client in draw */ }
 
-  function onDown(e) {
-    if (!S || overlayMode) return;
-    const r = canvas().getBoundingClientRect();
-    const mx = e.clientX - r.left, my = e.clientY - r.top;
-    if (e.button === 1 || e.button === 2 || e.shiftKey) {
-      dragging = true; lastM = { mx, my }; return;
-    }
-    const t = pickTile(mx, my);
+  function clickTile(t) {
     if (!inB(t.x, t.y)) return;
     sel = t;
     if (S.phase === "defense" && tool) {
@@ -1242,21 +1319,48 @@
     }
     paintUI();
   }
+  function onDown(e) {
+    if (!S || overlayMode) return;
+    const r = canvas().getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    downPt = { mx, my, button: e.button, t: pickTile(mx, my) };
+    didDrag = false;
+    lastM = { mx, my };
+    dragging = e.button === 1 || e.button === 2 || e.shiftKey;
+    if (e.button !== 0) e.preventDefault();
+  }
   function onMove(e) {
     if (!S) return;
     const r = canvas().getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     hover = pickTile(mx, my);
-    $("hint").textContent = hover && inB(hover.x, hover.y)
-      ? `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}${visible(me(), hover.x, hover.y) ? "" : "  fog"}`
-      : "";
+    if (hover && inB(hover.x, hover.y)) {
+      const vis = visible(me(), hover.x, hover.y);
+      const mem = hasMemory(me(), hover.x, hover.y);
+      const home = onHome(me(), hover.x, hover.y);
+      let label;
+      if (home || vis) label = `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}`;
+      else if (mem) label = `${hover.x},${hover.y} last seen ${S.lastSeen[me()][hover.y][hover.x].terr}`;
+      else label = `${hover.x},${hover.y}  unknown fog`;
+      $("hint").textContent = label;
+    } else $("hint").textContent = "";
+    if (downPt && lastM) {
+      const dx = mx - downPt.mx, dy = my - downPt.my;
+      if (!didDrag && Math.hypot(dx, dy) > 8) {
+        didDrag = true;
+        dragging = true;
+      }
+    }
     if (dragging && lastM) {
       cam.x += mx - lastM.mx;
       cam.y += my - lastM.my;
       lastM = { mx, my };
     }
   }
-  function onUp() { dragging = false; }
+  function onUp(e) {
+    if (downPt && !didDrag && e.button === 0 && S && !overlayMode) clickTile(downPt.t);
+    dragging = false; downPt = null; didDrag = false; lastM = null;
+  }
   function onWheel(e) {
     e.preventDefault();
     const r = canvas().getBoundingClientRect();
@@ -1267,7 +1371,7 @@
     cam.y = my - (my - cam.y) * (cam.z / z0);
   }
   function onKey(e) {
-    if (overlayMode === "menu") return;
+    if (overlayMode === "menu" || overlayMode === "help") return;
     const step = 28;
     if (e.key === "w" || e.key === "ArrowUp") cam.y += step;
     if (e.key === "s" || e.key === "ArrowDown") cam.y -= step;
@@ -1280,7 +1384,9 @@
 
   function skipPlayback() {
     if (!S || S.phase !== "resolve") return;
+    S.skipping = true;
     while (S.phase === "resolve") stepResolve();
+    if (S) S.skipping = false;
   }
 
   /* ---------- audio ---------- */
@@ -1295,6 +1401,7 @@
     } catch (_) {}
   }
   function bang() {
+    if (S && S.skipping) return;
     try {
       const a = ac(); const o = a.createOscillator(); const g = a.createGain();
       o.type = "sawtooth"; o.frequency.setValueAtTime(180, a.currentTime);
@@ -1309,7 +1416,10 @@
   function loop() {
     if (S && S.phase === "resolve") {
       stepResolve();
-      if (S.t % 4 === 0) paintUI();
+      if (S && S.t % 8 === 0) {
+        const el = $("log");
+        if (el) el.textContent = (S.log || []).join("\n");
+      }
     }
     draw();
     raf = requestAnimationFrame(loop);
@@ -1343,7 +1453,11 @@
     };
     $("btnSkip").onclick = skipPlayback;
     $("btnHelp").onclick = showHelp;
-    $("btnMenu").onclick = () => { S = null; showMenu(); };
+    $("btnMenu").onclick = () => {
+      if (enemyTimer) { clearTimeout(enemyTimer); enemyTimer = 0; }
+      S = null;
+      showMenu();
+    };
     loop();
     showMenu();
   }
