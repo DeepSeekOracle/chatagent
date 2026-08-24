@@ -19,13 +19,14 @@
 
   const SPR_FILES = {
     plains: "tile-plains.png", hills: "tile-hills.png", forest: "tile-forest.png",
-    water: "tile-water.png", ruins: "tile-ruins.png", desert: "tile-desert.png", fog: "tile-fog.png",
+    water: "tile-water.png", ruins: "tile-ruins.png", desert: "tile-desert.png", pontoon: "tile-pontoon.png", fog: "tile-fog.png",
     "tex-plains": "tex-plains.jpg", "tex-hills": "tex-hills.jpg", "tex-forest": "tex-forest.jpg",
-    "tex-water": "tex-water.jpg", "tex-ruins": "tex-ruins.jpg", "tex-desert": "tex-desert.jpg", "tex-fog": "tex-fog.jpg",
+    "tex-water": "tex-water.jpg", "tex-ruins": "tex-ruins.jpg", "tex-desert": "tex-desert.jpg",
+    "tex-pontoon": "tex-pontoon.jpg", "tex-fog": "tex-fog.jpg",
     hq: "b-hq.png", energy: "b-energy.png", econ: "b-econ.png", factory: "b-factory.png",
     radar: "b-radar.png", gun: "b-gun.png", aa: "b-aa.png", mine: "b-mine.png",
     shield: "b-shield.png", emp: "b-emp.png", fake: "b-fake.png", silo: "b-silo.png",
-    icbm: "b-icbm.png", hangar: "b-hangar.png", sat: "b-sat.png",
+    icbm: "b-icbm.png", hangar: "b-hangar.png", sat: "b-sat.png", pad: "b-pad.png",
     city: "b-city.png", warhall: "b-warhall.png", bastion: "b-bastion.png",
     mint: "b-mint.png", depot: "b-depot.png", grid: "b-grid.png",
     marine: "u-marine.png", scout: "u-scout.png", tank: "u-tank.png", jet: "u-jet.png",
@@ -55,8 +56,10 @@
                desc: "Train Marines and scouts on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
                desc: "Drop autonomous Lattice Marines across the fog." },
+    pad:     { name: "Reclaim Pad", cost: 50, hp: 45, pwr: 0, cat: "core", spr: "pad",
+               desc: "50c floating deck. Drops on water, turns it into a buildable surface, and hops command range by 2. Build another structure on it to occupy the deck." },
     relay:   { name: "Command Relay", cost: 160, hp: 70, pwr: 1, cat: "core", spr: "emp",
-               desc: "Extends your build radius. If wrecked, repair it or that ground goes dark." },
+               desc: "Extends your build radius. Hop water with Reclaim Pads, then plant relays. If wrecked, repair it or that ground goes dark." },
     radar:   { name: "Radar Tower", cost: 180, hp: 65, pwr: 1, cat: "intel", spr: "radar",
                desc: "Reveals a scan disc on the enemy half each turn." },
     sat:     { name: "Spy Satellite", cost: 520, hp: 55, pwr: 3, cat: "intel", spr: "sat", unlock: "sat",
@@ -792,15 +795,23 @@
   }
 
   function canBuild(type, owner, x, y) {
-    if (!inB(x, y) || S.tiles[y][x] === "water") return "Need land.";
+    if (!inB(x, y)) return "Off the map.";
     if (!onHome(owner, x, y)) return "Build only on your half.";
-    if (occupied(x, y)) return "Tile occupied.";
+    const terr = S.tiles[y][x];
+    const under = buildingAt(x, y);
+    const overPad = !!(under && under.type === "pad" && under.owner === owner && type !== "pad");
+    if (type === "pad") {
+      if (terr !== "water" && terr !== "pontoon") return "Reclaim pads go on water.";
+    } else if (terr === "water" && !overPad) {
+      return "Need land. Drop a 50c Reclaim Pad on the water first.";
+    }
+    if (occupied(x, y) && !overPad) return "Tile occupied.";
     if (!unlocked(BLD[type].unlock)) return "Locked.";
     if ((BLD[type].cost || 0) > 0 && S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
     if ((BLD[type].people || 0) > 0 && (S.players[owner].people || 0) < BLD[type].people) {
       return "Need " + BLD[type].people + " People. Raise City Squares.";
     }
-    const terrErr = terrainAllows(type, S.tiles[y][x]);
+    const terrErr = terrainAllows(type, terr === "water" ? "pontoon" : terr);
     if (terrErr) return terrErr;
     if (type === "hq") {
       if (S.phase !== "deploy") return "Command centres are already locked in.";
@@ -818,6 +829,7 @@
     if (b.wrecked || b.hp <= 0) return 0;
     if (b.type === "hq") return 4 + b.lvl;
     if (b.type === "relay") return 8 + 2 * b.lvl;
+    if (b.type === "pad") return 2 + Math.max(0, (b.lvl || 1) - 1);
     return 1;
   }
   function cheb(a, x, y) {
@@ -854,7 +866,11 @@
   }
 
   function terrainAllows(type, terr) {
-    if (terr === "water") return "Need land.";
+    if (terr === "water") {
+      if (type === "pad") return null;
+      return "Need land.";
+    }
+    if (terr === "pontoon") return null;
     if (terr === "hills") {
       if (type === "gun" || type === "aa" || type === "mine") return null;
       return "Mountains: gun pods, AA launchers, and mines only.";
@@ -878,9 +894,15 @@
   function tryBuild(type, owner, x, y) {
     const err = canBuild(type, owner, x, y);
     if (err) { if (owner === me()) { toast(err); fx("error"); } return false; }
+    const under = buildingAt(x, y);
+    if (under && under.type === "pad" && type !== "pad") {
+      S.buildings = S.buildings.filter((b) => b.id !== under.id);
+    }
     pay(owner, BLD[type].cost || 0, 0, BLD[type].people || 0);
-    spawnB(type, owner, x, y);
+    const made = spawnB(type, owner, x, y);
+    if (type === "pad" || S.tiles[y][x] === "water") S.tiles[y][x] = "pontoon";
     log(`${sideName(owner)} raise a ${BLD[type].name} at ${x},${y}.`);
+    void made;
     if (owner === me()) fx("build");
     return true;
   }
@@ -1579,7 +1601,7 @@
     const tab = {
       hq: 100, icbm: 78, silo: 70, hangar: 66, relay: 62, aa: 58,
       radar: 52, sat: 50, emp: 46, econ: 42, energy: 36, factory: 32,
-      city: 50, warhall: 60, bastion: 55, mint: 48, depot: 40, grid: 44,
+      city: 50, warhall: 60, bastion: 55, mint: 48, depot: 40, grid: 44, pad: 22,
       shield: 28, gun: 18, mine: 8, fake: 100
     };
     let s = tab[t] || 10;
@@ -1590,9 +1612,21 @@
 
   function aiPickSpots(type, owner, minSep) {
     const hqs = S.buildings.filter((b) => b.owner === owner && b.type === "hq" && b.hp > 0);
-    const legal = landTiles(owner).filter((t) =>
-      !occupied(t.x, t.y) && !terrainAllows(type, S.tiles[t.y][t.x]) && inBuildNet(owner, t.x, t.y)
-    );
+    const legal = [];
+    if (type === "pad") {
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        if (!onHome(owner, x, y)) continue;
+        const terr = S.tiles[y][x];
+        if (terr !== "water" && terr !== "pontoon") continue;
+        if (occupied(x, y) || !inBuildNet(owner, x, y)) continue;
+        legal.push({ x, y });
+      }
+    } else {
+      for (const t of landTiles(owner)) {
+        if (occupied(t.x, t.y) || terrainAllows(type, S.tiles[t.y][t.x]) || !inBuildNet(owner, t.x, t.y)) continue;
+        legal.push(t);
+      }
+    }
     const score = (t) => {
       const terr = S.tiles[t.y][t.x];
       const hqD = hqs.length ? Math.min(...hqs.map((h) => dist(h, t))) : 8;
@@ -1629,6 +1663,8 @@
       } else if (type === "depot" || type === "grid") {
         const plants = S.buildings.filter((b) => b.owner === owner && b.type === "energy" && b.hp > 0);
         s += plants.length ? 18 - Math.min(...plants.map((e) => dist(e, t))) * 3 : -6;
+      } else if (type === "pad") {
+        s += front * 0.4 + (S.tiles[t.y][t.x] === "water" ? 8 : 0);
       }
       if ((type === "econ" || type === "city") && (terr === "plains" || terr === "desert")) s += 4;
       return s;
@@ -1662,6 +1698,7 @@
     if (n("city") < 1) plan.push("city");
     else if (n("city") < (profile === "Economist" ? 3 : 2) && S.turn >= 2) plan.push("city");
     if (n("relay") < 1 + Math.floor(S.turn / 3)) plan.push("relay");
+    if (n("pad") < 3 + Math.floor(MAP / 40)) plan.push("pad");
     if (n("aa") < hqN) plan.push("aa");
     if (n("gun") < hqN) plan.push("gun");
     if (n("radar") < (profile === "Intelligence" ? 3 : 1)) plan.push("radar");
@@ -1873,9 +1910,18 @@
     for (const t of order) drawTile(ctx, t.x, t.y);
     if (S.phase === "defense" && tool && tool !== "hq") {
       for (const t of order) {
-        if (S.tiles[t.y][t.x] === "water" || occupied(t.x, t.y) || !onHome(me(), t.x, t.y)) continue;
-        if (!inBuildNet(me(), t.x, t.y)) continue;
-        if (terrainAllows(tool, S.tiles[t.y][t.x])) continue;
+        if (!onHome(me(), t.x, t.y) || !inBuildNet(me(), t.x, t.y)) continue;
+        const terr = S.tiles[t.y][t.x];
+        if (tool === "pad") {
+          if ((terr !== "water" && terr !== "pontoon") || occupied(t.x, t.y)) continue;
+          drawDiamondLift(ctx, t.x, t.y, "rgba(56,189,248,.55)");
+          continue;
+        }
+        const under = buildingAt(t.x, t.y);
+        const overPad = under && under.type === "pad" && under.owner === me();
+        if (terr === "water" && !overPad) continue;
+        if (occupied(t.x, t.y) && !overPad) continue;
+        if (terrainAllows(tool, overPad ? "pontoon" : terr)) continue;
         drawDiamondLift(ctx, t.x, t.y, "rgba(52,211,153,.45)");
       }
     }
@@ -1914,7 +1960,7 @@
   function terrainColor(t) {
     return {
       plains: "#4d7330", hills: "#6e726c", forest: "#1d3d20",
-      water: "#0e4a5c", ruins: "#6b645a", desert: "#c4a46a", fog: "#070c14"
+      water: "#0e4a5c", ruins: "#6b645a", desert: "#c4a46a", pontoon: "#5c6773", fog: "#070c14"
     }[t] || "#0a121c";
   }
   function terrainShade(t, k) {
@@ -2297,7 +2343,7 @@
     $("dockStatus").textContent = S.phase === "deploy"
       ? `${me() === 0 ? "South" : "North"}: place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up.`
       : S.phase === "defense"
-      ? "Cities mint People. Forums cost 50 People and stack +50% auras (radius 3). 150c stipend each turn."
+      ? "Reclaim Pads (50c) sit on water and become decks you can build on. Relays and pads hop command range."
       : S.phase === "offense"
         ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
         : S.phase === "resolve" ? "Playback — or skip." : "";
@@ -2541,6 +2587,7 @@
     showOverlay(`
       <h2>Field manual</h2>
       <p><b>Population:</b> City Squares mint 1 People per turn. Spend 50 People on a Forum. Each standing Forum auras Chebyshev 3 (Mk2→4, Mk3→5) and stacks +50%: Ordnance (missile/ICBM damage from pads inside), Bastion (defense + guns/AA), Mint (econ credits), Depot (fuel), Grid (power). Overlap is the point — clustered Forums go unfair; misplaced ones waste the census.</p>
+      <p><b>Reclaim:</b> 50c Reclaim Pads drop on water, turn the tile into a pontoon deck, and extend command range by 2. Click a pad with another building selected to occupy that deck. Chain pads + relays to hop the sea when the island runs out of land.</p>
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
       <p><b>Council:</b> pick one of the 15 Δ9 champions from <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a>. Each carries Haven lore and a small island bonus. Cycle from the right-rail portrait or the title menu.</p>
       <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
@@ -2623,12 +2670,19 @@
       let label;
       if (home || vis) {
         label = `${hover.x},${hover.y} ${S.tiles[hover.y][hover.x]}`;
-        if (S.phase === "defense" && tool && tool !== "hq" && home && S.tiles[hover.y][hover.x] !== "water") {
-          const te = terrainAllows(tool, S.tiles[hover.y][hover.x]);
-          if (te) label += "  · " + te;
-          else {
-            label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
-            if (AURA_TYPES.includes(tool)) label += "  · aura r" + AURA_R;
+        if (S.phase === "defense" && tool && tool !== "hq" && home) {
+          const terr = S.tiles[hover.y][hover.x];
+          if (tool === "pad") {
+            if (terr === "water" || terr === "pontoon") {
+              label += occupied(hover.x, hover.y) ? "  · occupied" : (inBuildNet(me(), hover.x, hover.y) ? "  · reclaim" : "  · OUT OF RANGE");
+            } else label += "  · pads go on water";
+          } else if (terr !== "water" || (buildingAt(hover.x, hover.y) && buildingAt(hover.x, hover.y).type === "pad")) {
+            const te = terrainAllows(tool, terr === "water" ? "pontoon" : terr);
+            if (te) label += "  · " + te;
+            else {
+              label += inBuildNet(me(), hover.x, hover.y) ? "  · in range" : "  · OUT OF RANGE";
+              if (AURA_TYPES.includes(tool)) label += "  · aura r" + AURA_R;
+            }
           }
         }
       }
@@ -2797,11 +2851,11 @@
       out.width = w; out.height = h;
       out.getContext("2d").drawImage(c, minX, minY, w, h, 0, 0, w, h);
       const ratio = h / w;
-      const SIT = { gun: 0.68, mine: 0.7, radar: 0.93, marine: 0.84, tank: 0.84, scout: 0.84, aa: 0.8 };
+      const SIT = { gun: 0.68, mine: 0.7, radar: 0.93, marine: 0.84, tank: 0.84, scout: 0.84, aa: 0.8, pad: 0.7 };
       out._sit = SIT[kind] || (ratio > 1.35 ? 0.92 : ratio < 0.85 ? 0.7 : 0.86);
       return out;
     }
-    const TILE_KEYS = { plains: 1, hills: 1, forest: 1, water: 1, ruins: 1, desert: 1, fog: 1 };
+    const TILE_KEYS = { plains: 1, hills: 1, forest: 1, water: 1, ruins: 1, desert: 1, pontoon: 1, fog: 1 };
     await Promise.all(names.map((k) => new Promise((res) => {
       const img = new Image();
       img.onload = () => {
