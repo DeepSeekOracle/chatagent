@@ -126,7 +126,7 @@
   let cam = { x: 0, y: 0, z: 1 };
   let S = null;
   let hover = null, sel = null, tool = null, weapon = null;
-  let dragging = false, lastM = null, downPt = null, didDrag = false;
+  let dragging = false, lastM = null, downPt = null, didDrag = false, pinch0 = 0;
   let tFrame = 0, raf = 0;
   let overlayMode = "menu";
   let enemyTimer = 0;
@@ -740,10 +740,17 @@
     const mx = radar.x;
     const my = MAP - 1 - radar.y;
     const land = landTiles(1 - owner);
-    if (!land.length) return { x: mx, y: Math.max(0, Math.min(MAP - 1, my)) };
+    if (!land.length) {
+      return {
+        x: Math.max(0, Math.min(MAP - 1, mx)),
+        y: Math.max(0, Math.min(MAP - 1, my))
+      };
+    }
     let best = land[0], bd = 1e9;
     for (const t of land) {
-      const d = Math.abs(t.x - mx) * 2 + Math.abs(t.y - my);
+      const dx = t.x - mx, dy = t.y - my;
+      let d = dx * dx + dy * dy;
+      if (!S.fog[owner][t.y][t.x]) d *= 0.5;
       if (d < bd) { bd = d; best = t; }
     }
     return best;
@@ -2655,12 +2662,24 @@
     if (resetCamp) persist.campaign = Math.max(1, persist.campaign);
     const typed = ($("sd") && $("sd").value || "").trim();
     const seed = (!resetCamp && typed) ? (Number(typed) >>> 0 || hashSeed(typed)) : (((Math.random() * 0xFFFFFFFF) ^ Date.now()) >>> 0);
-    newMatch({
+    beginMatch({
       seed,
       diff: $("df").value,
       campaign: persist.campaign,
       mode: $("md").value,
       mapN: persist.mapN
+    });
+  }
+  function beginMatch(opts) {
+    const n = Number(opts && opts.mapN) || persist.mapN || 48;
+    overlayMode = "help";
+    showOverlay(`
+      <h2>Shaping island</h2>
+      <p class="sel-meta">${n}×${n} theatre. Raising continents, groves, ranges, and lakes…</p>
+      <div class="gen-bar" role="progressbar" aria-label="Generating map" aria-valuemin="0" aria-valuemax="100" aria-valuenow="55"><i></i></div>
+    `);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => newMatch(opts));
     });
   }
 
@@ -2674,7 +2693,8 @@
       <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
       <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar marines/tanks and factory scouts stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Probes reveal on impact. Each AA fires once per incoming wave.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. All land units <b>portage</b> water at 3 turns per tile so they never stay trapped on a rock. They prefer land when it exists. In range they shoot the highest-priority closest target. Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom.</p>
+      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. All land units <b>portage</b> water at 3 turns per tile so they never stay trapped on a rock. They prefer land when it exists. In range they shoot the highest-priority closest target. Gun pods out-punch a marine (~24 vs 20 melee).</p>
+      <p><b>Keys:</b> WASD / arrows pan · wheel or pinch zoom · 1–9 pick the left-rail list · Enter ends phase · Space skips playback · Esc cancels tool · R repairs the selected friendly · Home recenters. Drag or one-finger pan on touch.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
     overlayMode = "help";
@@ -2698,7 +2718,7 @@
         <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal tip</a>
       </div>
     `);
-    $("again").onclick = () => newMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode, mapN: S.mapN || persist.mapN });
+    $("again").onclick = () => beginMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode, mapN: S.mapN || persist.mapN });
     $("mm").onclick = showMenu;
     if (S.over === "win" && S.mode === "ai") ledgerFlush();
   }
@@ -2788,6 +2808,41 @@
     if (downPt && !didDrag && e.button === 0 && S && !overlayMode) clickTile(downPt.t);
     dragging = false; downPt = null; didDrag = false; lastM = null;
   }
+  function onTouchStart(e) {
+    e.preventDefault();
+    if (!S || overlayMode) return;
+    if (e.touches.length === 2) {
+      pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      downPt = null; dragging = false; didDrag = false;
+      return;
+    }
+    const t = e.changedTouches[0];
+    const fake = { clientX: t.clientX, clientY: t.clientY, button: 0 };
+    onDown(fake);
+  }
+  function onTouchMove(e) {
+    e.preventDefault();
+    if (!S) return;
+    if (e.touches.length === 2 && pinch0 > 0) {
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const r = canvas().getBoundingClientRect();
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      const z0 = cam.z;
+      cam.z = Math.max(0.22, Math.min(1.85, cam.z * (d / pinch0)));
+      cam.x = mx - (mx - cam.x) * (cam.z / z0);
+      cam.y = my - (my - cam.y) * (cam.z / z0);
+      pinch0 = d;
+      return;
+    }
+    const t = e.changedTouches[0];
+    onMove({ clientX: t.clientX, clientY: t.clientY });
+  }
+  function onTouchEnd(e) {
+    if (e.touches && e.touches.length >= 2) return;
+    pinch0 = 0;
+    onUp({ button: 0 });
+  }
   function onWheel(e) {
     e.preventDefault();
     const r = canvas().getBoundingClientRect();
@@ -2807,6 +2862,16 @@
     if (e.key === "Enter") { e.preventDefault(); $("btnEnd").click(); }
     if (e.key === "Escape") { tool = null; weapon = null; paintUI(); }
     if (e.key === " ") { e.preventDefault(); if (S && S.phase === "resolve") skipPlayback(); }
+    if (e.key === "Home") { e.preventDefault(); if (S) focusHomeLand(me()); }
+    if ((e.key === "r" || e.key === "R") && S && sel) {
+      const b = buildingAt(sel.x, sel.y);
+      if (b && b.owner === me() && S.phase === "defense") { tryRepair(b); paintUI(); }
+    }
+    if (e.key >= "1" && e.key <= "9") {
+      const items = Array.prototype.slice.call(document.querySelectorAll("#leftRail [data-k]:not([disabled])"));
+      const it = items[Number(e.key) - 1];
+      if (it) it.click();
+    }
   }
 
   function skipPlayback() {
@@ -2953,6 +3018,10 @@
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     cv.addEventListener("wheel", onWheel, { passive: false });
+    cv.addEventListener("touchstart", onTouchStart, { passive: false });
+    cv.addEventListener("touchmove", onTouchMove, { passive: false });
+    cv.addEventListener("touchend", onTouchEnd, { passive: false });
+    cv.addEventListener("touchcancel", onTouchEnd, { passive: false });
     cv.addEventListener("contextmenu", (e) => e.preventDefault());
     window.addEventListener("keydown", onKey);
     window.addEventListener("resize", resize);

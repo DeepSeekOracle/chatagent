@@ -45,16 +45,16 @@
   <div class="stage">
     <aside class="rail left" id="leftRail"></aside>
     <div class="viewport">
-      <canvas id="iso" tabindex="0" aria-label="Isometric island battlefield"></canvas>
+      <canvas id="iso" tabindex="0" aria-label="Isometric island battlefield" aria-describedby="camHelp"></canvas>
       <div class="hint" id="hint"></div>
-      <div class="cam-help">Drag to pan · wheel zoom · WASD · Enter ends phase</div>
+      <div class="cam-help" id="camHelp">Drag or touch pan · wheel / pinch zoom · 1–9 select · Enter ends phase</div>
     </div>
     <aside class="rail right">
       <div class="panel cmd-panel" id="cmdPanel"></div>
       <div class="panel" id="selPanel"></div>
       <div class="panel log-panel">
         <h3>Battle log</h3>
-        <div class="log" id="log"></div>
+        <div class="log" id="log" aria-live="polite" aria-relevant="additions"></div>
       </div>
       <div class="panel" id="boardPanel"></div>
     </aside>
@@ -63,7 +63,7 @@
   <footer class="dock">
     <button type="button" class="btn ghost" id="btnHelp">How to play</button>
     <button type="button" class="btn ghost" id="btnMenu">Abort / menu</button>
-    <span class="grow" id="dockStatus"></span>
+    <span class="grow" id="dockStatus" aria-live="polite"></span>
     <button type="button" class="btn" id="btnSkip">Skip playback</button>
     <button type="button" class="btn gold" id="btnEnd">End phase</button>
   </footer>
