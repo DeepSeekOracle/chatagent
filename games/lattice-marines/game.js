@@ -14,7 +14,7 @@
 
   const SPR_FILES = {
     plains: "tile-plains.png", hills: "tile-hills.png", forest: "tile-forest.png",
-    water: "tile-water.png", ruins: "tile-ruins.png",
+    water: "tile-water.png", ruins: "tile-ruins.png", fog: "tile-fog.png",
     hq: "b-hq.png", energy: "b-energy.png", econ: "b-econ.png", factory: "b-factory.png",
     radar: "b-radar.png", gun: "b-gun.png", aa: "b-aa.png", mine: "b-mine.png",
     shield: "b-shield.png", emp: "b-emp.png", fake: "b-fake.png", silo: "b-silo.png",
@@ -1000,58 +1000,73 @@
     tFrame++;
   }
 
+  function terrainColor(t) {
+    return {
+      plains: "#4d7330", hills: "#6e726c", forest: "#1d3d20",
+      water: "#0e4a5c", ruins: "#6b645a", fog: "#070c14"
+    }[t] || "#0a121c";
+  }
+  function terrainShade(t, k) {
+    const hex = terrainColor(t).slice(1);
+    const n = parseInt(hex, 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    r = Math.max(0, Math.min(255, r * (1 + k) | 0));
+    g = Math.max(0, Math.min(255, g * (1 + k) | 0));
+    b = Math.max(0, Math.min(255, b * (1 + k) | 0));
+    return `rgb(${r},${g},${b})`;
+  }
+
   function drawTile(ctx, x, y) {
     const viewer = me();
     const vis = visible(viewer, x, y);
     const mem = hasMemory(viewer, x, y);
-    const terr = vis ? S.tiles[y][x] : (mem ? S.lastSeen[viewer][y][x].terr : null);
+    const unknown = !vis && !mem;
+    const terr = unknown ? "fog" : (vis ? S.tiles[y][x] : (S.lastSeen[viewer][y][x].terr || "fog"));
     const p = iso(x, y);
-    const tw = TW * cam.z;
+    const tw = TW * cam.z, th = TH * cam.z;
+    const land = terr !== "water" && terr !== "fog";
+    const depth = land ? Math.max(2, 5 * cam.z) : (terr === "water" ? Math.max(1, 2 * cam.z) : 0);
 
-    if (!vis && !mem) {
-      fillDiamond(ctx, x, y, "#050910");
-      ctx.strokeStyle = "rgba(15, 35, 55, 0.85)";
-      ctx.lineWidth = 1;
-      const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
+    if (depth) {
       ctx.beginPath();
-      ctx.moveTo(p.sx, p.sy - hh);
-      ctx.lineTo(p.sx + hw, p.sy);
-      ctx.lineTo(p.sx, p.sy + hh);
-      ctx.lineTo(p.sx - hw, p.sy);
+      ctx.moveTo(p.sx, p.sy + th / 2);
+      ctx.lineTo(p.sx + tw / 2, p.sy);
+      ctx.lineTo(p.sx + tw / 2, p.sy + depth);
+      ctx.lineTo(p.sx, p.sy + th / 2 + depth);
       ctx.closePath();
-      ctx.stroke();
-      return;
+      ctx.fillStyle = terrainShade(terr, -0.28);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(p.sx, p.sy + th / 2);
+      ctx.lineTo(p.sx - tw / 2, p.sy);
+      ctx.lineTo(p.sx - tw / 2, p.sy + depth);
+      ctx.lineTo(p.sx, p.sy + th / 2 + depth);
+      ctx.closePath();
+      ctx.fillStyle = terrainShade(terr, -0.45);
+      ctx.fill();
     }
 
-    fillDiamond(ctx, x, y, terrainColor(terr || "water"));
-    const img = terr ? SPR[terr] : null;
+    const img = SPR[terr];
     if (img) {
-      const ih = tw * (img.height / img.width);
-      ctx.save();
-      diamondPath(ctx, x, y);
-      ctx.clip();
-      ctx.globalAlpha = vis ? 1 : 0.45;
-      ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.52, tw, ih);
+      ctx.globalAlpha = vis || unknown ? 1 : 0.55;
+      ctx.drawImage(img, p.sx - tw / 2, p.sy - th / 2, tw, th);
       ctx.globalAlpha = 1;
-      ctx.restore();
+    } else {
+      fillDiamond(ctx, x, y, terrainColor(terr));
     }
-    if (!vis && mem) fillDiamond(ctx, x, y, "rgba(4,10,18,.45)");
-    if (vis && !onHome(viewer, x, y) && S.fog[viewer][y][x]) {
-      ctx.strokeStyle = "rgba(34,211,238,.22)";
-      ctx.lineWidth = 1;
-      const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
-      ctx.beginPath();
-      ctx.moveTo(p.sx, p.sy - hh);
-      ctx.lineTo(p.sx + hw, p.sy);
-      ctx.lineTo(p.sx, p.sy + hh);
-      ctx.lineTo(p.sx - hw, p.sy);
-      ctx.closePath();
-      ctx.stroke();
-    }
-  }
 
-  function terrainColor(t) {
-    return { plains: "#3f6b3a", hills: "#6b7280", forest: "#14532d", water: "#164e63", ruins: "#57534e" }[t] || "#222";
+    if (!vis && mem) fillDiamond(ctx, x, y, "rgba(4,10,18,.4)");
+
+    ctx.lineWidth = 1;
+    diamondPath(ctx, x, y);
+    if (unknown) {
+      ctx.strokeStyle = "rgba(18, 42, 64, 0.9)";
+    } else if (vis && !onHome(viewer, x, y)) {
+      ctx.strokeStyle = "rgba(34,211,238,.28)";
+    } else {
+      ctx.strokeStyle = "rgba(0,0,0,.22)";
+    }
+    ctx.stroke();
   }
 
   function drawOcc(ctx, x, y) {
@@ -1596,10 +1611,10 @@
       const d = id.data;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        const mag = r > 150 && b > 80 && g < 125 && r - g > 40;
-        const hot = r > 190 && g < 100 && b > 45;
+        const mag = r > 180 && b > 100 && g < 90 && r - g > 70;
+        const hot = r > 220 && g < 70 && b > 80;
         if (mag || hot) d[i + 3] = 0;
-        else if (tile && r < 22 && g < 22 && b < 22) d[i + 3] = 0;
+        void tile;
       }
       x.putImageData(id, 0, 0);
       return c;

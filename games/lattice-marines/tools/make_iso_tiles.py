@@ -1,0 +1,152 @@
+"""Build exact 2:1 isometric diamond ground tiles. No magenta, no square photos."""
+from __future__ import annotations
+
+import math
+import random
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFilter
+
+OUT = Path(r"D:\chatagent\games\lattice-marines\assets")
+W, H = 256, 128  # 2:1 iso diamond
+
+
+def hash2(x: int, y: int, s: int) -> float:
+    n = (x * 374761393 + y * 668265263 + s * 1274126177) & 0xFFFFFFFF
+    n = (n ^ (n >> 13)) * 1274126177 & 0xFFFFFFFF
+    return (n & 0xFFFFFF) / 16777215.0
+
+
+def noise(x: float, y: float, seed: int) -> float:
+    x0, y0 = math.floor(x), math.floor(y)
+    fx, fy = x - x0, y - y0
+    u = fx * fx * (3 - 2 * fx)
+    v = fy * fy * (3 - 2 * fy)
+    a = hash2(x0, y0, seed)
+    b = hash2(x0 + 1, y0, seed)
+    c = hash2(x0, y0 + 1, seed)
+    d = hash2(x0 + 1, y0 + 1, seed)
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v
+
+
+def fbm(x: float, y: float, seed: int, octaves: int = 5) -> float:
+    a, s, t = 0.0, 1.0, 0.0
+    for i in range(octaves):
+        a += noise(x * s, y * s, seed + i * 19) / s
+        t += 1.0 / s
+        s *= 2.05
+    return a / t
+
+
+def lerp(a: int, b: int, t: float) -> int:
+    return int(a + (b - a) * max(0.0, min(1.0, t)))
+
+
+def mix(c0, c1, t):
+    t = max(0.0, min(1.0, t))
+    return tuple(lerp(c0[i], c1[i], t) for i in range(3))
+
+
+def in_diamond(x: int, y: int) -> bool:
+    nx = (x + 0.5) / W * 2 - 1
+    ny = (y + 0.5) / H * 2 - 1
+    return abs(nx) + abs(ny) <= 1.02
+
+
+def diamond_uv(x: int, y: int):
+    nx = (x + 0.5) / W * 2 - 1
+    ny = (y + 0.5) / H * 2 - 1
+    u = (nx + ny + 1) * 0.5
+    v = (ny - nx + 1) * 0.5
+    return u, v
+
+
+def shade_iso(col, x, y):
+    nx = (x + 0.5) / W * 2 - 1
+    ny = (y + 0.5) / H * 2 - 1
+    # left-dark, right-light, south a bit darker
+    light = 0.88 + 0.18 * nx - 0.10 * ny
+    return tuple(max(0, min(255, int(c * light))) for c in col)
+
+
+def build(kind: str, seed: int) -> Image.Image:
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    px = im.load()
+    pal = {
+        "plains": ((62, 92, 38), (92, 122, 48), (48, 72, 30), (120, 110, 62)),
+        "hills": ((90, 92, 88), (130, 128, 118), (70, 74, 70), (58, 62, 58)),
+        "forest": ((22, 48, 24), (34, 72, 32), (16, 36, 18), (48, 78, 36)),
+        "water": ((10, 42, 62), (18, 78, 96), (8, 28, 48), (40, 140, 150)),
+        "ruins": ((78, 72, 64), (110, 104, 92), (52, 48, 44), (140, 122, 88)),
+        "fog": ((6, 10, 18), (10, 18, 28), (4, 8, 14), (14, 28, 40)),
+    }[kind]
+    base, hi, lo, acc = pal
+    rng = random.Random(seed)
+    for y in range(H):
+        for x in range(W):
+            if not in_diamond(x, y):
+                continue
+            u, v = diamond_uv(x, y)
+            n = fbm(u * 8, v * 8, seed)
+            n2 = fbm(u * 18 + 3, v * 18, seed + 7)
+            if kind == "water":
+                wave = 0.5 + 0.5 * math.sin((u * 18 + v * 6) * math.pi)
+                col = mix(lo, hi, n * 0.55 + wave * 0.45)
+                if n2 > 0.72:
+                    col = mix(col, acc, 0.35)
+            elif kind == "forest":
+                col = mix(lo, hi, n)
+                if n2 > 0.55:
+                    col = mix(col, acc, 0.5)
+                # canopy clumps
+                if ((int(u * 12) ^ int(v * 12) ^ seed) & 3) == 0:
+                    col = mix(col, lo, 0.4)
+            elif kind == "hills":
+                ridge = abs(n - 0.5) * 2
+                col = mix(base, hi, ridge)
+                if n2 < 0.35:
+                    col = mix(col, lo, 0.45)
+            elif kind == "ruins":
+                col = mix(base, hi, n)
+                grid = (int(u * 10) + int(v * 10)) % 2
+                if grid and n2 > 0.5:
+                    col = mix(col, acc, 0.25)
+            elif kind == "fog":
+                col = mix(lo, hi, n * 0.4)
+                if (int(u * 16) + int(v * 16)) % 6 == 0:
+                    col = mix(col, acc, 0.2)
+            else:  # plains
+                col = mix(base, hi, n)
+                if n2 > 0.78:
+                    col = mix(col, acc, 0.35)  # dirt patches
+                if n2 < 0.22:
+                    col = mix(col, lo, 0.35)
+            col = shade_iso(col, x, y)
+            px[x, y] = (*col, 255)
+    # crisp diamond edge
+    edge = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(edge)
+    d.polygon([(W // 2, 1), (W - 2, H // 2), (W // 2, H - 2), (1, H // 2)], fill=255)
+    im.putalpha(edge)
+    return im
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    specs = [
+        ("plains", 11),
+        ("hills", 23),
+        ("forest", 37),
+        ("water", 41),
+        ("ruins", 53),
+        ("fog", 61),
+    ]
+    for kind, seed in specs:
+        im = build(kind, seed)
+        path = OUT / f"tile-{kind}.png"
+        im.save(path, optimize=True)
+        print("wrote", path, im.size)
+
+
+if __name__ == "__main__":
+    main()
