@@ -33,7 +33,7 @@
     energy:  { name: "Energy Plant", cost: 120, hp: 85, pwr: -2, cat: "economy", spr: "energy",
                desc: "+2 power and +1 fuel each turn." },
     econ:    { name: "Economic Centre", cost: 150, hp: 75, pwr: 1, cat: "economy", spr: "econ",
-               desc: "+90 credits each turn (more on hills)." },
+               desc: "+90 credits each turn. Plains or ruins only." },
     factory: { name: "Factory", cost: 200, hp: 110, pwr: 1, cat: "production", spr: "factory",
                desc: "Train Marines and scouts on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
@@ -63,8 +63,8 @@
   };
 
   const WPN = {
-    probe:     { name: "Probe shot", cost: 25, fuel: 0, dmg: 10, r: 0, reveal: 1,
-                 desc: "Battleship ping — 3×3. Limited: 2 + radars per salvo." },
+    probe:     { name: "Probe shot", cost: 25, fuel: 0, dmg: 0, r: 0, reveal: 1,
+                 desc: "Battleship ping — 3×3 intel, no damage. Limited: 2 + radars per salvo." },
     missile:   { name: "Cruise missile", cost: 90, fuel: 2, dmg: 52, r: 1, need: "silo",
                  desc: "One shot per live Missile Silo." },
     icbm:      { name: "ICBM", cost: 190, fuel: 6, dmg: 135, r: 2, need: "icbm",
@@ -272,21 +272,35 @@
     return S.buildings.filter((b) => b.owner === owner && b.type === "hq" && b.hp > 0).length;
   }
   function me() { return S && S.actor != null ? S.actor : 0; }
+  function sideName(owner) {
+    if (!S) return "Commander";
+    if (S.mode === "hotseat") return owner === 0 ? "South" : "North";
+    return owner === me() ? "You" : "Enemy";
+  }
+  const EMP_KINDS = ["radar", "aa", "silo", "icbm", "sat", "emp"];
+  function jamElectronics(owner) {
+    for (const b of S.buildings) {
+      if (b.owner === owner && EMP_KINDS.includes(b.type)) b.offline = true;
+    }
+  }
+  function reapplyEmp() {
+    for (const o of [0, 1]) if (S.players[o].emp) jamElectronics(o);
+  }
+  function powerBudget(owner) {
+    let have = 0, need = 0;
+    for (const b of S.buildings) {
+      if (b.owner !== owner || b.hp <= 0 || b.wrecked) continue;
+      if (b.type === "energy") have += 2 * b.lvl;
+      else if (BLD[b.type].pwr > 0) need += BLD[b.type].pwr;
+    }
+    return { have, need };
+  }
   function unlocked(key) {
     if (!key) return true;
     return !!persist.unlocks[key] || persist.wins >= unlockWins(key);
   }
   function unlockWins(k) {
     return { scout: 1, tank: 2, shield: 2, icbm: 3, emp: 4, airstrike: 5, sat: 6 }[k] || 0;
-  }
-
-  function powerOf(owner) {
-    let p = 0;
-    for (const b of S.buildings) {
-      if (b.owner !== owner || b.hp <= 0 || b.wrecked) continue;
-      p -= BLD[b.type].pwr * (b.offline ? 0 : 1);
-    }
-    return p;
   }
 
   function newMatch(opts) {
@@ -439,8 +453,7 @@
       for (const b of S.buildings) {
         if (b.owner !== o || b.hp <= 0 || b.offline || b.wrecked) continue;
         if (b.type === "econ") {
-          const hill = S.tiles[b.y][b.x] === "hills" ? 20 : 0;
-          inc += 90 + (b.lvl - 1) * 25 + hill;
+          inc += 90 + (b.lvl - 1) * 25;
         }
         if (b.type === "energy") p.fuel = Math.min(24, p.fuel + 1 + (b.lvl - 1));
         if (b.cd > 0) b.cd--;
@@ -533,7 +546,7 @@
     if (err) { if (owner === me()) { toast(err); fx("error"); } return false; }
     pay(owner, BLD[type].cost, 0);
     spawnB(type, owner, x, y);
-    log(`${owner === 0 ? "You" : "Enemy"} raise a ${BLD[type].name} at ${x},${y}.`);
+    log(`${sideName(owner)} raise a ${BLD[type].name} at ${x},${y}.`);
     if (owner === me()) fx("build");
     return true;
   }
@@ -541,7 +554,7 @@
   function tryUpgrade(b) {
     if (!b || b.lvl >= 3) return;
     const cost = Math.round(BLD[b.type].cost * 0.55 * b.lvl);
-    if (S.players[b.owner].credits < cost) { toast("Need " + cost + "c to upgrade."); return; }
+    if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need " + cost + "c to upgrade."); return; }
     pay(b.owner, cost, 0);
     b.lvl++;
     b.max += 25; b.hp += 25;
@@ -556,7 +569,7 @@
     if (!b.wrecked && b.hp >= b.max) { if (b.owner === me()) toast("Already at full integrity."); return; }
     if (b.repairTick) { if (b.owner === me()) toast("Already repairing this turn — 25% per turn."); return; }
     const cost = repairCost(b);
-    if (S.players[b.owner].credits < cost) { toast("Need " + cost + "c (25% of build cost) to repair."); return; }
+    if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need " + cost + "c (25% of build cost) to repair."); return; }
     pay(b.owner, cost, 0);
     const heal = Math.max(1, Math.round(b.max * 0.25));
     b.hp = Math.min(b.max, (b.hp || 0) + heal);
@@ -577,12 +590,12 @@
 
   function tryTrain(b, utype) {
     if (!b || (b.type !== "factory" && b.type !== "hangar")) return;
-    if (utype === "scout" && !unlocked("scout")) { toast("Scout locked."); return; }
-    if (utype === "tank" && !unlocked("tank")) { toast("Tank locked."); return; }
+    if (utype === "scout" && !unlocked("scout")) { if (b.owner === me()) toast("Scout locked."); return; }
+    if (utype === "tank" && !unlocked("tank")) { if (b.owner === me()) toast("Tank locked."); return; }
     const cost = utype === "tank" ? 140 : utype === "scout" ? 50 : 70;
-    if (S.players[b.owner].credits < cost) { toast("Need credits."); return; }
+    if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need credits."); return; }
     const n = neighbors(b.x, b.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !occupied(t.x, t.y));
-    if (!n) { toast("No free adjacent tile."); return; }
+    if (!n) { if (b.owner === me()) toast("No free adjacent tile."); return; }
     pay(b.owner, cost, 0);
     spawnU(utype, b.owner, n.x, n.y);
     log(`Trained ${UNIT[utype].name}.`);
@@ -624,7 +637,7 @@
 
   function queueStrike(owner, kind, x, y) {
     const w = WPN[kind];
-    if (!w) return;
+    if (!w) return false;
     const fail = (msg) => { if (owner === me()) toast(msg); return false; };
     if (w.unlock && !unlocked(w.unlock)) return fail("Weapon locked.");
     if (kind === "probe" && shotsLeft(owner, "probe") <= 0) return fail("Probe limit this salvo (2 + radars).");
@@ -636,27 +649,26 @@
     if (w.need && !livePads(owner, w.need).length) return fail("Need a live " + BLD[w.need].name + ".");
     if (!canAfford(owner, w.cost, w.fuel)) return fail("Need credits/fuel.");
     if (w.sat) {
-      if (S.players[owner].satCD > 0) return toast("Satellite recharging (" + S.players[owner].satCD + ").");
+      if (S.players[owner].satCD > 0) return fail("Satellite recharging (" + S.players[owner].satCD + ").");
       pay(owner, w.cost, w.fuel);
-      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-        if (!onHome(owner, x, y)) reveal(owner, x, y, 0);
+      for (let yy = 0; yy < MAP; yy++) for (let xx = 0; xx < MAP; xx++) {
+        if (!onHome(owner, xx, yy)) reveal(owner, xx, yy, 0);
       }
       S.players[owner].satCD = 4;
-      log("Spy satellite paints the theatre.");
-      fx("radar");
+      log(sideName(owner) + " spy satellite paints the theatre.");
+      if (owner === me()) fx("radar");
       paintUI();
       return true;
     }
-    if (!inB(x, y)) return;
+    if (!inB(x, y)) return fail("Pick a target tile.");
     if (onHome(owner, x, y)) {
-      sel = { x, y };
-      toast("Strike the fogged enemy island — not your own.");
-      return;
+      if (owner === me()) sel = { x, y };
+      return fail("Strike the fogged enemy island — not your own.");
     }
     pay(owner, w.cost, w.fuel);
     S.queue.push({ owner, kind, x, y, pad: pad ? pad.id : null });
     if (w.reveal) reveal(owner, x, y, w.reveal);
-    log(`${owner === 0 ? "You" : "Enemy"} queued ${w.name} @ ${x},${y}.`);
+    log(`${sideName(owner)} queued ${w.name} @ ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
     return true;
   }
@@ -847,10 +859,8 @@
     }
     if (w.emp) {
       S.players[defender].emp = 1;
-      for (const b of S.buildings) {
-        if (b.owner === defender && ["radar", "aa", "silo", "icbm", "sat", "emp"].includes(b.type)) b.offline = true;
-      }
-      log("EMP silences enemy electronics.");
+      jamElectronics(defender);
+      log("EMP silences " + sideName(defender) + " electronics until they finish their next salvo.");
       fx("emp");
       boom(q.x, q.y);
       return;
@@ -860,8 +870,10 @@
       const mine = buildingAt(q.x, q.y);
       if (mine && mine.type === "mine" && mine.owner !== q.owner) {
         const u = spawnU(w.spawn, q.owner, q.x, q.y);
-        hurtU(u, 40);
+        hurtU(u, 40, mine.owner);
         mine.hp = 0;
+        mine.wrecked = false;
+        S.buildings = S.buildings.filter((x) => x.id !== mine.id);
         log("Minefield detonates under the drop.");
         boom(q.x, q.y);
       } else if (occupied(q.x, q.y) && !unitAt(q.x, q.y)) {
@@ -876,7 +888,7 @@
       boom(q.x, q.y);
       return;
     }
-    applySplash(q.owner, q.x, q.y, w.dmg || 0, w.r || 0);
+    if (w.dmg) applySplash(q.owner, q.x, q.y, w.dmg, w.r || 0);
     reveal(q.owner, q.x, q.y, 1 + (w.r || 0));
     boom(q.x, q.y);
   }
@@ -888,7 +900,7 @@
   }
   function hqCentroid(owner) {
     const h = S.buildings.filter((b) => b.owner === owner && b.type === "hq" && b.hp > 0);
-    if (!h.length) return { x: 12, y: owner === 0 ? 20 : 6 };
+    if (!h.length) return { x: MAP >> 1, y: owner === 0 ? MAP - 4 : 3 };
     return { x: Math.round(h.reduce((a, b) => a + b.x, 0) / h.length), y: Math.round(h.reduce((a, b) => a + b.y, 0) / h.length) };
   }
 
@@ -927,7 +939,7 @@
         if (b.type === "relay") log("Build radius collapsed around that relay.");
         if (b.fake || b.type === "fake") {
           for (const u of S.units) {
-            if (u.hp > 0 && dist(u, b) <= 2) hurtU(u, 28, b.owner);
+            if (u.hp > 0 && dist(u, b) <= 2 && u.owner !== b.owner) hurtU(u, 28, attacker);
           }
           log("Decoy HQ detonates!");
           b.wrecked = false;
@@ -981,9 +993,11 @@
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const mine = buildingAt(u.x, u.y);
-      if (mine && mine.type === "mine" && mine.owner !== u.owner) {
+      if (mine && mine.type === "mine" && mine.owner !== u.owner && !mine.wrecked) {
         hurtU(u, 40, mine.owner);
         mine.hp = 0;
+        mine.wrecked = false;
+        S.buildings = S.buildings.filter((x) => x.id !== mine.id);
         boom(u.x, u.y);
       }
     }
@@ -1003,13 +1017,21 @@
         enemies.sort((a, b) => dist(a, u) - dist(b, u));
         const t = enemies[0];
         if (def.dmg && dist(t, u) <= (def.range || 1)) break;
-        let step = { x: u.x, y: u.y };
-        if (Math.abs(t.x - u.x) > Math.abs(t.y - u.y)) step.x += Math.sign(t.x - u.x);
-        else step.y += Math.sign(t.y - u.y);
-        if (!inB(step.x, step.y) || S.tiles[step.y][step.x] === "water") break;
-        if (buildingAt(step.x, step.y) && buildingAt(step.x, step.y).owner !== u.owner) break;
-        if (unitAt(step.x, step.y)) break;
-        u.x = step.x; u.y = step.y;
+        const cands = [];
+        if (t.x !== u.x) cands.push({ x: u.x + Math.sign(t.x - u.x), y: u.y });
+        if (t.y !== u.y) cands.push({ x: u.x, y: u.y + Math.sign(t.y - u.y) });
+        if (Math.abs(t.x - u.x) <= Math.abs(t.y - u.y)) cands.reverse();
+        let moved = false;
+        for (const step of cands) {
+          if (!inB(step.x, step.y) || S.tiles[step.y][step.x] === "water") continue;
+          const blk = buildingAt(step.x, step.y);
+          if (blk && blk.owner !== u.owner) continue;
+          if (unitAt(step.x, step.y)) continue;
+          u.x = step.x; u.y = step.y;
+          moved = true;
+          break;
+        }
+        if (!moved) break;
         if (def.reveal) reveal(u.owner, u.x, u.y, 2);
       }
     }
@@ -1021,9 +1043,11 @@
     }
     S.buildings = S.buildings.filter((b) => (b.type === "hq" || b.type === "fake") ? b.hp > 0 : true);
     S.units = S.units.filter((u) => u.hp > 0);
+    const actor = S.resolveWho === "enemy" ? 1 : me();
+    S.players[actor].emp = 0;
     const pHQ = hqCount(0), eHQ = hqCount(1);
     if (pHQ <= 0 || eHQ <= 0) {
-      S.over = pHQ > 0 ? "win" : "lose";
+      S.over = pHQ <= 0 && eHQ <= 0 ? "draw" : (pHQ > 0 ? "win" : "lose");
       S.phase = "end";
       tally();
       paintUI();
@@ -1062,12 +1086,11 @@
           S.fog[o][y][x] = false;
         }
       }
-      radarSweep(o);
     }
-    S.players[0].emp = 0;
-    S.players[1].emp = 0;
     for (const b of S.buildings) b.offline = false;
     tickEconomy(false);
+    reapplyEmp();
+    for (const o of [0, 1]) radarSweep(o);
     maybeSwitchAI();
     tool = null; weapon = null;
     for (const b of S.buildings) {
@@ -1154,7 +1177,6 @@
       let s = -same * 14 - crowd * 5 + S.R() * 3;
       if (type === "energy" || type === "econ" || type === "silo" || type === "icbm" || type === "hangar" || type === "factory") {
         s += rear * 1.2 + hqD * 0.8;
-        if (type === "econ" && terr === "hills") s += 6;
       } else if (type === "aa" || type === "gun" || type === "shield" || type === "mine") {
         s += 10 - hqD * 2 + front * 0.15;
         if ((type === "gun" || type === "aa") && terr === "hills") s += 22;
@@ -1261,9 +1283,7 @@
     const probes = aiProbePlan(o, contacts);
 
     const siloN = livePads(o, "silo").length;
-    const missileTgts = hqs.length || aa.length
-      ? aiAssignTargets(hqs.length ? hqs.concat(aa) : valued, siloN, 2)
-      : [];
+    const missileTgts = valued.length ? aiAssignTargets(valued, siloN, 2) : [];
     if (missileTgts.length) {
       for (let i = 0; i < siloN; i++) fire("missile", missileTgts[i] || missileTgts[0]);
     } else {
@@ -1304,6 +1324,7 @@
     const timePen = S.turn * 8;
     let score = st.bKill * 10 + st.uKill * 2 + survive * 5 + eco - timePen;
     if (S.over === "win") score += 250 + S.campaign * 40;
+    if (S.over === "draw") score = Math.round(score * 0.5);
     score = Math.max(0, Math.round(score * (1 + persist.prestige * 0.15)));
     S.score = score;
     persist.best = Math.max(persist.best, score);
@@ -1699,16 +1720,18 @@
   function paintUI() {
     if (!S) return;
     const p = S.players[me()];
+    const pw = powerBudget(me());
     $("phasePill").textContent = ({
       deploy: "DEPLOY HQs",
       defense: "DEFENSE", offense: "OFFENSE", resolve: "ATTACK PLAYBACK",
-      enemy: "ENEMY RESPONSE", end: S.over === "win" ? "VICTORY" : "DEFEAT"
+      enemy: "ENEMY RESPONSE",
+      end: S.over === "win" ? "VICTORY" : S.over === "draw" ? "DRAW" : "DEFEAT"
     })[S.phase] || S.phase;
     $("resHud").innerHTML = `
       <span>Turn <b>${S.turn}</b></span>
       <span>Credits <b>${p.credits}</b></span>
       <span>Fuel <b>${p.fuel}</b></span>
-      <span>Power <b>${Math.max(0, powerOf(me()))}</b></span>
+      <span>Power <b>${pw.have}/${pw.need}${pw.have < pw.need ? " BROWN" : ""}</b></span>
       <span>Campaign <b>${S.campaign}</b></span>
       <span>Island <b>#${S.seed}</b></span>
       <span>${S.mapNote ? S.mapNote : ""}</span>
@@ -1756,7 +1779,7 @@
         for (const [k, b] of Object.entries(BLD)) {
           if (b.cat !== c || k === "hq") continue;
           const lock = b.unlock && !unlocked(b.unlock);
-          html += itemBtn(k, b.name, b.desc, b.cost + "c", ASSET + SPR_FILES[b.spr], tool === k, lock);
+          html += itemBtn(k, b.name, b.desc, b.cost + "c", ASSET + SPR_FILES[b.spr], tool === k, lock, lock);
         }
       }
       rail.innerHTML = html;
@@ -1768,8 +1791,10 @@
       for (const [k, w] of Object.entries(WPN)) {
         const lock = w.unlock && !unlocked(w.unlock);
         const left = shotsLeft(me(), k);
-        const need = (w.need && !livePads(me(), w.need).length) || left <= 0;
-        html += itemBtn(k, w.name, w.desc, left < 99 ? `${w.cost}c · ${left} left` : `${w.cost}c · ${w.fuel}f`, ASSET + (k === "airstrike" ? SPR_FILES.jet : SPR_FILES.missile), weapon === k, lock || need);
+        const cd = w.sat ? S.players[me()].satCD : 0;
+        const need = (w.need && !livePads(me(), w.need).length) || left <= 0 || cd > 0;
+        const cost = cd > 0 ? ("CD " + cd) : (left < 99 ? `${w.cost}c · ${left} left` : `${w.cost}c · ${w.fuel}f`);
+        html += itemBtn(k, w.name, w.desc, cost, ASSET + (k === "airstrike" ? SPR_FILES.jet : SPR_FILES.missile), weapon === k, lock || need, lock);
       }
       rail.innerHTML = html;
       rail.querySelectorAll("[data-k]").forEach((el) => {
@@ -1777,7 +1802,10 @@
           if (el.disabled) return;
           weapon = el.dataset.k;
           tool = null;
-          if (weapon === "sat") queueStrike(me(), "sat", 0, 0);
+          if (weapon === "sat") {
+            queueStrike(me(), "sat", 0, 0);
+            weapon = null;
+          }
           paintUI();
         };
       });
@@ -1786,11 +1814,11 @@
     }
   }
 
-  function itemBtn(k, name, desc, cost, src, on, dis) {
+  function itemBtn(k, name, desc, cost, src, on, dis, locked) {
     return `<button class="item ${on ? "on" : ""}" data-k="${k}" ${dis ? "disabled" : ""}>
       <img src="${src}" alt="">
       <span><div class="nm">${name}</div><div class="ds">${desc}</div></span>
-      <span class="cost">${dis && !on ? "LOCK" : cost}</span>
+      <span class="cost">${locked && !on ? "LOCK" : cost}</span>
     </button>`;
   }
 
@@ -1816,7 +1844,7 @@
       box.innerHTML = html; return;
     }
     if (b) {
-      html += `<p class="nm">${b.fake && b.owner === 1 ? BLD.hq.name : BLD[b.type].name} Mk${b.lvl}${b.wrecked ? " · WRECK" : ""}</p>
+      html += `<p class="nm">${b.fake && b.owner !== me() ? BLD.hq.name : BLD[b.type].name} Mk${b.lvl}${b.wrecked ? " · WRECK" : ""}</p>
         <div class="hpbar"><i style="width:${(b.hp / b.max) * 100}%"></i></div>
         <p class="sel-meta">${b.hp}/${b.max} HP · ${b.owner === me() ? "friendly" : "hostile"}${b.offline ? " · OFFLINE" : ""}${b.wrecked ? " · wrecked" : ""}</p>`;
       if (b.owner === me() && S.phase === "defense") {
@@ -1928,7 +1956,7 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Each AA fires once per incoming wave. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
+      <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
@@ -1938,11 +1966,14 @@
   }
 
   function showEnd() {
-    const title = S.over === "win" ? "Island secured" : "Command net down";
+    const title = S.mode === "hotseat"
+      ? (S.over === "win" ? "South holds the island" : S.over === "draw" ? "Mutual annihilation" : "North holds the island")
+      : (S.over === "win" ? "Island secured" : S.over === "draw" ? "Mutual annihilation" : "Command net down");
+    const st = S.players[S.mode === "hotseat" ? 0 : me()].stats;
     showOverlay(`
       <h2>${title}</h2>
-      <p>Score <b>${S.score}</b> · ${S.diff} · ${S.ai.profile} · ${S.turn} turns</p>
-      <p class="sel-meta">Buildings wrecked ${S.players[0].stats.bKill} · Units down ${S.players[0].stats.uKill} · Best ${persist.best}</p>
+      <p>Score <b>${S.score}</b> · ${S.diff} · ${S.mode === "ai" ? S.ai.profile : "hot-seat"} · ${S.turn} turns</p>
+      <p class="sel-meta">Buildings wrecked ${st.bKill} · Units down ${st.uKill} · Best ${persist.best}</p>
       <div class="row">
         <button class="btn gold" id="again">${S.over === "win" ? "Next campaign island" : "Retry island"}</button>
         <button class="btn" id="mm">Main menu</button>
@@ -2033,7 +2064,7 @@
     const r = canvas().getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const z0 = cam.z;
-    cam.z = Math.max(0.45, Math.min(1.85, cam.z * (e.deltaY > 0 ? 0.9 : 1.1)));
+    cam.z = Math.max(0.22, Math.min(1.85, cam.z * (e.deltaY > 0 ? 0.9 : 1.1)));
     cam.x = mx - (mx - cam.x) * (cam.z / z0);
     cam.y = my - (my - cam.y) * (cam.z / z0);
   }
@@ -2052,7 +2083,8 @@
   function skipPlayback() {
     if (!S || S.phase !== "resolve") return;
     S.skipping = true;
-    while (S.phase === "resolve") stepResolve();
+    let guard = 0;
+    while (S && S.phase === "resolve" && guard++ < 8000) stepResolve();
     if (S) S.skipping = false;
   }
 
