@@ -36,6 +36,8 @@
                desc: "Train Marines and scouts on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
                desc: "Drop autonomous Lattice Marines across the fog." },
+    relay:   { name: "Command Relay", cost: 160, hp: 70, pwr: 1, cat: "core", spr: "emp",
+               desc: "Extends your build radius. If wrecked, repair it or that ground goes dark." },
     radar:   { name: "Radar Tower", cost: 180, hp: 65, pwr: 1, cat: "intel", spr: "radar",
                desc: "Reveals a scan disc on the enemy half each turn." },
     sat:     { name: "Spy Satellite", cost: 520, hp: 55, pwr: 3, cat: "intel", spr: "sat", unlock: "sat",
@@ -218,11 +220,11 @@
   }
 
   function occupied(x, y) {
-    return S.buildings.some((b) => b.x === x && b.y === y && b.hp > 0)
+    return S.buildings.some((b) => b.x === x && b.y === y && (b.hp > 0 || b.wrecked))
       || S.units.some((u) => u.x === x && u.y === y && u.hp > 0);
   }
 
-  function buildingAt(x, y) { return S.buildings.find((b) => b.x === x && b.y === y && b.hp > 0); }
+  function buildingAt(x, y) { return S.buildings.find((b) => b.x === x && b.y === y && (b.hp > 0 || b.wrecked)); }
   function unitAt(x, y) { return S.units.find((u) => u.x === x && u.y === y && u.hp > 0); }
   function countB(type, owner) {
     return S.buildings.filter((b) => b.owner === owner && b.type === type && b.hp > 0).length;
@@ -242,7 +244,7 @@
   function powerOf(owner) {
     let p = 0;
     for (const b of S.buildings) {
-      if (b.owner !== owner || b.hp <= 0) continue;
+      if (b.owner !== owner || b.hp <= 0 || b.wrecked) continue;
       p -= BLD[b.type].pwr * (b.offline ? 0 : 1);
     }
     return p;
@@ -326,7 +328,7 @@
       id: S.uid++, type, owner, x, y, lvl,
       hp: def.hp + (lvl - 1) * 25, max: def.hp + (lvl - 1) * 25,
       charges: type === "shield" ? 2 : 0,
-      cd: 0, fake: type === "fake", offline: false
+      cd: 0, fake: type === "fake", offline: false, wrecked: false
     };
     S.buildings.push(b);
     return b;
@@ -395,7 +397,7 @@
       const p = S.players[o];
       let inc = 40;
       for (const b of S.buildings) {
-        if (b.owner !== o || b.hp <= 0 || b.offline) continue;
+        if (b.owner !== o || b.hp <= 0 || b.offline || b.wrecked) continue;
         if (b.type === "econ") {
           const hill = S.tiles[b.y][b.x] === "hills" ? 20 : 0;
           inc += 90 + (b.lvl - 1) * 25 + hill;
@@ -451,9 +453,9 @@
   }
 
   function reachOf(b) {
-    if (b.type === "hq") return 5 + b.lvl;
-    if (b.type === "fake") return 3;
-    if (b.type === "energy" || b.type === "econ" || b.type === "factory" || b.type === "hangar") return 2;
+    if (b.wrecked || b.hp <= 0) return 0;
+    if (b.type === "hq") return 4 + b.lvl;
+    if (b.type === "relay") return 8 + 2 * b.lvl;
     return 1;
   }
   function cheb(a, x, y) {
@@ -482,6 +484,7 @@
     if (type === "hq" && terr !== "plains" && terr !== "ruins") {
       return "Command centres need plains or ruins.";
     }
+    if (type === "relay" && terr === "hills") return "Relays cannot sit on mountains.";
     return null;
   }
 
@@ -503,6 +506,33 @@
     b.lvl++;
     b.max += 25; b.hp += 25;
     log(`Upgrade ${BLD[b.type].name} → Mk${b.lvl}.`);
+  }
+
+  function repairCost(b) {
+    const base = BLD[b.type].cost || 80;
+    if (b.wrecked || b.hp <= 0) return Math.max(20, Math.round(base * 0.55));
+    const miss = (b.max - b.hp) / Math.max(1, b.max);
+    return Math.max(8, Math.round(base * 0.45 * miss));
+  }
+  function tryRepair(b) {
+    if (!b) return;
+    if (!b.wrecked && b.hp >= b.max) { if (b.owner === me()) toast("Already at full integrity."); return; }
+    const cost = repairCost(b);
+    if (S.players[b.owner].credits < cost) { toast("Need " + cost + "c to repair."); return; }
+    pay(b.owner, cost, 0);
+    b.wrecked = false;
+    b.hp = b.max;
+    b.offline = false;
+    log(`Repaired ${BLD[b.type].name} for ${cost}c.`);
+    fx("build");
+  }
+  function tryBulldoze(b) {
+    if (!b || b.owner !== me()) return;
+    if (b.type === "hq") { toast("Cannot bulldoze a Command Centre."); fx("error"); return; }
+    S.buildings = S.buildings.filter((x) => x.id !== b.id);
+    log(`Bulldozed ${BLD[b.type].name}. No salvage.`);
+    fx("emp");
+    sel = { x: b.x, y: b.y };
   }
 
   function tryTrain(b, utype) {
@@ -762,14 +792,22 @@
     b.hp -= dmg;
     if (b.hp <= 0) {
       b.hp = 0;
-      if (attacker != null) S.players[attacker].stats.bKill++;
-      log(`${BLD[b.type].name} destroyed.`);
-      boom(b.x, b.y);
-      if (b.fake || b.type === "fake") {
-        for (const u of S.units) {
-          if (u.hp > 0 && dist(u, b) <= 2) hurtU(u, 28, b.owner);
+      if (attacker != null && !b.wrecked) S.players[attacker].stats.bKill++;
+      if (b.type === "hq") {
+        log(`${BLD[b.type].name} destroyed.`);
+        boom(b.x, b.y);
+      } else if (!b.wrecked) {
+        b.wrecked = true;
+        log(`${BLD[b.type].name} wrecked. Repair to restore it.`);
+        boom(b.x, b.y);
+        if (b.type === "relay") log("Build radius collapsed around that relay.");
+        if (b.fake || b.type === "fake") {
+          for (const u of S.units) {
+            if (u.hp > 0 && dist(u, b) <= 2) hurtU(u, 28, b.owner);
+          }
+          log("Decoy HQ detonates!");
+          b.wrecked = false;
         }
-        log("Decoy HQ detonates!");
       }
     }
   }
@@ -787,7 +825,7 @@
   }
 
   function autoCombat() {
-    const guns = S.buildings.filter((b) => b.type === "gun" && b.hp > 0 && !b.offline);
+    const guns = S.buildings.filter((b) => b.type === "gun" && b.hp > 0 && !b.offline && !b.wrecked);
     for (const g of guns) {
       const hill = S.tiles[g.y][g.x] === "hills";
       const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2 + (hill ? 1 : 0));
@@ -854,7 +892,10 @@
   }
 
   function finishResolve() {
-    S.buildings = S.buildings.filter((b) => b.hp > 0);
+    for (const b of S.buildings) {
+      if (b.hp <= 0 && b.type !== "hq" && b.type !== "fake") b.wrecked = true;
+    }
+    S.buildings = S.buildings.filter((b) => (b.type === "hq" || b.type === "fake") ? b.hp > 0 : true);
     S.units = S.units.filter((u) => u.hp > 0);
     const pHQ = hqCount(0), eHQ = hqCount(1);
     if (pHQ <= 0 || eHQ <= 0) {
@@ -933,6 +974,8 @@
     const want = [];
     const nE = countB("energy", o), nC = countB("econ", o), nR = countB("radar", o);
     const nG = countB("gun", o), nS = countB("silo", o), nH = countB("hangar", o), nA = countB("aa", o);
+    for (const w of S.buildings.filter((b) => b.owner === o && b.wrecked)) tryRepair(w);
+    if (countB("relay", o) < 2) want.push("relay", "relay");
     if (nE < 3) want.push("energy", "energy");
     if (nC < (profile === "Economist" ? 5 : 3)) want.push("econ", "econ");
     if (nR < (profile === "Intelligence" ? 3 : 1)) want.push("radar");
@@ -1293,7 +1336,9 @@
     if (b) {
       if (b.owner === viewer || vis) {
         const key = b.fake && b.owner !== viewer && vis ? "hq" : b.type;
+        if (b.wrecked) ctx.globalAlpha = 0.4;
         drawSpr(ctx, SPR[BLD[key] ? BLD[key].spr : b.type] || SPR[b.type], x, y, b.owner !== viewer);
+        ctx.globalAlpha = 1;
         hpBar(ctx, x, y, b.hp / b.max, b.owner);
       } else if (S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].b) {
         ctx.globalAlpha = 0.4;
@@ -1435,7 +1480,7 @@
     $("dockStatus").textContent = S.phase === "deploy"
       ? `Place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up. Clusters are allowed.`
       : S.phase === "defense"
-      ? "Build only in HQ range (green tiles). Energy/factories extend the net. Upgrade HQs for more reach."
+      ? "Build in HQ/relay range (green). Place Command Relays to expand. Select a structure to repair or bulldoze."
       : S.phase === "offense"
         ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
         : S.phase === "resolve" ? "Playback — or skip." : "";
@@ -1459,7 +1504,7 @@
       return;
     }
     if (S.phase === "defense") {
-      const cats = ["economy", "production", "intel", "defense", "decoy", "offense"];
+      const cats = ["core", "economy", "production", "intel", "defense", "decoy", "offense"];
       let html = `<p class="cat">Build</p>`;
       for (const c of cats) {
         html += `<div class="cat">${c}</div>`;
@@ -1525,15 +1570,17 @@
       box.innerHTML = html; return;
     }
     if (b) {
-      html += `<p class="nm">${b.fake && b.owner === 1 ? BLD.hq.name : BLD[b.type].name} Mk${b.lvl}</p>
+      html += `<p class="nm">${b.fake && b.owner === 1 ? BLD.hq.name : BLD[b.type].name} Mk${b.lvl}${b.wrecked ? " · WRECK" : ""}</p>
         <div class="hpbar"><i style="width:${(b.hp / b.max) * 100}%"></i></div>
-        <p class="sel-meta">${b.hp}/${b.max} HP · ${b.owner === me() ? "friendly" : "hostile"}${b.offline ? " · OFFLINE" : ""}</p>`;
+        <p class="sel-meta">${b.hp}/${b.max} HP · ${b.owner === me() ? "friendly" : "hostile"}${b.offline ? " · OFFLINE" : ""}${b.wrecked ? " · wrecked" : ""}</p>`;
       if (b.owner === me() && S.phase === "defense") {
         html += `<div class="row">
-          <button class="btn" id="upg">Upgrade (${Math.round(BLD[b.type].cost * 0.55 * b.lvl)}c)</button>
-          ${b.type === "factory" || b.type === "hangar" ? `<button class="btn" id="trM">Train marine</button>` : ""}
-          ${b.type === "factory" && unlocked("scout") ? `<button class="btn" id="trS">Train scout</button>` : ""}
-          ${b.type === "hangar" && unlocked("tank") ? `<button class="btn" id="trT">Build tank</button>` : ""}
+          ${!b.wrecked && b.lvl < 3 ? `<button class="btn" id="upg">Upgrade (${Math.round(BLD[b.type].cost * 0.55 * b.lvl)}c)</button>` : ""}
+          ${(b.wrecked || b.hp < b.max) ? `<button class="btn" id="rep">Repair (${repairCost(b)}c)</button>` : ""}
+          ${b.type !== "hq" ? `<button class="btn" id="doze">Bulldoze (no refund)</button>` : ""}
+          ${!b.wrecked && (b.type === "factory" || b.type === "hangar") ? `<button class="btn" id="trM">Train marine</button>` : ""}
+          ${!b.wrecked && b.type === "factory" && unlocked("scout") ? `<button class="btn" id="trS">Train scout</button>` : ""}
+          ${!b.wrecked && b.type === "hangar" && unlocked("tank") ? `<button class="btn" id="trT">Build tank</button>` : ""}
         </div>`;
       }
     }
@@ -1541,6 +1588,8 @@
     box.innerHTML = html;
     const bind = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
     bind("upg", () => { tryUpgrade(b); paintUI(); });
+    bind("rep", () => { tryRepair(b); paintUI(); });
+    bind("doze", () => { tryBulldoze(b); paintUI(); });
     bind("trM", () => { tryTrain(b, "marine"); paintUI(); });
     bind("trS", () => { tryTrain(b, "scout"); paintUI(); });
     bind("trT", () => { tryTrain(b, "tank"); paintUI(); });
@@ -1630,7 +1679,7 @@
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p><b>Terrain:</b> HQs only on plains or ruins. Mountains: guns, AA, mines only (high ground bonus). Forest: no HQs or heavy industry. After lock, build only inside HQ range (green tiles).</p>
+      <p><b>Relays:</b> Command Relays stretch your build area. If a relay is wrecked, that radius dies until you repair it. Select any building to Repair (paid) or Bulldoze (no refund). HQs cannot be bulldozed.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
