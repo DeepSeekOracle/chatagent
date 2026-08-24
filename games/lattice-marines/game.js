@@ -81,7 +81,7 @@
 
   const WPN = {
     probe:     { name: "Probe shot", cost: 25, fuel: 0, dmg: 0, r: 0, reveal: 1,
-                 desc: "Battleship ping — 3×3 intel, no damage. Limited: 2 + radars per salvo." },
+                 desc: "Battleship ping — fog lifts when the ping lands. 3×3. Limited: 2 + radars per salvo." },
     missile:   { name: "Cruise missile", cost: 90, fuel: 2, dmg: 52, r: 1, need: "silo",
                  desc: "One shot per live Missile Silo." },
     icbm:      { name: "ICBM", cost: 190, fuel: 6, dmg: 135, r: 2, need: "icbm",
@@ -137,8 +137,42 @@
     prestige: 0,
     best: 0,
     mapN: 48,
+    cmdr: "lightfather",
     board: []
   };
+
+  const CMDRS = [
+    {
+      id: "lightfather", name: "Lightfather", title: "Haven steward",
+      file: "cmd-lightfather.jpg",
+      lore: "Justin Helmer’s lattice line. Truth×Light keeps the islands from collapsing. You carry his name on the roster.",
+      bonus: "Haven stipend +25c / turn", drip: 25
+    },
+    {
+      id: "sancora", name: "SANCORA", title: "Handoff champion",
+      file: "cmd-sancora.jpg",
+      lore: "She keeps the pulse shared. Wounded kit on this island mends a little more each repair.",
+      bonus: "Repair +5 HP", heal: 5
+    },
+    {
+      id: "arkos", name: "ARKOS", title: "Blueprint champion",
+      file: "cmd-arkos.jpg",
+      lore: "Raise structure. Every new hall and bunker arrives with extra integrity.",
+      bonus: "New buildings +10 max HP", hp: 10
+    }
+  ];
+  function commander() {
+    return CMDRS.find((c) => c.id === persist.cmdr) || CMDRS[0];
+  }
+  function cycleCmdr() {
+    const i = CMDRS.findIndex((c) => c.id === persist.cmdr);
+    persist.cmdr = CMDRS[(i + 1) % CMDRS.length].id;
+    savePersist();
+  }
+  function cmdrFor(owner) {
+    if (S && S.mode === "ai" && owner === 1) return {};
+    return commander();
+  }
 
   function loadPersist() {
     try {
@@ -605,7 +639,8 @@
     const def = BLD[type];
     const b = {
       id: S.uid++, type, owner, x, y, lvl,
-      hp: def.hp + (lvl - 1) * 25, max: def.hp + (lvl - 1) * 25,
+      hp: def.hp + (lvl - 1) * 25 + (cmdrFor(owner).hp || 0),
+      max: def.hp + (lvl - 1) * 25 + (cmdrFor(owner).hp || 0),
       charges: type === "shield" ? 2 : 0,
       cd: 0, fake: type === "fake", offline: false, wrecked: false
     };
@@ -674,7 +709,7 @@
   function tickEconomy(first) {
     for (const o of [0, 1]) {
       const p = S.players[o];
-      let inc = 150;
+      let inc = 150 + (cmdrFor(o).drip || 0);
       let people = 0;
       for (const b of S.buildings) {
         if (b.owner !== o || b.hp <= 0 || b.offline || b.wrecked) continue;
@@ -830,7 +865,7 @@
     const cost = repairCost(b);
     if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need " + cost + "c (25% of build cost) to repair."); return; }
     pay(b.owner, cost, 0);
-    const heal = Math.max(1, Math.round(b.max * 0.25));
+    const heal = Math.max(1, Math.round(b.max * 0.25)) + (cmdrFor(b.owner).heal || 0);
     b.hp = Math.min(b.max, (b.hp || 0) + heal);
     if (b.hp > 0) b.wrecked = false;
     b.offline = false;
@@ -927,7 +962,6 @@
     }
     pay(owner, w.cost, w.fuel);
     S.queue.push({ owner, kind, x, y, pad: pad ? pad.id : null });
-    if (w.reveal) reveal(owner, x, y, w.reveal);
     log(`${sideName(owner)} queued ${w.name} @ ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
     return true;
@@ -1239,8 +1273,11 @@
       const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && dist(u, g) <= 2 + (hill ? 1 : 0));
       if (!foes.length) continue;
       foes.sort((a, b) => dist(a, g) - dist(b, g));
-      hurtU(foes[0], Math.round((24 + (g.lvl - 1) * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
-      S.fx.push({ kind: "flash", x: foes[0].x, y: foes[0].y, life: 8, max: 8 });
+      const tgt = foes[0];
+      hurtU(tgt, Math.round((24 + (g.lvl - 1) * 4 + (hill ? 8 : 0)) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
+      S.fx.push({ kind: "tracer", x0: g.x, y0: g.y, x1: tgt.x, y1: tgt.y, life: 7, max: 7, hue: "#fbbf24" });
+      S.fx.push({ kind: "muzzle", x: g.x, y: g.y, life: 5, max: 5 });
+      S.fx.push({ kind: "flash", x: tgt.x, y: tgt.y, life: 8, max: 8 });
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       unitLook(u);
@@ -1252,6 +1289,14 @@
       const dmg = melee ? def.mdmg : def.dmg;
       if (UNIT[t.type]) hurtU(t, dmg, u.owner);
       else hurtB(t, dmg, u.owner);
+      const laser = u.type === "marine";
+      S.fx.push({
+        kind: laser ? "laser" : "tracer",
+        x0: u.x, y0: u.y, x1: t.x, y1: t.y,
+        life: laser ? 9 : 7, max: laser ? 9 : 7,
+        hue: laser ? "#22d3ee" : "#fb923c"
+      });
+      S.fx.push({ kind: "muzzle", x: u.x, y: u.y, life: 6, max: 6, laser });
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const mine = buildingAt(u.x, u.y);
@@ -1997,7 +2042,8 @@
       if (b.owner === viewer || vis) {
         const key = b.fake && b.owner !== viewer && vis ? "hq" : b.type;
         if (b.wrecked) ctx.globalAlpha = 0.4;
-        drawSpr(ctx, SPR[BLD[key] ? BLD[key].spr : b.type] || SPR[b.type], x, y, b.owner !== viewer);
+        if (b.type === "radar" && !b.wrecked) drawRadar(ctx, x, y, b.owner !== viewer);
+        else drawSpr(ctx, SPR[BLD[key] ? BLD[key].spr : b.type] || SPR[b.type], x, y, b.owner !== viewer);
         ctx.globalAlpha = 1;
         hpBar(ctx, x, y, b.hp / b.max, b.owner);
       } else if (S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].b) {
@@ -2017,11 +2063,16 @@
     }
   }
 
-  function drawSpr(ctx, img, x, y, enemy, bob = 0) {
+  function sitOf(img) {
+    if (!img) return 0.88;
+    const k = img._sit;
+    return k != null ? k : 0.88;
+  }
+  function drawSpr(ctx, img, x, y, enemy, bob = 0, sit) {
     const p = isoTop(x, y);
     const tw = TW * cam.z * 1.05;
     ctx.beginPath();
-    ctx.ellipse(p.sx, p.sy + 8 * cam.z, 14 * cam.z, 6 * cam.z, 0, 0, 7);
+    ctx.ellipse(p.sx, p.sy + 6 * cam.z, 14 * cam.z, 6 * cam.z, 0, 0, 7);
     ctx.fillStyle = "rgba(0,0,0,.28)";
     ctx.fill();
     if (!img) {
@@ -2030,9 +2081,36 @@
       return;
     }
     const ih = tw * (img.height / img.width);
+    const foot = sit != null ? sit : sitOf(img);
     if (enemy) ctx.filter = "hue-rotate(70deg) saturate(1.15)";
-    ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.88 - bob, tw, ih);
+    ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * foot - bob, tw, ih);
     ctx.filter = "none";
+  }
+  function drawRadar(ctx, x, y, enemy) {
+    const p = isoTop(x, y);
+    drawSpr(ctx, SPR.radar, x, y, enemy, 0, 0.93);
+    const ang = tFrame * 0.07;
+    ctx.save();
+    ctx.translate(p.sx, p.sy - 26 * cam.z);
+    ctx.scale(Math.max(0.18, Math.abs(Math.cos(ang))), 1);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15 * cam.z, 6.5 * cam.z, 0, 0, 7);
+    ctx.strokeStyle = "rgba(34,211,238,.9)";
+    ctx.lineWidth = 1.8 * cam.z;
+    ctx.stroke();
+    ctx.fillStyle = "rgba(34,211,238,.12)";
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(p.sx, p.sy - 26 * cam.z);
+    ctx.rotate(ang);
+    ctx.strokeStyle = "rgba(125, 211, 252, .55)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(18 * cam.z, 4 * cam.z);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function hpBar(ctx, x, y, r, owner) {
@@ -2110,6 +2188,33 @@
       ctx.fillStyle = "#fff";
       ctx.fillRect(p.sx - 3, p.sy - 10, 6, 12);
       ctx.globalAlpha = 1;
+    } else if (f.kind === "laser" || f.kind === "tracer") {
+      const k = 1 - f.life / f.max;
+      const a = iso(f.x0, f.y0), b = iso(f.x1, f.y1);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0.15, f.life / f.max);
+      ctx.strokeStyle = f.hue || (f.kind === "laser" ? "#22d3ee" : "#fbbf24");
+      ctx.lineWidth = (f.kind === "laser" ? 2.4 : 1.6) * cam.z;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(a.sx, a.sy - 10 * cam.z);
+      ctx.lineTo(b.sx, b.sy - 6 * cam.z);
+      ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(a.sx + (b.sx - a.sx) * k, a.sy - 10 * cam.z + (b.sy - a.sy) * k, 2.2 * cam.z, 0, 7);
+      ctx.fill();
+      ctx.restore();
+    } else if (f.kind === "muzzle") {
+      const p = iso(f.x, f.y);
+      const sc = (6 + (1 - f.life / f.max) * 8) * cam.z;
+      ctx.globalAlpha = f.life / f.max;
+      ctx.fillStyle = f.laser ? "#67e8f9" : "#fdba74";
+      ctx.beginPath();
+      ctx.arc(p.sx + 8 * cam.z, p.sy - 14 * cam.z, sc * 0.35, 0, 7);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -2137,6 +2242,7 @@
     const ph = hqCount(me()), eh = hqCount(1 - me());
     $("hqPips").innerHTML = `YOU ${pips(ph, "me")} <span style="width:8px"></span> FOE ${pips(eh, "foe")}`;
     paintLeft();
+    paintPortrait();
     paintSel();
     paintBoard();
     $("btnEnd").disabled = S.phase === "resolve" || S.phase === "enemy" || S.phase === "end";
@@ -2219,6 +2325,31 @@
       <span><div class="nm">${name}</div><div class="ds">${desc}</div></span>
       <span class="cost">${locked && !on ? "LOCK" : cost}</span>
     </button>`;
+  }
+
+  function paintPortrait() {
+    const el = $("cmdPanel");
+    if (!el) return;
+    const c = commander();
+    const key = c.id + "|" + (persist.name || "") + "|" + (S ? S.campaign : "");
+    if (el.dataset.k === key) return;
+    el.dataset.k = key;
+    el.innerHTML = `
+      <h3>Commander</h3>
+      <div class="cmd-frame"><img src="${ASSET + c.file}" alt="${esc(c.name)}"></div>
+      <p class="cmd-name">${esc(persist.name || "Commander")}</p>
+      <p class="cmd-title">${esc(c.name)} · ${esc(c.title)}</p>
+      <p class="cmd-lore">${esc(c.lore)}</p>
+      <p class="cmd-bonus">${esc(c.bonus)}</p>
+      <div class="row"><button class="btn" type="button" id="cmdNext">Change commander</button></div>
+    `;
+    const btn = $("cmdNext");
+    if (btn) btn.onclick = () => {
+      cycleCmdr();
+      const p = $("cmdPanel");
+      if (p) p.dataset.k = "";
+      paintPortrait();
+    };
   }
 
   function paintSel() {
@@ -2306,7 +2437,7 @@
           <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
           <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps go up to 192×192 (Maximum). Forests, ranges, deserts, and lakes grow in clusters. Zoom out on the huge boards. Radio from the listen portal keeps playing if you hide the dock.</p>
           <div class="row">
-            <label>Commander <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
+            <label>Callsign <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
             <label>Map
               <select id="ms">${sizeOpts}</select>
             </label>
@@ -2322,6 +2453,7 @@
             <button class="btn gold" id="go">Deploy campaign ${persist.campaign}</button>
             <button class="btn" id="fresh">New island</button>
             <button class="btn" id="menuRadio">Play radio</button>
+            <button class="btn" id="menuCmdr">Commander: ${esc(commander().name)}</button>
             <a class="btn ghost" href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal ledger</a>
           </div>
           <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige} · Unlocks: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit"}</p>
@@ -2337,6 +2469,8 @@
     $("go").onclick = () => startFromForm(false);
     $("fresh").onclick = () => startFromForm(true);
     $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
+    const mc = $("menuCmdr");
+    if (mc) mc.onclick = () => { cycleCmdr(); showMenu(); };
   }
   function startFromForm(resetCamp) {
     persist.name = ($("nm").value || "Commander").slice(0, 18);
@@ -2359,6 +2493,7 @@
       <h2>Field manual</h2>
       <p><b>Population:</b> City Squares mint 1 People per turn. Spend 50 People on a Forum. Each standing Forum auras Chebyshev 3 (Mk2→4, Mk3→5) and stacks +50%: Ordnance (missile/ICBM damage from pads inside), Bastion (defense + guns/AA), Mint (econ credits), Depot (fuel), Grid (power). Overlap is the point — clustered Forums go unfair; misplaced ones waste the census.</p>
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
+      <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
       <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. In range they shoot the highest-priority closest target (units, then HQs, then guns). Gun pods out-punch a marine (~24 vs 20 melee). Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile. Enter commits the phase. Esc cancels a tool. Hot-seat is local only. A vs-AI win automatically inscribes your commander name on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
@@ -2576,7 +2711,7 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) ledgerFlush(); });
     const names = Object.keys(SPR_FILES);
     let n = 0;
-    function keySprite(img, tile) {
+    function keySprite(img, tile, kind) {
       const c = document.createElement("canvas");
       c.width = img.naturalWidth || img.width;
       c.height = img.naturalHeight || img.height;
@@ -2588,16 +2723,39 @@
         const r = d[i], g = d[i + 1], b = d[i + 2];
         const mag = r > 180 && b > 100 && g < 90 && r - g > 70;
         const hot = r > 220 && g < 70 && b > 80;
-        if (mag || hot) d[i + 3] = 0;
-        void tile;
+        const ink = !tile && r < 10 && g < 10 && b < 10;
+        if (mag || hot || ink) d[i + 3] = 0;
       }
       x.putImageData(id, 0, 0);
-      return c;
+      if (tile) return c;
+      let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+      const d2 = x.getImageData(0, 0, c.width, c.height).data;
+      for (let y = 0; y < c.height; y++) for (let xx = 0; xx < c.width; xx++) {
+        if (d2[(y * c.width + xx) * 4 + 3] > 12) {
+          if (xx < minX) minX = xx;
+          if (y < minY) minY = y;
+          if (xx > maxX) maxX = xx;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (maxX <= minX || maxY <= minY) return c;
+      const pad = 2;
+      minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+      maxX = Math.min(c.width - 1, maxX + pad); maxY = Math.min(c.height - 1, maxY + pad);
+      const w = maxX - minX + 1, h = maxY - minY + 1;
+      const out = document.createElement("canvas");
+      out.width = w; out.height = h;
+      out.getContext("2d").drawImage(c, minX, minY, w, h, 0, 0, w, h);
+      const ratio = h / w;
+      const SIT = { gun: 0.68, mine: 0.7, radar: 0.93, marine: 0.84, tank: 0.84, scout: 0.84, aa: 0.8 };
+      out._sit = SIT[kind] || (ratio > 1.35 ? 0.92 : ratio < 0.85 ? 0.7 : 0.86);
+      return out;
     }
+    const TILE_KEYS = { plains: 1, hills: 1, forest: 1, water: 1, ruins: 1, desert: 1, fog: 1 };
     await Promise.all(names.map((k) => new Promise((res) => {
       const img = new Image();
       img.onload = () => {
-        SPR[k] = String(k).startsWith("tex-") ? img : keySprite(img, false);
+        SPR[k] = String(k).startsWith("tex-") ? img : keySprite(img, !!TILE_KEYS[k], k);
         n++; $("bootMsg").textContent = `Assets ${n}/${names.length}`; res();
       };
       img.onerror = () => { SPR[k] = null; n++; res(); };
