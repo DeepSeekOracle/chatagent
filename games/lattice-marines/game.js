@@ -7,7 +7,9 @@
     { n: 40, label: "40×40 Theatre" },
     { n: 48, label: "48×48 Campaign" },
     { n: 64, label: "64×64 Archipelago" },
-    { n: 80, label: "80×80 Vast war" }
+    { n: 80, label: "80×80 Vast war" },
+    { n: 128, label: "128×128 Colossus" },
+    { n: 192, label: "192×192 Maximum" }
   ];
   const SAVE = "lygo_lattice_marines_v1";
   const ASSET = "./assets/";
@@ -1874,7 +1876,7 @@
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>LATTICE MARINES</h1>
           <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
-          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps run up to 80×80. Radio from the listen portal keeps playing if you hide the dock.</p>
+          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps go up to 192×192 (Maximum). Zoom out on the huge boards. Radio from the listen portal keeps playing if you hide the dock.</p>
           <div class="row">
             <label>Commander <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
             <label>Map
