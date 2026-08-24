@@ -1053,7 +1053,7 @@
   }
 
   function tileLiftAmt(terr) {
-    return ({ fog: 0, water: 3, plains: 7, ruins: 10, forest: 12, hills: 20 }[terr] || 6) * cam.z;
+    return ({ fog: 0, water: 1.2, plains: 2.4, ruins: 2.6, forest: 3.2, hills: 4.8 }[terr] || 2.4) * cam.z;
   }
   function visTerr(x, y) {
     const viewer = me();
@@ -1083,31 +1083,33 @@
     const top = { sx: base.sx, sy: base.sy - lift };
     const tw = TW * cam.z, th = TH * cam.z;
     const T = { n: [top.sx, top.sy - th / 2], e: [top.sx + tw / 2, top.sy], s: [top.sx, top.sy + th / 2], w: [top.sx - tw / 2, top.sy] };
-    const B = { n: [base.sx, base.sy - th / 2], e: [base.sx + tw / 2, base.sy], s: [base.sx, base.sy + th / 2], w: [base.sx - tw / 2, base.sy] };
-
-    if (lift > 0.5) {
+    function faceBottom(nx, ny) {
+      const nLift = inB(nx, ny) ? tileLiftAmt(visTerr(nx, ny)) : 0;
+      if (lift <= nLift + 0.6) return null;
+      const by = base.sy - nLift;
+      return {
+        e: [base.sx + tw / 2, by],
+        s: [base.sx, by + th / 2],
+        w: [base.sx - tw / 2, by]
+      };
+    }
+    const east = faceBottom(x + 1, y);
+    if (east) {
       ctx.beginPath();
       ctx.moveTo(T.e[0], T.e[1]); ctx.lineTo(T.s[0], T.s[1]);
-      ctx.lineTo(B.s[0], B.s[1]); ctx.lineTo(B.e[0], B.e[1]);
+      ctx.lineTo(east.s[0], east.s[1]); ctx.lineTo(east.e[0], east.e[1]);
       ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.22);
+      ctx.fillStyle = terrainShade(terr, -0.18);
       ctx.fill();
+    }
+    const west = faceBottom(x, y + 1);
+    if (west) {
       ctx.beginPath();
       ctx.moveTo(T.w[0], T.w[1]); ctx.lineTo(T.s[0], T.s[1]);
-      ctx.lineTo(B.s[0], B.s[1]); ctx.lineTo(B.w[0], B.w[1]);
+      ctx.lineTo(west.s[0], west.s[1]); ctx.lineTo(west.w[0], west.w[1]);
       ctx.closePath();
-      ctx.fillStyle = terrainShade(terr, -0.42);
+      ctx.fillStyle = terrainShade(terr, -0.34);
       ctx.fill();
-      const stripes = Math.max(1, Math.floor(lift / 4));
-      ctx.strokeStyle = "rgba(0,0,0,.12)";
-      ctx.lineWidth = 1;
-      for (let i = 1; i < stripes; i++) {
-        const t = i / stripes;
-        ctx.beginPath();
-        ctx.moveTo(T.w[0] + (B.w[0] - T.w[0]) * t, T.w[1] + (B.w[1] - T.w[1]) * t);
-        ctx.lineTo(T.s[0] + (B.s[0] - T.s[0]) * t, T.s[1] + (B.s[1] - T.s[1]) * t);
-        ctx.stroke();
-      }
     }
 
     fillWorldTile(ctx, x, y, terr, top.sx, top.sy, vis || unknown ? 1 : 0.55);
@@ -1191,14 +1193,14 @@
   }
 
   function drawProps(ctx, x, y, terr, top, tw, th) {
-    const n = 1 + ((x * 13 + y * 7) % 3);
+    const n = 1 + ((x * 13 + y * 7) % 2);
     if (terr === "forest") {
-      for (let i = 0; i < n + 1; i++) {
+      for (let i = 0; i < n; i++) {
         const u = hash01(x, y, 10 + i) - 0.5;
         const v = hash01(x, y, 20 + i) - 0.5;
         const px = top.sx + u * tw * 0.35;
         const py = top.sy + v * th * 0.35;
-        const r = (4 + hash01(x, y, 30 + i) * 5) * cam.z;
+        const r = (2.2 + hash01(x, y, 30 + i) * 2.4) * cam.z;
         ctx.beginPath();
         ctx.ellipse(px, py + r * 0.15, r * 0.35, r * 0.2, 0, 0, 7);
         ctx.fillStyle = "rgba(0,0,0,.25)";
@@ -1218,7 +1220,7 @@
         const v = hash01(x, y, 60 + i) - 0.5;
         const px = top.sx + u * tw * 0.3;
         const py = top.sy + v * th * 0.25;
-        const s = (3 + hash01(x, y, 70 + i) * 4) * cam.z;
+        const s = (1.8 + hash01(x, y, 70 + i) * 2) * cam.z;
         ctx.beginPath();
         ctx.moveTo(px, py - s);
         ctx.lineTo(px + s, py + s * 0.4);
@@ -1231,9 +1233,9 @@
       const px = top.sx + (hash01(x, y, 1) - 0.5) * tw * 0.2;
       const py = top.sy;
       ctx.fillStyle = "#4b463e";
-      ctx.fillRect(px - 4 * cam.z, py - 8 * cam.z, 8 * cam.z, 10 * cam.z);
+      ctx.fillRect(px - 2.5 * cam.z, py - 5 * cam.z, 5 * cam.z, 6 * cam.z);
       ctx.fillStyle = "#6d6558";
-      ctx.fillRect(px - 3 * cam.z, py - 12 * cam.z, 6 * cam.z, 5 * cam.z);
+      ctx.fillRect(px - 2 * cam.z, py - 7 * cam.z, 4 * cam.z, 3 * cam.z);
     } else if (terr === "plains" && hash01(x, y, 9) > 0.82) {
       ctx.fillStyle = "#3d5c28";
       ctx.fillRect(top.sx + 4 * cam.z, top.sy, 2 * cam.z, 5 * cam.z);
