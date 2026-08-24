@@ -12,7 +12,10 @@
     { n: 192, label: "192×192 Maximum" }
   ];
   const SAVE = "lygo_lattice_marines_v1";
+  const QKEY = "lygo_lattice_marines_ledger_q";
   const ASSET = "./assets/";
+  const LEDGER_PAGE = "./ledger.html";
+  const LEDGER_POST = "https://deepseekoracle-lattice-marines-ledger.hf.space/submit";
 
   const SPR_FILES = {
     plains: "tile-plains.png", hills: "tile-hills.png", forest: "tile-forest.png",
@@ -131,6 +134,76 @@
   }
   function savePersist() {
     localStorage.setItem(SAVE, JSON.stringify(persist));
+  }
+
+  function ledgerQueue() {
+    try { return JSON.parse(localStorage.getItem(QKEY) || "[]"); } catch (_) { return []; }
+  }
+  function ledgerSaveQ(q) {
+    localStorage.setItem(QKEY, JSON.stringify(q.slice(-40)));
+  }
+  function ledgerRecord() {
+    const st = S.players[0].stats;
+    return {
+      name: (persist.name || "Commander").slice(0, 18),
+      score: S.score,
+      diff: S.diff,
+      campaign: S.campaign,
+      mapN: S.mapN || MAP,
+      seed: S.seed,
+      turns: S.turn,
+      profile: S.ai && S.ai.profile,
+      bKill: st.bKill || 0,
+      uKill: st.uKill || 0,
+      prestige: persist.prestige || 0,
+      mapNote: S.mapNote || "",
+      date: new Date().toISOString().slice(0, 10),
+      mode: "ai",
+      result: "win"
+    };
+  }
+  function ledgerEnqueue(rec) {
+    const q = ledgerQueue();
+    const key = [rec.name, rec.seed, rec.score, rec.turns, rec.mapN, rec.diff, rec.date].join("|");
+    if (q.some((x) => [x.name, x.seed, x.score, x.turns, x.mapN, x.diff, x.date].join("|") === key)) return;
+    rec._key = key;
+    q.push(rec);
+    ledgerSaveQ(q);
+    ledgerFlush();
+  }
+  function ledgerFlush() {
+    const q = ledgerQueue();
+    if (!q.length) return Promise.resolve();
+    return (async () => {
+      const left = [];
+      let last = null;
+      for (const rec of q) {
+        try {
+          const r = await fetch(LEDGER_POST, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(rec)
+          });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && j && j.ok) last = j;
+          else left.push(rec);
+        } catch (_) {
+          left.push(rec);
+        }
+      }
+      ledgerSaveQ(left);
+      const el = $("ledgerStatus");
+      if (el) {
+        if (!left.length && last) {
+          el.textContent = last.status === "duplicate"
+            ? "Already on the eternal ledger."
+            : ("Inscribed on the eternal ledger" + (last.rank ? (" · rank " + last.rank) : "") + ".");
+        } else if (left.length) {
+          el.textContent = "Win queued — the ledger Space may be waking. It will retry automatically.";
+        }
+      }
+      return last;
+    })();
   }
 
   function hashSeed(s) {
@@ -1344,6 +1417,7 @@
       autoUnlock();
     }
     savePersist();
+    if (S.over === "win" && S.mode === "ai") ledgerEnqueue(ledgerRecord());
   }
 
   function autoUnlock() {
@@ -1873,8 +1947,9 @@
     const el = $("boardPanel");
     const rows = persist.board.slice(0, 8).map((r, i) =>
       `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.score}</td><td>${r.diff}</td></tr>`).join("");
-    el.innerHTML = `<h3>Leaderboard</h3>
+    el.innerHTML = `<h3>Local board</h3>
       <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige}</p>
+      <p class="sel-meta"><a href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal AI ledger →</a></p>
       <table class="lb"><thead><tr><th>#</th><th>Name</th><th>Score</th><th>Diff</th></tr></thead>
       <tbody>${rows || "<tr><td colspan=4>No sorties yet.</td></tr>"}</tbody></table>`;
   }
@@ -1922,6 +1997,7 @@
             <button class="btn gold" id="go">Deploy campaign ${persist.campaign}</button>
             <button class="btn" id="fresh">New island</button>
             <button class="btn" id="menuRadio">Play radio</button>
+            <a class="btn ghost" href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal ledger</a>
           </div>
           <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige} · Unlocks: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit"}</p>
           <p class="sel-meta"><b>Deploy</b> 3 HQs → <b>Defense</b> build → <b>Offense</b> probe the black → <b>Playback</b>.</p>
@@ -1958,7 +2034,7 @@
       <h2>Field manual</h2>
       <p><b>Salvo:</b> one rocket per live silo, one ICBM per ICBM silo, one hangar launch (marine / tank / airstrike), one EMP per tower. Probes reveal, they do not damage. Each AA fires once per incoming wave. EMP jams electronics through the victim’s next salvo. Repair is 25% HP per turn for 25% of the build cost — not instant.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
+      <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence. A vs-AI win automatically inscribes your commander name and match metadata on the <a href="./ledger.html" target="_blank" rel="noopener">eternal ledger</a>.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
     overlayMode = "help";
@@ -1974,14 +2050,17 @@
       <h2>${title}</h2>
       <p>Score <b>${S.score}</b> · ${S.diff} · ${S.mode === "ai" ? S.ai.profile : "hot-seat"} · ${S.turn} turns</p>
       <p class="sel-meta">Buildings wrecked ${st.bKill} · Units down ${st.uKill} · Best ${persist.best}</p>
+      ${S.over === "win" && S.mode === "ai" ? `<p class="sel-meta" id="ledgerStatus">Inscribing ${esc(persist.name || "Commander")} on the eternal ledger…</p>` : (S.mode === "hotseat" ? `<p class="sel-meta">Hot-seat is local only — the eternal ledger is vs AI.</p>` : "")}
       <div class="row">
         <button class="btn gold" id="again">${S.over === "win" ? "Next campaign island" : "Retry island"}</button>
         <button class="btn" id="mm">Main menu</button>
+        <a class="btn ghost" href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal ledger</a>
         <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal tip</a>
       </div>
     `);
     $("again").onclick = () => newMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode, mapN: S.mapN || persist.mapN });
     $("mm").onclick = showMenu;
+    if (S.over === "win" && S.mode === "ai") ledgerFlush();
   }
 
   /* ---------- input ---------- */
@@ -2163,6 +2242,8 @@
   async function boot() {
     loadPersist();
     autoUnlock();
+    ledgerFlush();
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) ledgerFlush(); });
     const names = Object.keys(SPR_FILES);
     let n = 0;
     function keySprite(img, tile) {
