@@ -1198,84 +1198,65 @@
     const lift = tileLiftAmt(terr);
     const top = { sx: base.sx, sy: base.sy - lift };
     const tw = TW * cam.z, th = TH * cam.z;
-    fillWorldTile(ctx, x, y, terr, top.sx, top.sy, vis || unknown ? 1 : 0.55);
-    const light = ctx.createLinearGradient(top.sx - tw / 2, top.sy - th / 2, top.sx + tw / 2, top.sy + th / 2);
-    light.addColorStop(0, "rgba(255,255,255,0.10)");
-    light.addColorStop(0.5, "rgba(255,255,255,0)");
-    light.addColorStop(1, "rgba(0,0,0,0.18)");
-    diamondPathAt(ctx, top.sx, top.sy);
-    ctx.fillStyle = light;
+    diamondPathAt(ctx, top.sx, top.sy, 1.04);
+    ctx.fillStyle = terrainColor(terr);
     ctx.fill();
-
-    if (vis && terr === "water") {
-      const foam = neighbors(x, y).some((n) => inB(n.x, n.y) && S.tiles[n.y][n.x] !== "water");
-      if (foam) {
-        diamondPathAt(ctx, top.sx, top.sy);
-        ctx.strokeStyle = "rgba(200,240,255,.35)";
-        ctx.lineWidth = 1.5 * cam.z;
-        ctx.stroke();
-      }
+    fillWorldTile(ctx, x, y, terr, top.sx, top.sy, vis || unknown ? 1 : 0.55);
+    if (terr !== "water" && terr !== "fog") {
+      const light = ctx.createLinearGradient(top.sx - tw / 2, top.sy - th / 2, top.sx + tw / 2, top.sy + th / 2);
+      light.addColorStop(0, "rgba(255,255,255,0.07)");
+      light.addColorStop(1, "rgba(0,0,0,0.08)");
+      diamondPathAt(ctx, top.sx, top.sy, 1.04);
+      ctx.fillStyle = light;
+      ctx.fill();
     }
 
     if (vis && !unknown) drawProps(ctx, x, y, terr, top, tw, th);
 
     if (!vis && mem) {
-      diamondPathAt(ctx, top.sx, top.sy);
-      ctx.fillStyle = "rgba(4,10,18,.4)";
+      diamondPathAt(ctx, top.sx, top.sy, 1.04);
+      ctx.fillStyle = "rgba(4,10,18,.35)";
       ctx.fill();
     }
 
-    ctx.lineWidth = 1;
-    diamondPathAt(ctx, top.sx, top.sy);
-    if (unknown) ctx.strokeStyle = "rgba(20, 48, 72, 0.35)";
-    else if (vis && !onHome(viewer, x, y)) ctx.strokeStyle = "rgba(34,211,238,.22)";
-    else ctx.strokeStyle = "rgba(0,0,0,.08)";
-    ctx.stroke();
+    const land = terr !== "water" && terr !== "fog";
+    if (vis && land) {
+      const wet = neighbors(x, y).some((n) => inB(n.x, n.y) && S.tiles[n.y][n.x] === "water");
+      if (wet) {
+        diamondPathAt(ctx, top.sx, top.sy, 1.0);
+        ctx.strokeStyle = "rgba(210, 230, 220, 0.28)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    }
   }
 
   function fillWorldTile(ctx, x, y, kind, sx, sy, alpha) {
     const img = SPR["tex-" + kind];
-    const cv = canvas();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (!img) {
-      diamondPathAt(ctx, sx, sy);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = terrainColor(kind);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      return;
-    }
+    if (!img) return;
     if (!PAT[kind]) {
       try { PAT[kind] = ctx.createPattern(img, "repeat"); } catch (_) { PAT[kind] = null; }
     }
+    if (!PAT[kind]) return;
     ctx.save();
-    diamondPathAt(ctx, sx, sy);
+    diamondPathAt(ctx, sx, sy, 1.04);
     ctx.clip();
     ctx.globalAlpha = alpha;
-    if (PAT[kind]) {
-      const k = 56;
-      let ox = 0, oy = 0;
-      if (kind === "water") {
-        ox = (tFrame * 0.15) % k;
-        oy = (tFrame * 0.08) % k;
-      }
-      ctx.setTransform(
-        dpr * (TW / 2) * cam.z / k,
-        dpr * (TH / 2) * cam.z / k,
-        dpr * (-TW / 2) * cam.z / k,
-        dpr * (TH / 2) * cam.z / k,
-        dpr * cam.x,
-        dpr * cam.y
-      );
-      ctx.fillStyle = PAT[kind];
-      ctx.fillRect((x - 0.5) * k + ox, (y - 0.5) * k + oy, k, k);
-    } else {
-      ctx.fillStyle = terrainColor(kind);
-      ctx.fill();
-    }
+    const k = 64;
+    const drift = kind === "water" ? tFrame * 0.04 : 0;
+    ctx.setTransform(
+      dpr * (TW / 2) * cam.z / k,
+      dpr * (TH / 2) * cam.z / k,
+      dpr * (-TW / 2) * cam.z / k,
+      dpr * (TH / 2) * cam.z / k,
+      dpr * cam.x,
+      dpr * cam.y
+    );
+    ctx.fillStyle = PAT[kind];
+    ctx.fillRect((x - 1.5) * k + drift, (y - 1.5) * k + drift * 0.45, k * 3, k * 3);
     ctx.restore();
     ctx.globalAlpha = 1;
-    void cv;
   }
 
   function drawProps(ctx, x, y, terr, top, tw, th) {
@@ -1384,8 +1365,9 @@
     ctx.fillRect(p.sx - w / 2, p.sy + 8 * cam.z, w * Math.max(0, Math.min(1, r)), h);
   }
 
-  function diamondPathAt(ctx, sx, sy) {
-    const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
+  function diamondPathAt(ctx, sx, sy, scale) {
+    const s = scale == null ? 1 : scale;
+    const hw = (TW / 2) * cam.z * s, hh = (TH / 2) * cam.z * s;
     ctx.beginPath();
     ctx.moveTo(sx, sy - hh);
     ctx.lineTo(sx + hw, sy);
