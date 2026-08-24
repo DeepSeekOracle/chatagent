@@ -1,7 +1,14 @@
 /* Lattice Marines — isometric three-phase island war. Local AI, fog, campaign. */
 (() => {
-  const MAP = 26;
+  let MAP = 48;
   const TW = 72, TH = 36;
+  const MAP_SIZES = [
+    { n: 32, label: "32×32 Raid" },
+    { n: 40, label: "40×40 Theatre" },
+    { n: 48, label: "48×48 Campaign" },
+    { n: 64, label: "64×64 Archipelago" },
+    { n: 80, label: "80×80 Vast war" }
+  ];
   const SAVE = "lygo_lattice_marines_v1";
   const ASSET = "./assets/";
 
@@ -105,6 +112,7 @@
     campaign: 1,
     prestige: 0,
     best: 0,
+    mapN: 48,
     board: []
   };
 
@@ -159,9 +167,18 @@
         if (Math.hypot(x - cx, y - cy) < rad + n) tiles[y][x] = "plains";
       }
     };
-    paint(MAP * 0.68, MAP * 0.72, 8.2);
-    paint(MAP * 0.30, MAP * 0.28, 8.2);
-    if (R() > 0.35) paint(MAP * 0.5, MAP * 0.5, 3.4);
+    const rad = MAP * 0.27;
+    paint(MAP * 0.70, MAP * 0.76, rad);
+    paint(MAP * 0.28, MAP * 0.24, rad);
+    if (MAP >= 40) paint(MAP * 0.52, MAP * 0.50, MAP * 0.08);
+    if (MAP >= 64) {
+      paint(MAP * 0.18, MAP * 0.55, MAP * 0.09);
+      paint(MAP * 0.82, MAP * 0.42, MAP * 0.09);
+    }
+    if (MAP >= 80) {
+      paint(MAP * 0.48, MAP * 0.18, MAP * 0.08);
+      paint(MAP * 0.55, MAP * 0.84, MAP * 0.08);
+    }
     const countHalf = (south) => {
       let n = 0;
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
@@ -170,8 +187,9 @@
       }
       return n;
     };
-    if (countHalf(true) < 36) paint(MAP * 0.70, MAP * 0.78, 9.5);
-    if (countHalf(false) < 36) paint(MAP * 0.30, MAP * 0.20, 9.5);
+    const minLand = Math.round(MAP * 1.6);
+    if (countHalf(true) < minLand) paint(MAP * 0.72, MAP * 0.80, rad * 1.15);
+    if (countHalf(false) < minLand) paint(MAP * 0.26, MAP * 0.18, rad * 1.15);
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
       const r = R();
@@ -230,10 +248,14 @@
   function newMatch(opts) {
     opts = opts || {};
     if (!DIFF[opts.diff]) opts.diff = "normal";
+    const size = Number(opts.mapN) || persist.mapN || 48;
+    MAP = MAP_SIZES.some((m) => m.n === size) ? size : 48;
+    persist.mapN = MAP;
     const seed = (opts.seed >>> 0) || (Math.floor(Math.random() * 1e9) | 0);
     const R = rng(seed);
+    const purse = Math.round(700 + MAP * 6);
     S = {
-      seed, R,
+      seed, R, mapN: MAP,
       tiles: genMap(seed),
       buildings: [],
       units: [],
@@ -241,11 +263,11 @@
       lastSeen: [grid(null), grid(null)],
       fogAge: [grid(0), grid(0)],
       players: [
-        { credits: 900, fuel: 6, emp: 0, satCD: 0, stats: zeroStats() },
-        { credits: Math.round(900 * DIFF[opts.diff].eco * (1 + (opts.campaign - 1) * 0.12)),
-          fuel: 6, emp: 0, satCD: 0, stats: zeroStats() }
+        { credits: purse, fuel: 8, emp: 0, satCD: 0, stats: zeroStats() },
+        { credits: Math.round(purse * DIFF[opts.diff].eco * (1 + (opts.campaign - 1) * 0.12)),
+          fuel: 8, emp: 0, satCD: 0, stats: zeroStats() }
       ],
-      phase: "defense",
+      phase: "deploy",
       turn: 1,
       campaign: opts.campaign,
       diff: opts.diff,
@@ -261,13 +283,10 @@
       log: [],
       uid: 1
     };
-    placeHQs(0, R);
     placeHQs(1, R);
-    for (const o of [0, 1]) radarSweep(o);
-    tickEconomy(true);
-    requestAnimationFrame(() => { if (S) focusOwner(me()); });
-    log(`Island seeded ${seed}. Enemy profile: ${S.ai.profile}. Campaign ${S.campaign}.`);
-    sel = null; tool = null; weapon = null;
+    requestAnimationFrame(() => { if (S) focusHomeLand(0); });
+    log(`${MAP}×${MAP} theatre. Place your 3 Command Centres — cluster them or spread them.`);
+    sel = null; tool = "hq"; weapon = null;
     overlayMode = null;
     hideOverlay();
     paintUI();
@@ -414,7 +433,12 @@
     if (occupied(x, y)) return "Tile occupied.";
     if (!unlocked(BLD[type].unlock)) return "Locked.";
     if (S.players[owner].credits < BLD[type].cost) return "Not enough credits.";
-    if (type === "hq") return "Command centres are already placed.";
+    if (type === "hq") {
+      if (S.phase !== "deploy") return "Command centres are already locked in.";
+      if (countB("hq", owner) >= 3) return "All 3 command centres are placed. Pick one up to move it.";
+      return null;
+    }
+    if (S.phase === "deploy") return "Lock your 3 HQs first.";
     return null;
   }
 
@@ -484,6 +508,22 @@
     if (w.reveal) reveal(owner, x, y, w.reveal);
     log(`${owner === 0 ? "You" : "Enemy"} queued ${w.name} @ ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
+  }
+
+  function endDeploy() {
+    if (S.phase !== "deploy") return;
+    if (hqCount(me()) < 3) {
+      toast("Place all 3 Command Centres before locking.");
+      fx("error");
+      return;
+    }
+    tickEconomy(true);
+    for (const o of [0, 1]) radarSweep(o);
+    S.phase = "defense";
+    tool = null; weapon = null;
+    log("Command net live. Fortify the island.");
+    fx("phase");
+    paintUI();
   }
 
   function endDefense() {
@@ -917,6 +957,21 @@
     cam.x = cw / 2 - w.sx * cam.z;
     cam.y = ch / 2 - w.sy * cam.z;
   }
+  function focusHomeLand(owner) {
+    const land = landTiles(owner);
+    if (!land.length) return;
+    const c = {
+      x: land.reduce((a, t) => a + t.x, 0) / land.length,
+      y: land.reduce((a, t) => a + t.y, 0) / land.length
+    };
+    const w = worldIso(c.x, c.y);
+    const cv = canvas();
+    const cw = cv.clientWidth || 960;
+    const ch = cv.clientHeight || 640;
+    cam.z = Math.max(0.38, Math.min(1.15, ch / (MAP * TH * 0.62)));
+    cam.x = cw / 2 - w.sx * cam.z;
+    cam.y = ch / 2 - w.sy * cam.z;
+  }
 
   function draw() {
     const cv = canvas(), ctx = ctxOf();
@@ -930,7 +985,12 @@
     ctx.clearRect(0, 0, w, h);
     if (!S) return;
     const order = [];
-    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) order.push({ x, y, k: x + y });
+    const pad = TW * cam.z * 1.8;
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      const p = iso(x, y);
+      if (p.sx < -pad || p.sx > w + pad || p.sy < -pad || p.sy > h + pad) continue;
+      order.push({ x, y, k: x + y });
+    }
     order.sort((a, b) => a.k - b.k);
     for (const t of order) drawTile(ctx, t.x, t.y);
     for (const t of order) drawOcc(ctx, t.x, t.y);
@@ -963,14 +1023,17 @@
       return;
     }
 
+    fillDiamond(ctx, x, y, terrainColor(terr || "water"));
     const img = terr ? SPR[terr] : null;
     if (img) {
       const ih = tw * (img.height / img.width);
-      ctx.globalAlpha = vis ? 1 : 0.4;
-      ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.55, tw, ih);
+      ctx.save();
+      diamondPath(ctx, x, y);
+      ctx.clip();
+      ctx.globalAlpha = vis ? 1 : 0.45;
+      ctx.drawImage(img, p.sx - tw / 2, p.sy - ih * 0.52, tw, ih);
       ctx.globalAlpha = 1;
-    } else {
-      fillDiamond(ctx, x, y, terrainColor(terr || "water"));
+      ctx.restore();
     }
     if (!vis && mem) fillDiamond(ctx, x, y, "rgba(4,10,18,.45)");
     if (vis && !onHome(viewer, x, y) && S.fog[viewer][y][x]) {
@@ -1043,7 +1106,7 @@
     ctx.fillRect(p.sx - w / 2, p.sy + 6 * cam.z, w * Math.max(0, Math.min(1, r)), h);
   }
 
-  function fillDiamond(ctx, x, y, color) {
+  function diamondPath(ctx, x, y) {
     const p = iso(x, y);
     const hw = (TW / 2) * cam.z, hh = (TH / 2) * cam.z;
     ctx.beginPath();
@@ -1052,6 +1115,9 @@
     ctx.lineTo(p.sx, p.sy + hh);
     ctx.lineTo(p.sx - hw, p.sy);
     ctx.closePath();
+  }
+  function fillDiamond(ctx, x, y, color) {
+    diamondPath(ctx, x, y);
     ctx.fillStyle = color;
     ctx.fill();
   }
@@ -1104,6 +1170,7 @@
     if (!S) return;
     const p = S.players[me()];
     $("phasePill").textContent = ({
+      deploy: "DEPLOY HQs",
       defense: "DEFENSE", offense: "OFFENSE", resolve: "ATTACK PLAYBACK",
       enemy: "ENEMY RESPONSE", end: S.over === "win" ? "VICTORY" : "DEFEAT"
     })[S.phase] || S.phase;
@@ -1121,8 +1188,11 @@
     paintBoard();
     $("btnEnd").disabled = S.phase === "resolve" || S.phase === "enemy" || S.phase === "end";
     $("btnSkip").disabled = S.phase !== "resolve";
-    $("btnEnd").textContent = S.phase === "defense" ? "Commit defenses →" : S.phase === "offense" ? "Launch attacks →" : "End phase";
-    $("dockStatus").textContent = S.phase === "defense"
+    $("btnEnd").textContent = S.phase === "deploy" ? "Lock 3 command centres →"
+      : S.phase === "defense" ? "Commit defenses →" : S.phase === "offense" ? "Launch attacks →" : "End phase";
+    $("dockStatus").textContent = S.phase === "deploy"
+      ? `Place ${3 - hqCount(me())} more Command Centre(s) on your island. Click an HQ to pick it up. Clusters are allowed.`
+      : S.phase === "defense"
       ? "Select a building, then click your island. Enemy island stays black until radar or probes."
       : S.phase === "offense"
         ? "Click black fog to probe (Battleship). Radar discs and strikes lift the dark."
@@ -1138,6 +1208,14 @@
 
   function paintLeft() {
     const rail = $("leftRail");
+    if (S.phase === "deploy") {
+      const left = 3 - hqCount(me());
+      rail.innerHTML = `<div class="panel"><h3>Command net</h3>
+        <p class="sel-meta">Drop ${left} Command Centre${left === 1 ? "" : "s"} on your land. You may cluster all three in a bunker or spread them across the island. Click a placed HQ to pick it up and move it.</p>
+        ${itemBtn("hq", BLD.hq.name, BLD.hq.desc, left + " left", ASSET + SPR_FILES.hq, true, false)}
+      </div>`;
+      return;
+    }
     if (S.phase === "defense") {
       const cats = ["economy", "production", "intel", "defense", "decoy", "offense"];
       let html = `<p class="cat">Build</p>`;
@@ -1238,60 +1316,79 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
   /* ---------- overlay ---------- */
-  function showOverlay(html) {
+  function showOverlay(html, kind) {
     const o = $("overlay");
-    o.innerHTML = `<div class="modal">${html}</div>`;
-    o.classList.add("show");
+    o.className = "overlay show" + (kind ? " " + kind : "");
+    o.innerHTML = kind === "menu" ? html : `<div class="modal">${html}</div>`;
   }
-  function hideOverlay() { $("overlay").classList.remove("show"); $("overlay").innerHTML = ""; }
+  function hideOverlay() { $("overlay").className = "overlay"; $("overlay").innerHTML = ""; }
 
   function showMenu() {
     overlayMode = "menu";
+    const sizeOpts = MAP_SIZES.map((m) =>
+      `<option value="${m.n}" ${(persist.mapN || 48) === m.n ? "selected" : ""}>${m.label}</option>`).join("");
+    const diffOpts = Object.keys(DIFF).map((k) =>
+      `<option value="${k}" ${k === "normal" ? "selected" : ""}>${DIFF[k].label}</option>`).join("");
     showOverlay(`
-      <p class="kicker">chatagent.ca · Δ9Φ963</p>
-      <h2>Lattice Marines</h2>
-      <p>Three-phase island war. Fortify your half, probe the fog like Battleship, then watch missiles and autonomous marines resolve. An adaptive AI switches doctrine mid-match. Unlocks persist. The campaign does not end.</p>
-      <div class="row">
-        <label>Commander <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
-        <label>Difficulty
-          <select id="df">${Object.keys(DIFF).map((k) => `<option value="${k}" ${k === "normal" ? "selected" : ""}>${DIFF[k].label}</option>`).join("")}</select>
-        </label>
-        <label>Mode
-          <select id="md"><option value="ai">vs Adaptive AI</option><option value="hotseat">Hot-seat (pass the keyboard)</option></select>
-        </label>
+      <div class="title-screen">
+        <div class="title-art">
+          <img src="./assets/menu.jpg" alt="Lattice Marines island fortress">
+          <div class="title-art-fade"></div>
+        </div>
+        <div class="title-panel">
+          <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+          <h1>LATTICE MARINES</h1>
+          <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
+          <p>You deploy your own HQs — bunker them in a cluster or scatter them. Maps run up to 80×80. Radio from the listen portal keeps playing if you hide the dock.</p>
+          <div class="row">
+            <label>Commander <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
+            <label>Map
+              <select id="ms">${sizeOpts}</select>
+            </label>
+            <label>Difficulty
+              <select id="df">${diffOpts}</select>
+            </label>
+            <label>Mode
+              <select id="md"><option value="ai">vs Adaptive AI</option><option value="hotseat">Hot-seat</option></select>
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn gold" id="go">Deploy campaign ${persist.campaign}</button>
+            <button class="btn" id="fresh">New island</button>
+            <button class="btn" id="menuRadio">Play radio</button>
+          </div>
+          <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige} · Unlocks: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit"}</p>
+          <p class="sel-meta"><b>Deploy</b> 3 HQs → <b>Defense</b> build → <b>Offense</b> probe the black → <b>Playback</b>.</p>
+          <div class="row">
+            <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
+            <a class="btn ghost" href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener">Listen portal</a>
+            <a class="btn ghost" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html" target="_blank" rel="noopener">Star Chart</a>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn gold" id="go">Deploy campaign ${persist.campaign}</button>
-        <button class="btn" id="fresh">New island (same unlocks)</button>
-      </div>
-      <p class="sel-meta">Unlocked: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit (probe, silo, hangar, radar, AA, mines, decoys)"} · Wins ${persist.wins}</p>
-      <h3>How a turn works</h3>
-      <p><b>Defense</b> — spend credits on plants, guns, radars, silos. Train units. <b>Offense</b> — click fog to probe or fire. <b>Playback</b> — everything flies. Then the enemy answers.</p>
-      <div class="row">
-        <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate via PayPal.me/ExcavationPro</a>
-        <a class="btn ghost" href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener">Full listen portal</a>
-        <a class="btn ghost" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html" target="_blank" rel="noopener">Haven Star Chart</a>
-      </div>
-    `);
+    `, "menu");
     $("go").onclick = () => startFromForm(false);
     $("fresh").onclick = () => startFromForm(true);
+    $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
   }
   function startFromForm(resetCamp) {
     persist.name = ($("nm").value || "Commander").slice(0, 18);
+    persist.mapN = Number($("ms").value) || 48;
     savePersist();
     if (resetCamp) persist.campaign = Math.max(1, persist.campaign);
     newMatch({
       seed: Math.floor(Math.random() * 1e9),
       diff: $("df").value,
       campaign: persist.campaign,
-      mode: $("md").value
+      mode: $("md").value,
+      mapN: persist.mapN
     });
   }
 
   function showHelp() {
     showOverlay(`
       <h2>Field manual</h2>
-      <p>You always see your southern island. The enemy island is <b>black</b> until intel hits it. Radar paints a disc onto their land (aligned to that tower’s column). A probe is Battleship: you pay to light a 3×3 even if nothing is there. Strikes reveal the blast. Forests hide from radar until something actually hits them. Scans go stale after a few turns and leave a ghost — not live vision.</p>
+      <p><b>Deploy:</b> you place all 3 Command Centres yourself — cluster for a bunker or spread for survival. Then defense, then offense. Enemy land is black until radar or probes. A probe is Battleship: light a 3×3 even on a miss. Forests hide from radar until struck.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Left-drag or WASD pan, wheel zoom. Click a building in the list, then a tile — the palette does not stay “hot” by default. Enter commits the phase. Esc cancels a tool. Hot-seat is local only — no server. AI profiles: Aggressor, Turtle, Economist, Intelligence.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
@@ -1312,7 +1409,7 @@
         <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal tip</a>
       </div>
     `);
-    $("again").onclick = () => newMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode });
+    $("again").onclick = () => newMatch({ seed: Math.floor(Math.random() * 1e9), diff: S.diff, campaign: persist.campaign, mode: S.mode, mapN: S.mapN || persist.mapN });
     $("mm").onclick = showMenu;
   }
 
@@ -1322,6 +1419,19 @@
   function clickTile(t) {
     if (!inB(t.x, t.y)) return;
     sel = t;
+    if (S.phase === "deploy") {
+      const b = buildingAt(t.x, t.y);
+      if (b && b.owner === me() && b.type === "hq") {
+        S.buildings = S.buildings.filter((x) => x.id !== b.id);
+        toast("Picked up a Command Centre. Place it again.");
+        fx("ui");
+        paintUI();
+        return;
+      }
+      tryBuild("hq", me(), t.x, t.y);
+      paintUI();
+      return;
+    }
     if (S.phase === "defense" && tool) {
       tryBuild(tool, me(), t.x, t.y);
     } else if (S.phase === "offense" && weapon) {
@@ -1476,9 +1586,30 @@
     autoUnlock();
     const names = Object.keys(SPR_FILES);
     let n = 0;
+    function keySprite(img, tile) {
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth || img.width;
+      c.height = img.naturalHeight || img.height;
+      const x = c.getContext("2d");
+      x.drawImage(img, 0, 0);
+      const id = x.getImageData(0, 0, c.width, c.height);
+      const d = id.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const mag = r > 150 && b > 80 && g < 125 && r - g > 40;
+        const hot = r > 190 && g < 100 && b > 45;
+        if (mag || hot) d[i + 3] = 0;
+        else if (tile && r < 22 && g < 22 && b < 22) d[i + 3] = 0;
+      }
+      x.putImageData(id, 0, 0);
+      return c;
+    }
     await Promise.all(names.map((k) => new Promise((res) => {
       const img = new Image();
-      img.onload = () => { SPR[k] = img; n++; $("bootMsg").textContent = `Assets ${n}/${names.length}`; res(); };
+      img.onload = () => {
+        SPR[k] = keySprite(img, ["plains", "hills", "forest", "water", "ruins"].includes(k));
+        n++; $("bootMsg").textContent = `Assets ${n}/${names.length}`; res();
+      };
       img.onerror = () => { SPR[k] = null; n++; res(); };
       img.src = ASSET + SPR_FILES[k];
     })));
@@ -1494,7 +1625,8 @@
     window.addEventListener("resize", resize);
     $("btnEnd").onclick = () => {
       if (!S) return;
-      if (S.phase === "defense") endDefense();
+      if (S.phase === "deploy") endDeploy();
+      else if (S.phase === "defense") endDefense();
       else if (S.phase === "offense") endOffense();
     };
     $("btnSkip").onclick = skipPlayback;
