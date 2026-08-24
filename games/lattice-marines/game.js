@@ -15,6 +15,8 @@
   const SPR_FILES = {
     plains: "tile-plains.png", hills: "tile-hills.png", forest: "tile-forest.png",
     water: "tile-water.png", ruins: "tile-ruins.png", fog: "tile-fog.png",
+    "tex-plains": "tex-plains.jpg", "tex-hills": "tex-hills.jpg", "tex-forest": "tex-forest.jpg",
+    "tex-water": "tex-water.jpg", "tex-ruins": "tex-ruins.jpg", "tex-fog": "tex-fog.jpg",
     hq: "b-hq.png", energy: "b-energy.png", econ: "b-econ.png", factory: "b-factory.png",
     radar: "b-radar.png", gun: "b-gun.png", aa: "b-aa.png", mine: "b-mine.png",
     shield: "b-shield.png", emp: "b-emp.png", fake: "b-fake.png", silo: "b-silo.png",
@@ -92,6 +94,7 @@
   };
 
   const SPR = {};
+  const PAT = {};
   const $ = (id) => document.getElementById(id);
   const canvas = () => $("iso");
   const ctxOf = () => canvas().getContext("2d");
@@ -1000,9 +1003,15 @@
     const w = cv.clientWidth, h = cv.clientHeight;
     if (cv.width !== (w * dpr | 0) || cv.height !== (h * dpr | 0)) {
       cv.width = w * dpr | 0; cv.height = h * dpr | 0;
+      for (const k of Object.keys(PAT)) delete PAT[k];
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, "#243656");
+    sky.addColorStop(0.35, "#121c2e");
+    sky.addColorStop(1, "#070b12");
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
     if (!S) return;
     const order = [];
     const pad = TW * cam.z * 1.8;
@@ -1101,16 +1110,14 @@
       }
     }
 
-    const img = SPR[terr];
-    if (img) {
-      ctx.globalAlpha = vis || unknown ? 1 : 0.55;
-      ctx.drawImage(img, top.sx - tw / 2, top.sy - th / 2, tw, th);
-      ctx.globalAlpha = 1;
-    } else {
-      diamondPathAt(ctx, top.sx, top.sy);
-      ctx.fillStyle = terrainColor(terr);
-      ctx.fill();
-    }
+    fillWorldTile(ctx, x, y, terr, top.sx, top.sy, vis || unknown ? 1 : 0.55);
+    const light = ctx.createLinearGradient(top.sx - tw / 2, top.sy - th / 2, top.sx + tw / 2, top.sy + th / 2);
+    light.addColorStop(0, "rgba(255,255,255,0.10)");
+    light.addColorStop(0.5, "rgba(255,255,255,0)");
+    light.addColorStop(1, "rgba(0,0,0,0.18)");
+    diamondPathAt(ctx, top.sx, top.sy);
+    ctx.fillStyle = light;
+    ctx.fill();
 
     if (vis && terr === "water") {
       const foam = neighbors(x, y).some((n) => inB(n.x, n.y) && S.tiles[n.y][n.x] !== "water");
@@ -1132,10 +1139,55 @@
 
     ctx.lineWidth = 1;
     diamondPathAt(ctx, top.sx, top.sy);
-    if (unknown) ctx.strokeStyle = "rgba(18, 42, 64, 0.85)";
-    else if (vis && !onHome(viewer, x, y)) ctx.strokeStyle = "rgba(34,211,238,.28)";
-    else ctx.strokeStyle = "rgba(0,0,0,.2)";
+    if (unknown) ctx.strokeStyle = "rgba(20, 48, 72, 0.35)";
+    else if (vis && !onHome(viewer, x, y)) ctx.strokeStyle = "rgba(34,211,238,.22)";
+    else ctx.strokeStyle = "rgba(0,0,0,.08)";
     ctx.stroke();
+  }
+
+  function fillWorldTile(ctx, x, y, kind, sx, sy, alpha) {
+    const img = SPR["tex-" + kind];
+    const cv = canvas();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (!img) {
+      diamondPathAt(ctx, sx, sy);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = terrainColor(kind);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (!PAT[kind]) {
+      try { PAT[kind] = ctx.createPattern(img, "repeat"); } catch (_) { PAT[kind] = null; }
+    }
+    ctx.save();
+    diamondPathAt(ctx, sx, sy);
+    ctx.clip();
+    ctx.globalAlpha = alpha;
+    if (PAT[kind]) {
+      const k = 56;
+      let ox = 0, oy = 0;
+      if (kind === "water") {
+        ox = (tFrame * 0.15) % k;
+        oy = (tFrame * 0.08) % k;
+      }
+      ctx.setTransform(
+        dpr * (TW / 2) * cam.z / k,
+        dpr * (TH / 2) * cam.z / k,
+        dpr * (-TW / 2) * cam.z / k,
+        dpr * (TH / 2) * cam.z / k,
+        dpr * cam.x,
+        dpr * cam.y
+      );
+      ctx.fillStyle = PAT[kind];
+      ctx.fillRect((x - 0.5) * k + ox, (y - 0.5) * k + oy, k, k);
+    } else {
+      ctx.fillStyle = terrainColor(kind);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    void cv;
   }
 
   function drawProps(ctx, x, y, terr, top, tw, th) {
@@ -1757,7 +1809,7 @@
     await Promise.all(names.map((k) => new Promise((res) => {
       const img = new Image();
       img.onload = () => {
-        SPR[k] = keySprite(img, ["plains", "hills", "forest", "water", "ruins"].includes(k));
+        SPR[k] = String(k).startsWith("tex-") ? img : keySprite(img, false);
         n++; $("bootMsg").textContent = `Assets ${n}/${names.length}`; res();
       };
       img.onerror = () => { SPR[k] = null; n++; res(); };
