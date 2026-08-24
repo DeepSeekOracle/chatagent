@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lattice Marines — isometric island war | chatagent.ca</title>
+<meta name="description" content="Lattice Marines is a free isometric strategy game: three-phase turns, Battleship fog of war, adaptive AI, unlocks, and a local leaderboard. Inspired by Metal Marines, built as a standalone webpage.">
+<meta name="theme-color" content="#070b12">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-marines/">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://chatagent.ca/games/lattice-marines/">
+<meta property="og:title" content="Lattice Marines — island war">
+<meta property="og:description" content="Place command centres. Probe the fog. Watch missiles and marines resolve. Adaptive AI, campaign loop, unlocks, leaderboard.">
+<meta property="og:image" content="https://chatagent.ca/games/lattice-marines/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="Lattice Marines — island war">
+<meta name="twitter:description" content="Three-phase isometric strategy. Fog of war. Adaptive AI. Free in the browser.">
+<meta name="twitter:image" content="https://chatagent.ca/games/lattice-marines/assets/og.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./game.css">
+</head>
+<body>
+<div id="boot" class="boot">
+  <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+  <h1>Lattice Marines</h1>
+  <p class="boot-msg" id="bootMsg">Loading island assets…</p>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="top">
+    <a class="brand" href="/">chatagent.ca</a>
+    <div class="phase-pill" id="phasePill">BRIEFING</div>
+    <div class="res" id="resHud"></div>
+    <div class="hq-pips" id="hqPips"></div>
+  </header>
+
+  <div class="stage">
+    <aside class="rail left" id="leftRail"></aside>
+    <div class="viewport">
+      <canvas id="iso" tabindex="0" aria-label="Isometric island battlefield"></canvas>
+      <div class="hint" id="hint"></div>
+      <div class="cam-help">Drag to pan · wheel zoom · WASD · Enter ends phase</div>
+    </div>
+    <aside class="rail right">
+      <div class="panel" id="selPanel"></div>
+      <div class="panel log-panel">
+        <h3>Battle log</h3>
+        <div class="log" id="log"></div>
+      </div>
+      <div class="panel" id="boardPanel"></div>
+    </aside>
+  </div>
+
+  <footer class="dock">
+    <button type="button" class="btn ghost" id="btnHelp">How to play</button>
+    <button type="button" class="btn ghost" id="btnMenu">Abort / menu</button>
+    <span class="grow" id="dockStatus"></span>
+    <button type="button" class="btn" id="btnSkip">Skip playback</button>
+    <button type="button" class="btn gold" id="btnEnd">End phase</button>
+  </footer>
+</div>
+
+<div id="overlay" class="overlay"></div>
+
+<script src="./game.js"></script>
+</body>
+</html>
