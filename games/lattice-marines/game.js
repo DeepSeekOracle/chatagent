@@ -310,7 +310,7 @@
     const picks = [];
     for (const t of land) {
       if (picks.length >= 3) break;
-      if (picks.some((p) => dist(p, t) < 3)) continue;
+      if (picks.some((p) => dist(p, t) < 6)) continue;
       if (S.tiles[t.y][t.x] === "water") continue;
       picks.push(t);
     }
@@ -490,7 +490,7 @@
 
   function tryBuild(type, owner, x, y) {
     const err = canBuild(type, owner, x, y);
-    if (err) { toast(err); if (owner === me()) fx("error"); return false; }
+    if (err) { if (owner === me()) { toast(err); fx("error"); } return false; }
     pay(owner, BLD[type].cost, 0);
     spawnB(type, owner, x, y);
     log(`${owner === 0 ? "You" : "Enemy"} raise a ${BLD[type].name} at ${x},${y}.`);
@@ -997,8 +997,12 @@
   function maybeSwitchAI() {
     const d = DIFF[S.diff];
     if (S.R() > d.switch) return;
-    const losing = hqCount(1) < hqCount(0) || countB("econ", 1) < countB("econ", 0);
-    S.ai.profile = losing ? "Aggressor" : (S.R() > 0.5 ? "Turtle" : "Intelligence");
+    const intel = aiContacts(1);
+    const seenHq = intel.some((c) => c.b && c.b.type === "hq");
+    const losing = hqCount(1) < hqCount(0) || countB("silo", 1) + countB("aa", 1) < 2;
+    if (losing) S.ai.profile = "Aggressor";
+    else if (!seenHq) S.ai.profile = "Intelligence";
+    else S.ai.profile = S.R() > 0.5 ? "Turtle" : "Economist";
     S.ai.switches++;
     log(`Enemy doctrine shifts → ${S.ai.profile}.`);
   }
@@ -1012,69 +1016,200 @@
     enemyTimer = setTimeout(() => {
       enemyTimer = 0;
       if (S && S.phase === "enemy") startResolve("enemy");
-    }, 700);
+    }, 900);
+  }
+
+  function aiContacts(viewer) {
+    const list = [];
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (onHome(viewer, x, y)) continue;
+      if (S.fog[viewer][y][x]) {
+        const b = buildingAt(x, y);
+        list.push({
+          x, y, live: true, terr: S.tiles[y][x],
+          b: b && b.owner !== viewer ? b : null,
+          u: unitAt(x, y)
+        });
+      } else if (hasMemory(viewer, x, y)) {
+        const ls = S.lastSeen[viewer][y][x];
+        list.push({
+          x, y, live: false, terr: ls.terr,
+          b: ls.b ? { type: ls.b.type, hp: ls.b.hp, max: 200, owner: 1 - viewer } : null
+        });
+      }
+    }
+    return list;
+  }
+
+  function aiTargetValue(c) {
+    if (!c || !c.b) return 0;
+    const t = c.b.type;
+    const tab = {
+      hq: 100, icbm: 78, silo: 70, hangar: 66, relay: 62, aa: 58,
+      radar: 52, sat: 50, emp: 46, econ: 42, energy: 36, factory: 32,
+      shield: 28, gun: 18, mine: 8, fake: 100
+    };
+    let s = tab[t] || 10;
+    if (c.live && c.b.hp && c.b.max) s += (1 - c.b.hp / c.b.max) * 12;
+    if (!c.live) s *= 0.72;
+    return s;
+  }
+
+  function aiPickSpots(type, owner, minSep) {
+    const hqs = S.buildings.filter((b) => b.owner === owner && b.type === "hq" && b.hp > 0);
+    const legal = landTiles(owner).filter((t) =>
+      !occupied(t.x, t.y) && !terrainAllows(type, S.tiles[t.y][t.x]) && inBuildNet(owner, t.x, t.y)
+    );
+    const score = (t) => {
+      const terr = S.tiles[t.y][t.x];
+      const hqD = hqs.length ? Math.min(...hqs.map((h) => dist(h, t))) : 8;
+      const same = S.buildings.filter((b) => b.owner === owner && b.type === type && b.hp > 0 && dist(b, t) < minSep).length;
+      const crowd = S.buildings.filter((b) => b.owner === owner && (b.hp > 0 || b.wrecked) && dist(b, t) < 2).length;
+      const rear = owner === 1 ? (MAP - 1 - t.y) : t.y;
+      const front = owner === 1 ? t.y : (MAP - 1 - t.y);
+      let s = -same * 14 - crowd * 5 + S.R() * 3;
+      if (type === "energy" || type === "econ" || type === "silo" || type === "icbm" || type === "hangar" || type === "factory") {
+        s += rear * 1.2 + hqD * 0.8;
+        if (type === "econ" && terr === "hills") s += 6;
+      } else if (type === "aa" || type === "gun" || type === "shield" || type === "mine") {
+        s += 10 - hqD * 2 + front * 0.15;
+        if ((type === "gun" || type === "aa") && terr === "hills") s += 22;
+      } else if (type === "relay") {
+        s += hqD * 1.6 - same * 8;
+      } else if (type === "radar") {
+        s += 4 - same * 12;
+        const rads = S.buildings.filter((b) => b.owner === owner && b.type === "radar" && b.hp > 0);
+        if (rads.length) s += Math.min(...rads.map((r) => Math.abs(r.x - t.x)));
+      } else if (type === "fake") {
+        s += 8 - hqD * 3;
+      } else if (type === "emp") {
+        s += rear * 0.5;
+      }
+      return s;
+    };
+    legal.sort((a, b) => score(b) - score(a));
+    return legal;
+  }
+
+  function aiPlace(type, owner) {
+    if (!BLD[type] || S.players[owner].credits < BLD[type].cost) return false;
+    if (BLD[type].unlock && !unlocked(BLD[type].unlock)) return false;
+    const sep = type === "gun" || type === "mine" || type === "aa" ? 2 : 3;
+    const spots = aiPickSpots(type, owner, sep);
+    if (!spots.length) return false;
+    return tryBuild(type, owner, spots[0].x, spots[0].y);
   }
 
   function aiDefense() {
     const o = 1;
-    const p = S.players[o];
     const profile = S.ai.profile;
-    const want = [];
-    const nE = countB("energy", o), nC = countB("econ", o), nR = countB("radar", o);
-    const nG = countB("gun", o), nS = countB("silo", o), nH = countB("hangar", o), nA = countB("aa", o);
-    for (const w of S.buildings.filter((b) => b.owner === o && (b.wrecked || b.hp < b.max))) tryRepair(w);
-    if (countB("relay", o) < 2) want.push("relay", "relay");
-    if (nE < 3) want.push("energy", "energy");
-    if (nC < (profile === "Economist" ? 5 : 3)) want.push("econ", "econ");
-    if (nR < (profile === "Intelligence" ? 3 : 1)) want.push("radar");
-    if (profile === "Turtle") want.push("gun", "aa", "gun", "shield", "mine");
-    if (profile === "Aggressor") want.push("hangar", "silo", "factory", "silo");
-    if (profile === "Intelligence") want.push("radar", "aa", "emp");
-    want.push("silo", "gun", "aa", "hangar", "factory", "fake");
-    if (unlocked("icbm") && (profile === "Turtle" || S.turn > 4)) want.push("icbm");
-    const spots = landTiles(o).filter((t) => !occupied(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && inBuildNet(o, t.x, t.y));
-    const hqs = S.buildings.filter((b) => b.owner === o && b.type === "hq");
-    spots.sort((a, b) => Math.min(...hqs.map((h) => dist(h, a))) - Math.min(...hqs.map((h) => dist(h, b))));
-    for (const type of want) {
-      if (!BLD[type] || (BLD[type].unlock && persist.wins < unlockWins(BLD[type].unlock) && S.campaign < unlockWins(BLD[type].unlock))) continue;
-      if (p.credits < BLD[type].cost) continue;
-      const idx = spots.findIndex((t) => !terrainAllows(type, S.tiles[t.y][t.x]));
-      if (idx < 0) continue;
-      const tile = spots.splice(idx, 1)[0];
-      tryBuild(type, o, tile.x, tile.y);
+    for (const w of S.buildings.filter((b) => b.owner === o && (b.wrecked || b.hp < b.max * 0.7))) tryRepair(w);
+    const n = (t) => countB(t, o);
+    const hqN = Math.max(1, hqCount(o));
+    const plan = [];
+    if (n("energy") < 2) plan.push("energy", "energy");
+    else if (n("energy") < 3 + (profile === "Economist" ? 1 : 0)) plan.push("energy");
+    if (n("econ") < (profile === "Economist" ? 4 : 2)) plan.push("econ");
+    if (n("relay") < 1 + Math.floor(S.turn / 3)) plan.push("relay");
+    if (n("aa") < hqN) plan.push("aa");
+    if (n("gun") < hqN) plan.push("gun");
+    if (n("radar") < (profile === "Intelligence" ? 3 : 1)) plan.push("radar");
+    if (profile === "Aggressor") plan.push("silo", "hangar", "silo", "factory");
+    else if (profile === "Turtle") plan.push("aa", "shield", "gun", "mine", "fake");
+    else if (profile === "Economist") plan.push("econ", "energy", "silo");
+    else plan.push("radar", "emp", "aa", "silo");
+    if (n("silo") < 1) plan.push("silo");
+    if (unlocked("icbm") && S.turn >= 4 && n("icbm") < 1) plan.push("icbm");
+    if (n("fake") < 1 && profile !== "Aggressor") plan.push("fake");
+    const cap = profile === "Turtle" ? 4 : 3;
+    let built = 0;
+    for (const type of plan) {
+      if (built >= cap) break;
+      if (aiPlace(type, o)) built++;
     }
-    const fac = S.buildings.find((b) => b.owner === o && b.type === "factory" && b.hp > 0);
+    const fac = S.buildings.find((b) => b.owner === o && b.type === "factory" && b.hp > 0 && !b.wrecked);
     if (fac && profile !== "Turtle") tryTrain(fac, "marine");
+  }
+
+  function aiAssignTargets(contacts, n, maxStack) {
+    const scored = contacts.filter((c) => c.b).map((c) => ({ c, s: aiTargetValue(c) }))
+      .sort((a, b) => b.s - a.s);
+    const out = [];
+    const piled = {};
+    let i = 0, guard = 0;
+    while (out.length < n && scored.length && guard++ < 40) {
+      const row = scored[i % scored.length];
+      const key = row.c.x + "," + row.c.y;
+      if ((piled[key] || 0) >= maxStack && scored.length > 1) { i++; continue; }
+      piled[key] = (piled[key] || 0) + 1;
+      out.push(row.c);
+      i++;
+    }
+    return out;
+  }
+
+  function aiProbePlan(viewer, contacts) {
+    const unknown = [];
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (onHome(viewer, x, y)) continue;
+      if (S.fog[viewer][y][x] || hasMemory(viewer, x, y)) continue;
+      unknown.push({ x, y });
+    }
+    const seeds = contacts.filter((c) => c.b);
+    unknown.sort((a, b) => {
+      const da = seeds.length ? Math.min(...seeds.map((s) => dist(s, a))) : 99;
+      const db = seeds.length ? Math.min(...seeds.map((s) => dist(s, b))) : 99;
+      const ga = (a.x + a.y * 3) % 4;
+      const gb = (b.x + b.y * 3) % 4;
+      return da - db || ga - gb;
+    });
+    return unknown;
   }
 
   function aiOffense() {
     const o = 1;
-    const vis = [];
-    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-      if (y < MAP / 2) continue;
-      if (S.fog[o][y][x]) {
-        const b = buildingAt(x, y);
-        vis.push({ x, y, b });
-      }
-    }
-    const hqs = vis.filter((v) => v.b && v.b.type === "hq");
-    const valuable = vis.filter((v) => v.b && ["hq", "silo", "icbm", "econ", "radar"].includes(v.b.type));
-    const fogTiles = [];
-    for (let y = Math.floor(MAP / 2); y < MAP; y++) for (let x = 0; x < MAP; x++) {
-      if (S.tiles[y][x] === "water") continue;
-      if (!S.fog[o][y][x]) fogTiles.push({ x, y });
-    }
-    const aims = hqs.length ? hqs : (valuable.length ? valuable : []);
-    const profile = S.ai.profile;
+    const contacts = aiContacts(o);
+    const valued = contacts.filter((c) => c.b);
+    const hqs = valued.filter((c) => c.b.type === "hq" || c.b.type === "fake");
+    const aa = valued.filter((c) => c.b.type === "aa");
+    const electronics = valued.filter((c) => ["radar", "aa", "silo", "icbm", "sat", "emp"].includes(c.b.type));
     const fire = (kind, t) => t && queueStrike(o, kind, t.x, t.y);
-    const pick = () => aims[0] || (fogTiles.length ? fogTiles[Math.floor(S.R() * fogTiles.length)] : null);
-    for (let i = 0; i < livePads(o, "silo").length; i++) fire("missile", aims[i] || pick());
-    if (livePads(o, "icbm").length && (profile === "Turtle" || S.turn > 3)) fire("icbm", hqs[0] || pick());
-    if (livePads(o, "hangar").length && (profile === "Aggressor" || S.R() > 0.45)) fire("drop", pick());
-    if (livePads(o, "emp").length) fire("emp", pick());
-    while (shotsLeft(o, "probe") > 0 && S.players[o].credits >= 25) {
-      const t = fogTiles.length ? fogTiles.splice(Math.floor(S.R() * fogTiles.length), 1)[0] : pick();
-      if (!t || !fire("probe", t)) break;
+    const probes = aiProbePlan(o, contacts);
+
+    const siloN = livePads(o, "silo").length;
+    const missileTgts = hqs.length || aa.length
+      ? aiAssignTargets(hqs.length ? hqs.concat(aa) : valued, siloN, 2)
+      : [];
+    if (missileTgts.length) {
+      for (let i = 0; i < siloN; i++) fire("missile", missileTgts[i] || missileTgts[0]);
+    } else {
+      for (let i = 0; i < siloN; i++) fire("missile", probes[i] || probes[0]);
+    }
+
+    const icbmN = livePads(o, "icbm").length;
+    if (icbmN && (hqs.length || S.turn >= 4)) {
+      fire("icbm", hqs[0] || valued.sort((a, b) => aiTargetValue(b) - aiTargetValue(a))[0] || probes[0]);
+    }
+
+    if (livePads(o, "hangar").length) {
+      const dropAt = hqs[0] || valued[0];
+      if (dropAt && (S.ai.profile === "Aggressor" || dropAt.b && dropAt.b.type === "hq")) fire("drop", dropAt);
+      else if (S.ai.profile === "Aggressor") fire("drop", probes[0]);
+    }
+
+    if (livePads(o, "emp").length && electronics.length >= 2) {
+      electronics.sort((a, b) => {
+        const na = electronics.filter((e) => dist(e, a) <= 3).length;
+        const nb = electronics.filter((e) => dist(e, b) <= 3).length;
+        return nb - na;
+      });
+      fire("emp", electronics[0]);
+    }
+
+    let p = 0;
+    while (shotsLeft(o, "probe") > 0 && S.players[o].credits >= 25 && probes[p]) {
+      if (!fire("probe", probes[p])) break;
+      p++;
     }
   }
 
