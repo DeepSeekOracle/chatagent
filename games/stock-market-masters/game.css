@@ -235,8 +235,9 @@ a { color: var(--gold); }
 .pc-st { font-size: .68rem; color: var(--mute); }
 
 .dock {
-  display: flex; gap: .45rem; align-items: center; padding: .45rem .7rem;
+  display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; padding: .45rem .7rem;
   border-top: 1px solid var(--line); background: #080e12;
+  z-index: 8;
 }
 .grow { flex: 1; font-size: .8rem; color: var(--mute); }
 .disc-link {
@@ -253,13 +254,23 @@ a { color: var(--gold); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 
 .radio-dock {
-  position: fixed; left: 10px; bottom: 58px; z-index: 25;
-  width: min(320px, calc(100vw - 20px));
-  background: #0b1522ee; border: 1px solid #1e3a4c; border-radius: 12px;
-  padding: .45rem .55rem; backdrop-filter: blur(8px);
+  position: static;
+  width: auto;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  z-index: 1;
 }
 .radio-dock.collapsed { width: auto; }
 .radio-dock.collapsed .radio-panel { display: none; }
+.radio-dock:not(.collapsed) {
+  flex: 1 0 100%;
+  order: 20;
+  background: #0b1522;
+  border: 1px solid #1e3a4c;
+  border-radius: 10px;
+  padding: .4rem .55rem;
+}
 .radio-chip { display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
 .radio-chip button, .radio-row button {
   background: #132033; color: var(--text); border: 1px solid #334155; border-radius: 8px;
@@ -326,5 +337,4 @@ input, select {
   .title-screen { grid-template-columns: 1fr; }
   .title-art { min-height: 28vh; }
   .title-art-fade { background: linear-gradient(180deg, transparent 40%, #070b10 100%); }
-  .radio-dock { bottom: auto; top: 52px; right: 8px; left: auto; }
 }

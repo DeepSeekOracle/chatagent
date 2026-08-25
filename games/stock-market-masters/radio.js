@@ -14,7 +14,7 @@
     i: 0,
     playing: false,
     muted: false,
-    view: true,
+    view: false,
     vol: 0.55,
     bag: []
   };
