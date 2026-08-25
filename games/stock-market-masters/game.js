@@ -215,8 +215,15 @@
       });
       return;
     }
-    if (pull.action === "div") payDiv(pull.stock, pull.cents, "DIV");
-    else if (pull.action === "up") movePrice(pull.stock, pull.cents);
+    if (pull.action === "div") {
+      if (S.price[pull.stock] < PAR) {
+        pull.voidDiv = true;
+        const st = stockById(pull.stock);
+        log(`${st ? st.ticker : pull.stock} cannot DIV under par (${px(S.price[pull.stock])}).`);
+        return;
+      }
+      payDiv(pull.stock, pull.cents, "DIV");
+    } else if (pull.action === "up") movePrice(pull.stock, pull.cents);
     else movePrice(pull.stock, -pull.cents);
   }
 
@@ -637,6 +644,7 @@
     if (!pl) return "waiting";
     if (pl.jackpot) return "JACKPOT 50¢";
     const st = stockById(pl.stock);
+    if (pl.voidDiv) return (st ? st.ticker : "?") + "  NO DIV  under par";
     const act = pl.action === "up" ? "▲ UP" : pl.action === "down" ? "▼ DN" : "DIV";
     return (st ? st.ticker : "?") + "  " + act + "  " + pl.cents + "¢";
   }
@@ -654,6 +662,7 @@
     }
     if (which === 1) {
       if (pl.jackpot) return { lab: "★ JP", ico: "", cls: "jackpot" };
+      if (pl.voidDiv) return { lab: "NO DIV", ico: "", cls: "down" };
       const map = { up: "▲ UP", down: "▼ DN", div: "DIV" };
       return { lab: map[pl.action] || pl.action, ico: "", cls: pl.action };
     }
@@ -962,7 +971,7 @@
         <ul>
           <li>Start with $5,000 play money. Lots of 500 / 1,000 / 2,000 / 5,000 shares.</li>
           <li>On your turn: buy and sell at the tape, then roll <b>both</b> dice — or turn on <b>Auto</b> (Slow / Med / Fast) so rolls keep going without clicking.</li>
-          <li>DIV pays that many cents per share you hold, but only if the desk is at or above par $1.00. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
+          <li>DIV pays that many cents per share you hold <b>only at or above par $1.00</b>. Under par the DIV die is void — no payout. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
           <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
           <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both dice jackpot: $1.00 per share.</li>
           <li>Never-ending: there is no round cap. Cash out when you want — that net worth is logged to the TOP Cashout hall (highest first). Going broke takes you off the floor without a score.</li>
