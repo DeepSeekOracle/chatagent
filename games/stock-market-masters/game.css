@@ -143,6 +143,9 @@ a { color: var(--gold); }
   display: flex; flex-direction: column; min-height: 0;
   border-left: 1px solid var(--line); background: #0a1014;
 }
+.rail .bank { order: 1; }
+.rail .machines { order: 2; }
+.rail .players { order: 3; }
 .machines {
   display: flex; flex-direction: column; gap: .45rem;
   padding: .45rem .5rem .35rem; flex: 0 0 auto;
