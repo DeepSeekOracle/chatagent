@@ -1,0 +1,592 @@
+(() => {
+  "use strict";
+
+  const LEDGER_PAGE = "./ledger.html";
+  const LEDGER_POST = "https://deepseekoracle-lattice-marines-ledger.hf.space/smm/submit";
+  const PAR = 100;
+  const START = 500000;
+  const LOTS = [500, 1000, 2000, 5000];
+  const ACTIONS = ["up", "up", "down", "down", "div", "div"];
+  const CENTS = [5, 5, 10, 10, 20, 20];
+  const JACKPOT_CENTS = 50;
+  const MEGA_CENTS = 100;
+  const STOCK_WEIGHT = 8;
+  const JACKPOT_WEIGHT = 1;
+
+  const STOCKS = [
+    { id: "gold", name: "Gold", ticker: "GLD", icon: "./assets/i-gold.jpg" },
+    { id: "silver", name: "Silver", ticker: "SLV", icon: "./assets/i-silver.jpg" },
+    { id: "bonds", name: "Bonds", ticker: "BND", icon: "./assets/i-bonds.jpg" },
+    { id: "oil", name: "Oil", ticker: "OIL", icon: "./assets/i-oil.jpg" },
+    { id: "industrials", name: "Industrials", ticker: "IND", icon: "./assets/i-industrials.jpg" },
+    { id: "grain", name: "Grain", ticker: "GRN", icon: "./assets/i-grain.jpg" },
+    { id: "timber", name: "Timber", ticker: "TMB", icon: "./assets/i-timber.jpg" },
+    { id: "utilities", name: "Utilities", ticker: "UTL", icon: "./assets/i-utilities.jpg" }
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const dollars = (cents) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const px = (c) => "$" + (c / 100).toFixed(2);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+  let S = null;
+  let spinning = false;
+
+  function emptyHold() {
+    const h = {};
+    STOCKS.forEach((st) => { h[st.id] = 0; });
+    return h;
+  }
+
+  function mkPlayer(name, kind) {
+    return { name, kind, cash: START, hold: emptyHold(), alive: true, cashed: false, worth: START, jackpots: 0 };
+  }
+
+  function netWorth(p) {
+    let w = p.cash;
+    STOCKS.forEach((st) => { w += (p.hold[st.id] || 0) * S.price[st.id]; });
+    return w;
+  }
+
+  function persistName() {
+    try { return localStorage.getItem("smm-name") || "Floor Boss"; } catch (_) { return "Floor Boss"; }
+  }
+
+  function saveName(n) {
+    try { localStorage.setItem("smm-name", n); } catch (_) {}
+  }
+
+  function stockById(id) { return STOCKS.find((s) => s.id === id); }
+
+  function reelStock() {
+    const bag = [];
+    STOCKS.forEach((st) => {
+      for (let i = 0; i < STOCK_WEIGHT; i++) bag.push(st.id);
+    });
+    for (let i = 0; i < JACKPOT_WEIGHT; i++) bag.push("jackpot");
+    return pick(bag);
+  }
+
+  function pullOne() {
+    const stock = reelStock();
+    if (stock === "jackpot") return { stock: "jackpot", action: "jackpot", cents: JACKPOT_CENTS, jackpot: true };
+    return { stock, action: pick(ACTIONS), cents: pick(CENTS), jackpot: false };
+  }
+
+  function payDiv(stockId, centsPerShare, why) {
+    const st = stockById(stockId);
+    if (!st) return 0;
+    if (S.price[stockId] < PAR) {
+      log(`${st.ticker} DIV skipped — under par ${px(S.price[stockId])}.`);
+      return 0;
+    }
+    let paid = 0;
+    S.players.forEach((p) => {
+      if (!p.alive || p.cashed) return;
+      const sh = p.hold[stockId] || 0;
+      if (!sh) return;
+      const add = sh * centsPerShare;
+      p.cash += add;
+      paid += add;
+      log(`${p.name} collects ${dollars(add)} ${why} on ${st.ticker} (${sh} sh × ${centsPerShare}¢).`);
+    });
+    return paid;
+  }
+
+  function movePrice(stockId, delta) {
+    const st = stockById(stockId);
+    let p = S.price[stockId] + delta;
+    if (p >= 200) {
+      S.players.forEach((pl) => {
+        if (pl.hold[stockId]) {
+          pl.hold[stockId] *= 2;
+          log(`${pl.name} split ${st.ticker} 2-for-1 → ${pl.hold[stockId]} shares.`);
+        }
+      });
+      S.price[stockId] = PAR;
+      log(`${st.ticker} hits $2.00 — split. Price back to par $1.00.`);
+      return;
+    }
+    if (p <= 0) {
+      S.players.forEach((pl) => {
+        if (pl.hold[stockId]) {
+          log(`${pl.name} loses ${pl.hold[stockId]} ${st.ticker} — desk busted.`);
+          pl.hold[stockId] = 0;
+        }
+      });
+      S.price[stockId] = PAR;
+      log(`${st.ticker} hits zero — bankrupt, reissued at par $1.00.`);
+      return;
+    }
+    S.price[stockId] = p;
+    const dir = delta > 0 ? "UP" : "DOWN";
+    log(`${st.ticker} ${dir} ${Math.abs(delta)}¢ → ${px(S.price[stockId])}.`);
+  }
+
+  function applyPull(pull, mega) {
+    if (mega) {
+      log("DOUBLE JACKPOT — mega dividend $1.00 per share on every par-or-better desk.");
+      STOCKS.forEach((st) => payDiv(st.id, MEGA_CENTS, "MEGA JACKPOT"));
+      S.players.forEach((p) => { if (p === current() && p.alive) p.jackpots += 1; });
+      return;
+    }
+    if (pull.jackpot) {
+      const cur = current();
+      if (cur) cur.jackpots += 1;
+      log("JACKPOT — 50¢ dividend on every par-or-better desk you hold.");
+      STOCKS.forEach((st) => {
+        const p = current();
+        if (!p || !p.hold[st.id]) return;
+        if (S.price[st.id] < PAR) return;
+        const add = p.hold[st.id] * JACKPOT_CENTS;
+        p.cash += add;
+        log(`${p.name} JACKPOT ${st.ticker} ${dollars(add)}.`);
+      });
+      return;
+    }
+    if (pull.action === "div") payDiv(pull.stock, pull.cents, "DIV");
+    else if (pull.action === "up") movePrice(pull.stock, pull.cents);
+    else movePrice(pull.stock, -pull.cents);
+  }
+
+  function current() {
+    return S.players[S.turn] || null;
+  }
+
+  function living() {
+    return S.players.filter((p) => p.alive && !p.cashed);
+  }
+
+  function log(msg) {
+    S.log = (msg + "\n" + (S.log || "")).slice(0, 4000);
+  }
+
+  function lotOf() { return S.lot || 500; }
+
+  function canBuy(p, id) {
+    const cost = lotOf() * S.price[id];
+    return p && p.alive && !p.cashed && S.phase === "trade" && p.cash >= cost && cost > 0;
+  }
+  function canSell(p, id) {
+    return p && p.alive && !p.cashed && S.phase === "trade" && (p.hold[id] || 0) >= lotOf();
+  }
+
+  function buy(id) {
+    const p = current();
+    if (!canBuy(p, id) || p.kind === "ai") return;
+    const n = lotOf();
+    const cost = n * S.price[id];
+    p.cash -= cost;
+    p.hold[id] += n;
+    log(`${p.name} buys ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(cost)}.`);
+    paint();
+  }
+  function sell(id) {
+    const p = current();
+    if (!canSell(p, id) || p.kind === "ai") return;
+    const n = lotOf();
+    const gain = n * S.price[id];
+    p.hold[id] -= n;
+    p.cash += gain;
+    log(`${p.name} sells ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(gain)}.`);
+    paint();
+  }
+
+  function aiTrade(p) {
+    const reserve = 80000;
+    const ranked = STOCKS.slice().sort((a, b) => S.price[a.id] - S.price[b.id]);
+    ranked.forEach((st) => {
+      const price = S.price[st.id];
+      const sh = p.hold[st.id] || 0;
+      if (price >= 180 && sh >= 500) {
+        const n = Math.min(sh, 2000);
+        p.hold[st.id] -= n;
+        p.cash += n * price;
+        log(`${p.name} (AI) trims ${n} ${st.ticker} near the split tape.`);
+      }
+      if (price <= 15 && sh >= 500 && Math.random() < 0.55) {
+        const n = Math.min(sh, 1000);
+        p.hold[st.id] -= n;
+        p.cash += n * price;
+        log(`${p.name} (AI) dumps ${n} ${st.ticker} off the floor.`);
+      }
+    });
+    const cheap = ranked.filter((st) => S.price[st.id] >= 5);
+    for (const st of cheap) {
+      if (p.cash <= reserve) break;
+      const price = S.price[st.id];
+      let want = 500;
+      if (price >= PAR && price <= 140) want = 1000;
+      if (price <= 40) want = 2000;
+      const cost = want * price;
+      if (p.cash - cost < reserve && price > 30) continue;
+      if (p.cash >= cost) {
+        p.cash -= cost;
+        p.hold[st.id] += want;
+        log(`${p.name} (AI) lifts ${want} ${st.ticker} @ ${px(price)}.`);
+        if (Math.random() < 0.45) break;
+      }
+    }
+  }
+
+  function liquidate(p) {
+    STOCKS.forEach((st) => {
+      const sh = p.hold[st.id] || 0;
+      if (!sh) return;
+      p.cash += sh * S.price[st.id];
+      p.hold[st.id] = 0;
+    });
+    p.worth = p.cash;
+    p.cashed = true;
+    p.alive = false;
+  }
+
+  function checkBroke(p) {
+    if (p.cashed) return;
+    const w = netWorth(p);
+    const shares = STOCKS.reduce((n, st) => n + (p.hold[st.id] || 0), 0);
+    if (w <= 0 || (p.cash < 500 * 5 && shares === 0)) {
+      p.alive = false;
+      p.worth = Math.max(0, w);
+      log(`${p.name} is off the floor — broke.`);
+    }
+  }
+
+  function nextAlive(from) {
+    const n = S.players.length;
+    for (let i = 1; i <= n; i++) {
+      const p = S.players[(from + i) % n];
+      if (p.alive && !p.cashed) return (from + i) % n;
+    }
+    return -1;
+  }
+
+  function maybeEnd() {
+    const live = living();
+    if (live.length === 0) {
+      finish("The floor is empty.");
+      return true;
+    }
+    if (S.round > S.maxRounds) {
+      live.forEach(liquidate);
+      finish("Bell. Remaining desks liquidate at the tape.");
+      return true;
+    }
+    return false;
+  }
+
+  function advanceTurn() {
+    S.players.forEach((p) => { p.worth = netWorth(p); });
+    S.players.forEach(checkBroke);
+    if (maybeEnd()) return;
+    const nxt = nextAlive(S.turn);
+    if (nxt < 0) { finish("No desks remain."); return; }
+    if (nxt <= S.turn) S.round += 1;
+    if (maybeEnd()) return;
+    S.turn = nxt;
+    S.phase = "trade";
+    S.lastPulls = [null, null];
+    const p = current();
+    log(`— Round ${S.round} · ${p.name}'s desk —`);
+    paint();
+    if (p.kind === "ai") setTimeout(runAiTurn, 500);
+  }
+
+  function runAiTurn() {
+    const p = current();
+    if (!p || p.kind !== "ai" || spinning) return;
+    aiTrade(p);
+    paint();
+    setTimeout(() => spinBoth(), 400);
+  }
+
+  function spinBoth() {
+    const p = current();
+    if (!p || spinning || S.phase !== "trade") return;
+    spinning = true;
+    S.phase = "spin";
+    paint();
+    const a = pullOne();
+    const b = pullOne();
+    S.lastPulls = [a, b];
+    paintMachines(true);
+    setTimeout(() => {
+      const mega = a.jackpot && b.jackpot;
+      applyPull(a, mega);
+      if (!mega) applyPull(b, false);
+      spinning = false;
+      S.phase = "resolve";
+      paint();
+      setTimeout(advanceTurn, p.kind === "ai" ? 700 : 450);
+    }, 1100);
+  }
+
+  function cashOut() {
+    const p = current();
+    if (!p || p.kind === "ai" || spinning || S.phase !== "trade") return;
+    if (!confirm(`Cash out ${p.name} at ${dollars(netWorth(p))}?`)) return;
+    liquidate(p);
+    log(`${p.name} CASHES OUT at ${dollars(p.worth)}.`);
+    submitCashout(p);
+    paint();
+    if (!maybeEnd()) advanceTurn();
+  }
+
+  async function submitCashout(p) {
+    const rec = {
+      name: p.name,
+      worth: Math.round(p.worth),
+      cash: Math.round(p.cash),
+      rounds: S.round,
+      seats: S.players.length,
+      jackpots: p.jackpots,
+      date: new Date().toISOString().slice(0, 10),
+      game: "stock-market-masters",
+      event: "cashout"
+    };
+    try {
+      const q = JSON.parse(localStorage.getItem("smm-queue") || "[]");
+      q.push(rec);
+      localStorage.setItem("smm-queue", JSON.stringify(q.slice(-40)));
+    } catch (_) {}
+    try {
+      await fetch(LEDGER_POST, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rec)
+      });
+    } catch (_) {}
+  }
+
+  function finish(why) {
+    S.phase = "over";
+    S.players.forEach((p) => { if (p.alive && !p.cashed) liquidate(p); });
+    S.players.sort((a, b) => b.worth - a.worth);
+    const top = S.players[0];
+    log(why + ` Winner: ${top ? top.name + " " + dollars(top.worth) : "—"}.`);
+    if (top && top.kind !== "ai") submitCashout(top);
+    paint();
+    showOverlay(`
+      <div class="modal">
+        <h2>Bell</h2>
+        <p>${esc(why)}</p>
+        <ol>${S.players.map((p) => `<li><b>${esc(p.name)}</b> · ${dollars(p.worth)}${p.kind === "ai" ? " (AI)" : ""}</li>`).join("")}</ol>
+        <div class="row">
+          <button class="btn gold" id="again">New floor</button>
+          <a class="btn" href="${LEDGER_PAGE}">TOP Cashout</a>
+        </div>
+      </div>`, "");
+    $("again").onclick = showMenu;
+  }
+
+  function paintMachines(spin) {
+    const host = $("machines");
+    if (!host) return;
+    const pulls = S.lastPulls || [null, null];
+    host.innerHTML = [0, 1].map((i) => {
+      const pl = pulls[i];
+      const st = pl && !pl.jackpot ? stockById(pl.stock) : null;
+      const act = pl ? (pl.jackpot ? "jackpot" : pl.action) : "";
+      const actLab = pl ? (pl.jackpot ? "JACKPOT" : pl.action.toUpperCase()) : "—";
+      const amt = pl ? (pl.jackpot ? "50¢" : pl.cents + "¢") : "—";
+      const cls = spin ? " spinning" : "";
+      return `<article class="machine"><div class="machine-inner">
+        <h3>Machine ${i + 1}</h3>
+        <div class="reels">
+          <div class="reel${cls} ${pl && pl.jackpot ? "jackpot" : ""}"><div class="lab">Desk</div><div class="val">${pl ? (pl.jackpot ? "★ JP" : esc(st.ticker)) : "—"}</div></div>
+          <div class="reel${cls} ${act}"><div class="lab">Tape</div><div class="val">${esc(actLab)}</div></div>
+          <div class="reel${cls}"><div class="lab">Cents</div><div class="val">${esc(amt)}</div></div>
+        </div>
+      </div></article>`;
+    }).join("");
+  }
+
+  function paintBoard() {
+    const host = $("board");
+    if (!host) return;
+    const p = current();
+    const trade = S.phase === "trade" && p && p.kind !== "ai";
+    host.innerHTML = STOCKS.map((st) => {
+      const price = S.price[st.id];
+      const bot = Math.round((price / 200) * 100);
+      const own = p ? (p.hold[st.id] || 0) : 0;
+      const tone = price >= PAR ? "hot" : "cold";
+      return `<article class="desk">
+        <div class="head"><img src="${st.icon}" alt=""><div><div class="nm">${esc(st.name)}</div><div class="tk">${st.ticker} · par $1.00</div></div></div>
+        <div class="px ${tone}">${px(price)}</div>
+        <div class="ladder" title="0 to $2.00"><i style="bottom:${bot}%"></i></div>
+        <div class="own">You hold ${own.toLocaleString()} · ${dollars(own * price)}</div>
+        <div class="acts">
+          <button type="button" class="buy" ${trade && canBuy(p, st.id) ? "" : "disabled"} data-buy="${st.id}">Buy ${lotOf()}</button>
+          <button type="button" class="sell" ${trade && canSell(p, st.id) ? "" : "disabled"} data-sell="${st.id}">Sell ${lotOf()}</button>
+        </div>
+      </article>`;
+    }).join("");
+    host.querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => buy(b.getAttribute("data-buy")));
+    host.querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => sell(b.getAttribute("data-sell")));
+  }
+
+  function paintBank() {
+    const host = $("bank");
+    if (!host) return;
+    const p = current();
+    if (!p) { host.innerHTML = ""; return; }
+    const w = netWorth(p);
+    host.innerHTML = `
+      <h2>Bank · ${esc(p.name)}</h2>
+      <div class="seats">${S.players.map((x, i) => `<span class="seat-chip${i === S.turn ? " on" : ""}">${esc(x.name)}${x.kind === "ai" ? " AI" : ""}${x.cashed ? " out" : x.alive ? "" : " broke"}</span>`).join("")}</div>
+      <div class="worth">${dollars(w)}</div>
+      <p class="cash">Cash ${dollars(p.cash)} · holdings ${dollars(w - p.cash)}</p>
+      <p class="sel-meta">Lot size
+        ${LOTS.map((n) => `<button type="button" class="btn${n === lotOf() ? " gold" : ""}" data-lot="${n}">${n}</button>`).join(" ")}
+      </p>
+      <div class="hold">
+        ${STOCKS.map((st) => {
+          const sh = p.hold[st.id] || 0;
+          if (!sh) return "";
+          return `<div class="row"><img src="${st.icon}" alt=""><div>${esc(st.name)}<br><span class="tk">${sh.toLocaleString()} sh @ ${px(S.price[st.id])}</span></div><b>${dollars(sh * S.price[st.id])}</b></div>`;
+        }).join("") || "<p class='sel-meta'>No certificates yet.</p>"}
+      </div>
+      <div class="log" id="tickLog">${esc(S.log)}</div>`;
+    host.querySelectorAll("[data-lot]").forEach((b) => {
+      b.onclick = () => { S.lot = +b.getAttribute("data-lot"); paint(); };
+    });
+  }
+
+  function paint() {
+    if (!S) return;
+    const p = current();
+    $("phasePill").textContent = S.phase.toUpperCase();
+    $("resHud").innerHTML = `<span>Round <b>${S.round}/${S.maxRounds}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span>`;
+    $("dockStatus").textContent = S.phase === "trade" && p && p.kind !== "ai"
+      ? "Buy or sell, then spin both machines — or cash out."
+      : (S.phase === "over" ? "Floor closed." : "Tape moving…");
+    $("btnSpin").disabled = !(S.phase === "trade" && p && p.kind !== "ai" && !spinning);
+    $("btnCash").disabled = $("btnSpin").disabled;
+    paintMachines(spinning);
+    paintBoard();
+    paintBank();
+  }
+
+  function showOverlay(html, cls) {
+    const o = $("overlay");
+    o.className = "overlay show " + (cls || "");
+    o.innerHTML = html;
+  }
+  function hideOverlay() { $("overlay").className = "overlay"; $("overlay").innerHTML = ""; }
+
+  function gatherSeats() {
+    const seats = [];
+    for (let i = 0; i < 4; i++) {
+      const kind = ($("sk" + i) || {}).value || (i === 0 ? "human" : "off");
+      if (kind === "off") continue;
+      let name = (($("sn" + i) || {}).value || "").trim().slice(0, 18) || (kind === "ai" ? "AI Desk " + (i + 1) : "Desk " + (i + 1));
+      seats.push(mkPlayer(name, kind));
+    }
+    if (!seats.length) seats.push(mkPlayer(persistName(), "human"));
+    if (!seats.some((p) => p.kind === "human")) seats[0].kind = "human";
+    return seats;
+  }
+
+  function newMatch() {
+    const players = gatherSeats();
+    saveName(players[0].name);
+    const prices = {};
+    STOCKS.forEach((st) => { prices[st.id] = PAR; });
+    S = {
+      players, turn: 0, round: 1, maxRounds: +($("rounds") || {}).value || 10,
+      phase: "trade", price: prices, lot: 500, log: "", lastPulls: [null, null]
+    };
+    hideOverlay();
+    $("boot").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    log("Eight desks open at par $1.00. Two machines move two tapes each turn.");
+    paint();
+    if (current().kind === "ai") setTimeout(runAiTurn, 600);
+  }
+
+  function showMenu() {
+    $("app").classList.add("hidden");
+    const n0 = persistName();
+    const seat = (i) => {
+      const defKind = i === 0 ? "human" : i === 1 ? "ai" : "off";
+      const defName = i === 0 ? n0 : i === 1 ? "Tape AI" : "";
+      return `<div class="desk-row">
+        <label>Desk ${i + 1} name <input id="sn${i}" maxlength="18" value="${esc(defName)}"></label>
+        <label>Kind
+          <select id="sk${i}">
+            <option value="human"${defKind === "human" ? " selected" : ""}>Human</option>
+            <option value="ai"${defKind === "ai" ? " selected" : ""}>AI</option>
+            <option value="off"${defKind === "off" ? " selected" : ""}>Empty</option>
+          </select>
+        </label>
+      </div>`;
+    };
+    showOverlay(`
+      <div class="title-screen">
+        <div class="title-art">
+          <img src="./assets/menu.jpg" alt="Stock exchange trading floor">
+          <div class="title-art-fade"></div>
+        </div>
+        <div class="title-panel">
+          <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+          <h1>STOCK MARKET MASTERS</h1>
+          <p class="title-tag">Eight desks. Two casino machines. Buy low, collect dividends, cash out on top.</p>
+          <p>Original title — not Stock Ticker. Extra desks: Timber and Utilities. Machines replace the three classic dice. Jackpot is rare. No typing on the floor: Buy and Sell only.</p>
+          ${[0, 1, 2, 3].map(seat).join("")}
+          <div class="row">
+            <label>Rounds
+              <select id="rounds"><option>8</option><option selected>10</option><option>12</option><option>16</option></select>
+            </label>
+          </div>
+          <div class="row">
+            <button class="btn gold" id="go">Open the floor</button>
+            <a class="btn" href="${LEDGER_PAGE}">TOP Cashout</a>
+            <a class="btn ghost" href="/games/">All games</a>
+            <button class="btn ghost" id="menuRadio">Play radio</button>
+          </div>
+          <p class="sel-meta">Par $1.00 · split at $2.00 · bust at $0 · DIV only at/above par · 5 / 10 / 20¢ · jackpot 50¢ · both machines jackpot $1.00/share.</p>
+          <p class="sel-meta"><a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal.me/ExcavationPro</a></p>
+        </div>
+      </div>`, "menu");
+    $("go").onclick = newMatch;
+    $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
+  }
+
+  function help() {
+    showOverlay(`
+      <div class="modal">
+        <h2>How the floor works</h2>
+        <p>Inspired by 1937 commodity quotation boards — original name, two extra stocks, casino machines instead of dice.</p>
+        <ul>
+          <li>Start with $5,000. Lots of 500 / 1,000 / 2,000 / 5,000 shares.</li>
+          <li>On your turn: buy and sell at the tape, then spin <b>both</b> machines. Each machine picks a desk, UP / DOWN / DIV, and 5¢ 10¢ or 20¢.</li>
+          <li>DIV pays that many cents per share you hold, but only if the desk is at or above par $1.00. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
+          <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
+          <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both machines jackpot: $1.00 per share.</li>
+          <li>Cash out to lock net worth on the TOP Cashout hall. Last desks standing are liquidated when rounds end. Going broke takes you off the floor.</li>
+          <li>Up to four desks: humans hot-seat, AI optional.</li>
+        </ul>
+        <button class="btn gold" id="okHelp">Back</button>
+      </div>`);
+    $("okHelp").onclick = () => { hideOverlay(); };
+  }
+
+  function bind() {
+    $("btnSpin").onclick = spinBoth;
+    $("btnCash").onclick = cashOut;
+    $("btnHelp").onclick = help;
+    $("btnMenu").onclick = () => {
+      if (S && S.phase !== "over" && !confirm("Leave the floor?")) return;
+      showMenu();
+    };
+  }
+
+  window.addEventListener("load", () => {
+    bind();
+    $("boot").classList.add("hidden");
+    showMenu();
+  });
+})();

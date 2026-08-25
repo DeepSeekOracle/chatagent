@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from huggingface_hub import HfApi, hf_hub_download
 
 DATASET = os.environ.get("LEDGER_DATASET", "DeepSeekOracle/lattice-marines-wins")
+SMM_DATASET = os.environ.get("SMM_DATASET", "DeepSeekOracle/stock-market-masters-cashouts")
 TOKEN = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 MAPS = {32, 40, 48, 64, 80, 128, 192}
 DIFFS = {"easy", "normal", "hard", "insane"}
@@ -32,6 +33,7 @@ RATE_MAX = 12
 LOCK = threading.Lock()
 HITS: dict[str, list[float]] = {}
 CACHE: dict[str, Any] = {"t": 0.0, "data": None}
+SMM_CACHE: dict[str, Any] = {"t": 0.0, "data": None}
 
 app = FastAPI(title="Lattice Marines Eternal Ledger", docs_url=None, redoc_url=None)
 app.add_middleware(
@@ -218,6 +220,128 @@ async def submit(request: Request):
             CACHE["data"] = None
             return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
     return {"ok": True, "status": "inscribed", "id": rec["id"], "rank": next((i + 1 for i, w in enumerate(data["wins"]) if w.get("id") == rec["id"]), None)}
+
+
+def smm_empty() -> dict:
+    return {
+        "game": "stock-market-masters",
+        "title": "Stock Market Masters TOP Cashout",
+        "updated": None,
+        "cashouts": [],
+    }
+
+
+def smm_load() -> dict:
+    now = time.time()
+    if SMM_CACHE["data"] is not None and now - SMM_CACHE["t"] < 8:
+        return SMM_CACHE["data"]
+    try:
+        path = hf_hub_download(
+            SMM_DATASET, "ledger.json", repo_type="dataset", token=TOKEN, force_download=True
+        )
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict) or not isinstance(data.get("cashouts"), list):
+            data = smm_empty()
+    except Exception:
+        data = smm_empty()
+    SMM_CACHE["data"] = data
+    SMM_CACHE["t"] = now
+    return data
+
+
+def smm_save(data: dict) -> None:
+    if not TOKEN:
+        raise RuntimeError("writer offline")
+    payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    api = HfApi(token=TOKEN)
+    api.upload_file(
+        path_or_fileobj=payload,
+        path_in_repo="ledger.json",
+        repo_id=SMM_DATASET,
+        repo_type="dataset",
+        commit_message="inscribe cashout",
+    )
+    SMM_CACHE["data"] = data
+    SMM_CACHE["t"] = time.time()
+
+
+def smm_validate(body: dict) -> tuple[dict | None, str]:
+    if not isinstance(body, dict):
+        return None, "bad payload"
+    if body.get("event") != "cashout":
+        return None, "only cashouts are inscribed"
+    name = clean_name(body.get("name"))
+    if not name:
+        return None, "name rejected"
+    worth = as_int(body.get("worth"), 0, 50_000_000)
+    cash = as_int(body.get("cash"), 0, 50_000_000)
+    rounds = as_int(body.get("rounds"), 1, 80)
+    seats = as_int(body.get("seats"), 1, 4)
+    jackpots = as_int(body.get("jackpots"), 0, 40)
+    if None in (worth, cash, rounds, seats, jackpots):
+        return None, "numeric field out of range"
+    day = str(body.get("date") or utc_now()[:10])[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+        day = utc_now()[:10]
+    key = f"{name}|{worth}|{rounds}|{seats}|{day}"
+    rec_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+    rec = {
+        "id": rec_id,
+        "name": name,
+        "worth": worth,
+        "cash": cash,
+        "rounds": rounds,
+        "seats": seats,
+        "jackpots": jackpots,
+        "date": day,
+        "iso": utc_now(),
+        "event": "cashout",
+    }
+    return rec, "ok"
+
+
+@app.get("/smm/ledger.json")
+def smm_ledger_json():
+    data = smm_load()
+    return JSONResponse(data, headers={"Cache-Control": "public, max-age=20"})
+
+
+@app.post("/smm/submit")
+async def smm_submit(request: Request):
+    ip = request.client.host if request.client else "0"
+    if not rate_ok(ip):
+        return JSONResponse({"ok": False, "error": "slow down"}, status_code=429)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "need JSON"}, status_code=400)
+    rec, err = smm_validate(body)
+    if not rec:
+        return JSONResponse({"ok": False, "error": err}, status_code=400)
+    if not TOKEN:
+        return JSONResponse({"ok": False, "error": "writer offline"}, status_code=503)
+    with LOCK:
+        data = smm_load()
+        rows = data.get("cashouts") or []
+        if any(w.get("id") == rec["id"] for w in rows):
+            return {"ok": True, "status": "duplicate", "id": rec["id"]}
+        rows.append(rec)
+        rows.sort(key=lambda w: (-int(w.get("worth") or 0), str(w.get("iso") or "")))
+        data["cashouts"] = rows[:8000]
+        data["updated"] = utc_now()
+        data["game"] = "stock-market-masters"
+        try:
+            smm_save(data)
+        except Exception:
+            SMM_CACHE["data"] = None
+            return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+    return {
+        "ok": True,
+        "status": "inscribed",
+        "id": rec["id"],
+        "rank": next((i + 1 for i, w in enumerate(data["cashouts"]) if w.get("id") == rec["id"]), None),
+    }
 
 
 @app.get("/", response_class=HTMLResponse)

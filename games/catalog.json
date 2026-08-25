@@ -41,6 +41,24 @@
       ]
     },
     {
+      "id": "stock-market-masters",
+      "slug": "stock-market-masters",
+      "title": "Stock Market Masters",
+      "tagline": "Quotation floor",
+      "blurb": "Eight desks, two casino machines per turn, buy/sell buttons, splits, busts, rare jackpot. Cash out onto the live TOP Cashout hall. Up to four players plus AI.",
+      "status": "live",
+      "featured": true,
+      "order": 4,
+      "href": "/games/stock-market-masters/",
+      "cover": "/games/stock-market-masters/assets/og.jpg",
+      "coverAlt": "Stock Market Masters trading floor",
+      "genre": ["strategy", "market"],
+      "players": "1–4 plus optional AI",
+      "links": [
+        { "label": "TOP Cashout", "href": "/games/stock-market-masters/ledger.html" }
+      ]
+    },
+    {
       "id": "eternal-lattice",
       "slug": "eternal-lattice",
       "title": "Eternal Lattice",
