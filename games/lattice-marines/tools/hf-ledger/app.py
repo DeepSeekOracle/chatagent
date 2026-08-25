@@ -276,7 +276,7 @@ def smm_validate(body: dict) -> tuple[dict | None, str]:
         return None, "name rejected"
     worth = as_int(body.get("worth"), 0, 50_000_000)
     cash = as_int(body.get("cash"), 0, 50_000_000)
-    rounds = as_int(body.get("rounds"), 1, 80)
+    rounds = as_int(body.get("rounds"), 1, 9999)
     seats = as_int(body.get("seats"), 1, 4)
     jackpots = as_int(body.get("jackpots"), 0, 40)
     if None in (worth, cash, rounds, seats, jackpots):

@@ -288,12 +288,7 @@
   function maybeEnd() {
     const live = living();
     if (live.length === 0) {
-      finish("The floor is empty.");
-      return true;
-    }
-    if (S.round > S.maxRounds) {
-      live.forEach(liquidate);
-      finish("Bell. Remaining desks liquidate at the tape.");
+      finish("The floor is empty. High scores are the cash-outs on the TOP Cashout hall.");
       return true;
     }
     return false;
@@ -311,7 +306,7 @@
     S.phase = "trade";
     S.lastPulls = [null, null];
     const p = current();
-    log(`— Round ${S.round} · ${p.name}'s desk —`);
+    log(`— Turn ${S.round} · ${p.name}'s desk —`);
     paint();
     if (p.kind === "ai") setTimeout(runAiTurn, 500);
   }
@@ -370,15 +365,30 @@
     }, 1400);
   }
 
-  function cashOut() {
+  async function cashOut() {
     const p = current();
     if (!p || p.kind === "ai" || spinning || S.phase !== "trade") return;
-    if (!confirm(`Cash out ${p.name} at ${dollars(netWorth(p))}?`)) return;
+    if (!confirm(`Cash out ${p.name} at ${dollars(netWorth(p))} and log it to TOP Cashout?`)) return;
     liquidate(p);
-    log(`${p.name} CASHES OUT at ${dollars(p.worth)}.`);
-    submitCashout(p);
+    log(`${p.name} CASHES OUT at ${dollars(p.worth)} — posted to the hall.`);
+    const posted = await submitCashout(p);
     paint();
-    if (!maybeEnd()) advanceTurn();
+    const others = living().length > 0;
+    showOverlay(`
+      <div class="modal">
+        <h2>Cashed out</h2>
+        <p><b>${esc(p.name)}</b> locked ${dollars(p.worth)} after ${S.round} turn${S.round === 1 ? "" : "s"}.</p>
+        <p class="sel-meta">${posted ? "Logged to the TOP Cashout hall (highest net worth ranks first)." : "Saved on this device. The live hall may still be waking — it will retry from the local queue."}</p>
+        <div class="row">
+          ${others ? `<button class="btn gold" id="keepOn">Keep the floor going</button>` : ""}
+          <button class="btn${others ? "" : " gold"}" id="again">New floor</button>
+          <a class="btn" href="${LEDGER_PAGE}">TOP Cashout</a>
+        </div>
+      </div>`);
+    const keep = $("keepOn");
+    if (keep) keep.onclick = () => { hideOverlay(); if (!maybeEnd()) advanceTurn(); };
+    $("again").onclick = showMenu;
+    if (!others) maybeEnd();
   }
 
   async function submitCashout(p) {
@@ -399,27 +409,30 @@
       localStorage.setItem("smm-queue", JSON.stringify(q.slice(-40)));
     } catch (_) {}
     try {
-      await fetch(LEDGER_POST, {
+      const r = await fetch(LEDGER_POST, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(rec)
       });
-    } catch (_) {}
+      const j = await r.json().catch(() => ({}));
+      return !!(r.ok && j && j.ok);
+    } catch (_) {
+      return false;
+    }
   }
 
   function finish(why) {
     S.phase = "over";
-    S.players.forEach((p) => { if (p.alive && !p.cashed) liquidate(p); });
-    S.players.sort((a, b) => b.worth - a.worth);
-    const top = S.players[0];
-    log(why + ` Winner: ${top ? top.name + " " + dollars(top.worth) : "—"}.`);
-    if (top && top.kind !== "ai") submitCashout(top);
+    S.players.sort((a, b) => (b.worth || netWorth(b)) - (a.worth || netWorth(a)));
+    const cashed = S.players.filter((p) => p.cashed);
+    log(why);
     paint();
     showOverlay(`
       <div class="modal">
         <h2>Bell</h2>
         <p>${esc(why)}</p>
-        <ol>${S.players.map((p) => `<li><b>${esc(p.name)}</b> · ${dollars(p.worth)}${p.kind === "ai" ? " (AI)" : ""}</li>`).join("")}</ol>
+        <ol>${S.players.map((p) => `<li><b>${esc(p.name)}</b> · ${dollars(p.worth || 0)}${p.cashed ? " cashed" : ""}${p.kind === "ai" ? " (AI)" : ""}</li>`).join("")}</ol>
+        ${cashed.length ? `<p class="sel-meta">Cash-outs are ranked by net worth on the hall.</p>` : ""}
         <div class="row">
           <button class="btn gold" id="again">New floor</button>
           <a class="btn" href="${LEDGER_PAGE}">TOP Cashout</a>
@@ -556,19 +569,22 @@
     if (!p) { host.innerHTML = ""; return; }
     const w = netWorth(p);
     host.innerHTML = `
-      <h2>Bank · ${esc(p.name)}</h2>
-      <div class="seats">${S.players.map((x, i) => `<span class="seat-chip${i === S.turn ? " on" : ""}">${esc(x.name)}${x.kind === "ai" ? " AI" : ""}${x.cashed ? " out" : x.alive ? "" : " broke"}</span>`).join("")}</div>
-      <div class="worth">${dollars(w)}</div>
-      <p class="cash">Cash ${dollars(p.cash)} · holdings ${dollars(w - p.cash)}</p>
-      <p class="sel-meta">Lot size
-        ${LOTS.map((n) => `<button type="button" class="btn${n === lotOf() ? " gold" : ""}" data-lot="${n}">${n}</button>`).join(" ")}
-      </p>
+      <div class="bank-top">
+        <div>
+          <h2>Bank · ${esc(p.name)}</h2>
+          <div class="worth">${dollars(w)}</div>
+          <p class="cash">Cash ${dollars(p.cash)} · stock ${dollars(w - p.cash)}</p>
+        </div>
+        <p class="sel-meta">Lot
+          ${LOTS.map((n) => `<button type="button" class="btn${n === lotOf() ? " gold" : ""}" data-lot="${n}">${n}</button>`).join(" ")}
+        </p>
+      </div>
       <div class="hold">
         ${STOCKS.map((st) => {
           const sh = p.hold[st.id] || 0;
           if (!sh) return "";
           return `<div class="row"><div class="ico"><img src="${st.icon}" alt=""></div><div>${esc(st.name)}<br><span class="tk">${sh.toLocaleString()} sh @ ${px(S.price[st.id])}</span></div><b>${dollars(sh * S.price[st.id])}</b></div>`;
-        }).join("") || "<p class='sel-meta'>No certificates yet.</p>"}
+        }).join("") || "<p class='sel-meta'>No certificates yet — buy on the board below.</p>"}
       </div>
       <div class="log" id="tickLog">${esc(S.log)}</div>`;
     host.querySelectorAll("[data-lot]").forEach((b) => {
@@ -576,19 +592,31 @@
     });
   }
 
+  function paintPlayers() {
+    const host = $("players");
+    if (!host) return;
+    host.innerHTML = S.players.map((x, i) => `
+      <article class="pcard${i === S.turn ? " on" : ""}${x.cashed || !x.alive ? " out" : ""}">
+        <div class="pc-name">${esc(x.name)}${x.kind === "ai" ? " · AI" : ""}</div>
+        <div class="pc-worth">${dollars(x.cashed ? x.worth : netWorth(x))}</div>
+        <div class="pc-st">${x.cashed ? "cashed out" : x.alive ? "on the floor" : "broke"}</div>
+      </article>`).join("");
+  }
+
   function paint() {
     if (!S) return;
     const p = current();
     $("phasePill").textContent = S.phase.toUpperCase();
-    $("resHud").innerHTML = `<span>Round <b>${S.round}/${S.maxRounds}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span>`;
+    $("resHud").innerHTML = `<span>Turn <b>${S.round}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span><span>Endless</span>`;
     $("dockStatus").textContent = S.phase === "trade" && p && p.kind !== "ai"
-      ? "Buy or sell, then roll both dice — or cash out."
+      ? "Never-ending floor. Buy or sell, roll the dice, or cash out to post your high score."
       : (S.phase === "over" ? "Floor closed." : "Tape moving…");
     $("btnSpin").disabled = !(S.phase === "trade" && p && p.kind !== "ai" && !spinning);
     $("btnCash").disabled = $("btnSpin").disabled;
     paintMachines(spinning);
     paintBoard();
     paintBank();
+    paintPlayers();
   }
 
   function showOverlay(html, cls) {
@@ -622,7 +650,7 @@
     if (board) board.dataset.built = "";
     if (mach) mach.dataset.built = "";
     S = {
-      players, turn: 0, round: 1, maxRounds: +($("rounds") || {}).value || 10,
+      players, turn: 0, round: 1,
       phase: "trade", price: prices, hist, lot: 500, log: "", lastPulls: [null, null]
     };
     hideOverlay();
@@ -659,14 +687,9 @@
         <div class="title-panel">
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>STOCK MARKET MASTERS</h1>
-          <p class="title-tag">Eight desks on a quotation board. Two dice each turn. Buy low, ride the tape, cash out on top.</p>
-          <p>Play-money board game — not a casino and not real markets. Timber and Utilities sit beside the classic six desks. Roll two dice; each picks a stock, UP / DOWN / DIV, and 5¢ 10¢ or 20¢. Rare jackpot. Buy and Sell only; no typing on the floor.</p>
+          <p class="title-tag">Never-ending quotation board. Ride the tape until you cash out — highest play-money score hits the hall.</p>
+          <p>Play-money board game — not a casino and not real markets. No round limit. Timber and Utilities sit beside the classic six desks. Two dice each turn: stock, UP / DOWN / DIV, and 5¢ 10¢ or 20¢. Cash out when you want; that score is your high score.</p>
           ${[0, 1, 2, 3].map(seat).join("")}
-          <div class="row">
-            <label>Rounds
-              <select id="rounds"><option>8</option><option selected>10</option><option>12</option><option>16</option></select>
-            </label>
-          </div>
           <div class="row">
             <button class="btn gold" id="go">Open the floor</button>
             <a class="btn" href="${LEDGER_PAGE}">TOP Cashout</a>
@@ -692,7 +715,7 @@
           <li>DIV pays that many cents per share you hold, but only if the desk is at or above par $1.00. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
           <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
           <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both dice jackpot: $1.00 per share.</li>
-          <li>Cash out to lock a play-money score on the TOP Cashout hall. Last desks standing are liquidated when rounds end. Going broke takes you off the floor.</li>
+          <li>Never-ending: there is no round cap. Cash out when you want — that net worth is logged to the TOP Cashout hall (highest first). Going broke takes you off the floor without a score.</li>
           <li>Up to four desks: humans hot-seat, AI optional. <a href="./disclaimer.html">Gambling disclaimer</a>.</li>
         </ul>
         <button class="btn gold" id="okHelp">Back</button>
