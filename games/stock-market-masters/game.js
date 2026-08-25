@@ -14,14 +14,14 @@
   const JACKPOT_WEIGHT = 1;
 
   const STOCKS = [
-    { id: "gold", name: "Gold", ticker: "GLD", icon: "./assets/i-gold.jpg" },
-    { id: "silver", name: "Silver", ticker: "SLV", icon: "./assets/i-silver.jpg" },
-    { id: "bonds", name: "Bonds", ticker: "BND", icon: "./assets/i-bonds.jpg" },
-    { id: "oil", name: "Oil", ticker: "OIL", icon: "./assets/i-oil.jpg" },
-    { id: "industrials", name: "Industrials", ticker: "IND", icon: "./assets/i-industrials.jpg" },
-    { id: "grain", name: "Grain", ticker: "GRN", icon: "./assets/i-grain.jpg" },
-    { id: "timber", name: "Timber", ticker: "TMB", icon: "./assets/i-timber.jpg" },
-    { id: "utilities", name: "Utilities", ticker: "UTL", icon: "./assets/i-utilities.jpg" }
+    { id: "gold", name: "Gold", ticker: "GLD", icon: "./assets/i-gold.jpg", color: "#e8c547" },
+    { id: "silver", name: "Silver", ticker: "SLV", icon: "./assets/i-silver.jpg", color: "#c5cdd6" },
+    { id: "bonds", name: "Bonds", ticker: "BND", icon: "./assets/i-bonds.jpg", color: "#7dcea0" },
+    { id: "oil", name: "Oil", ticker: "OIL", icon: "./assets/i-oil.jpg", color: "#6b7280" },
+    { id: "industrials", name: "Industrials", ticker: "IND", icon: "./assets/i-industrials.jpg", color: "#e8a0b4" },
+    { id: "grain", name: "Grain", ticker: "GRN", icon: "./assets/i-grain.jpg", color: "#c6d94a" },
+    { id: "timber", name: "Timber", ticker: "TMB", icon: "./assets/i-timber.jpg", color: "#c4a574" },
+    { id: "utilities", name: "Utilities", ticker: "UTL", icon: "./assets/i-utilities.jpg", color: "#7eb6d9" }
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -33,6 +33,7 @@
 
   let S = null;
   let spinning = false;
+  let spinAnim = null;
 
   function emptyHold() {
     const h = {};
@@ -107,6 +108,7 @@
       });
       S.price[stockId] = PAR;
       log(`${st.ticker} hits $2.00 — split. Price back to par $1.00.`);
+      recordHist(stockId);
       return;
     }
     if (p <= 0) {
@@ -118,11 +120,31 @@
       });
       S.price[stockId] = PAR;
       log(`${st.ticker} hits zero — bankrupt, reissued at par $1.00.`);
+      recordHist(stockId);
       return;
     }
     S.price[stockId] = p;
     const dir = delta > 0 ? "UP" : "DOWN";
     log(`${st.ticker} ${dir} ${Math.abs(delta)}¢ → ${px(S.price[stockId])}.`);
+    recordHist(stockId);
+  }
+
+  function recordHist(id) {
+    if (!S.hist[id]) S.hist[id] = [PAR];
+    S.hist[id].push(S.price[id]);
+    if (S.hist[id].length > 40) S.hist[id].shift();
+  }
+
+  function sparkSvg(hist, color) {
+    const w = 120, h = 36, max = 200;
+    const arr = hist && hist.length ? hist : [PAR];
+    const pts = arr.map((v, i) => {
+      const x = arr.length === 1 ? w / 2 : (i / (arr.length - 1)) * w;
+      const y = h - (clamp(v, 0, max) / max) * h;
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    const last = arr[arr.length - 1] >= PAR ? color : "#ef4444";
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${last}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
   }
 
   function applyPull(pull, mega) {
@@ -302,25 +324,50 @@
     setTimeout(() => spinBoth(), 400);
   }
 
+  function stopDiceAnim() {
+    if (spinAnim) { clearInterval(spinAnim); spinAnim = null; }
+  }
+
+  function startDiceAnim() {
+    stopDiceAnim();
+    const acts = ["▲ UP", "▼ DN", "DIV"];
+    const cents = ["5¢", "10¢", "20¢"];
+    spinAnim = setInterval(() => {
+      document.querySelectorAll(".slot .die").forEach((die, n) => {
+        const val = die.querySelector(".die-val");
+        const ico = die.querySelector(".die-ico");
+        if (!val) return;
+        const k = n % 3;
+        if (k === 0) {
+          const st = pick(STOCKS);
+          val.textContent = st.ticker;
+          if (ico) ico.style.backgroundImage = `url(${st.icon})`;
+        } else if (k === 1) val.textContent = pick(acts);
+        else val.textContent = pick(cents);
+      });
+    }, 65);
+  }
+
   function spinBoth() {
     const p = current();
     if (!p || spinning || S.phase !== "trade") return;
     spinning = true;
     S.phase = "spin";
     paint();
+    startDiceAnim();
     const a = pullOne();
     const b = pullOne();
     S.lastPulls = [a, b];
-    paintMachines(true);
     setTimeout(() => {
+      stopDiceAnim();
       const mega = a.jackpot && b.jackpot;
       applyPull(a, mega);
       if (!mega) applyPull(b, false);
       spinning = false;
       S.phase = "resolve";
       paint();
-      setTimeout(advanceTurn, p.kind === "ai" ? 700 : 450);
-    }, 1100);
+      setTimeout(advanceTurn, p.kind === "ai" ? 900 : 650);
+    }, 1400);
   }
 
   function cashOut() {
@@ -381,51 +428,125 @@
     $("again").onclick = showMenu;
   }
 
+  function dieFace(pl, which) {
+    if (!pl) {
+      if (which === 0) return { lab: "—", ico: "", cls: "" };
+      if (which === 1) return { lab: "—", ico: "", cls: "" };
+      return { lab: "—", ico: "", cls: "" };
+    }
+    if (which === 0) {
+      if (pl.jackpot) return { lab: "JACKPOT", ico: "", cls: "jackpot" };
+      const st = stockById(pl.stock);
+      return { lab: st.ticker, ico: st.icon, cls: "" };
+    }
+    if (which === 1) {
+      if (pl.jackpot) return { lab: "★ JP", ico: "", cls: "jackpot" };
+      const map = { up: "▲ UP", down: "▼ DN", div: "DIV" };
+      return { lab: map[pl.action] || pl.action, ico: "", cls: pl.action };
+    }
+    if (pl.jackpot) return { lab: "50¢", ico: "", cls: "jackpot" };
+    return { lab: pl.cents + "¢", ico: "", cls: "" };
+  }
+
+  function ensureMachines() {
+    const host = $("machines");
+    if (!host || host.dataset.built === "1") return;
+    host.innerHTML = [0, 1].map((i) => `
+      <article class="slot" data-slot="${i}">
+        <div class="slot-cab">
+          <p class="slot-tag">Machine ${i + 1}</p>
+          <div class="slot-dice">
+            <div class="die" data-d="0"><div class="die-ico"></div><div class="die-val">—</div></div>
+            <div class="die" data-d="1"><div class="die-val">—</div></div>
+            <div class="die" data-d="2"><div class="die-val">—</div></div>
+          </div>
+        </div>
+      </article>`).join("");
+    host.dataset.built = "1";
+  }
+
   function paintMachines(spin) {
     const host = $("machines");
     if (!host) return;
+    ensureMachines();
+    host.classList.toggle("is-spinning", !!spin);
     const pulls = S.lastPulls || [null, null];
-    host.innerHTML = [0, 1].map((i) => {
+    host.querySelectorAll(".slot").forEach((slot, i) => {
       const pl = pulls[i];
-      const st = pl && !pl.jackpot ? stockById(pl.stock) : null;
-      const act = pl ? (pl.jackpot ? "jackpot" : pl.action) : "";
-      const actLab = pl ? (pl.jackpot ? "JACKPOT" : pl.action.toUpperCase()) : "—";
-      const amt = pl ? (pl.jackpot ? "50¢" : pl.cents + "¢") : "—";
-      const cls = spin ? " spinning" : "";
-      return `<article class="machine"><div class="machine-inner">
-        <h3>Machine ${i + 1}</h3>
-        <div class="reels">
-          <div class="reel${cls} ${pl && pl.jackpot ? "jackpot" : ""}"><div class="lab">Desk</div><div class="val">${pl ? (pl.jackpot ? "★ JP" : esc(st.ticker)) : "—"}</div></div>
-          <div class="reel${cls} ${act}"><div class="lab">Tape</div><div class="val">${esc(actLab)}</div></div>
-          <div class="reel${cls}"><div class="lab">Cents</div><div class="val">${esc(amt)}</div></div>
+      slot.querySelectorAll(".die").forEach((die, d) => {
+        const face = dieFace(pl, d);
+        const val = die.querySelector(".die-val");
+        const ico = die.querySelector(".die-ico");
+        die.className = "die " + face.cls + (spin ? " spinning" : "");
+        if (!spin && val) val.textContent = face.lab;
+        if (ico) ico.style.backgroundImage = face.ico ? `url(${face.ico})` : "none";
+      });
+    });
+  }
+
+  function ensureBoard() {
+    const host = $("board");
+    if (!host || host.dataset.built === "1") return;
+    const ticks = [200, 175, 150, 125, 100, 75, 50, 25, 0];
+    const scale = `<div class="yscale">${ticks.map((t) => `<span>${t === 100 ? "PAR" : "$" + (t / 100).toFixed(2)}</span>`).join("")}</div>`;
+    const cols = STOCKS.map((st) => `
+      <article class="col" data-col="${st.id}" style="--col:${st.color}">
+        <header class="col-head">
+          <div class="ico"><img src="${st.icon}" alt=""></div>
+          <div>
+            <div class="nm">${esc(st.name)}</div>
+            <div class="tk">${st.ticker}</div>
+          </div>
+          <div class="px" id="px-${st.id}">$1.00</div>
+        </header>
+        <div class="spark-wrap" id="sp-${st.id}"></div>
+        <div class="track" id="tr-${st.id}">
+          <i class="parline" title="Par $1.00"></i>
+          <div class="peg" id="peg-${st.id}"><img src="${st.icon}" alt="${esc(st.name)}"></div>
         </div>
-      </div></article>`;
-    }).join("");
+        <div class="own" id="own-${st.id}"></div>
+        <div class="acts">
+          <button type="button" class="buy" data-buy="${st.id}">Buy</button>
+          <button type="button" class="sell" data-sell="${st.id}">Sell</button>
+        </div>
+      </article>`).join("");
+    host.innerHTML = `<div class="quote-title">Quotation Board · $0.00 to $2.00</div><div class="quote-grid">${scale}${cols}</div>`;
+    host.dataset.built = "1";
+    host.querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => buy(b.getAttribute("data-buy")));
+    host.querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => sell(b.getAttribute("data-sell")));
   }
 
   function paintBoard() {
     const host = $("board");
     if (!host) return;
+    ensureBoard();
     const p = current();
-    const trade = S.phase === "trade" && p && p.kind !== "ai";
-    host.innerHTML = STOCKS.map((st) => {
+    const trade = S.phase === "trade" && p && p.kind !== "ai" && !spinning;
+    STOCKS.forEach((st) => {
       const price = S.price[st.id];
-      const bot = Math.round((price / 200) * 100);
       const own = p ? (p.hold[st.id] || 0) : 0;
-      const tone = price >= PAR ? "hot" : "cold";
-      return `<article class="desk">
-        <div class="head"><img src="${st.icon}" alt=""><div><div class="nm">${esc(st.name)}</div><div class="tk">${st.ticker} · par $1.00</div></div></div>
-        <div class="px ${tone}">${px(price)}</div>
-        <div class="ladder" title="0 to $2.00"><i style="bottom:${bot}%"></i></div>
-        <div class="own">You hold ${own.toLocaleString()} · ${dollars(own * price)}</div>
-        <div class="acts">
-          <button type="button" class="buy" ${trade && canBuy(p, st.id) ? "" : "disabled"} data-buy="${st.id}">Buy ${lotOf()}</button>
-          <button type="button" class="sell" ${trade && canSell(p, st.id) ? "" : "disabled"} data-sell="${st.id}">Sell ${lotOf()}</button>
-        </div>
-      </article>`;
-    }).join("");
-    host.querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => buy(b.getAttribute("data-buy")));
-    host.querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => sell(b.getAttribute("data-sell")));
+      const pxEl = $("px-" + st.id);
+      const peg = $("peg-" + st.id);
+      const ownEl = $("own-" + st.id);
+      const sp = $("sp-" + st.id);
+      if (pxEl) {
+        pxEl.textContent = px(price);
+        pxEl.className = "px " + (price >= PAR ? "hot" : "cold");
+      }
+      if (peg) peg.style.bottom = (price / 200 * 100) + "%";
+      if (ownEl) ownEl.textContent = own ? (own.toLocaleString() + " sh · " + dollars(own * price)) : "—";
+      if (sp) sp.innerHTML = sparkSvg(S.hist[st.id], st.color);
+      const buyBtn = host.querySelector(`[data-buy="${st.id}"]`);
+      const sellBtn = host.querySelector(`[data-sell="${st.id}"]`);
+      if (buyBtn) {
+        buyBtn.textContent = "Buy " + lotOf();
+        buyBtn.disabled = !(trade && canBuy(p, st.id));
+      }
+      if (sellBtn) {
+        sellBtn.textContent = "Sell " + lotOf();
+        sellBtn.disabled = !(trade && canSell(p, st.id));
+      }
+    });
   }
 
   function paintBank() {
@@ -446,7 +567,7 @@
         ${STOCKS.map((st) => {
           const sh = p.hold[st.id] || 0;
           if (!sh) return "";
-          return `<div class="row"><img src="${st.icon}" alt=""><div>${esc(st.name)}<br><span class="tk">${sh.toLocaleString()} sh @ ${px(S.price[st.id])}</span></div><b>${dollars(sh * S.price[st.id])}</b></div>`;
+          return `<div class="row"><div class="ico"><img src="${st.icon}" alt=""></div><div>${esc(st.name)}<br><span class="tk">${sh.toLocaleString()} sh @ ${px(S.price[st.id])}</span></div><b>${dollars(sh * S.price[st.id])}</b></div>`;
         }).join("") || "<p class='sel-meta'>No certificates yet.</p>"}
       </div>
       <div class="log" id="tickLog">${esc(S.log)}</div>`;
@@ -494,10 +615,15 @@
     const players = gatherSeats();
     saveName(players[0].name);
     const prices = {};
-    STOCKS.forEach((st) => { prices[st.id] = PAR; });
+    const hist = {};
+    STOCKS.forEach((st) => { prices[st.id] = PAR; hist[st.id] = [PAR]; });
+    const board = $("board");
+    const mach = $("machines");
+    if (board) board.dataset.built = "";
+    if (mach) mach.dataset.built = "";
     S = {
       players, turn: 0, round: 1, maxRounds: +($("rounds") || {}).value || 10,
-      phase: "trade", price: prices, lot: 500, log: "", lastPulls: [null, null]
+      phase: "trade", price: prices, hist, lot: 500, log: "", lastPulls: [null, null]
     };
     hideOverlay();
     $("boot").classList.add("hidden");
