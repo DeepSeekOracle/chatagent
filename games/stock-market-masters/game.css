@@ -39,7 +39,7 @@ a { color: var(--gold); }
 }
 .res { display: flex; flex-wrap: wrap; gap: .65rem; font-size: .82rem; color: var(--mute); }
 .res b { color: var(--gold); }
-.paypal-mini { margin-left: auto; color: #7dd3fc; font-size: .78rem; text-decoration: none; }
+.paypal-mini { margin-left: auto; color: #7dd3fc; font-size: .78rem; text-decoration: none; font-weight: 700; }
 
 .stage {
   display: grid;
@@ -294,6 +294,11 @@ a { color: var(--gold); }
 }
 .btn.gold { background: var(--gold); color: #111; border-color: var(--gold); }
 .btn.ghost { background: transparent; }
+.btn.donate {
+  background: #0070ba; border-color: #0070ba; color: #fff;
+  font-weight: 800;
+}
+.btn.donate:hover { filter: brightness(1.08); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 .auto-box { display: flex; align-items: center; gap: .25rem; }
 .auto-box .spd {
