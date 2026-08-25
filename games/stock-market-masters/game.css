@@ -148,6 +148,14 @@ a { color: var(--gold); }
   padding: .5rem .5rem .35rem; flex: 0 0 auto;
 }
 .slot { min-height: 0; }
+.slot.has-roll .slot-cab { box-shadow: 0 0 0 1px var(--gold); }
+.last-roll {
+  margin: .28rem 2px 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: .68rem;
+  color: var(--gold);
+  min-height: 1.2em;
+}
 .slot-cab {
   position: relative; height: 168px; border-radius: 10px; overflow: hidden;
   border: 1px solid #5a4a28;

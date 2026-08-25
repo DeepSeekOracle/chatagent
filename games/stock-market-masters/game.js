@@ -351,16 +351,17 @@
     startDiceAnim();
     const a = pullOne();
     const b = pullOne();
-    S.lastPulls = [a, b];
     setTimeout(() => {
       stopDiceAnim();
+      S.lastPulls = [a, b];
       const mega = a.jackpot && b.jackpot;
       applyPull(a, mega);
       if (!mega) applyPull(b, false);
       spinning = false;
       S.phase = "resolve";
+      paintMachines(false);
       paint();
-      setTimeout(advanceTurn, p.kind === "ai" ? 1100 : 900);
+      setTimeout(advanceTurn, p.kind === "ai" ? 1400 : 2200);
     }, 1400);
   }
 
@@ -440,6 +441,14 @@
     $("again").onclick = showMenu;
   }
 
+  function pullLine(pl) {
+    if (!pl) return "waiting";
+    if (pl.jackpot) return "JACKPOT 50¢";
+    const st = stockById(pl.stock);
+    const act = pl.action === "up" ? "▲ UP" : pl.action === "down" ? "▼ DN" : "DIV";
+    return (st ? st.ticker : "?") + "  " + act + "  " + pl.cents + "¢";
+  }
+
   function dieFace(pl, which) {
     if (!pl) {
       if (which === 0) return { lab: "—", ico: "", cls: "" };
@@ -462,7 +471,18 @@
 
   function ensureMachines() {
     const host = $("machines");
-    if (!host || host.dataset.built === "1") return;
+    if (!host) return;
+    if (host.dataset.built === "1") {
+      host.querySelectorAll(".slot").forEach((slot, i) => {
+        if (!slot.querySelector(".last-roll")) {
+          const p = document.createElement("p");
+          p.className = "last-roll";
+          p.id = "lastRoll" + i;
+          slot.appendChild(p);
+        }
+      });
+      return;
+    }
     host.innerHTML = [0, 1].map((i) => `
       <article class="slot" data-slot="${i}">
         <div class="slot-cab">
@@ -473,6 +493,7 @@
             <div class="die" data-d="2"><div class="die-val">—</div></div>
           </div>
         </div>
+        <p class="last-roll" id="lastRoll${i}">Last roll: waiting</p>
       </article>`).join("");
     host.dataset.built = "1";
   }
@@ -485,14 +506,17 @@
     const pulls = S.lastPulls || [null, null];
     host.querySelectorAll(".slot").forEach((slot, i) => {
       const pl = pulls[i];
+      slot.classList.toggle("has-roll", !!(pl && !spin));
       slot.querySelectorAll(".die").forEach((die, d) => {
         const face = dieFace(pl, d);
         const val = die.querySelector(".die-val");
         const ico = die.querySelector(".die-ico");
         die.className = "die " + face.cls + (spin ? " spinning" : "");
         if (!spin && val) val.textContent = face.lab;
-        if (ico) ico.style.backgroundImage = face.ico ? `url(${face.ico})` : "none";
+        if (!spin && ico) ico.style.backgroundImage = face.ico ? `url(${face.ico})` : "none";
       });
+      const line = slot.querySelector(".last-roll");
+      if (line) line.textContent = spin ? "Rolling…" : ("Last roll: " + pullLine(pl));
     });
   }
 
