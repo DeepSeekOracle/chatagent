@@ -48,8 +48,35 @@
     return h;
   }
 
+  function emptyMarks() {
+    const m = {};
+    STOCKS.forEach((st) => { m[st.id] = []; });
+    return m;
+  }
+
   function mkPlayer(name, kind) {
-    return { name, kind, cash: START, hold: emptyHold(), alive: true, cashed: false, worth: START, jackpots: 0 };
+    return { name, kind, cash: START, hold: emptyHold(), marks: emptyMarks(), alive: true, cashed: false, worth: START, jackpots: 0 };
+  }
+
+  function addBuyMark(p, id, shares, price) {
+    if (!p.marks) p.marks = emptyMarks();
+    if (!p.marks[id]) p.marks[id] = [];
+    p.marks[id].push({ shares, price });
+  }
+
+  function takeSellMarks(p, id, shares) {
+    if (!p.marks || !p.marks[id]) return;
+    let left = shares;
+    const list = p.marks[id];
+    while (left > 0 && list.length) {
+      if (list[0].shares <= left) {
+        left -= list[0].shares;
+        list.shift();
+      } else {
+        list[0].shares -= left;
+        left = 0;
+      }
+    }
   }
 
   function netWorth(p) {
@@ -119,6 +146,7 @@
       S.players.forEach((pl) => {
         if (pl.hold[stockId]) {
           pl.hold[stockId] *= 2;
+          (pl.marks && pl.marks[stockId] || []).forEach((m) => { m.shares *= 2; });
           log(`${pl.name} split ${st.ticker} 2-for-1 → ${pl.hold[stockId]} shares.`);
         }
       });
@@ -132,6 +160,7 @@
         if (pl.hold[stockId]) {
           log(`${pl.name} loses ${pl.hold[stockId]} ${st.ticker} — desk busted.`);
           pl.hold[stockId] = 0;
+          if (pl.marks) pl.marks[stockId] = [];
         }
       });
       S.price[stockId] = PAR;
@@ -218,6 +247,7 @@
     const cost = n * S.price[id];
     p.cash -= cost;
     p.hold[id] += n;
+    addBuyMark(p, id, n, S.price[id]);
     log(`${p.name} buys ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(cost)}.`);
     paint();
     scheduleAuto();
@@ -229,6 +259,7 @@
     const gain = n * S.price[id];
     p.hold[id] -= n;
     p.cash += gain;
+    takeSellMarks(p, id, n);
     log(`${p.name} sells ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(gain)}.`);
     paint();
     scheduleAuto();
@@ -292,12 +323,14 @@
         const n = Math.min(sh, 2000);
         p.hold[st.id] -= n;
         p.cash += n * price;
+        takeSellMarks(p, st.id, n);
         log(`${p.name} (AI) trims ${n} ${st.ticker} near the split tape.`);
       }
       if (price <= 15 && sh >= 500 && Math.random() < 0.55) {
         const n = Math.min(sh, 1000);
         p.hold[st.id] -= n;
         p.cash += n * price;
+        takeSellMarks(p, st.id, n);
         log(`${p.name} (AI) dumps ${n} ${st.ticker} off the floor.`);
       }
     });
@@ -313,6 +346,7 @@
       if (p.cash >= cost) {
         p.cash -= cost;
         p.hold[st.id] += want;
+        addBuyMark(p, st.id, want, price);
         log(`${p.name} (AI) lifts ${want} ${st.ticker} @ ${px(price)}.`);
         if (Math.random() < 0.45) break;
       }
@@ -325,6 +359,7 @@
       if (!sh) return;
       p.cash += sh * S.price[st.id];
       p.hold[st.id] = 0;
+      if (p.marks) p.marks[st.id] = [];
     });
     p.worth = p.cash;
     p.cashed = true;
@@ -596,7 +631,21 @@
 
   function ensureBoard() {
     const host = $("board");
-    if (!host || host.dataset.built === "1") return;
+    if (!host) return;
+    if (host.dataset.built === "1") {
+      STOCKS.forEach((st) => {
+        const tr = $("tr-" + st.id);
+        if (tr && !tr.querySelector(".mark-layer")) {
+          const layer = document.createElement("div");
+          layer.className = "mark-layer";
+          layer.id = "mk-" + st.id;
+          const peg = $("peg-" + st.id);
+          if (peg) tr.insertBefore(layer, peg);
+          else tr.appendChild(layer);
+        }
+      });
+      return;
+    }
     const ticks = [200, 175, 150, 125, 100, 75, 50, 25, 0];
     const scale = `<div class="yscale">${ticks.map((t) => `<span>${t === 100 ? "PAR" : "$" + (t / 100).toFixed(2)}</span>`).join("")}</div>`;
     const cols = STOCKS.map((st) => `
@@ -612,6 +661,7 @@
         <div class="spark-wrap" id="sp-${st.id}"></div>
         <div class="track" id="tr-${st.id}">
           <i class="parline" title="Par $1.00"></i>
+          <div class="mark-layer" id="mk-${st.id}"></div>
           <div class="peg" id="peg-${st.id}"><img src="${st.icon}" alt="${esc(st.name)}"></div>
         </div>
         <div class="own" id="own-${st.id}"></div>
@@ -644,6 +694,21 @@
         pxEl.className = "px " + (price >= PAR ? "hot" : "cold");
       }
       if (peg) peg.style.bottom = (price / 200 * 100) + "%";
+      const mk = $("mk-" + st.id);
+      if (mk) {
+        const lots = (p && p.marks && p.marks[st.id]) || [];
+        const grouped = [];
+        lots.forEach((m) => {
+          const hit = grouped.find((g) => g.price === m.price);
+          if (hit) { hit.shares += m.shares; hit.n += 1; }
+          else grouped.push({ price: m.price, shares: m.shares, n: 1 });
+        });
+        mk.innerHTML = grouped.map((g, i) => {
+          const bot = (g.price / 200 * 100);
+          const shift = (i % 3) * 7;
+          return `<div class="buy-mark" style="bottom:${bot}%; margin-left:${shift - 14}px" title="Bought ${g.shares.toLocaleString()} @ ${px(g.price)}"><img src="${st.icon}" alt=""><span>${g.n > 1 ? g.n : ""}</span></div>`;
+        }).join("");
+      }
       if (ownEl) ownEl.textContent = own ? (own.toLocaleString() + " sh · " + dollars(own * price)) : "—";
       if (sp) sp.innerHTML = sparkSvg(S.hist[st.id], st.color);
       const buyBtn = host.querySelector(`[data-buy="${st.id}"]`);
