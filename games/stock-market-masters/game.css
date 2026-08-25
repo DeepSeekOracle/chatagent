@@ -271,6 +271,13 @@ a { color: var(--gold); }
 .btn.gold { background: var(--gold); color: #111; border-color: var(--gold); }
 .btn.ghost { background: transparent; }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
+.auto-box { display: flex; align-items: center; gap: .25rem; }
+.auto-box .spd {
+  background: #132033; color: var(--mute); border: 1px solid #334155; border-radius: 7px;
+  padding: .32rem .45rem; cursor: pointer; font: 700 .7rem Syne, sans-serif;
+}
+.auto-box .spd.on { border-color: var(--gold); color: var(--gold); }
+#btnAuto.on { border-color: var(--gold); color: var(--gold); }
 
 .radio-dock {
   position: static;

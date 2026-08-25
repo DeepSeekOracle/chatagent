@@ -31,9 +31,16 @@
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
+  const SPEEDS = {
+    slow: { wait: 4500, spin: 1800, hold: 2800, flicker: 85 },
+    med: { wait: 2000, spin: 1200, hold: 1600, flicker: 60 },
+    fast: { wait: 700, spin: 650, hold: 700, flicker: 40 }
+  };
+
   let S = null;
   let spinning = false;
   let spinAnim = null;
+  let autoTimer = null;
 
   function emptyHold() {
     const h = {};
@@ -57,6 +64,15 @@
 
   function saveName(n) {
     try { localStorage.setItem("smm-name", n); } catch (_) {}
+  }
+
+  function persistSpeed() {
+    try { return localStorage.getItem("smm-speed") || "med"; } catch (_) { return "med"; }
+  }
+
+  function speed() {
+    const k = (S && S.speed) || persistSpeed();
+    return SPEEDS[k] || SPEEDS.med;
   }
 
   function stockById(id) { return STOCKS.find((s) => s.id === id); }
@@ -204,6 +220,7 @@
     p.hold[id] += n;
     log(`${p.name} buys ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(cost)}.`);
     paint();
+    scheduleAuto();
   }
   function sell(id) {
     const p = current();
@@ -214,6 +231,55 @@
     p.cash += gain;
     log(`${p.name} sells ${n} ${stockById(id).ticker} @ ${px(S.price[id])} for ${dollars(gain)}.`);
     paint();
+    scheduleAuto();
+  }
+
+  function clearAuto() {
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+  }
+
+  function scheduleAuto() {
+    clearAuto();
+    if (!S || !S.auto || spinning || S.phase !== "trade") return;
+    const ov = $("overlay");
+    if (ov && ov.classList.contains("show")) return;
+    const p = current();
+    if (!p || !p.alive || p.cashed) return;
+    autoTimer = setTimeout(() => {
+      autoTimer = null;
+      if (!S || !S.auto || spinning) return;
+      if (p.kind === "ai") runAiTurn();
+      else spinBoth();
+    }, speed().wait);
+  }
+
+  function toggleAuto() {
+    if (!S) return;
+    S.auto = !S.auto;
+    paintAuto();
+    if (S.auto) scheduleAuto();
+    else clearAuto();
+  }
+
+  function setSpeed(k) {
+    if (!SPEEDS[k]) return;
+    if (S) S.speed = k;
+    try { localStorage.setItem("smm-speed", k); } catch (_) {}
+    paintAuto();
+    if (S && S.auto) scheduleAuto();
+  }
+
+  function paintAuto() {
+    const on = !!(S && S.auto);
+    const spd = (S && S.speed) || persistSpeed();
+    const btn = $("btnAuto");
+    if (btn) {
+      btn.classList.toggle("on", on);
+      btn.textContent = on ? "Auto on" : "Auto";
+    }
+    document.querySelectorAll(".spd").forEach((b) => {
+      b.classList.toggle("on", b.getAttribute("data-spd") === spd);
+    });
   }
 
   function aiTrade(p) {
@@ -307,7 +373,10 @@
     const p = current();
     log(`— Turn ${S.round} · ${p.name}'s desk —`);
     paint();
-    if (p.kind === "ai") setTimeout(runAiTurn, 500);
+    if (p.kind === "ai") {
+      clearAuto();
+      autoTimer = setTimeout(() => { autoTimer = null; runAiTurn(); }, S.auto ? speed().wait : 500);
+    } else if (S.auto) scheduleAuto();
   }
 
   function runAiTurn() {
@@ -315,7 +384,7 @@
     if (!p || p.kind !== "ai" || spinning) return;
     aiTrade(p);
     paint();
-    setTimeout(() => spinBoth(), 400);
+    setTimeout(() => spinBoth(), S && S.auto ? Math.min(speed().wait, 400) : 400);
   }
 
   function stopDiceAnim() {
@@ -339,18 +408,20 @@
         } else if (k === 1) val.textContent = pick(acts);
         else val.textContent = pick(cents);
       });
-    }, 65);
+    }, speed().flicker);
   }
 
   function spinBoth() {
     const p = current();
     if (!p || spinning || S.phase !== "trade") return;
+    clearAuto();
     spinning = true;
     S.phase = "spin";
     paint();
     startDiceAnim();
     const a = pullOne();
     const b = pullOne();
+    const sp = speed();
     setTimeout(() => {
       stopDiceAnim();
       S.lastPulls = [a, b];
@@ -361,14 +432,17 @@
       S.phase = "resolve";
       paintMachines(false);
       paint();
-      setTimeout(advanceTurn, p.kind === "ai" ? 1400 : 2200);
-    }, 1400);
+      const hold = S.auto ? sp.hold : (p.kind === "ai" ? 1400 : 2200);
+      setTimeout(advanceTurn, hold);
+    }, sp.spin);
   }
 
   async function cashOut() {
     const p = current();
     if (!p || p.kind === "ai" || spinning || S.phase !== "trade") return;
     if (!confirm(`Cash out ${p.name} at ${dollars(netWorth(p))} and log it to TOP Cashout?`)) return;
+    clearAuto();
+    S.auto = false;
     liquidate(p);
     log(`${p.name} CASHES OUT at ${dollars(p.worth)} — posted to the hall.`);
     const posted = await submitCashout(p);
@@ -630,10 +704,11 @@
     if (!S) return;
     const p = current();
     $("phasePill").textContent = S.phase.toUpperCase();
-    $("resHud").innerHTML = `<span>Turn <b>${S.round}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span><span>Endless</span>`;
+    $("resHud").innerHTML = `<span>Turn <b>${S.round}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span>${S.auto ? "<span>Auto <b>" + (S.speed || "med") + "</b></span>" : "<span>Endless</span>"}`;
     $("dockStatus").textContent = S.phase === "trade" && p && p.kind !== "ai"
-      ? "Never-ending floor. Buy or sell, roll the dice, or cash out to post your high score."
+      ? (S.auto ? "Auto rolling. Buy or sell before the next roll, or cash out." : "Never-ending floor. Buy or sell, roll the dice, or cash out to post your high score.")
       : (S.phase === "over" ? "Floor closed." : "Tape moving…");
+    paintAuto();
     $("btnSpin").disabled = !(S.phase === "trade" && p && p.kind !== "ai" && !spinning);
     $("btnCash").disabled = $("btnSpin").disabled;
     paintMachines(spinning);
@@ -663,6 +738,7 @@
   }
 
   function newMatch() {
+    clearAuto();
     const players = gatherSeats();
     saveName(players[0].name);
     const prices = {};
@@ -673,7 +749,7 @@
     if (board) board.dataset.built = "";
     if (mach) mach.dataset.built = "";
     S = {
-      players, turn: 0, round: 1,
+      players, turn: 0, round: 1, auto: false, speed: persistSpeed(),
       phase: "trade", price: prices, hist, lot: 500, log: "", lastPulls: [null, null]
     };
     hideOverlay();
@@ -681,6 +757,7 @@
     $("app").classList.remove("hidden");
     log("Eight desks open at par $1.00. Two dice move two tapes each turn.");
     paint();
+    paintAuto();
     if (current().kind === "ai") setTimeout(runAiTurn, 600);
   }
 
@@ -734,7 +811,7 @@
         <p>Inspired by 1937 commodity quotation boards — original name, two extra stocks, two dice per turn (cabinet look, still just dice).</p>
         <ul>
           <li>Start with $5,000 play money. Lots of 500 / 1,000 / 2,000 / 5,000 shares.</li>
-          <li>On your turn: buy and sell at the tape, then roll <b>both</b> dice. Each die picks a desk, UP / DOWN / DIV, and 5¢ 10¢ or 20¢.</li>
+          <li>On your turn: buy and sell at the tape, then roll <b>both</b> dice — or turn on <b>Auto</b> (Slow / Med / Fast) so rolls keep going without clicking.</li>
           <li>DIV pays that many cents per share you hold, but only if the desk is at or above par $1.00. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
           <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
           <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both dice jackpot: $1.00 per share.</li>
@@ -750,8 +827,14 @@
     $("btnSpin").onclick = spinBoth;
     $("btnCash").onclick = cashOut;
     $("btnHelp").onclick = help;
+    $("btnAuto").onclick = toggleAuto;
+    document.querySelectorAll(".spd").forEach((b) => {
+      b.onclick = () => setSpeed(b.getAttribute("data-spd"));
+    });
     $("btnMenu").onclick = () => {
       if (S && S.phase !== "over" && !confirm("Leave the floor?")) return;
+      clearAuto();
+      if (S) S.auto = false;
       showMenu();
     };
   }
