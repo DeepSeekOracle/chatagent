@@ -398,7 +398,7 @@
     if (p.cashed) return;
     const w = netWorth(p);
     const shares = STOCKS.reduce((n, st) => n + (p.hold[st.id] || 0), 0);
-    if (w <= 0 || (p.cash < 500 * 5 && shares === 0)) {
+    if (w <= 0 || (shares === 0 && p.cash < 500 * Math.max(5, Math.min(...STOCKS.map((st) => S.price[st.id] || 5))))) {
       p.alive = false;
       p.worth = Math.max(0, w);
       log(`${p.name} is off the floor — broke.`);
@@ -560,6 +560,11 @@
   }
 
   function finish(why) {
+    clearAuto();
+    clearHold();
+    if (spinTimer) { clearTimeout(spinTimer); spinTimer = null; }
+    stopDiceAnim();
+    spinning = false;
     S.phase = "over";
     S.players.sort((a, b) => (b.worth || netWorth(b)) - (a.worth || netWorth(a)));
     const cashed = S.players.filter((p) => p.cashed);
@@ -699,7 +704,7 @@
           <button type="button" class="sell" data-sell="${st.id}">Sell</button>
         </div>
       </article>`).join("");
-    host.innerHTML = `<div class="quote-title">Quotation Board · $0.00 to $2.00</div><div class="quote-grid">${scale}${cols}</div>`;
+    host.innerHTML = `<div class="quote-title">Quotation Board · $0.00–$2.00 · white peg = tape · green ring = your buy</div><div class="quote-grid">${scale}${cols}</div>`;
     host.dataset.built = "1";
     host.querySelectorAll("[data-buy]").forEach((b) => b.onclick = () => buy(b.getAttribute("data-buy")));
     host.querySelectorAll("[data-sell]").forEach((b) => b.onclick = () => sell(b.getAttribute("data-sell")));
@@ -912,6 +917,8 @@
           <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
           <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both dice jackpot: $1.00 per share.</li>
           <li>Never-ending: there is no round cap. Cash out when you want — that net worth is logged to the TOP Cashout hall (highest first). Going broke takes you off the floor without a score.</li>
+          <li>Green rings on a column are your buy prices. They come off when you sell those shares.</li>
+          <li><b>Auto</b> plus Slow / Med / Fast rolls for you. You can still buy and sell in the gap before the next roll.</li>
           <li>Up to four desks: humans hot-seat, AI optional. <a href="./disclaimer.html">Gambling disclaimer</a>.</li>
         </ul>
         <button class="btn gold" id="okHelp">Back</button>

@@ -43,8 +43,9 @@ a { color: var(--gold); }
 
 .stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   min-height: 0;
+  height: 100%;
 }
 .quote {
   min-width: 0; min-height: 0; overflow: hidden;
@@ -158,9 +159,16 @@ a { color: var(--gold); }
 .acts button:hover:not(:disabled) { filter: brightness(1.12); }
 
 .rail {
-  display: flex; flex-direction: column; min-height: 0;
+  display: flex; flex-direction: column; min-height: 0; height: 100%;
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
   border-left: 1px solid var(--line); background: #0a1014;
 }
+.rail::-webkit-scrollbar { width: 10px; }
+.rail::-webkit-scrollbar-thumb { background: #3a4a38; border-radius: 8px; }
+.rail::-webkit-scrollbar-track { background: #0a1014; }
 .rail .bank { order: 1; }
 .rail .machines { order: 2; }
 .rail .players { order: 3; }
@@ -229,10 +237,9 @@ a { color: var(--gold); }
 }
 
 .bank {
-  flex: 0 1 auto;
-  min-height: 8.5rem;
-  max-height: 38%;
-  overflow: auto;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
   background: #0c1410;
   border-bottom: 1px solid var(--line);
   padding: .45rem .55rem .5rem;
@@ -252,13 +259,12 @@ a { color: var(--gold); }
 .hold .ico { width: 28px; height: 28px; }
 .log {
   margin-top: .4rem; font-family: "IBM Plex Mono", monospace; font-size: .68rem; color: #94a3b8;
-  max-height: 4.2rem; overflow: auto; white-space: pre-wrap;
+  max-height: 5.5rem; overflow: auto; white-space: pre-wrap;
 }
 .players {
   flex: 0 0 auto;
-  overflow: auto;
-  max-height: 28vh;
-  padding: .4rem .5rem .6rem;
+  overflow: visible;
+  padding: .4rem .5rem 1.2rem;
   display: flex; flex-direction: column; gap: .4rem;
   border-top: 1px solid var(--line);
 }
@@ -375,11 +381,11 @@ input, select {
   .slot-dice { height: 92px; }
 }
 @media (max-width: 900px) {
-  .stage { grid-template-columns: 1fr; grid-template-rows: minmax(48vh, 1fr) auto; }
-  .rail { border-left: 0; border-top: 1px solid var(--line); max-height: 38vh; }
+  .stage { grid-template-columns: 1fr; grid-template-rows: minmax(40vh, 1fr) minmax(220px, 42vh); }
+  .rail { border-left: 0; border-top: 1px solid var(--line); max-height: none; height: 100%; }
   .players { flex-direction: row; flex-wrap: wrap; }
-  .machines { flex-direction: row; }
-  .slot { flex: 1; }
+  .machines { flex-direction: column; }
+  .slot { flex: none; }
   .title-screen { grid-template-columns: 1fr; }
   .title-art { min-height: 28vh; }
   .title-art-fade { background: linear-gradient(180deg, transparent 40%, #070b10 100%); }
