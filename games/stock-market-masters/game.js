@@ -304,7 +304,6 @@
     if (maybeEnd()) return;
     S.turn = nxt;
     S.phase = "trade";
-    S.lastPulls = [null, null];
     const p = current();
     log(`— Turn ${S.round} · ${p.name}'s desk —`);
     paint();
@@ -361,7 +360,7 @@
       spinning = false;
       S.phase = "resolve";
       paint();
-      setTimeout(advanceTurn, p.kind === "ai" ? 900 : 650);
+      setTimeout(advanceTurn, p.kind === "ai" ? 1100 : 900);
     }, 1400);
   }
 
