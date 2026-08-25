@@ -41,6 +41,8 @@
   let spinning = false;
   let spinAnim = null;
   let autoTimer = null;
+  let spinTimer = null;
+  let holdTimer = null;
 
   function emptyHold() {
     const h = {};
@@ -269,35 +271,60 @@
     if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
   }
 
+  function clearHold() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+  }
+
+  function overlayOpen() {
+    const ov = $("overlay");
+    return !!(ov && ov.classList.contains("show"));
+  }
+
   function scheduleAuto() {
     clearAuto();
-    if (!S || !S.auto || spinning || S.phase !== "trade") return;
-    const ov = $("overlay");
-    if (ov && ov.classList.contains("show")) return;
+    if (!S || !S.auto || spinning || S.phase !== "trade" || overlayOpen()) return;
     const p = current();
     if (!p || !p.alive || p.cashed) return;
     autoTimer = setTimeout(() => {
       autoTimer = null;
-      if (!S || !S.auto || spinning) return;
-      if (p.kind === "ai") runAiTurn();
+      if (!S || !S.auto || spinning || S.phase !== "trade") return;
+      if (current() && current().kind === "ai") runAiTurn();
       else spinBoth();
     }, speed().wait);
+  }
+
+  function scheduleHold() {
+    clearHold();
+    const p = current();
+    const hold = S.auto ? speed().hold : (p && p.kind === "ai" ? 1400 : 2200);
+    holdTimer = setTimeout(() => { holdTimer = null; advanceTurn(); }, hold);
   }
 
   function toggleAuto() {
     if (!S) return;
     S.auto = !S.auto;
     paintAuto();
-    if (S.auto) scheduleAuto();
-    else clearAuto();
+    if (S.auto) {
+      if (S.phase === "trade" && !spinning) scheduleAuto();
+      else if (S.phase === "resolve" && !spinning) scheduleHold();
+    } else {
+      clearAuto();
+    }
   }
 
   function setSpeed(k) {
     if (!SPEEDS[k]) return;
-    if (S) S.speed = k;
     try { localStorage.setItem("smm-speed", k); } catch (_) {}
+    if (!S) {
+      paintAuto();
+      return;
+    }
+    S.speed = k;
+    S.auto = true;
     paintAuto();
-    if (S && S.auto) scheduleAuto();
+    if (spinning) return;
+    if (S.phase === "trade") scheduleAuto();
+    else if (S.phase === "resolve") scheduleHold();
   }
 
   function paintAuto() {
@@ -308,7 +335,8 @@
       btn.classList.toggle("on", on);
       btn.textContent = on ? "Auto on" : "Auto";
     }
-    document.querySelectorAll(".spd").forEach((b) => {
+    const box = $("autoBox");
+    (box ? box.querySelectorAll(".spd") : []).forEach((b) => {
       b.classList.toggle("on", b.getAttribute("data-spd") === spd);
     });
   }
@@ -456,8 +484,9 @@
     startDiceAnim();
     const a = pullOne();
     const b = pullOne();
-    const sp = speed();
-    setTimeout(() => {
+    if (spinTimer) clearTimeout(spinTimer);
+    spinTimer = setTimeout(() => {
+      spinTimer = null;
       stopDiceAnim();
       S.lastPulls = [a, b];
       const mega = a.jackpot && b.jackpot;
@@ -467,9 +496,8 @@
       S.phase = "resolve";
       paintMachines(false);
       paint();
-      const hold = S.auto ? sp.hold : (p.kind === "ai" ? 1400 : 2200);
-      setTimeout(advanceTurn, hold);
-    }, sp.spin);
+      scheduleHold();
+    }, speed().spin);
   }
 
   async function cashOut() {
@@ -477,6 +505,7 @@
     if (!p || p.kind === "ai" || spinning || S.phase !== "trade") return;
     if (!confirm(`Cash out ${p.name} at ${dollars(netWorth(p))} and log it to TOP Cashout?`)) return;
     clearAuto();
+    clearHold();
     S.auto = false;
     liquidate(p);
     log(`${p.name} CASHES OUT at ${dollars(p.worth)} — posted to the hall.`);
@@ -804,6 +833,8 @@
 
   function newMatch() {
     clearAuto();
+    clearHold();
+    if (spinTimer) { clearTimeout(spinTimer); spinTimer = null; }
     const players = gatherSeats();
     saveName(players[0].name);
     const prices = {};
@@ -885,20 +916,28 @@
         </ul>
         <button class="btn gold" id="okHelp">Back</button>
       </div>`);
-    $("okHelp").onclick = () => { hideOverlay(); };
+    $("okHelp").onclick = () => { hideOverlay(); if (S && S.auto) scheduleAuto(); };
   }
 
   function bind() {
     $("btnSpin").onclick = spinBoth;
     $("btnCash").onclick = cashOut;
     $("btnHelp").onclick = help;
-    $("btnAuto").onclick = toggleAuto;
-    document.querySelectorAll(".spd").forEach((b) => {
-      b.onclick = () => setSpeed(b.getAttribute("data-spd"));
-    });
+    const box = $("autoBox");
+    if (box) {
+      box.addEventListener("click", (ev) => {
+        const spdBtn = ev.target.closest("[data-spd]");
+        if (spdBtn) {
+          setSpeed(spdBtn.getAttribute("data-spd"));
+          return;
+        }
+        if (ev.target.closest("#btnAuto")) toggleAuto();
+      });
+    }
     $("btnMenu").onclick = () => {
       if (S && S.phase !== "over" && !confirm("Leave the floor?")) return;
       clearAuto();
+      clearHold();
       if (S) S.auto = false;
       showMenu();
     };

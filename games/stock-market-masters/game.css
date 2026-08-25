@@ -291,10 +291,11 @@ a { color: var(--gold); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 .auto-box { display: flex; align-items: center; gap: .25rem; }
 .auto-box .spd {
-  background: #132033; color: var(--mute); border: 1px solid #334155; border-radius: 7px;
-  padding: .32rem .45rem; cursor: pointer; font: 700 .7rem Syne, sans-serif;
+  background: #132033; color: #cbd5e1; border: 1px solid #334155; border-radius: 7px;
+  padding: .38rem .55rem; cursor: pointer; font: 700 .75rem Syne, sans-serif;
 }
-.auto-box .spd.on { border-color: var(--gold); color: var(--gold); }
+.auto-box .spd:hover { border-color: var(--gold); color: var(--gold); }
+.auto-box .spd.on { background: #3a2e10; border-color: var(--gold); color: var(--gold); }
 #btnAuto.on { border-color: var(--gold); color: var(--gold); }
 
 .radio-dock {
