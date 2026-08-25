@@ -341,43 +341,92 @@
     });
   }
 
+  function roundLot(n) {
+    return Math.floor(n / 500) * 500;
+  }
+
+  function aiDoSell(p, st, n) {
+    n = roundLot(Math.min(n, p.hold[st.id] || 0));
+    if (n < 500) return false;
+    const price = S.price[st.id];
+    p.hold[st.id] -= n;
+    p.cash += n * price;
+    takeSellMarks(p, st.id, n);
+    log(`${p.name} (AI) sells ${n} ${st.ticker} @ ${px(price)}.`);
+    return true;
+  }
+
+  function aiDoBuy(p, st, n) {
+    n = roundLot(n);
+    const price = S.price[st.id];
+    const cost = n * price;
+    if (n < 500 || price < 5 || p.cash < cost) return false;
+    p.cash -= cost;
+    p.hold[st.id] += n;
+    addBuyMark(p, st.id, n, price);
+    log(`${p.name} (AI) buys ${n} ${st.ticker} @ ${px(price)}.`);
+    return true;
+  }
+
+  function aiScoreBuy(p, st, nw) {
+    const price = S.price[st.id];
+    const sh = p.hold[st.id] || 0;
+    const held = sh * price;
+    let s = 0;
+    if (price >= PAR && price <= 155) s += 48 + (155 - price) * 0.15;
+    else if (price >= 85 && price < PAR) s += 8;
+    else if (price >= 25 && price < 85) s += 18 + (85 - price) * 0.2;
+    else if (price >= 10 && price < 25) s += 22;
+    if (price < 10) s -= 40;
+    if (price >= 170) s -= 28;
+    if (sh && price >= PAR && price < 170) s += 10;
+    if (nw > 0 && held > nw * 0.38) s -= 30;
+    s += (Math.random() - 0.5) * 6;
+    return s;
+  }
+
   function aiTrade(p) {
-    const reserve = 80000;
-    const ranked = STOCKS.slice().sort((a, b) => S.price[a.id] - S.price[b.id]);
-    ranked.forEach((st) => {
+    const nw = Math.max(netWorth(p), 1);
+    const reserve = clamp(Math.round(nw * 0.18), 50000, 180000);
+    STOCKS.forEach((st) => {
       const price = S.price[st.id];
       const sh = p.hold[st.id] || 0;
-      if (price >= 180 && sh >= 500) {
-        const n = Math.min(sh, 2000);
-        p.hold[st.id] -= n;
-        p.cash += n * price;
-        takeSellMarks(p, st.id, n);
-        log(`${p.name} (AI) trims ${n} ${st.ticker} near the split tape.`);
+      if (sh < 500) return;
+      if (price >= 170) return;
+      if (price < PAR && price > 40) {
+        aiDoSell(p, st, sh);
+        return;
       }
-      if (price <= 15 && sh >= 500 && Math.random() < 0.55) {
-        const n = Math.min(sh, 1000);
-        p.hold[st.id] -= n;
-        p.cash += n * price;
-        takeSellMarks(p, st.id, n);
-        log(`${p.name} (AI) dumps ${n} ${st.ticker} off the floor.`);
+      if (price >= PAR && sh * price > nw * 0.42) {
+        aiDoSell(p, st, Math.max(500, roundLot(sh * 0.25)));
       }
     });
-    const cheap = ranked.filter((st) => S.price[st.id] >= 5);
-    for (const st of cheap) {
+    let actions = 0;
+    const picks = STOCKS.slice().sort((a, b) => aiScoreBuy(p, b, nw) - aiScoreBuy(p, a, nw));
+    for (const st of picks) {
+      if (actions >= 3) break;
       if (p.cash <= reserve) break;
       const price = S.price[st.id];
+      if (aiScoreBuy(p, st, nw) < 12) continue;
+      if (price < 10 || price >= 175) continue;
+      const held = (p.hold[st.id] || 0) * price;
+      const room = Math.max(0, nw * 0.36 - held);
+      let budget = p.cash - reserve;
+      if (price < PAR) budget = Math.min(budget, Math.round(p.cash * 0.16));
+      budget = Math.min(budget, room || budget);
+      const maxSh = roundLot(budget / price);
       let want = 500;
-      if (price >= PAR && price <= 140) want = 1000;
-      if (price <= 40) want = 2000;
-      const cost = want * price;
-      if (p.cash - cost < reserve && price > 30) continue;
-      if (p.cash >= cost) {
-        p.cash -= cost;
-        p.hold[st.id] += want;
-        addBuyMark(p, st.id, want, price);
-        log(`${p.name} (AI) lifts ${want} ${st.ticker} @ ${px(price)}.`);
-        if (Math.random() < 0.45) break;
-      }
+      if (price >= PAR && price <= 140 && maxSh >= 1000) want = 1000;
+      if (price >= PAR && price <= 120 && maxSh >= 2000 && p.cash > reserve * 1.6) want = 2000;
+      if (price < 50 && maxSh >= 2000) want = 2000;
+      if (price < 30 && maxSh >= 5000) want = Math.min(5000, maxSh);
+      want = Math.min(want, maxSh);
+      if (aiDoBuy(p, st, want)) actions += 1;
+    }
+    if (actions === 0 && p.cash > reserve + 500 * PAR) {
+      const divs = STOCKS.filter((st) => S.price[st.id] >= PAR && S.price[st.id] <= 150)
+        .sort((a, b) => S.price[a.id] - S.price[b.id]);
+      if (divs[0]) aiDoBuy(p, divs[0], 500);
     }
   }
 
