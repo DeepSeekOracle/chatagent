@@ -454,7 +454,7 @@
     host.innerHTML = [0, 1].map((i) => `
       <article class="slot" data-slot="${i}">
         <div class="slot-cab">
-          <p class="slot-tag">Machine ${i + 1}</p>
+          <p class="slot-tag">Dice ${i + 1}</p>
           <div class="slot-dice">
             <div class="die" data-d="0"><div class="die-ico"></div><div class="die-val">—</div></div>
             <div class="die" data-d="1"><div class="die-val">—</div></div>
@@ -582,7 +582,7 @@
     $("phasePill").textContent = S.phase.toUpperCase();
     $("resHud").innerHTML = `<span>Round <b>${S.round}/${S.maxRounds}</b></span><span>Desk <b>${p ? esc(p.name) : "—"}</b></span><span>Lot <b>${lotOf()}</b></span>`;
     $("dockStatus").textContent = S.phase === "trade" && p && p.kind !== "ai"
-      ? "Buy or sell, then spin both machines — or cash out."
+      ? "Buy or sell, then roll both dice — or cash out."
       : (S.phase === "over" ? "Floor closed." : "Tape moving…");
     $("btnSpin").disabled = !(S.phase === "trade" && p && p.kind !== "ai" && !spinning);
     $("btnCash").disabled = $("btnSpin").disabled;
@@ -628,7 +628,7 @@
     hideOverlay();
     $("boot").classList.add("hidden");
     $("app").classList.remove("hidden");
-    log("Eight desks open at par $1.00. Two machines move two tapes each turn.");
+    log("Eight desks open at par $1.00. Two dice move two tapes each turn.");
     paint();
     if (current().kind === "ai") setTimeout(runAiTurn, 600);
   }
@@ -659,8 +659,8 @@
         <div class="title-panel">
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>STOCK MARKET MASTERS</h1>
-          <p class="title-tag">Eight desks. Two casino machines. Buy low, collect dividends, cash out on top.</p>
-          <p>Original title — not Stock Ticker. Extra desks: Timber and Utilities. Machines replace the three classic dice. Jackpot is rare. No typing on the floor: Buy and Sell only.</p>
+          <p class="title-tag">Eight desks on a quotation board. Two dice each turn. Buy low, ride the tape, cash out on top.</p>
+          <p>Play-money board game — not a casino and not real markets. Timber and Utilities sit beside the classic six desks. Roll two dice; each picks a stock, UP / DOWN / DIV, and 5¢ 10¢ or 20¢. Rare jackpot. Buy and Sell only; no typing on the floor.</p>
           ${[0, 1, 2, 3].map(seat).join("")}
           <div class="row">
             <label>Rounds
@@ -673,8 +673,8 @@
             <a class="btn ghost" href="/games/">All games</a>
             <button class="btn ghost" id="menuRadio">Play radio</button>
           </div>
-          <p class="sel-meta">Par $1.00 · split at $2.00 · bust at $0 · DIV only at/above par · 5 / 10 / 20¢ · jackpot 50¢ · both machines jackpot $1.00/share.</p>
-          <p class="sel-meta"><a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal.me/ExcavationPro</a></p>
+          <p class="sel-meta">Par $1.00 · split at $2.00 · bust at $0 · DIV only at/above par · 5 / 10 / 20¢ · jackpot 50¢ · both dice jackpot $1.00/share.</p>
+          <p class="sel-meta"><a href="./disclaimer.html">Gambling disclaimer</a> · <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal.me/ExcavationPro</a></p>
         </div>
       </div>`, "menu");
     $("go").onclick = newMatch;
@@ -685,15 +685,15 @@
     showOverlay(`
       <div class="modal">
         <h2>How the floor works</h2>
-        <p>Inspired by 1937 commodity quotation boards — original name, two extra stocks, casino machines instead of dice.</p>
+        <p>Inspired by 1937 commodity quotation boards — original name, two extra stocks, two dice per turn (cabinet look, still just dice).</p>
         <ul>
-          <li>Start with $5,000. Lots of 500 / 1,000 / 2,000 / 5,000 shares.</li>
-          <li>On your turn: buy and sell at the tape, then spin <b>both</b> machines. Each machine picks a desk, UP / DOWN / DIV, and 5¢ 10¢ or 20¢.</li>
+          <li>Start with $5,000 play money. Lots of 500 / 1,000 / 2,000 / 5,000 shares.</li>
+          <li>On your turn: buy and sell at the tape, then roll <b>both</b> dice. Each die picks a desk, UP / DOWN / DIV, and 5¢ 10¢ or 20¢.</li>
           <li>DIV pays that many cents per share you hold, but only if the desk is at or above par $1.00. Example: 1,000 Oil @ $1.25 and DIV 10¢ → $100.</li>
           <li>At $2.00 the desk splits 2-for-1 and resets to $1.00. At $0 shares are wiped and the desk reopens at $1.00.</li>
-          <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both machines jackpot: $1.00 per share.</li>
-          <li>Cash out to lock net worth on the TOP Cashout hall. Last desks standing are liquidated when rounds end. Going broke takes you off the floor.</li>
-          <li>Up to four desks: humans hot-seat, AI optional.</li>
+          <li>Very rare JACKPOT: 50¢ per share on every par-or-better holding. Both dice jackpot: $1.00 per share.</li>
+          <li>Cash out to lock a play-money score on the TOP Cashout hall. Last desks standing are liquidated when rounds end. Going broke takes you off the floor.</li>
+          <li>Up to four desks: humans hot-seat, AI optional. <a href="./disclaimer.html">Gambling disclaimer</a>.</li>
         </ul>
         <button class="btn gold" id="okHelp">Back</button>
       </div>`);

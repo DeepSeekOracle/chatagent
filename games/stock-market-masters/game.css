@@ -222,6 +222,11 @@ a { color: var(--gold); }
   border-top: 1px solid var(--line); background: #080e12;
 }
 .grow { flex: 1; font-size: .8rem; color: var(--mute); }
+.disc-link {
+  color: var(--mute); font-size: .72rem; text-decoration: none; letter-spacing: .06em;
+  text-transform: uppercase; font-weight: 700;
+}
+.disc-link:hover { color: var(--gold); }
 .btn {
   background: #132033; color: var(--text); border: 1px solid #334155; border-radius: 9px;
   padding: .5rem .8rem; cursor: pointer; font: 700 .82rem Syne, sans-serif; text-decoration: none;
