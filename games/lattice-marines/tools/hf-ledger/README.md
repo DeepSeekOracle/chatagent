@@ -17,5 +17,6 @@ Public JSON API. **AI wins only.** Commander name + match metadata are appended 
 - Hall of records: [chatagent.ca/games/lattice-marines/ledger.html](https://chatagent.ca/games/lattice-marines/ledger.html)
 - Play: [chatagent.ca/games/lattice-marines/](https://chatagent.ca/games/lattice-marines/)
 - `GET /ledger.json` · `POST /submit`
+- `GET /witness/feed.json` — LYGO Public Witness live RESOURCE overlay (public GET aggregator; failed sources stay named SHADOW)
 
 Hot-seat and losses are rejected. No secrets in the game client — the Space secret writes the dataset.

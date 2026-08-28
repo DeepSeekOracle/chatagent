@@ -19,6 +19,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from huggingface_hub import HfApi, hf_hub_download
 
+import witness_feed
+
 DATASET = os.environ.get("LEDGER_DATASET", "DeepSeekOracle/lattice-marines-wins")
 SMM_DATASET = os.environ.get("SMM_DATASET", "DeepSeekOracle/stock-market-masters-cashouts")
 TOKEN = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
@@ -344,6 +346,27 @@ async def smm_submit(request: Request):
     }
 
 
+@app.get("/witness/feed.json")
+def witness_feed_json():
+    feed = witness_feed.build_feed()
+    return JSONResponse(feed, headers={"Cache-Control": "public, max-age=45"})
+
+
+@app.get("/witness/health")
+def witness_health():
+    feed = witness_feed.build_feed()
+    return {
+        "ok": feed.get("ok"),
+        "signature": feed.get("signature"),
+        "live_count": feed.get("live_count"),
+        "shadow_count": feed.get("shadow_count"),
+        "point_count": feed.get("point_count"),
+        "utc": feed.get("utc"),
+        "class": "RESOURCE",
+        "doctrine": "named shadows if a GET fails — never invent points",
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """<!doctype html><html lang="en"><head>
@@ -360,7 +383,10 @@ a{color:#22d3ee} code{color:#fbbf24}
 <li><a href="https://chatagent.ca/games/lattice-marines/ledger.html">chatagent.ca ledger</a></li>
 <li><a href="https://eternalhaven.ca/games/lattice-marines/ledger.html">eternalhaven.ca ledger</a></li>
 <li><a href="/ledger.json">ledger.json</a></li>
+<li><a href="/witness/feed.json">Public Witness live feed.json</a> (RESOURCE overlay)</li>
+<li><a href="/witness/health">Witness health</a></li>
+<li><a href="https://chatagent.ca/witness/">chatagent.ca/witness/</a></li>
 <li><a href="https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins">dataset</a></li>
 </ul>
-<p>POST <code>/submit</code> JSON · GET <code>/ledger.json</code></p>
+<p>POST <code>/submit</code> JSON · GET <code>/ledger.json</code> · GET <code>/witness/feed.json</code></p>
 </body></html>"""
