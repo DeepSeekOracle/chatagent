@@ -21,6 +21,8 @@
 
   const canvas = document.getElementById("globe");
   const ctx = canvas.getContext("2d");
+  const discCanvas = document.getElementById("disc");
+  const dctx = discCanvas ? discCanvas.getContext("2d") : null;
   const state = {
     mode: "earth",
     filter: "all",
@@ -33,6 +35,7 @@
     panX: 0,
     panY: 0,
     hover: null,
+    disc: { zoom: 1, panX: 0, panY: 0, rot: 0, dragging: false, lastX: 0, lastY: 0, hover: null },
     world: [],
     landMask: null,
     rain: [],
@@ -51,12 +54,18 @@
     [60, -40, 8, 6], [-80, 0, 20, 8]
   ];
 
-  function resize() {
-    const r = canvas.getBoundingClientRect();
+  function sizeCanvas(cv, c) {
+    if (!cv || !c) return;
+    const r = cv.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.max(320, r.width) * dpr;
-    canvas.height = Math.max(320, r.height) * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cv.width = Math.max(320, r.width) * dpr;
+    cv.height = Math.max(280, r.height) * dpr;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function resize() {
+    sizeCanvas(canvas, ctx);
+    sizeCanvas(discCanvas, dctx);
   }
 
   function project(lat, lon, cx, cy, R, rot) {
@@ -66,6 +75,30 @@
     const y = Math.sin(phi) * Math.cos(state.tilt) + Math.cos(phi) * Math.cos(lam) * Math.sin(state.tilt);
     const z = Math.cos(phi) * Math.cos(lam) * Math.cos(state.tilt) - Math.sin(phi) * Math.sin(state.tilt);
     return { x: cx + x * R, y: cy - y * R, z, vis: z > -0.02 };
+  }
+
+  function projectDisc(lat, lon, cx, cy, R, rot) {
+    const colat = ((90 - lat) * Math.PI) / 180;
+    const rho = (R * colat) / Math.PI;
+    const th = (lon * Math.PI) / 180 + rot;
+    return {
+      x: cx + rho * Math.sin(th),
+      y: cy - rho * Math.cos(th),
+      z: 1 - Math.min(1, rho / R),
+      vis: rho <= R + 0.8
+    };
+  }
+
+  function unprojectDisc(sx, sy, cx, cy, R, rot) {
+    const dx = sx - cx;
+    const dy = cy - sy;
+    const rho = Math.sqrt(dx * dx + dy * dy);
+    if (rho > R + 0.5) return null;
+    const lat = 90 - (rho / R) * 180;
+    let lon = ((Math.atan2(dx, dy) - rot) * 180) / Math.PI;
+    while (lon > 180) lon -= 360;
+    while (lon < -180) lon += 360;
+    return { lat: lat, lon: lon };
   }
 
   function hashAngle(s) {
@@ -496,6 +529,272 @@
     );
   }
 
+  function pathLandOn(c, projectFn, cx, cy, R, rot) {
+    c.beginPath();
+    const rings = state.world;
+    if (!rings.length) {
+      LAND.forEach(function (b) {
+        const p = projectFn(b[0], b[1], cx, cy, R, rot);
+        if (!p.vis) return;
+        c.moveTo(p.x + 1, p.y);
+        c.ellipse(p.x, p.y, (b[2] / 90) * R * 0.45, (b[3] / 90) * R * 0.32, 0, 0, Math.PI * 2);
+      });
+      return;
+    }
+    rings.forEach(function (ring) {
+      let started = false;
+      let last = null;
+      for (let i = 0; i < ring.length; i++) {
+        const p = projectFn(ring[i][1], ring[i][0], cx, cy, R, rot);
+        if (!p.vis) { last = null; continue; }
+        if (!started || !last) c.moveTo(p.x, p.y);
+        else c.lineTo(p.x, p.y);
+        started = true;
+        last = p;
+      }
+    });
+  }
+
+  function overlayEarth(c, projectFn, cx, cy, R, rot) {
+    if (state.layers.quakes) {
+      state.ref.quakes.forEach(function (q) {
+        const p = projectFn(q.lat, q.lon, cx, cy, R, rot);
+        if (!p.vis) return;
+        c.fillStyle = "rgba(245,158,11,0.92)";
+        c.beginPath();
+        c.arc(p.x, p.y, 1.5 + Math.max(2, q.mag || 2) * 0.55, 0, Math.PI * 2);
+        c.fill();
+      });
+    }
+    if (state.layers.events) {
+      state.ref.events.forEach(function (e) {
+        const p = projectFn(e.lat, e.lon, cx, cy, R, rot);
+        if (!p.vis) return;
+        c.strokeStyle = "#fb7185";
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        c.stroke();
+      });
+    }
+    if (state.layers.iss && state.ref.iss) {
+      const p = projectFn(state.ref.iss.lat, state.ref.iss.lon, cx, cy, R, rot);
+      if (p.vis) {
+        c.shadowColor = "#7dd3fc";
+        c.shadowBlur = 10;
+        c.fillStyle = "#e0f2fe";
+        c.beginPath();
+        c.arc(p.x, p.y, 4.2, 0, Math.PI * 2);
+        c.fill();
+        c.shadowBlur = 0;
+        c.fillStyle = "#7dd3fc";
+        c.font = "10px IBM Plex Mono, monospace";
+        c.textAlign = "left";
+        c.fillText("ISS", p.x + 7, p.y - 4);
+      }
+    }
+    function dots(list, color, r) {
+      (list || []).forEach(function (e) {
+        const p = projectFn(e.lat, e.lon, cx, cy, R, rot);
+        if (!p.vis) return;
+        c.fillStyle = color;
+        c.beginPath();
+        c.arc(p.x, p.y, r, 0, Math.PI * 2);
+        c.fill();
+      });
+    }
+    if (state.layers.alerts) dots(state.ref.alerts, "rgba(251,191,36,0.9)", 3.0);
+    if (state.layers.floods) dots(state.ref.floods, "rgba(56,189,248,0.9)", 3.0);
+    if (state.layers.launches) dots(state.ref.launches, "rgba(244,114,182,0.95)", 4.0);
+    if (state.layers.aurora) dots(state.ref.aurora, "rgba(52,211,153,0.55)", 2.0);
+    if (state.layers.flights) dots(state.ref.flights, "rgba(125,211,252,0.7)", 1.7);
+    if (state.layers.weather) dots(state.ref.weather, "rgba(250,250,250,0.85)", 3.2);
+    if (state.layers.radar) dots(state.ref.radar, "rgba(96,165,250,0.85)", 3.8);
+    if (state.layers.air) dots(state.ref.air, "rgba(192,132,252,0.9)", 3.4);
+    if (state.layers.marine) dots(state.ref.marine, "rgba(45,212,191,0.9)", 3.2);
+    if (state.layers.alerts) dots(state.ref.world_alerts, "rgba(251,146,60,0.9)", 3.1);
+    if (state.layers.shadow) {
+      state.shadows.filter(function (n) { return n.sphere !== "lattice"; }).forEach(function (n) {
+        const ll = nodeLL(n);
+        const p = projectFn(ll.lat, ll.lon, cx, cy, R, rot);
+        if (!p.vis) return;
+        const live = n.kind === "resource" && resourceLive(n.id);
+        if (live) {
+          c.fillStyle = "#34d399";
+          c.beginPath();
+          c.arc(p.x, p.y, 4, 0, Math.PI * 2);
+          c.fill();
+        } else {
+          c.strokeStyle = "#a78bfa";
+          c.lineWidth = 1.4;
+          c.setLineDash([3, 3]);
+          c.beginPath();
+          c.arc(p.x, p.y, n.kind === "resource" ? 7 : 9, 0, Math.PI * 2);
+          c.stroke();
+          c.setLineDash([]);
+        }
+      });
+    }
+  }
+
+  function drawDisc(cx, cy, R, rot) {
+    if (!dctx) return;
+    const c = dctx;
+    const halo = c.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.18);
+    halo.addColorStop(0, "rgba(52,211,153,0.16)");
+    halo.addColorStop(0.72, "rgba(20,40,10,0.05)");
+    halo.addColorStop(1, "rgba(0,0,0,0)");
+    c.beginPath();
+    c.arc(cx, cy, R * 1.18, 0, Math.PI * 2);
+    c.fillStyle = halo;
+    c.fill();
+
+    const ocean = c.createRadialGradient(cx, cy, 0, cx, cy, R);
+    ocean.addColorStop(0, "#1a4a3a");
+    ocean.addColorStop(0.48, "#0c2830");
+    ocean.addColorStop(0.82, "#0a1c28");
+    ocean.addColorStop(1, "#c8e7f0");
+    c.beginPath();
+    c.arc(cx, cy, R, 0, Math.PI * 2);
+    c.fillStyle = ocean;
+    c.fill();
+
+    c.save();
+    c.beginPath();
+    c.arc(cx, cy, R, 0, Math.PI * 2);
+    c.clip();
+
+    c.strokeStyle = "rgba(134,239,172,0.28)";
+    c.lineWidth = 0.7;
+    [0, 30, 60, -30, -60].forEach(function (lat) {
+      const p = projectDisc(lat, 0, cx, cy, R, rot);
+      const rho = Math.hypot(p.x - cx, p.y - cy);
+      c.beginPath();
+      c.arc(cx, cy, rho, 0, Math.PI * 2);
+      c.stroke();
+    });
+    c.beginPath();
+    for (let lon = 0; lon < 360; lon += 15) {
+      const p = projectDisc(-90, lon, cx, cy, R, rot);
+      c.moveTo(cx, cy);
+      c.lineTo(p.x, p.y);
+    }
+    c.strokeStyle = "rgba(125,211,252,0.22)";
+    c.stroke();
+
+    pathLandOn(c, projectDisc, cx, cy, R, rot);
+    c.fillStyle = "rgba(22, 90, 48, 0.88)";
+    c.fill();
+    c.strokeStyle = "rgba(167, 243, 208, 0.9)";
+    c.lineWidth = state.disc.zoom > 1.6 ? 1.2 : 0.85;
+    c.stroke();
+
+    c.beginPath();
+    c.arc(cx, cy, R * 0.965, 0, Math.PI * 2);
+    c.arc(cx, cy, R, 0, Math.PI * 2, true);
+    c.fillStyle = "rgba(226, 247, 255, 0.55)";
+    c.fill();
+
+    if (state.layers.matrix) {
+      c.font = Math.max(7, Math.min(11, R * 0.026)) + "px IBM Plex Mono, monospace";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      const step = Math.max(4, 12 / state.disc.zoom);
+      const t = (state.tick / 8) | 0;
+      let n = 0;
+      for (let lat = 80; lat >= -70; lat -= step) {
+        for (let lon = -180; lon < 180; lon += step * 1.4) {
+          if (n > 480) break;
+          if (!isLand(lat, lon) && (Math.abs((lat * 41 + lon) | 0) % 18) > 1) continue;
+          const p = projectDisc(lat, lon, cx, cy, R, rot);
+          if (!p.vis) continue;
+          const gi = Math.abs((lat * 13 + lon * 7 + t) | 0) % GLYPHS.length;
+          c.globalAlpha = isLand(lat, lon) ? 0.28 : 0.1;
+          c.fillStyle = isLand(lat, lon) ? "#bbf7d0" : "#67e8f9";
+          c.fillText(GLYPHS.charAt(gi), p.x, p.y);
+          n++;
+        }
+      }
+      c.globalAlpha = 1;
+    }
+
+    overlayEarth(c, projectDisc, cx, cy, R, rot);
+
+    if (state.disc.hover) {
+      const hp = projectDisc(state.disc.hover.lat, state.disc.hover.lon, cx, cy, R, rot);
+      if (hp.vis) {
+        c.strokeStyle = "#ecfccb";
+        c.lineWidth = 1.2;
+        c.beginPath();
+        c.arc(hp.x, hp.y, 9, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+
+    c.restore();
+
+    c.beginPath();
+    c.arc(cx, cy, R, 0, Math.PI * 2);
+    c.strokeStyle = "rgba(226,247,255,0.7)";
+    c.lineWidth = 3;
+    c.stroke();
+    c.beginPath();
+    c.arc(cx, cy, 4, 0, Math.PI * 2);
+    c.fillStyle = "#f8fafc";
+    c.fill();
+
+    c.fillStyle = "#bbf7d0";
+    c.font = "11px IBM Plex Mono, monospace";
+    c.textAlign = "center";
+    c.fillText("FLAT EARTH · north disc · ice rim south · same public resources", cx, cy + R + 22);
+    c.fillStyle = "#86efac";
+    c.font = "10px IBM Plex Mono, monospace";
+    c.fillText("N", cx, cy - 10);
+    c.fillText("ICE RIM", cx, cy + R - 14);
+  }
+
+  function discLayout(w, h) {
+    return {
+      cx: w / 2 + state.disc.panX,
+      cy: h * 0.5 + state.disc.panY,
+      R: Math.min(w, h) * 0.42 * state.disc.zoom,
+      rot: state.disc.rot
+    };
+  }
+
+  function setDiscZoom(nz, mx, my, w, h) {
+    const old = state.disc.zoom;
+    state.disc.zoom = Math.max(1, Math.min(5.2, nz));
+    const k = state.disc.zoom / old;
+    const cx = w / 2 + state.disc.panX;
+    const cy = h * 0.5 + state.disc.panY;
+    const px = mx == null ? w / 2 : mx;
+    const py = my == null ? h * 0.5 : my;
+    state.disc.panX = px - w / 2 - (px - cx) * k;
+    state.disc.panY = py - h * 0.5 - (py - cy) * k;
+    if (state.disc.zoom <= 1.02) {
+      state.disc.zoom = 1;
+      state.disc.panX *= 0.4;
+      state.disc.panY *= 0.4;
+    }
+  }
+
+  function resetDisc() {
+    state.disc.zoom = 1;
+    state.disc.panX = 0;
+    state.disc.panY = 0;
+    state.disc.rot = 0;
+  }
+
+  function updateDiscMeta() {
+    const el = document.getElementById("d-meta");
+    if (!el) return;
+    const bits = ["FLAT EARTH", state.disc.zoom.toFixed(1) + "×"];
+    if (state.disc.hover) bits.push(fmtLL(state.disc.hover) + (isLand(state.disc.hover.lat, state.disc.hover.lon) ? " · land" : " · ocean"));
+    else bits.push("drag rotate · wheel zoom · double-click focus");
+    el.textContent = bits.join(" · ");
+  }
+
   function viewLayout(w, h) {
     const base = Math.min(w, h) * 0.38 * state.zoom;
     if (state.mode === "split") {
@@ -576,6 +875,17 @@
       drawGlobe(v.cx, v.cy, v.R, v.rot, v.kind);
     });
     if (!state.dragging && state.zoom < 1.2) state.rot += 0.0018;
+
+    if (discCanvas && dctx) {
+      const dw = discCanvas.getBoundingClientRect().width;
+      const dh = discCanvas.getBoundingClientRect().height;
+      dctx.clearRect(0, 0, dw, dh);
+      dctx.fillStyle = "#030604";
+      dctx.fillRect(0, 0, dw, dh);
+      const dv = discLayout(dw, dh);
+      drawDisc(dv.cx, dv.cy, dv.R, dv.rot);
+      if (!state.disc.dragging && state.disc.zoom < 1.15) state.disc.rot += 0.0011;
+    }
     requestAnimationFrame(frame);
   }
 
@@ -584,22 +894,6 @@
     if (id === "resource_eonet") return !!state.ref.live.eonet;
     if (id === "resource_iss") return !!state.ref.live.iss;
     return false;
-  }
-
-  function frame() {
-    const w = canvas.getBoundingClientRect().width;
-    const h = canvas.getBoundingClientRect().height;
-    ctx.clearRect(0, 0, w, h);
-    if (state.mode === "split") {
-      drawGlobe(w * 0.28, h * 0.48, Math.min(w, h) * 0.28, state.rot, "earth");
-      drawGlobe(w * 0.72, h * 0.48, Math.min(w, h) * 0.28, state.rot + 0.35, "lattice");
-    } else if (state.mode === "lattice") {
-      drawGlobe(w / 2, h * 0.48, Math.min(w, h) * 0.38, state.rot, "lattice");
-    } else {
-      drawGlobe(w / 2, h * 0.48, Math.min(w, h) * 0.38, state.rot, "earth");
-    }
-    if (!state.dragging) state.rot += 0.0022;
-    requestAnimationFrame(frame);
   }
 
   async function getJson(url) {
@@ -1113,6 +1407,71 @@
     if (zinEl) zinEl.addEventListener("click", zin);
     if (zoutEl) zoutEl.addEventListener("click", zout);
     if (zreset) zreset.addEventListener("click", function () { resetView(); updateMeta(); });
+    if (discCanvas) {
+      discCanvas.addEventListener("pointerdown", function (e) {
+        state.disc.dragging = true;
+        state.disc.lastX = e.clientX;
+        state.disc.lastY = e.clientY;
+        discCanvas.setPointerCapture(e.pointerId);
+      });
+      discCanvas.addEventListener("pointerup", function () { state.disc.dragging = false; });
+      discCanvas.addEventListener("pointerleave", function () { state.disc.hover = null; updateDiscMeta(); });
+      discCanvas.addEventListener("pointermove", function (e) {
+        const rect = discCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const v = discLayout(rect.width, rect.height);
+        state.disc.hover = unprojectDisc(mx, my, v.cx, v.cy, v.R, v.rot);
+        updateDiscMeta();
+        if (!state.disc.dragging) return;
+        const dx = e.clientX - state.disc.lastX;
+        const dy = e.clientY - state.disc.lastY;
+        if (e.shiftKey || e.buttons === 2) {
+          state.disc.panX += dx;
+          state.disc.panY += dy;
+        } else {
+          state.disc.rot += dx * 0.008;
+          if (state.disc.zoom > 1.15) {
+            state.disc.panX += dx * 0.3;
+            state.disc.panY += dy * 0.3;
+          }
+        }
+        state.disc.lastX = e.clientX;
+        state.disc.lastY = e.clientY;
+      });
+      discCanvas.addEventListener("wheel", function (e) {
+        e.preventDefault();
+        const rect = discCanvas.getBoundingClientRect();
+        setDiscZoom(state.disc.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
+        updateDiscMeta();
+      }, { passive: false });
+      discCanvas.addEventListener("dblclick", function (e) {
+        const rect = discCanvas.getBoundingClientRect();
+        const v = discLayout(rect.width, rect.height);
+        const ll = unprojectDisc(e.clientX - rect.left, e.clientY - rect.top, v.cx, v.cy, v.R, v.rot);
+        if (!ll) { resetDisc(); updateDiscMeta(); return; }
+        state.disc.rot = -(ll.lon * Math.PI) / 180;
+        state.disc.panX = 0;
+        state.disc.panY = 0;
+        setDiscZoom(Math.min(5.2, state.disc.zoom < 1.4 ? 2.3 : state.disc.zoom * 1.35), rect.width / 2, rect.height * 0.5, rect.width, rect.height);
+        updateDiscMeta();
+      });
+      discCanvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      const dzin = document.getElementById("d-zin");
+      const dzout = document.getElementById("d-zout");
+      const dreset = document.getElementById("d-reset");
+      if (dzin) dzin.addEventListener("click", function () {
+        const r = discCanvas.getBoundingClientRect();
+        setDiscZoom(state.disc.zoom * 1.22, r.width / 2, r.height * 0.5, r.width, r.height);
+        updateDiscMeta();
+      });
+      if (dzout) dzout.addEventListener("click", function () {
+        const r = discCanvas.getBoundingClientRect();
+        setDiscZoom(state.disc.zoom / 1.22, r.width / 2, r.height * 0.5, r.width, r.height);
+        updateDiscMeta();
+      });
+      if (dreset) dreset.addEventListener("click", function () { resetDisc(); updateDiscMeta(); });
+    }
     window.addEventListener("keydown", function (e) {
       if (e.target && /input|textarea/i.test(e.target.tagName)) return;
       if (e.key === "+" || e.key === "=") zin();
