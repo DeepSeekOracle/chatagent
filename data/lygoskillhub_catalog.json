@@ -2,7 +2,7 @@
   "signature": "Delta9Phi963-LYGOSKILLHUB-CATALOG-v1.5",
   "name": "LYGOSKILLHUB",
   "version": "1.5.0",
-  "updated_utc": "2026-08-28T03:55:33+00:00",
+  "updated_utc": "2026-08-28T04:02:36+00:00",
   "publisher": "deepseekoracle",
   "steward": "Justin Helmer / Excavationpro / Lightfather",
   "clawhub_profile": "https://clawhub.ai/deepseekoracle",
@@ -1924,5 +1924,5 @@
     }
   ],
   "note": "Immutable LYGO skill ledger for chatagent.ca/lygoskillhub.html. Every clawhub/skills.json entry + mirror is listed. Public tentacles → ClawHub (all green security audits); FULL unlocked engineer packs → #full-lygo vault only.",
-  "catalog_sha256": "4c878f27a7e5074798d5d63edaa78f9de674c9eb3ac265ec18c23f58819ed1b8"
+  "catalog_sha256": "3e1d4bb5d2da87daa82d335360477ea457e227903883f1573193a24972711fc7"
 }
