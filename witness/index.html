@@ -40,8 +40,20 @@
     <a href="/witness/" aria-current="page">Witness</a>
     <a href="/lygoskillhub.html">SkillHub</a>
     <a href="/about.html">About</a>
+    <a class="nav-donate" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
   </nav>
 </header>
+<div class="donate-strip" id="donate">
+  <div class="donate-copy">
+    <b>Support Public Witness</b>
+    <span>Optional tip — not a paywall. Keeps the globe, cameras, and HF agent free.</span>
+    <span class="donate-handle">PayPal.me/ExcavationPro</span>
+  </div>
+  <div class="donate-actions">
+    <a class="btn paypal" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate via PayPal</a>
+    <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon</a>
+  </div>
+</div>
 
 <div class="stage">
   <div class="globe-wrap">
@@ -101,6 +113,8 @@
       <button class="btn" id="btn-refresh" type="button">Reload sources</button>
       <button class="btn ghost" id="btn-overlay" type="button">JSON overlay</button>
       <button class="btn ghost" id="btn-ollama" type="button">Local Ollama summary</button>
+      <button class="btn ghost" id="btn-hf" type="button">HF SmolLM2 summary</button>
+      <a class="btn paypal" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate PayPal</a>
     </div>
     <div class="filter-row">
       <button class="chip on" data-filter="all" type="button">All</button>
@@ -155,11 +169,18 @@
     <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
     <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
   </div>
+  <h2>Support</h2>
+  <p>Public Witness is free. Optional donations pay hosting and packaging. A tip does not buy access, skip the doctrine, or unlock private intel.</p>
+  <p>
+    <a class="btn paypal" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate via PayPal.me/ExcavationPro</a>
+    <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon / Excavationpro</a>
+  </p>
   <h2>Integrate</h2>
   <p>Humans use this page. The globe crunches live public resources (USGS, EONET, ISS, NWS, GDACS, NOAA SWPC, Open-Meteo, a public ADS-B box, launch pads, CoinGecko). Hugging Face hosts a labeled overlay snapshot: <a href="https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed">DeepSeekOracle/lygo-public-witness-feed</a>. Failed GETs stay <strong>named shadows</strong>. Agents: ClawHub tentacle + SkillHub FULL zip.</p>
 </section>
 <footer class="site">
-  <p>© <span class="y"></span> Justin Helmer / Excavationpro. MIT-0 skill · site content by the publisher. Mirror: <a href="https://eternalhaven.ca/witness/">eternalhaven.ca/witness/</a> · Support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal</a></p>
+  <p>© <span class="y"></span> Justin Helmer / Excavationpro. MIT-0 skill · site content by the publisher. Mirror: <a href="https://eternalhaven.ca/witness/">eternalhaven.ca/witness/</a></p>
+  <p><strong>Donate (optional tip):</strong> <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a></p>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
 <script src="/witness/app.js"></script>

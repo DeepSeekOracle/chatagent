@@ -49,6 +49,8 @@ header.site {
 }
 .navlinks a { text-decoration: none; color: var(--muted); }
 .navlinks a:hover { color: var(--accent); }
+.navlinks a[href*="paypalme"] { color: #fff; background: #0070ba; padding: .2rem .65rem; border-radius: 999px; font-weight: 700; }
+.navlinks a[href*="paypalme"]:hover { color: #fff; filter: brightness(1.08); }
 .hero { padding: 2rem 0 1rem; }
 .hero h1 {
   font-size: clamp(1.55rem, 3.8vw, 2.15rem);
@@ -76,6 +78,7 @@ header.site {
   color: var(--accent2);
 }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+a.btn.primary[href*="paypalme"] { background: #0070ba; border-color: #0070ba; }
 .btn:hover { filter: brightness(1.04); }
 .notice {
   margin: 1.1rem 0 0;
