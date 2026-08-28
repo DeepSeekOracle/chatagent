@@ -1,7 +1,7 @@
 {
   "signature": "Delta9Phi963-FULL-LYGO-SKILLS-v2",
   "version": "2.1.0",
-  "updated_utc": "2026-08-24T13:55:56+00:00",
+  "updated_utc": "2026-08-28T02:59:25+00:00",
   "channel": "FULL_LYGO_ENGINEER",
   "clawhub": "never",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
@@ -25,6 +25,7 @@
   "cyborg_principle": "boot limbs → task with Continuum self-police → can_claim_done only when claims hold → human consent for plant/publish",
   "featured": [
     "lygo-cyborg-kernel",
+    "lygo-public-witness",
     "lygo-continuum",
     "lygo-continuum-integrator",
     "lygo-quantum-attestor",
@@ -36,6 +37,23 @@
     "lygo-emotional-ram"
   ],
   "skills": [
+    {
+      "slug": "lygo-public-witness",
+      "name": "LYGO Public Witness — FULL zip",
+      "package": "lygo-public-witness-full",
+      "zip": "lygo-public-witness-full.zip",
+      "zip_rel": "dist/lygo-public-witness-full.zip",
+      "zip_sha256": "5844257483301814b77b0a7708f7f3e1822e38ccba2d1db17ed60aeacdfb55f2",
+      "bytes": 209327,
+      "file_count": 17,
+      "role": "Unlocked Public Witness: labeled REFERENCE vs CANON overlay CLI + website + optional Celestrak REFERENCE feeds. Never live Star Chart write.",
+      "tier": "lattice",
+      "featured": true,
+      "harm_default": "read_mostly",
+      "source_path": "I:\\E Drive\\.grok\\skills\\lygo-public-witness",
+      "tier_label": "Lattice mesh",
+      "channel_label": "FULL engineer zip (not ClawHub)"
+    },
     {
       "slug": "lygo-public-agent-join-kit",
       "name": "Public Agent Join Kit — FULL zip — FULL zip",
