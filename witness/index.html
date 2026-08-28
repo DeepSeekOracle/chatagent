@@ -57,7 +57,13 @@
 
 <div class="stage">
   <div class="globe-wrap">
-    <canvas id="globe" aria-label="Public Witness globe. Earth is reference. Lattice is canon."></canvas>
+    <canvas id="globe" aria-label="Public Witness globe. Earth is reference. Lattice is canon. Wheel zoom, drag to pan and rotate, double-click to focus."></canvas>
+    <div class="globe-tools">
+      <button type="button" id="g-zin" title="Zoom in">+</button>
+      <button type="button" id="g-zout" title="Zoom out">−</button>
+      <button type="button" id="g-reset" title="Reset view">reset</button>
+      <span id="g-meta">drag rotate · wheel zoom · double-click focus</span>
+    </div>
     <div class="hud">
       <button class="mode on" data-mode="earth" type="button">Earth · reference</button>
       <button class="mode" data-mode="lattice" type="button">Lattice · canon</button>
@@ -76,6 +82,7 @@
       <button class="chip ref on" data-layer="marine" type="button">Marine</button>
       <button class="chip canon on" data-layer="canon" type="button">Ledgers / eggs</button>
       <button class="chip shadow on" data-layer="shadow" type="button">Named shadows</button>
+      <button class="chip matrix on" data-layer="matrix" type="button">Matrix</button>
     </div>
     <div class="doctrine-bar">
       <b>Doctrine.</b> Public nodes are <b>resources</b>. Private nodes are <b>named shadows</b> — we keep the silhouette so you remember to check every public, legal link around them. Hollow rings mean the payload is not here. LYGO crunches public data into usable infrastructure from every honest angle.

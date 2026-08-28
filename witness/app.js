@@ -29,7 +29,16 @@
     dragging: false,
     lastX: 0,
     lastY: 0,
-    layers: { quakes: true, events: true, iss: true, alerts: true, floods: true, launches: true, aurora: true, flights: true, weather: true, radar: true, air: true, marine: true, canon: true, shadow: true },
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    hover: null,
+    world: [],
+    landMask: null,
+    rain: [],
+    stars: [],
+    tick: 0,
+    layers: { quakes: true, events: true, iss: true, alerts: true, floods: true, launches: true, aurora: true, flights: true, weather: true, radar: true, air: true, marine: true, canon: true, shadow: true, matrix: true },
     ref: { quakes: [], events: [], iss: null, alerts: [], floods: [], launches: [], aurora: [], flights: [], weather: [], radar: [], air: [], marine: [], world_alerts: [], markets: null, tle: 0, errors: {}, live: {} },
     canon: { anchors: [], star: [], eggs: [], agora: null, errors: {} },
     shadows: [],
@@ -76,6 +85,98 @@
     return schematicLL(n.id || n.label);
   }
 
+  const GLYPHS = "01Δ9Φ963LYGOﾊﾐﾋｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ";
+
+  function seedDecor() {
+    if (state.stars.length) return;
+    for (let i = 0; i < 140; i++) {
+      state.stars.push({ x: Math.random(), y: Math.random(), s: 0.4 + Math.random() * 1.4, a: 0.25 + Math.random() * 0.7 });
+    }
+    for (let i = 0; i < 42; i++) {
+      state.rain.push({
+        x: Math.random(),
+        y: Math.random() * -1.2,
+        sp: 0.0016 + Math.random() * 0.004,
+        len: 8 + ((Math.random() * 14) | 0)
+      });
+    }
+  }
+
+  function isLand(lat, lon) {
+    if (!state.landMask) return false;
+    let x = Math.round(lon + 180);
+    const y = Math.round(90 - lat);
+    if (y < 0 || y >= 180) return false;
+    x = ((x % 360) + 360) % 360;
+    return state.landMask[y * 360 + x] === 1;
+  }
+
+  function buildLandMask(rings) {
+    const c = document.createElement("canvas");
+    c.width = 360;
+    c.height = 180;
+    const g = c.getContext("2d");
+    g.fillStyle = "#000";
+    g.fillRect(0, 0, 360, 180);
+    g.fillStyle = "#fff";
+    rings.forEach(function (ring) {
+      if (ring.length < 4) return;
+      g.beginPath();
+      for (let i = 0; i < ring.length; i++) {
+        const x = ring[i][0] + 180;
+        const y = 90 - ring[i][1];
+        if (i === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.closePath();
+      g.fill();
+    });
+    const data = g.getImageData(0, 0, 360, 180).data;
+    const mask = new Uint8Array(360 * 180);
+    for (let i = 0; i < mask.length; i++) mask[i] = data[i * 4] > 20 ? 1 : 0;
+    state.landMask = mask;
+  }
+
+  async function loadWorld() {
+    try {
+      const pack = await getJson("world-land.json");
+      const q = pack.q || 10;
+      state.world = (pack.rings || []).map(function (ring) {
+        return ring.map(function (p) { return [p[0] / q, p[1] / q]; });
+      });
+      buildLandMask(state.world);
+    } catch (e) {
+      state.world = [];
+    }
+  }
+
+  function unproject(sx, sy, cx, cy, R, rot) {
+    const nx = (sx - cx) / R;
+    const ny = (cy - sy) / R;
+    const rr = nx * nx + ny * ny;
+    if (rr > 0.995) return null;
+    const nz = Math.sqrt(Math.max(0, 1 - rr));
+    const sinT = Math.sin(state.tilt);
+    const cosT = Math.cos(state.tilt);
+    const sinPhi = ny * cosT - nz * sinT;
+    const cphiClam = ny * sinT + nz * cosT;
+    const phi = Math.asin(Math.max(-1, Math.min(1, sinPhi)));
+    const cosPhi = Math.cos(phi);
+    let lam;
+    if (Math.abs(cosPhi) < 1e-6) lam = 0;
+    else lam = Math.atan2(nx / cosPhi, cphiClam / cosPhi) - rot;
+    while (lam > Math.PI) lam -= Math.PI * 2;
+    while (lam < -Math.PI) lam += Math.PI * 2;
+    return { lat: (phi * 180) / Math.PI, lon: (lam * 180) / Math.PI };
+  }
+
+  function fmtLL(ll) {
+    if (!ll) return "";
+    const ns = ll.lat >= 0 ? "N" : "S";
+    const ew = ll.lon >= 0 ? "E" : "W";
+    return Math.abs(ll.lat).toFixed(1) + "°" + ns + " " + Math.abs(ll.lon).toFixed(1) + "°" + ew;
+  }
+
   function drawHollow(x, y, r, color) {
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.4;
@@ -86,59 +187,192 @@
     ctx.setLineDash([]);
   }
 
+  function pathLand(cx, cy, R, rot) {
+    ctx.beginPath();
+    const rings = state.world;
+    if (!rings.length) {
+      LAND.forEach(function (b) {
+        const p = project(b[0], b[1], cx, cy, R, rot);
+        if (!p.vis) return;
+        ctx.moveTo(p.x + 1, p.y);
+        ctx.ellipse(p.x, p.y, (b[2] / 90) * R * 0.55, (b[3] / 90) * R * 0.4, 0, 0, Math.PI * 2);
+      });
+      return;
+    }
+    rings.forEach(function (ring) {
+      let started = false;
+      let lastVis = false;
+      for (let i = 0; i < ring.length; i++) {
+        const p = project(ring[i][1], ring[i][0], cx, cy, R, rot);
+        if (p.vis) {
+          if (!started || !lastVis) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+          started = true;
+          lastVis = true;
+        } else {
+          lastVis = false;
+        }
+      }
+    });
+  }
+
+  function drawGraticule(cx, cy, R, rot, color, step) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    for (let lat = -75; lat <= 75; lat += step) {
+      let first = true;
+      for (let lon = -180; lon <= 180; lon += 4) {
+        const p = project(lat, lon, cx, cy, R, rot);
+        if (!p.vis) { first = true; continue; }
+        if (first) { ctx.moveTo(p.x, p.y); first = false; }
+        else ctx.lineTo(p.x, p.y);
+      }
+    }
+    for (let lon = -180; lon < 180; lon += step) {
+      let first = true;
+      for (let lat = -80; lat <= 80; lat += 4) {
+        const p = project(lat, lon, cx, cy, R, rot);
+        if (!p.vis) { first = true; continue; }
+        if (first) { ctx.moveTo(p.x, p.y); first = false; }
+        else ctx.lineTo(p.x, p.y);
+      }
+    }
+    ctx.stroke();
+  }
+
+  function drawMatrixSkin(cx, cy, R, rot, kind) {
+    if (!state.layers.matrix) return;
+    const step = Math.max(3.2, 11 / state.zoom);
+    const t = (state.tick / 7) | 0;
+    ctx.font = Math.max(7, Math.min(12, R * 0.028)) + "px IBM Plex Mono, monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    let n = 0;
+    const cap = 520;
+    for (let lat = -70; lat <= 70; lat += step) {
+      for (let lon = -180; lon < 180; lon += step * 1.35) {
+        if (n > cap) return;
+        const land = isLand(lat, lon);
+        if (kind === "earth" && !land && (Math.abs((lat * 97 + lon * 13) | 0) % 22) > 1) continue;
+        const p = project(lat, lon, cx, cy, R, rot);
+        if (!p.vis || p.z < 0.18) continue;
+        const gi = Math.abs((lat * 13 + lon * 7 + t) | 0) % GLYPHS.length;
+        ctx.globalAlpha = land ? 0.22 + p.z * 0.35 : 0.08 + p.z * 0.12;
+        ctx.fillStyle = kind === "earth" ? (land ? "#86efac" : "#22d3ee") : "#fbbf24";
+        ctx.fillText(GLYPHS.charAt(gi), p.x, p.y);
+        n++;
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawScan(cx, cy, R, rot, kind) {
+    const lat = Math.sin(state.tick * 0.012) * 55;
+    ctx.beginPath();
+    let first = true;
+    for (let lon = -180; lon <= 180; lon += 3) {
+      const p = project(lat, lon, cx, cy, R, rot);
+      if (!p.vis) { first = true; continue; }
+      if (first) { ctx.moveTo(p.x, p.y); first = false; }
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = kind === "earth" ? "rgba(52,211,153,0.55)" : "rgba(251,191,36,0.5)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+
+  function drawRain(w, h) {
+    if (!state.layers.matrix) return;
+    ctx.font = "11px IBM Plex Mono, monospace";
+    ctx.textAlign = "left";
+    state.rain.forEach(function (col) {
+      col.y += col.sp;
+      if (col.y > 1.2) {
+        col.y = -0.3;
+        col.x = Math.random();
+      }
+      for (let i = 0; i < col.len; i++) {
+        const yy = (col.y - i * 0.028) * h;
+        if (yy < 0 || yy > h) continue;
+        ctx.globalAlpha = Math.max(0.04, 0.42 - i * 0.03);
+        ctx.fillStyle = i === 0 ? "#ecfccb" : "#22c55e";
+        const gi = Math.abs((col.x * 997 + i * 17 + (state.tick / 4) | 0) | 0) % GLYPHS.length;
+        ctx.fillText(GLYPHS.charAt(gi), col.x * w, yy);
+      }
+    });
+    ctx.globalAlpha = 1;
+  }
+
   function drawGlobe(cx, cy, R, rot, kind) {
-    const g = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.3, R * 0.2, cx, cy, R * 1.05);
+    const halo = ctx.createRadialGradient(cx, cy, R * 0.92, cx, cy, R * 1.22);
+    halo.addColorStop(0, kind === "earth" ? "rgba(45,212,191,0.18)" : "rgba(212,160,23,0.16)");
+    halo.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 1.22, 0, Math.PI * 2);
+    ctx.fillStyle = halo;
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.38, R * 0.12, cx, cy, R * 1.02);
     if (kind === "earth") {
-      g.addColorStop(0, "#16324f");
-      g.addColorStop(0.72, "#0b1a2e");
-      g.addColorStop(1, "#05080f");
+      g.addColorStop(0, "#1a4a63");
+      g.addColorStop(0.45, "#0b2a3c");
+      g.addColorStop(0.82, "#07131f");
+      g.addColorStop(1, "#02060b");
     } else {
-      g.addColorStop(0, "#2a2208");
-      g.addColorStop(0.72, "#161008");
+      g.addColorStop(0, "#3a2a0c");
+      g.addColorStop(0.55, "#1a1408");
       g.addColorStop(1, "#07050a");
     }
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.fillStyle = g;
     ctx.fill();
-    ctx.strokeStyle = kind === "earth" ? "#7dd3fc44" : "#d4a01766";
-    ctx.lineWidth = 2;
-    ctx.stroke();
 
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.clip();
 
-    ctx.globalAlpha = 0.2;
-    ctx.strokeStyle = kind === "earth" ? "#7dd3fc" : "#fbbf24";
-    ctx.lineWidth = 0.55;
-    for (let lat = -60; lat <= 60; lat += 30) {
-      ctx.beginPath();
-      for (let lon = -180; lon <= 180; lon += 6) {
-        const p = project(lat, lon, cx, cy, R, rot);
-        if (lon === -180) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
-      }
-      ctx.stroke();
-    }
+    const gstep = state.zoom > 2 ? 10 : 15;
+    ctx.globalAlpha = 0.22;
+    drawGraticule(cx, cy, R, rot, kind === "earth" ? "#67e8f9" : "#fbbf24", gstep);
     ctx.globalAlpha = 1;
 
+    pathLand(cx, cy, R, rot);
     if (kind === "earth") {
-      LAND.forEach(function (b) {
-        const p = project(b[0], b[1], cx, cy, R, rot);
-        if (!p.vis) return;
-        ctx.fillStyle = "#1b3a28aa";
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, (b[2] / 90) * R * 0.55, (b[3] / 90) * R * 0.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      ctx.fillStyle = "rgba(16, 64, 42, 0.82)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(110, 231, 183, 0.85)";
+      ctx.lineWidth = state.zoom > 1.8 ? 1.15 : 0.8;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+    }
+
+    drawMatrixSkin(cx, cy, R, rot, kind);
+    drawScan(cx, cy, R, rot, kind);
+
+    const shade = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    shade.addColorStop(0, "rgba(255,255,255,0.10)");
+    shade.addColorStop(0.45, "rgba(0,0,0,0)");
+    shade.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (kind === "earth") {
       if (state.layers.quakes) {
         state.ref.quakes.forEach(function (q) {
           const p = project(q.lat, q.lon, cx, cy, R, rot);
           if (!p.vis) return;
-          ctx.fillStyle = "rgba(245,158,11,0.85)";
+          const rad = (1.4 + Math.max(2, q.mag || 2) * 0.7) * Math.min(1.6, 0.7 + state.zoom * 0.3);
+          ctx.fillStyle = "rgba(245,158,11,0.9)";
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 1.6 + Math.max(2, q.mag || 2) * 0.7, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
           ctx.fill();
         });
       }
@@ -149,17 +383,24 @@
           ctx.strokeStyle = "#fb7185";
           ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, 5 * (0.8 + state.zoom * 0.15), 0, Math.PI * 2);
           ctx.stroke();
         });
       }
       if (state.layers.iss && state.ref.iss) {
         const p = project(state.ref.iss.lat, state.ref.iss.lon, cx, cy, R, rot);
         if (p.vis) {
-          ctx.fillStyle = "#7dd3fc";
+          ctx.shadowColor = "#7dd3fc";
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = "#e0f2fe";
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, 4.2, 0, Math.PI * 2);
           ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#7dd3fc";
+          ctx.font = "10px IBM Plex Mono, monospace";
+          ctx.textAlign = "left";
+          ctx.fillText("ISS", p.x + 7, p.y - 4);
         }
       }
       function dots(list, color, r) {
@@ -168,7 +409,7 @@
           if (!p.vis) return;
           ctx.fillStyle = color;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r * (0.85 + state.zoom * 0.12), 0, Math.PI * 2);
           ctx.fill();
         });
       }
@@ -220,10 +461,122 @@
         });
       }
     }
+
+    if (state.hover) {
+      const hp = project(state.hover.lat, state.hover.lon, cx, cy, R, rot);
+      if (hp.vis) {
+        ctx.strokeStyle = "#ecfccb";
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, 9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     ctx.restore();
-    ctx.fillStyle = "#cbd5e1";
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = kind === "earth" ? "rgba(125,211,252,0.45)" : "rgba(212,160,23,0.5)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = kind === "earth" ? "rgba(52,211,153,0.18)" : "rgba(251,191,36,0.16)";
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#86efac";
     ctx.font = "11px IBM Plex Mono, monospace";
-    ctx.fillText(kind === "earth" ? "EARTH · resources + named shadows" : "LATTICE · canon + named shadows", cx - 108, cy + R + 18);
+    ctx.textAlign = "center";
+    ctx.fillText(
+      kind === "earth" ? "EARTH · public map · resources + named shadows" : "LATTICE · canon mesh · world ghost",
+      cx,
+      cy + R + 20
+    );
+  }
+
+  function viewLayout(w, h) {
+    const base = Math.min(w, h) * 0.38 * state.zoom;
+    if (state.mode === "split") {
+      return [
+        { cx: w * 0.28 + state.panX, cy: h * 0.48 + state.panY, R: Math.min(w, h) * 0.28 * state.zoom, rot: state.rot, kind: "earth" },
+        { cx: w * 0.72 + state.panX, cy: h * 0.48 + state.panY, R: Math.min(w, h) * 0.28 * state.zoom, rot: state.rot + 0.35, kind: "lattice" }
+      ];
+    }
+    if (state.mode === "lattice") {
+      return [{ cx: w / 2 + state.panX, cy: h * 0.48 + state.panY, R: base, rot: state.rot, kind: "lattice" }];
+    }
+    return [{ cx: w / 2 + state.panX, cy: h * 0.48 + state.panY, R: base, rot: state.rot, kind: "earth" }];
+  }
+
+  function hitGlobe(mx, my, w, h) {
+    const views = viewLayout(w, h);
+    for (let i = 0; i < views.length; i++) {
+      const v = views[i];
+      const ll = unproject(mx, my, v.cx, v.cy, v.R, v.rot);
+      if (ll) return { ll: ll, view: v };
+    }
+    return null;
+  }
+
+  function setZoom(nz, mx, my, w, h) {
+    const old = state.zoom;
+    state.zoom = Math.max(1, Math.min(5.2, nz));
+    if (old === 1 && state.zoom === 1) {
+      state.panX *= 0.7;
+      state.panY *= 0.7;
+      return;
+    }
+    const k = state.zoom / old;
+    const cx = w / 2 + state.panX;
+    const cy = h * 0.48 + state.panY;
+    const px = mx == null ? w / 2 : mx;
+    const py = my == null ? h * 0.48 : my;
+    state.panX = px - w / 2 - (px - cx) * k;
+    state.panY = py - h * 0.48 - (py - cy) * k;
+    if (state.zoom <= 1.02) {
+      state.zoom = 1;
+      state.panX *= 0.4;
+      state.panY *= 0.4;
+    }
+  }
+
+  function resetView() {
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    state.rot = 0.4;
+    state.tilt = 0.18;
+  }
+
+  function updateMeta() {
+    const el = document.getElementById("g-meta");
+    if (!el) return;
+    const bits = [state.zoom.toFixed(1) + "×"];
+    if (state.hover) bits.push(fmtLL(state.hover) + (isLand(state.hover.lat, state.hover.lon) ? " · land" : " · ocean"));
+    else bits.push("drag rotate · wheel zoom · double-click focus");
+    el.textContent = bits.join(" · ");
+  }
+
+  function frame() {
+    const w = canvas.getBoundingClientRect().width;
+    const h = canvas.getBoundingClientRect().height;
+    ctx.clearRect(0, 0, w, h);
+    seedDecor();
+    state.tick++;
+    state.stars.forEach(function (s) {
+      ctx.globalAlpha = s.a * (0.65 + 0.35 * Math.sin(state.tick * 0.02 + s.x * 8));
+      ctx.fillStyle = "#a7f3d0";
+      ctx.fillRect(s.x * w, s.y * h, s.s, s.s);
+    });
+    ctx.globalAlpha = 1;
+    drawRain(w, h);
+    viewLayout(w, h).forEach(function (v) {
+      drawGlobe(v.cx, v.cy, v.R, v.rot, v.kind);
+    });
+    if (!state.dragging && state.zoom < 1.2) state.rot += 0.0018;
+    requestAnimationFrame(frame);
   }
 
   function resourceLive(id) {
@@ -625,6 +978,49 @@
     }
   }
 
+  async function hfSummary() {
+    const out = document.getElementById("ollama-out");
+    const payload = {
+      doctrine: "RESOURCE vs CANON vs SHADOW. Never invent private payloads.",
+      quakes: (state.ref.quakes || []).length,
+      alerts: (state.ref.world_alerts || []).length,
+      iss: state.ref.iss,
+      markets: state.ref.markets
+    };
+    let token = "";
+    try { token = localStorage.getItem("lygo_hf_token") || ""; } catch (e) {}
+    if (!token) {
+      token = window.prompt("Paste a free Hugging Face token (hf_...) to call SmolLM2. Stored only in this browser. Cancel to skip.") || "";
+      if (token) {
+        try { localStorage.setItem("lygo_hf_token", token); } catch (e) {}
+      }
+    }
+    if (!token) {
+      out.textContent = "No HF token. Get a free one at huggingface.co/settings/tokens — or use Ollama. The globe still runs without a model.";
+      return;
+    }
+    out.textContent = "Asking HuggingFaceTB/SmolLM2-1.7B-Instruct via HF Inference…";
+    try {
+      const res = await fetch("https://router.huggingface.co/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({
+          model: "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+          max_tokens: 280,
+          messages: [
+            { role: "system", content: "You summarize LYGO Public Witness overlays. Public=RESOURCE, lattice=CANON, private=named SHADOW. Six short bullets. No invented intel." },
+            { role: "user", content: JSON.stringify(payload) }
+          ]
+        })
+      });
+      const j = await res.json();
+      const txt = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || JSON.stringify(j).slice(0, 800);
+      out.textContent = txt;
+    } catch (e) {
+      out.textContent = "HF Inference named shadow this run. Globe still live. (" + e + ")";
+    }
+  }
+
   function bind() {
     document.querySelectorAll("[data-mode]").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -647,17 +1043,90 @@
       });
     });
     canvas.addEventListener("pointerdown", function (e) {
-      state.dragging = true; state.lastX = e.clientX; state.lastY = e.clientY; canvas.setPointerCapture(e.pointerId);
+      state.dragging = true;
+      state.lastX = e.clientX;
+      state.lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener("pointerup", function () { state.dragging = false; });
+    canvas.addEventListener("pointerleave", function () { state.hover = null; updateMeta(); });
     canvas.addEventListener("pointermove", function (e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const hit = hitGlobe(mx, my, rect.width, rect.height);
+      state.hover = hit ? hit.ll : null;
+      updateMeta();
       if (!state.dragging) return;
-      state.rot += (e.clientX - state.lastX) * 0.008;
-      state.tilt = Math.max(-0.8, Math.min(0.8, state.tilt + (e.clientY - state.lastY) * 0.004));
-      state.lastX = e.clientX; state.lastY = e.clientY;
+      const dx = e.clientX - state.lastX;
+      const dy = e.clientY - state.lastY;
+      if (e.shiftKey || e.buttons === 2) {
+        state.panX += dx;
+        state.panY += dy;
+      } else {
+        state.rot += dx * 0.008;
+        state.tilt = Math.max(-1.05, Math.min(1.05, state.tilt + dy * 0.004));
+        if (state.zoom > 1.15) {
+          state.panX += dx * 0.35;
+          state.panY += dy * 0.35;
+        }
+      }
+      state.lastX = e.clientX;
+      state.lastY = e.clientY;
+    });
+    canvas.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+      setZoom(state.zoom * factor, mx, my, rect.width, rect.height);
+      updateMeta();
+    }, { passive: false });
+    canvas.addEventListener("dblclick", function (e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const hit = hitGlobe(mx, my, rect.width, rect.height);
+      if (!hit) { resetView(); updateMeta(); return; }
+      state.rot = -(hit.ll.lon * Math.PI) / 180;
+      state.tilt = Math.max(-1.05, Math.min(1.05, (hit.ll.lat * Math.PI) / 180 * 0.9));
+      state.panX = 0;
+      state.panY = 0;
+      setZoom(Math.min(5.2, state.zoom < 1.4 ? 2.4 : state.zoom * 1.35), rect.width / 2, rect.height * 0.48, rect.width, rect.height);
+      updateMeta();
+    });
+    canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    function zin() {
+      const r = canvas.getBoundingClientRect();
+      setZoom(state.zoom * 1.22, r.width / 2, r.height * 0.48, r.width, r.height);
+      updateMeta();
+    }
+    function zout() {
+      const r = canvas.getBoundingClientRect();
+      setZoom(state.zoom / 1.22, r.width / 2, r.height * 0.48, r.width, r.height);
+      updateMeta();
+    }
+    const zinEl = document.getElementById("g-zin");
+    const zoutEl = document.getElementById("g-zout");
+    const zreset = document.getElementById("g-reset");
+    if (zinEl) zinEl.addEventListener("click", zin);
+    if (zoutEl) zoutEl.addEventListener("click", zout);
+    if (zreset) zreset.addEventListener("click", function () { resetView(); updateMeta(); });
+    window.addEventListener("keydown", function (e) {
+      if (e.target && /input|textarea/i.test(e.target.tagName)) return;
+      if (e.key === "+" || e.key === "=") zin();
+      if (e.key === "-" || e.key === "_") zout();
+      if (e.key === "0") { resetView(); updateMeta(); }
+      if (e.key === "ArrowLeft") state.rot -= 0.08;
+      if (e.key === "ArrowRight") state.rot += 0.08;
+      if (e.key === "ArrowUp") state.tilt = Math.min(1.05, state.tilt + 0.05);
+      if (e.key === "ArrowDown") state.tilt = Math.max(-1.05, state.tilt - 0.05);
     });
     document.getElementById("btn-refresh").addEventListener("click", function () { boot(); });
     document.getElementById("btn-ollama").addEventListener("click", ollamaSummary);
+    var hfb = document.getElementById("btn-hf");
+    if (hfb) hfb.addEventListener("click", hfSummary);
     document.getElementById("btn-overlay").addEventListener("click", function () {
       document.getElementById("detail").textContent = JSON.stringify({
         signature: SIG,
@@ -746,7 +1215,7 @@
   async function boot() {
     document.getElementById("sig").textContent = SIG;
     await loadShadows();
-    await Promise.all([loadCanon(), loadRef(), loadHfFeed(), loadCameras()]);
+    await Promise.all([loadWorld(), loadCanon(), loadRef(), loadHfFeed(), loadCameras()]);
     renderFeeds();
     await loadNews();
   }
