@@ -131,18 +131,23 @@
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });
     a.addEventListener("error", () => { if (st.playing) next(); });
-    $("radioPlay").onclick = () => { st.playing ? pauseKeep() : play(); };
-    $("radioNext").onclick = () => { st.playing = true; next(); };
-    $("radioMute").onclick = () => {
+    const playBtn = $("radioPlay");
+    const nextBtn = $("radioNext");
+    const muteBtn = $("radioMute");
+    const viewBtn = $("radioView");
+    const vol = $("radioVol");
+    if (playBtn) playBtn.onclick = () => { st.playing ? pauseKeep() : play(); };
+    if (nextBtn) nextBtn.onclick = () => { st.playing = true; next(); };
+    if (muteBtn) muteBtn.onclick = () => {
       st.muted = !st.muted;
       el().muted = st.muted;
       paint();
     };
-    $("radioView").onclick = () => {
+    if (viewBtn) viewBtn.onclick = () => {
       st.view = !st.view;
       paint();
     };
-    $("radioVol").oninput = (e) => {
+    if (vol) vol.oninput = (e) => {
       st.vol = Number(e.target.value) / 100;
       el().volume = st.vol;
       if (st.vol > 0 && st.muted) {
