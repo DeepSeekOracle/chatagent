@@ -63,7 +63,8 @@
       <button type="button" id="g-zin" title="Zoom in">+</button>
       <button type="button" id="g-zout" title="Zoom out">−</button>
       <button type="button" id="g-reset" title="Reset view">reset</button>
-      <span id="g-meta">drag rotate · wheel zoom · double-click focus</span>
+      <button type="button" id="g-full" title="Fullscreen globe">full</button>
+      <span id="g-meta">click a pin · wheel zoom · double-click focus</span>
     </div>
     <div class="hud">
       <button class="mode on" data-mode="earth" type="button">Sphere · globe</button>
@@ -85,6 +86,7 @@
       <button class="chip canon on" data-layer="canon" type="button">Ledgers / eggs</button>
       <button class="chip shadow on" data-layer="shadow" type="button">Named shadows</button>
       <button class="chip matrix on" data-layer="matrix" type="button">Matrix</button>
+      <button class="chip" id="btn-follow-iss" type="button">Follow ISS</button>
     </div>
     <div class="doctrine-bar">
       <b>Doctrine.</b> Public nodes are <b>resources</b>. Private nodes are <b>named shadows</b> — we keep the silhouette so you remember to check every public, legal link around them. Hollow rings mean the payload is not here. Sphere and disc are two live perspectives of the same overlay.
@@ -96,7 +98,8 @@
       <button type="button" id="d-zin" title="Zoom disc">+</button>
       <button type="button" id="d-zout" title="Zoom out">−</button>
       <button type="button" id="d-reset" title="Reset disc">reset</button>
-      <span id="d-meta">FLAT EARTH · north disc · drag rotate · wheel zoom</span>
+      <button type="button" id="d-full" title="Fullscreen disc">full</button>
+      <span id="d-meta">FLAT EARTH · north disc · click a pin · wheel zoom</span>
     </div>
     <div class="doctrine-bar disc-bar">
       <b>Disc model.</b> North Pole at the center. Equator is the mid ring. The outer ice is the southern rim. Same USGS / ISS / EONET points as the sphere — a different geometry, not a second dataset.
@@ -104,7 +107,7 @@
   </div>
   </div>
   <aside class="side">
-    <p class="kicker">Δ9Φ963 · Public Witness</p>
+    <p class="kicker">Δ9Φ963 · Public Witness · <span id="utc-clock">…</span></p>
     <h1>See the world. Name the shadow. Crunch what is public.</h1>
     <p class="lead">Pretty globes are not a moat. The moat is data that never became public. Scroll down for the <a href="#flat-earth">flat disc</a> — north at the center, ice at the rim — running the same public overlay. Two models. One set of resources.</p>
     <div class="stat-row">
@@ -137,7 +140,9 @@
       <button class="btn ghost" id="btn-ollama" type="button">Local Ollama summary</button>
       <button class="btn ghost" id="btn-hf" type="button">HF SmolLM2 summary</button>
       <a class="btn paypal" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate PayPal</a>
+      <button class="btn ghost" id="btn-copy-ll" type="button">Copy lat,lon</button>
     </div>
+    <input class="feed-q" id="feed-q" type="search" placeholder="Filter overlay (quake, ISS, shadow…)" aria-label="Filter overlay">
     <div class="filter-row">
       <button class="chip on" data-filter="all" type="button">All</button>
       <button class="chip ref" data-filter="resource" type="button">Resources</button>
@@ -145,8 +150,13 @@
       <button class="chip shadow" data-filter="shadow" type="button">Shadows</button>
     </div>
     <ul class="feed" id="feed"></ul>
-    <p class="legend">Click a shadow: existence + why + public checks. Payload stays empty on purpose.</p>
+    <p class="legend">Click the globe or disc to pick the nearest public pin. Shadows stay existence-only.</p>
+    <div id="pick-card" class="pick-card">Click a map point. Sphere and disc share the same pick.</div>
     <pre class="out" id="detail">Signature: waiting…</pre>
+    <details class="help">
+      <summary>Map controls</summary>
+      <p>Drag rotate · Shift-drag pan · Wheel zoom · Double-click focus · Click pick · Follow ISS · Fullscreen · <code>#ll=lat,lon</code> permalink.</p>
+    </details>
     <pre class="out" id="ollama-out">Ollama is optional (localhost:11434). Pair with lygo-ollama-army.</pre>
     <p class="legend">Agents: <code>npx clawhub@latest install deepseekoracle/lygo-public-witness</code><br>
     FULL zip: <a href="/lygoskillhub.html#full-lygo">SkillHub</a> ·

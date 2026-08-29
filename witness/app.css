@@ -137,6 +137,18 @@ h1 { font-family: var(--display); font-weight: 500; font-size: 1.7rem; margin: 0
 .stat { background: #0a101c; border: 1px solid var(--line); border-radius: 10px; padding: .55rem .65rem; }
 .stat b { display: block; font-size: 1.05rem; color: var(--gold); }
 .stat span { font-size: .72rem; color: var(--muted); }
+.feed-q {
+  width: 100%; margin: .45rem 0 .2rem; padding: .45rem .55rem;
+  background: #070b14; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--ink); font-family: var(--mono); font-size: .75rem;
+}
+.pick-card {
+  background: #0a101c; border: 1px solid var(--gold); border-radius: 10px;
+  padding: .55rem .65rem; font-size: .82rem; margin: .45rem 0;
+}
+details.help { margin: .5rem 0; color: var(--muted); font-size: .78rem; }
+details.help summary { cursor: pointer; color: var(--amber); }
+#utc-clock { color: var(--cyan); letter-spacing: .04em; }
 .feed { list-style: none; margin: 0; padding: 0; }
 .feed li {
   border-bottom: 1px solid var(--line); padding: .55rem 0; font-size: .8rem; cursor: pointer;

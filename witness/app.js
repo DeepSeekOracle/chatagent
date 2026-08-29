@@ -35,7 +35,13 @@
     panX: 0,
     panY: 0,
     hover: null,
-    disc: { zoom: 1, panX: 0, panY: 0, rot: 0, dragging: false, lastX: 0, lastY: 0, hover: null },
+    cursor: null,
+    pick: null,
+    followIss: false,
+    issTrail: [],
+    dragMoved: 0,
+    q: "",
+    disc: { zoom: 1, panX: 0, panY: 0, rot: 0, dragging: false, lastX: 0, lastY: 0, hover: null, dragMoved: 0 },
     world: [],
     landMask: null,
     rain: [],
@@ -208,6 +214,176 @@
     const ns = ll.lat >= 0 ? "N" : "S";
     const ew = ll.lon >= 0 ? "E" : "W";
     return Math.abs(ll.lat).toFixed(1) + "°" + ns + " " + Math.abs(ll.lon).toFixed(1) + "°" + ew;
+  }
+
+  function haversine(a, b, c, d) {
+    const p = Math.PI / 180;
+    const dlat = (c - a) * p;
+    const dlon = (d - b) * p;
+    const s = Math.sin(dlat / 2) ** 2 + Math.cos(a * p) * Math.cos(c * p) * Math.sin(dlon / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+
+  function listPins() {
+    const out = [];
+    function add(lat, lon, title, cls, body) {
+      if (typeof lat !== "number" || typeof lon !== "number" || isNaN(lat) || isNaN(lon)) return;
+      out.push({ lat: lat, lon: lon, title: title, cls: cls, body: body });
+    }
+    if (state.layers.quakes) {
+      (state.ref.quakes || []).forEach(function (q) {
+        add(q.lat, q.lon, "M" + (q.mag || 0).toFixed(1) + " " + (q.place || "quake"), "ref", q);
+      });
+    }
+    if (state.layers.events) {
+      (state.ref.events || []).forEach(function (e) {
+        add(e.lat, e.lon, e.title || "EONET", "ref", e);
+      });
+    }
+    if (state.layers.iss && state.ref.iss) add(state.ref.iss.lat, state.ref.iss.lon, "ISS", "ref", state.ref.iss);
+    [
+      ["alerts", state.ref.alerts], ["floods", state.ref.floods], ["launches", state.ref.launches],
+      ["aurora", state.ref.aurora], ["flights", state.ref.flights], ["weather", state.ref.weather],
+      ["radar", state.ref.radar], ["air", state.ref.air], ["marine", state.ref.marine]
+    ].forEach(function (pair) {
+      if (!state.layers[pair[0]]) return;
+      (pair[1] || []).forEach(function (e) {
+        add(e.lat, e.lon, e.title || pair[0], "ref", e);
+      });
+    });
+    if (state.layers.alerts) {
+      (state.ref.world_alerts || []).forEach(function (e) {
+        add(e.lat, e.lon, e.title || "alert", "ref", e);
+      });
+    }
+    if (state.layers.shadow) {
+      (state.shadows || []).forEach(function (n) {
+        const ll = nodeLL(n);
+        add(ll.lat, ll.lon, n.label || n.id, resourceLive(n.id) ? "ref" : "shadow", n);
+      });
+    }
+    return out;
+  }
+
+  function nearestPin(lat, lon) {
+    const pins = listPins();
+    let best = null;
+    let bestD = 1e9;
+    pins.forEach(function (p) {
+      const d = haversine(lat, lon, p.lat, p.lon);
+      if (d < bestD) { bestD = d; best = p; }
+    });
+    const maxKm = Math.max(220, 1600 / Math.max(1, state.zoom));
+    if (!best || bestD > maxKm) {
+      return {
+        lat: lat, lon: lon, title: fmtLL({ lat: lat, lon: lon }), cls: "ref", miss: true, km: bestD,
+        body: { class: "LOOK", note: "No public pin in range. Coordinates only.", lat: lat, lon: lon, land: isLand(lat, lon), payload: null }
+      };
+    }
+    best.km = bestD;
+    return best;
+  }
+
+  function lookAt(ll) {
+    if (!ll) return;
+    state.rot = -(ll.lon * Math.PI) / 180;
+    state.tilt = Math.max(-1.05, Math.min(1.05, (ll.lat * Math.PI) / 180 * 0.9));
+    state.disc.rot = -(ll.lon * Math.PI) / 180;
+  }
+
+  function showPick(pin) {
+    if (!pin) return;
+    state.pick = pin;
+    state.cursor = { lat: pin.lat, lon: pin.lon };
+    const note = pin.miss
+      ? "Look-at only. Not a source. We do not invent a point here."
+      : (pin.cls === "shadow"
+        ? "Named shadow — existence only. Follow public_checks. Never invent the private payload."
+        : "Public resource — usable infrastructure.");
+    const detail = document.getElementById("detail");
+    if (detail) {
+      detail.textContent = JSON.stringify({ class: pin.cls, note: note, km: pin.km != null ? Math.round(pin.km) : null, body: pin.body }, null, 2);
+    }
+    const card = document.getElementById("pick-card");
+    if (card) {
+      const tag = pin.miss ? "LOOK" : (pin.cls === "shadow" ? "SHADOW" : "RESOURCE");
+      card.innerHTML = "<span class=\"tag " + (pin.miss ? "ref" : pin.cls) + "\">" + tag + "</span> " +
+        escapeHtml(pin.title) +
+        (pin.km != null && !pin.miss ? " <span class=\"legend\">" + Math.round(pin.km) + " km</span>" : "") +
+        "<div class=\"legend\">" + fmtLL(pin) + (isLand(pin.lat, pin.lon) ? " · land" : " · ocean") + "</div>";
+    }
+    try {
+      history.replaceState(null, "", "#ll=" + pin.lat.toFixed(3) + "," + pin.lon.toFixed(3));
+    } catch (e) {}
+    updateMeta();
+    updateDiscMeta();
+  }
+
+  function tryPick(ll) {
+    if (!ll) return;
+    showPick(nearestPin(ll.lat, ll.lon));
+  }
+
+  function pushIss(iss) {
+    if (!iss || typeof iss.lat !== "number") return;
+    const last = state.issTrail[state.issTrail.length - 1];
+    if (last && Math.abs(last.lat - iss.lat) < 0.02 && Math.abs(last.lon - iss.lon) < 0.02) return;
+    state.issTrail.push({ lat: iss.lat, lon: iss.lon, t: Date.now() });
+    if (state.issTrail.length > 56) state.issTrail.shift();
+  }
+
+  function drawIssTrail(c, projectFn, cx, cy, R, rot) {
+    if (!state.layers.iss || state.issTrail.length < 2) return;
+    c.beginPath();
+    let started = false;
+    state.issTrail.forEach(function (pt) {
+      const p = projectFn(pt.lat, pt.lon, cx, cy, R, rot);
+      if (!p.vis) { started = false; return; }
+      if (!started) { c.moveTo(p.x, p.y); started = true; }
+      else c.lineTo(p.x, p.y);
+    });
+    c.strokeStyle = "rgba(125,211,252,0.55)";
+    c.lineWidth = 1.6;
+    c.stroke();
+  }
+
+  function drawMarks(c, projectFn, cx, cy, R, rot) {
+    const ll = state.cursor;
+    if (ll) {
+      const p = projectFn(ll.lat, ll.lon, cx, cy, R, rot);
+      if (p.vis) {
+        c.strokeStyle = "#ecfccb";
+        c.lineWidth = 1.1;
+        c.beginPath();
+        c.arc(p.x, p.y, 9, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+    if (state.pick && typeof state.pick.lat === "number") {
+      const p = projectFn(state.pick.lat, state.pick.lon, cx, cy, R, rot);
+      if (p.vis) {
+        c.strokeStyle = "#fbbf24";
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(p.x, p.y, 13, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
+  }
+
+  function tickClock() {
+    const el = document.getElementById("utc-clock");
+    if (el) el.textContent = new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, "Z");
+  }
+
+  function parseHash() {
+    const m = String(location.hash || "").match(/ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (!m) return;
+    const lat = parseFloat(m[1]);
+    const lon = parseFloat(m[2]);
+    if (isNaN(lat) || isNaN(lon)) return;
+    lookAt({ lat: lat, lon: lon });
+    tryPick({ lat: lat, lon: lon });
   }
 
   function drawHollow(x, y, r, color) {
@@ -421,6 +597,7 @@
         });
       }
       if (state.layers.iss && state.ref.iss) {
+        drawIssTrail(ctx, project, cx, cy, R, rot);
         const p = project(state.ref.iss.lat, state.ref.iss.lon, cx, cy, R, rot);
         if (p.vis) {
           ctx.shadowColor = "#7dd3fc";
@@ -495,16 +672,7 @@
       }
     }
 
-    if (state.hover) {
-      const hp = project(state.hover.lat, state.hover.lon, cx, cy, R, rot);
-      if (hp.vis) {
-        ctx.strokeStyle = "#ecfccb";
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.arc(hp.x, hp.y, 9, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
+    drawMarks(ctx, project, cx, cy, R, rot);
 
     ctx.restore();
 
@@ -578,6 +746,7 @@
       });
     }
     if (state.layers.iss && state.ref.iss) {
+      drawIssTrail(c, projectFn, cx, cy, R, rot);
       const p = projectFn(state.ref.iss.lat, state.ref.iss.lon, cx, cy, R, rot);
       if (p.vis) {
         c.shadowColor = "#7dd3fc";
@@ -635,6 +804,7 @@
         }
       });
     }
+    drawMarks(c, projectFn, cx, cy, R, rot);
   }
 
   function drawDisc(cx, cy, R, rot) {
@@ -720,17 +890,6 @@
 
     overlayEarth(c, projectDisc, cx, cy, R, rot);
 
-    if (state.disc.hover) {
-      const hp = projectDisc(state.disc.hover.lat, state.disc.hover.lon, cx, cy, R, rot);
-      if (hp.vis) {
-        c.strokeStyle = "#ecfccb";
-        c.lineWidth = 1.2;
-        c.beginPath();
-        c.arc(hp.x, hp.y, 9, 0, Math.PI * 2);
-        c.stroke();
-      }
-    }
-
     c.restore();
 
     c.beginPath();
@@ -790,8 +949,8 @@
     const el = document.getElementById("d-meta");
     if (!el) return;
     const bits = ["FLAT EARTH", state.disc.zoom.toFixed(1) + "×"];
-    if (state.disc.hover) bits.push(fmtLL(state.disc.hover) + (isLand(state.disc.hover.lat, state.disc.hover.lon) ? " · land" : " · ocean"));
-    else bits.push("drag rotate · wheel zoom · double-click focus");
+    if (state.cursor) bits.push(fmtLL(state.cursor) + (isLand(state.cursor.lat, state.cursor.lon) ? " · land" : " · ocean"));
+    else bits.push("click a pin · wheel zoom · double-click focus");
     el.textContent = bits.join(" · ");
   }
 
@@ -853,8 +1012,8 @@
     const el = document.getElementById("g-meta");
     if (!el) return;
     const bits = [state.zoom.toFixed(1) + "×"];
-    if (state.hover) bits.push(fmtLL(state.hover) + (isLand(state.hover.lat, state.hover.lon) ? " · land" : " · ocean"));
-    else bits.push("drag rotate · wheel zoom · double-click focus");
+    if (state.cursor) bits.push(fmtLL(state.cursor) + (isLand(state.cursor.lat, state.cursor.lon) ? " · land" : " · ocean"));
+    else bits.push("click a pin · wheel zoom · double-click focus");
     el.textContent = bits.join(" · ");
   }
 
@@ -874,7 +1033,7 @@
     viewLayout(w, h).forEach(function (v) {
       drawGlobe(v.cx, v.cy, v.R, v.rot, v.kind);
     });
-    if (!state.dragging && state.zoom < 1.2) state.rot += 0.0018;
+    if (!state.dragging && state.zoom < 1.2 && !state.followIss) state.rot += 0.0018;
 
     if (discCanvas && dctx) {
       const dw = discCanvas.getBoundingClientRect().width;
@@ -884,7 +1043,7 @@
       dctx.fillRect(0, 0, dw, dh);
       const dv = discLayout(dw, dh);
       drawDisc(dv.cx, dv.cy, dv.R, dv.rot);
-      if (!state.disc.dragging && state.disc.zoom < 1.15) state.disc.rot += 0.0011;
+      if (!state.disc.dragging && state.disc.zoom < 1.15 && !state.followIss) state.disc.rot += 0.0011;
     }
     requestAnimationFrame(frame);
   }
@@ -985,11 +1144,12 @@
       items.push({ cls: "canon", title: n.id, sub: "CANON · lattice system", body: n });
     });
     const f = state.filter;
+    const q = (state.q || "").toLowerCase();
     return items.filter(function (it) {
-      if (f === "all") return true;
-      if (f === "resource") return it.cls === "ref";
-      if (f === "canon") return it.cls === "canon";
-      if (f === "shadow") return it.cls === "shadow";
+      if (f === "resource" && it.cls !== "ref") return false;
+      if (f === "canon" && it.cls !== "canon") return false;
+      if (f === "shadow" && it.cls !== "shadow") return false;
+      if (q && (it.title + " " + it.sub).toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
   }
@@ -1200,6 +1360,7 @@
       const iss = await getJson(REF_URLS.iss);
       state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS" };
       state.ref.live.iss = true;
+      pushIss(state.ref.iss);
       setStatus("st-iss", true);
     } catch (e) {
       state.ref.errors.iss = String(e);
@@ -1238,6 +1399,8 @@
       const iss = await getJson(REF_URLS.iss);
       state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS" };
       state.ref.live.iss = true;
+      pushIss(state.ref.iss);
+      if (state.followIss) lookAt(state.ref.iss);
       setStatus("st-iss", true);
     } catch (e) {
       state.ref.live.iss = false;
@@ -1338,22 +1501,34 @@
     });
     canvas.addEventListener("pointerdown", function (e) {
       state.dragging = true;
+      state.dragMoved = 0;
       state.lastX = e.clientX;
       state.lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
     });
-    canvas.addEventListener("pointerup", function () { state.dragging = false; });
-    canvas.addEventListener("pointerleave", function () { state.hover = null; updateMeta(); });
+    canvas.addEventListener("pointerup", function (e) {
+      const moved = state.dragMoved;
+      state.dragging = false;
+      if (moved < 8) {
+        const rect = canvas.getBoundingClientRect();
+        const hit = hitGlobe(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
+        if (hit) tryPick(hit.ll);
+      }
+    });
+    canvas.addEventListener("pointerleave", function () { state.cursor = null; updateMeta(); });
     canvas.addEventListener("pointermove", function (e) {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const hit = hitGlobe(mx, my, rect.width, rect.height);
-      state.hover = hit ? hit.ll : null;
+      state.cursor = hit ? hit.ll : null;
+      state.hover = state.cursor;
       updateMeta();
+      updateDiscMeta();
       if (!state.dragging) return;
       const dx = e.clientX - state.lastX;
       const dy = e.clientY - state.lastY;
+      state.dragMoved += Math.abs(dx) + Math.abs(dy);
       if (e.shiftKey || e.buttons === 2) {
         state.panX += dx;
         state.panY += dy;
@@ -1407,25 +1582,75 @@
     if (zinEl) zinEl.addEventListener("click", zin);
     if (zoutEl) zoutEl.addEventListener("click", zout);
     if (zreset) zreset.addEventListener("click", function () { resetView(); updateMeta(); });
+    function toggleFs(node) {
+      if (!node) return;
+      if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+      else node.requestFullscreen().catch(function () {});
+    }
+    const gfull = document.getElementById("g-full");
+    const dfull = document.getElementById("d-full");
+    const maps = document.querySelector(".maps");
+    if (gfull) gfull.addEventListener("click", function () { toggleFs(document.querySelector(".globe-wrap") || maps); });
+    if (dfull) dfull.addEventListener("click", function () { toggleFs(document.querySelector(".disc-wrap") || maps); });
+    const follow = document.getElementById("btn-follow-iss");
+    if (follow) {
+      follow.addEventListener("click", function () {
+        state.followIss = !state.followIss;
+        follow.classList.toggle("on", state.followIss);
+        if (state.followIss && state.ref.iss) {
+          lookAt(state.ref.iss);
+          showPick({ lat: state.ref.iss.lat, lon: state.ref.iss.lon, title: "ISS", cls: "ref", body: state.ref.iss, km: 0 });
+        }
+      });
+    }
+    const copyBtn = document.getElementById("btn-copy-ll");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        const ll = state.pick || state.cursor;
+        if (!ll) return;
+        const txt = ll.lat.toFixed(4) + ", " + ll.lon.toFixed(4);
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).catch(function () {});
+      });
+    }
+    const qel = document.getElementById("feed-q");
+    if (qel) {
+      qel.addEventListener("input", function () {
+        state.q = qel.value || "";
+        renderFeeds();
+      });
+    }
     if (discCanvas) {
       discCanvas.addEventListener("pointerdown", function (e) {
         state.disc.dragging = true;
+        state.disc.dragMoved = 0;
         state.disc.lastX = e.clientX;
         state.disc.lastY = e.clientY;
         discCanvas.setPointerCapture(e.pointerId);
       });
-      discCanvas.addEventListener("pointerup", function () { state.disc.dragging = false; });
-      discCanvas.addEventListener("pointerleave", function () { state.disc.hover = null; updateDiscMeta(); });
+      discCanvas.addEventListener("pointerup", function (e) {
+        const moved = state.disc.dragMoved;
+        state.disc.dragging = false;
+        if (moved < 8) {
+          const rect = discCanvas.getBoundingClientRect();
+          const v = discLayout(rect.width, rect.height);
+          const ll = unprojectDisc(e.clientX - rect.left, e.clientY - rect.top, v.cx, v.cy, v.R, v.rot);
+          if (ll) tryPick(ll);
+        }
+      });
+      discCanvas.addEventListener("pointerleave", function () { state.cursor = null; updateDiscMeta(); updateMeta(); });
       discCanvas.addEventListener("pointermove", function (e) {
         const rect = discCanvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
         const v = discLayout(rect.width, rect.height);
-        state.disc.hover = unprojectDisc(mx, my, v.cx, v.cy, v.R, v.rot);
+        state.cursor = unprojectDisc(mx, my, v.cx, v.cy, v.R, v.rot);
+        state.disc.hover = state.cursor;
         updateDiscMeta();
+        updateMeta();
         if (!state.disc.dragging) return;
         const dx = e.clientX - state.disc.lastX;
         const dy = e.clientY - state.disc.lastY;
+        state.disc.dragMoved += Math.abs(dx) + Math.abs(dy);
         if (e.shiftKey || e.buttons === 2) {
           state.disc.panX += dx;
           state.disc.panY += dy;
@@ -1577,13 +1802,17 @@
     await Promise.all([loadWorld(), loadCanon(), loadRef(), loadHfFeed(), loadCameras()]);
     renderFeeds();
     await loadNews();
+    parseHash();
+    tickClock();
   }
 
   window.addEventListener("resize", resize);
+  window.addEventListener("hashchange", parseHash);
   resize();
   bind();
   boot();
   frame();
+  setInterval(tickClock, 1000);
   setInterval(refreshIss, 12000);
   setInterval(loadCameras, 300000);
 })();
