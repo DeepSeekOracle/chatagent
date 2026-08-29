@@ -105,7 +105,7 @@
     const x = Math.cos(phi) * Math.sin(lam);
     const y = Math.sin(phi) * Math.cos(state.tilt) + Math.cos(phi) * Math.cos(lam) * Math.sin(state.tilt);
     const z = Math.cos(phi) * Math.cos(lam) * Math.cos(state.tilt) - Math.sin(phi) * Math.sin(state.tilt);
-    return { x: cx + x * R, y: cy - y * R, z, vis: z > -0.02 };
+    return { x: cx + x * R, y: cy - y * R, z: z, nx: x, ny: y, nz: z, vis: z > 0.06 };
   }
 
   function projectDisc(lat, lon, cx, cy, R, rot) {
@@ -377,12 +377,20 @@
   function drawIssTrail(c, projectFn, cx, cy, R, rot) {
     if (!state.layers.iss || state.issTrail.length < 2) return;
     c.beginPath();
-    let started = false;
+    let prev = null;
+    let prevPt = null;
     state.issTrail.forEach(function (pt) {
+      if (prevPt) {
+        let d = pt.lon - prevPt.lon;
+        while (d > 180) d -= 360;
+        while (d < -180) d += 360;
+        if (Math.abs(d) > 50) prev = null;
+      }
       const p = projectFn(pt.lat, pt.lon, cx, cy, R, rot);
-      if (!p.vis) { started = false; return; }
-      if (!started) { c.moveTo(p.x, p.y); started = true; }
-      else c.lineTo(p.x, p.y);
+      if (segOk(prev, p, R)) c.lineTo(p.x, p.y);
+      else if (p.vis && p.z >= 0.07) c.moveTo(p.x, p.y);
+      prev = p.vis ? p : null;
+      prevPt = pt;
     });
     c.strokeStyle = "rgba(125,211,252,0.55)";
     c.lineWidth = 1.6;
@@ -437,14 +445,9 @@
     }
     c.globalAlpha = 1;
     c.beginPath();
-    let first = true;
-    for (let b = 0; b <= 360; b += 3) {
-      const ll = destPoint(sun.lat, sun.lon, b, 90);
-      const p = projectFn(ll.lat, ll.lon, cx, cy, R, rot);
-      if (!p.vis) { first = true; continue; }
-      if (first) { c.moveTo(p.x, p.y); first = false; }
-      else c.lineTo(p.x, p.y);
-    }
+    strokeLL(c, projectFn, cx, cy, R, rot, function (i) {
+      return destPoint(sun.lat, sun.lon, i * 3, 90);
+    }, 120);
     c.strokeStyle = "rgba(253,224,71,0.5)";
     c.lineWidth = 1.25;
     c.stroke();
@@ -514,6 +517,58 @@
     tryPick({ lat: lat, lon: lon });
   }
 
+  function segOk(a, b, R) {
+    if (!a || !b || !a.vis || !b.vis) return false;
+    if (a.z < 0.07 || b.z < 0.07) return false;
+    if (a.nz != null && b.nz != null && (a.nz + b.nz) <= 0.05) return false;
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const lim = R * 0.26;
+    return dx * dx + dy * dy < lim * lim;
+  }
+
+  function drawLandFill(c, projectFn, cx, cy, R, rot, fill) {
+    if (!state.landMask) return;
+    const step = state.zoom > 2.5 ? 1.8 : (state.zoom > 1.6 ? 2.4 : 3.4);
+    c.fillStyle = fill || "rgba(16, 64, 42, 0.9)";
+    for (let lat = -84; lat <= 84; lat += step) {
+      const lonStep = Math.max(1.15, step * Math.max(Math.cos((lat * Math.PI) / 180), 0.18));
+      for (let lon = -180; lon < 180; lon += lonStep) {
+        if (!isLand(lat, lon)) continue;
+        const p = projectFn(lat, lon, cx, cy, R, rot);
+        if (!p.vis || p.z < 0.08) continue;
+        const s = Math.max(2.1, (step / 78) * R * 1.45);
+        c.fillRect(p.x - s / 2, p.y - s / 2, s + 0.5, s + 0.5);
+      }
+    }
+  }
+
+  function strokeLand(c, projectFn, cx, cy, R, rot) {
+    const rings = state.world;
+    if (!rings.length) return;
+    c.beginPath();
+    rings.forEach(function (ring) {
+      let prev = null;
+      for (let i = 0; i < ring.length; i++) {
+        const p = projectFn(ring[i][1], ring[i][0], cx, cy, R, rot);
+        if (segOk(prev, p, R)) c.lineTo(p.x, p.y);
+        else if (p.vis && p.z >= 0.07) c.moveTo(p.x, p.y);
+        prev = p.vis ? p : null;
+      }
+    });
+  }
+
+  function strokeLL(c, projectFn, cx, cy, R, rot, getLL, n) {
+    let prev = null;
+    for (let i = 0; i <= n; i++) {
+      const ll = getLL(i);
+      const p = projectFn(ll.lat, ll.lon, cx, cy, R, rot);
+      if (segOk(prev, p, R)) c.lineTo(p.x, p.y);
+      else if (p.vis && p.z >= 0.07) c.moveTo(p.x, p.y);
+      prev = p.vis ? p : null;
+    }
+  }
+
   function drawHollow(x, y, r, color) {
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.4;
@@ -525,32 +580,9 @@
   }
 
   function pathLand(cx, cy, R, rot) {
+    drawLandFill(ctx, project, cx, cy, R, rot, "rgba(16, 64, 42, 0.9)");
     ctx.beginPath();
-    const rings = state.world;
-    if (!rings.length) {
-      LAND.forEach(function (b) {
-        const p = project(b[0], b[1], cx, cy, R, rot);
-        if (!p.vis) return;
-        ctx.moveTo(p.x + 1, p.y);
-        ctx.ellipse(p.x, p.y, (b[2] / 90) * R * 0.55, (b[3] / 90) * R * 0.4, 0, 0, Math.PI * 2);
-      });
-      return;
-    }
-    rings.forEach(function (ring) {
-      let started = false;
-      let lastVis = false;
-      for (let i = 0; i < ring.length; i++) {
-        const p = project(ring[i][1], ring[i][0], cx, cy, R, rot);
-        if (p.vis) {
-          if (!started || !lastVis) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
-          started = true;
-          lastVis = true;
-        } else {
-          lastVis = false;
-        }
-      }
-    });
+    strokeLand(ctx, project, cx, cy, R, rot);
   }
 
   function drawGraticule(cx, cy, R, rot, color, step) {
@@ -558,22 +590,14 @@
     ctx.lineWidth = 0.55;
     ctx.beginPath();
     for (let lat = -75; lat <= 75; lat += step) {
-      let first = true;
-      for (let lon = -180; lon <= 180; lon += 4) {
-        const p = project(lat, lon, cx, cy, R, rot);
-        if (!p.vis) { first = true; continue; }
-        if (first) { ctx.moveTo(p.x, p.y); first = false; }
-        else ctx.lineTo(p.x, p.y);
-      }
+      strokeLL(ctx, project, cx, cy, R, rot, function (i) {
+        return { lat: lat, lon: -180 + i * 4 };
+      }, 90);
     }
     for (let lon = -180; lon < 180; lon += step) {
-      let first = true;
-      for (let lat = -80; lat <= 80; lat += 4) {
-        const p = project(lat, lon, cx, cy, R, rot);
-        if (!p.vis) { first = true; continue; }
-        if (first) { ctx.moveTo(p.x, p.y); first = false; }
-        else ctx.lineTo(p.x, p.y);
-      }
+      strokeLL(ctx, project, cx, cy, R, rot, function (i) {
+        return { lat: -80 + i * 4, lon: lon };
+      }, 40);
     }
     ctx.stroke();
   }
@@ -607,13 +631,9 @@
   function drawScan(cx, cy, R, rot, kind) {
     const lat = Math.sin(state.tick * 0.012) * 55;
     ctx.beginPath();
-    let first = true;
-    for (let lon = -180; lon <= 180; lon += 3) {
-      const p = project(lat, lon, cx, cy, R, rot);
-      if (!p.vis) { first = true; continue; }
-      if (first) { ctx.moveTo(p.x, p.y); first = false; }
-      else ctx.lineTo(p.x, p.y);
-    }
+    strokeLL(ctx, project, cx, cy, R, rot, function (i) {
+      return { lat: lat, lon: -180 + i * 3 };
+    }, 120);
     ctx.strokeStyle = kind === "earth" ? "rgba(52,211,153,0.55)" : "rgba(251,191,36,0.5)";
     ctx.lineWidth = 1.4;
     ctx.stroke();
@@ -676,14 +696,14 @@
     drawGraticule(cx, cy, R, rot, kind === "earth" ? "#67e8f9" : "#fbbf24", gstep);
     ctx.globalAlpha = 1;
 
-    pathLand(cx, cy, R, rot);
     if (kind === "earth") {
-      ctx.fillStyle = "rgba(16, 64, 42, 0.82)";
-      ctx.fill();
+      pathLand(cx, cy, R, rot);
       ctx.strokeStyle = "rgba(110, 231, 183, 0.85)";
       ctx.lineWidth = state.zoom > 1.8 ? 1.15 : 0.8;
       ctx.stroke();
     } else {
+      ctx.beginPath();
+      strokeLand(ctx, project, cx, cy, R, rot);
       ctx.strokeStyle = "rgba(251, 191, 36, 0.55)";
       ctx.lineWidth = 0.7;
       ctx.stroke();
@@ -828,29 +848,9 @@
   }
 
   function pathLandOn(c, projectFn, cx, cy, R, rot) {
+    drawLandFill(c, projectFn, cx, cy, R, rot, "rgba(22, 90, 48, 0.88)");
     c.beginPath();
-    const rings = state.world;
-    if (!rings.length) {
-      LAND.forEach(function (b) {
-        const p = projectFn(b[0], b[1], cx, cy, R, rot);
-        if (!p.vis) return;
-        c.moveTo(p.x + 1, p.y);
-        c.ellipse(p.x, p.y, (b[2] / 90) * R * 0.45, (b[3] / 90) * R * 0.32, 0, 0, Math.PI * 2);
-      });
-      return;
-    }
-    rings.forEach(function (ring) {
-      let started = false;
-      let last = null;
-      for (let i = 0; i < ring.length; i++) {
-        const p = projectFn(ring[i][1], ring[i][0], cx, cy, R, rot);
-        if (!p.vis) { last = null; continue; }
-        if (!started || !last) c.moveTo(p.x, p.y);
-        else c.lineTo(p.x, p.y);
-        started = true;
-        last = p;
-      }
-    });
+    strokeLand(c, projectFn, cx, cy, R, rot);
   }
 
   function overlayEarth(c, projectFn, cx, cy, R, rot) {
@@ -983,8 +983,6 @@
     c.stroke();
 
     pathLandOn(c, projectDisc, cx, cy, R, rot);
-    c.fillStyle = "rgba(22, 90, 48, 0.88)";
-    c.fill();
     c.strokeStyle = "rgba(167, 243, 208, 0.9)";
     c.lineWidth = state.disc.zoom > 1.6 ? 1.2 : 0.85;
     c.stroke();
