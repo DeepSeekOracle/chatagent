@@ -1,0 +1,17 @@
+{
+  "signature": "Delta9Phi963-GODS-EYE-v1.0.0",
+  "name": "LYGO God's Eye",
+  "version": "1.0.0",
+  "doctrine": {
+    "is": "The lattice looking at itself.",
+    "sees": ["RESOURCE public feeds", "CANON dual ledgers / eggs / Star Chart / Agora", "NAMED_SHADOW existence only"],
+    "rule": "Name the shadow. Never steal its payload. Unreachable stays named. Empty is honest.",
+    "not": ["Palantir", "private intelligence", "classified satellite video", "World Monitor clone", "live Star Chart write"]
+  },
+  "pairs_with": {
+    "witness": "https://chatagent.ca/witness/",
+    "star_chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
+    "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
+    "skillhub": "https://chatagent.ca/lygoskillhub.html#full-lygo"
+  }
+}
