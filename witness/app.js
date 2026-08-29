@@ -96,7 +96,6 @@
 
   function resize() {
     sizeCanvas(canvas, ctx);
-    sizeCanvas(discCanvas, dctx);
   }
 
   function project(lat, lon, cx, cy, R, rot) {
@@ -313,7 +312,6 @@
     if (!ll) return;
     state.rot = -(ll.lon * Math.PI) / 180;
     state.tilt = Math.max(-1.05, Math.min(1.05, (ll.lat * Math.PI) / 180 * 0.9));
-    state.disc.rot = -(ll.lon * Math.PI) / 180;
   }
 
   function flyTo(ll, title, cls, body, follow) {
@@ -321,10 +319,6 @@
     lookAt(ll);
     const rect = canvas.getBoundingClientRect();
     setZoom(Math.max(state.zoom, 2.45), rect.width / 2, rect.height * 0.48, rect.width, rect.height);
-    if (discCanvas) {
-      const dr = discCanvas.getBoundingClientRect();
-      setDiscZoom(Math.max(state.disc.zoom, 2.15), dr.width / 2, dr.height * 0.5, dr.width, dr.height);
-    }
     showPick({
       lat: ll.lat, lon: ll.lon, title: title || fmtLL(ll), cls: cls || "ref",
       body: body || ll, km: 0, layer: (body && body.layer) || (follow ? "iss" : "")
@@ -1265,17 +1259,6 @@
       drawGlobe(v.cx, v.cy, v.R, v.rot, v.kind);
     });
     if (!state.dragging && state.zoom < 1.2 && !state.followIss) state.rot += 0.0018;
-
-    if (discCanvas && dctx) {
-      const dw = discCanvas.getBoundingClientRect().width;
-      const dh = discCanvas.getBoundingClientRect().height;
-      dctx.clearRect(0, 0, dw, dh);
-      dctx.fillStyle = "#030604";
-      dctx.fillRect(0, 0, dw, dh);
-      const dv = discLayout(dw, dh);
-      drawDisc(dv.cx, dv.cy, dv.R, dv.rot);
-      if (!state.disc.dragging && state.disc.zoom < 1.15 && !state.followIss) state.disc.rot += 0.0011;
-    }
     requestAnimationFrame(frame);
   }
 
@@ -1874,84 +1857,6 @@
         renderFeeds();
       });
     }
-    if (discCanvas) {
-      discCanvas.addEventListener("pointerdown", function (e) {
-        state.disc.dragging = true;
-        state.disc.dragMoved = 0;
-        state.disc.lastX = e.clientX;
-        state.disc.lastY = e.clientY;
-        discCanvas.setPointerCapture(e.pointerId);
-      });
-      discCanvas.addEventListener("pointerup", function (e) {
-        const moved = state.disc.dragMoved;
-        state.disc.dragging = false;
-        if (moved < 8) {
-          const rect = discCanvas.getBoundingClientRect();
-          const v = discLayout(rect.width, rect.height);
-          const ll = unprojectDisc(e.clientX - rect.left, e.clientY - rect.top, v.cx, v.cy, v.R, v.rot);
-          if (ll) tryPick(ll);
-        }
-      });
-      discCanvas.addEventListener("pointerleave", function () { state.cursor = null; updateDiscMeta(); updateMeta(); });
-      discCanvas.addEventListener("pointermove", function (e) {
-        const rect = discCanvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        const v = discLayout(rect.width, rect.height);
-        state.cursor = unprojectDisc(mx, my, v.cx, v.cy, v.R, v.rot);
-        state.disc.hover = state.cursor;
-        updateDiscMeta();
-        updateMeta();
-        if (!state.disc.dragging) return;
-        const dx = e.clientX - state.disc.lastX;
-        const dy = e.clientY - state.disc.lastY;
-        state.disc.dragMoved += Math.abs(dx) + Math.abs(dy);
-        if (e.shiftKey || e.buttons === 2) {
-          state.disc.panX += dx;
-          state.disc.panY += dy;
-        } else {
-          state.disc.rot += dx * 0.008;
-          if (state.disc.zoom > 1.15) {
-            state.disc.panX += dx * 0.3;
-            state.disc.panY += dy * 0.3;
-          }
-        }
-        state.disc.lastX = e.clientX;
-        state.disc.lastY = e.clientY;
-      });
-      discCanvas.addEventListener("wheel", function (e) {
-        e.preventDefault();
-        const rect = discCanvas.getBoundingClientRect();
-        setDiscZoom(state.disc.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
-        updateDiscMeta();
-      }, { passive: false });
-      discCanvas.addEventListener("dblclick", function (e) {
-        const rect = discCanvas.getBoundingClientRect();
-        const v = discLayout(rect.width, rect.height);
-        const ll = unprojectDisc(e.clientX - rect.left, e.clientY - rect.top, v.cx, v.cy, v.R, v.rot);
-        if (!ll) { resetDisc(); updateDiscMeta(); return; }
-        state.disc.rot = -(ll.lon * Math.PI) / 180;
-        state.disc.panX = 0;
-        state.disc.panY = 0;
-        setDiscZoom(Math.min(5.2, state.disc.zoom < 1.4 ? 2.3 : state.disc.zoom * 1.35), rect.width / 2, rect.height * 0.5, rect.width, rect.height);
-        updateDiscMeta();
-      });
-      discCanvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-      const dzin = document.getElementById("d-zin");
-      const dzout = document.getElementById("d-zout");
-      const dreset = document.getElementById("d-reset");
-      if (dzin) dzin.addEventListener("click", function () {
-        const r = discCanvas.getBoundingClientRect();
-        setDiscZoom(state.disc.zoom * 1.22, r.width / 2, r.height * 0.5, r.width, r.height);
-        updateDiscMeta();
-      });
-      if (dzout) dzout.addEventListener("click", function () {
-        const r = discCanvas.getBoundingClientRect();
-        setDiscZoom(state.disc.zoom / 1.22, r.width / 2, r.height * 0.5, r.width, r.height);
-        updateDiscMeta();
-      });
-      if (dreset) dreset.addEventListener("click", function () { resetDisc(); updateDiscMeta(); });
-    }
     window.addEventListener("keydown", function (e) {
       if (e.target && /input|textarea/i.test(e.target.tagName)) return;
       if (e.key === "+" || e.key === "=") zin();
@@ -2060,6 +1965,17 @@
     parseHash();
     tickClock();
   }
+
+  window.LYGO_WITNESS = {
+    state: state,
+    showPick: showPick,
+    nearestPin: nearestPin,
+    isLand: isLand,
+    fmtLL: fmtLL,
+    nodeLL: nodeLL,
+    resourceLive: resourceLive,
+    PLACES: PLACES
+  };
 
   window.addEventListener("resize", resize);
   window.addEventListener("hashchange", parseHash);
