@@ -251,21 +251,21 @@
 
   function listPins() {
     const out = [];
-    function add(lat, lon, title, cls, body) {
+    function add(lat, lon, title, cls, body, layer) {
       if (typeof lat !== "number" || typeof lon !== "number" || isNaN(lat) || isNaN(lon)) return;
-      out.push({ lat: lat, lon: lon, title: title, cls: cls, body: body });
+      out.push({ lat: lat, lon: lon, title: title, cls: cls, body: body, layer: layer || (body && body.layer) });
     }
     if (state.layers.quakes) {
       (state.ref.quakes || []).forEach(function (q) {
-        add(q.lat, q.lon, "M" + (q.mag || 0).toFixed(1) + " " + (q.place || "quake"), "ref", q);
+        add(q.lat, q.lon, "M" + (q.mag || 0).toFixed(1) + " " + (q.place || "quake"), "ref", q, "quakes");
       });
     }
     if (state.layers.events) {
       (state.ref.events || []).forEach(function (e) {
-        add(e.lat, e.lon, e.title || "EONET", "ref", e);
+        add(e.lat, e.lon, e.title || "EONET", "ref", e, "events");
       });
     }
-    if (state.layers.iss && state.ref.iss) add(state.ref.iss.lat, state.ref.iss.lon, "ISS", "ref", state.ref.iss);
+    if (state.layers.iss && state.ref.iss) add(state.ref.iss.lat, state.ref.iss.lon, "ISS", "ref", state.ref.iss, "iss");
     [
       ["alerts", state.ref.alerts], ["floods", state.ref.floods], ["launches", state.ref.launches],
       ["aurora", state.ref.aurora], ["flights", state.ref.flights], ["weather", state.ref.weather],
@@ -273,18 +273,18 @@
     ].forEach(function (pair) {
       if (!state.layers[pair[0]]) return;
       (pair[1] || []).forEach(function (e) {
-        add(e.lat, e.lon, e.title || pair[0], "ref", e);
+        add(e.lat, e.lon, e.title || pair[0], "ref", e, pair[0]);
       });
     });
     if (state.layers.alerts) {
       (state.ref.world_alerts || []).forEach(function (e) {
-        add(e.lat, e.lon, e.title || "alert", "ref", e);
+        add(e.lat, e.lon, e.title || "alert", "ref", e, "alerts");
       });
     }
     if (state.layers.shadow) {
       (state.shadows || []).forEach(function (n) {
         const ll = nodeLL(n);
-        add(ll.lat, ll.lon, n.label || n.id, resourceLive(n.id) ? "ref" : "shadow", n);
+        add(ll.lat, ll.lon, n.label || n.id, resourceLive(n.id) ? "ref" : "shadow", n, n.kind === "resource" ? "resource" : "shadow");
       });
     }
     return out;
@@ -325,7 +325,10 @@
       const dr = discCanvas.getBoundingClientRect();
       setDiscZoom(Math.max(state.disc.zoom, 2.15), dr.width / 2, dr.height * 0.5, dr.width, dr.height);
     }
-    showPick({ lat: ll.lat, lon: ll.lon, title: title || fmtLL(ll), cls: cls || "ref", body: body || ll, km: 0 });
+    showPick({
+      lat: ll.lat, lon: ll.lon, title: title || fmtLL(ll), cls: cls || "ref",
+      body: body || ll, km: 0, layer: (body && body.layer) || (follow ? "iss" : "")
+    });
     if (follow) {
       state.followIss = true;
       const btn = document.getElementById("btn-follow-iss");
@@ -333,26 +336,123 @@
     }
   }
 
+  function pinLayer(pin) {
+    const b = (pin && pin.body) || {};
+    if (pin.layer) return pin.layer;
+    if (b.layer) return b.layer;
+    if (b.name === "ISS" || pin.title === "ISS") return "iss";
+    if (typeof b.mag === "number") return "quakes";
+    if (b.public_checks) return pin.cls === "shadow" ? "shadow" : "resource";
+    return "";
+  }
+
+  function describePin(pin) {
+    const b = pin.body || {};
+    const layer = pinLayer(pin);
+    const catalog = {
+      quakes: { agency: "USGS", what: "Public earthquake from the USGS catalog. Not a prediction. Open the USGS page for magnitude, time, and the official map." },
+      events: { agency: "NASA EONET", what: "Public natural event (fire, volcano, storm, ice). NASA indexes it. Open EONET for the source record." },
+      iss: { agency: "Where The ISS At / NASA", what: "Live public ISS telemetry. The station is a resource ping, not classified tracking. Open the tracker for the current pass." },
+      alerts: { agency: "NWS / public CAP", what: "Public weather or hazard alert. Open the agency page. We do not invent the interior of a private forecast desk." },
+      floods: { agency: "UK flood monitoring", what: "Public flood-monitor point. Open the official flood page." },
+      launches: { agency: "Launch Library", what: "Upcoming public launch pad. Open the listing for vehicle, pad, and time." },
+      aurora: { agency: "NOAA SWPC", what: "Public space-weather / aurora index. Open NOAA for the forecast product." },
+      flights: { agency: "OpenSky / ADS-B", what: "Public aircraft sample from an ADS-B box. Not a classified radar picture." },
+      weather: { agency: "Open-Meteo", what: "Public weather hub (temperature / wind). Open-Meteo is CC BY 4.0." },
+      radar: { agency: "RainViewer", what: "Public radar mosaic (educational). Open RainViewer. Not NEXRAD internals." },
+      air: { agency: "Open-Meteo AQ", what: "Public air-quality sample. Open the Open-Meteo air page." },
+      marine: { agency: "Open-Meteo marine", what: "Public marine weather sample. Open Open-Meteo marine." },
+      resource: { agency: "Public feed", what: (b.why || "Named public resource. If the GET failed, the node still exists — use the official check link.") },
+      shadow: { agency: "Named shadow", what: (b.why || "This room is private. We keep the silhouette and the legal public links. Payload stays empty.") }
+    };
+    const row = catalog[layer] || {
+      agency: pin.miss ? "Look-at" : "Public overlay",
+      what: pin.miss
+        ? "No public pin in range. Coordinates only — we do not invent a source here."
+        : "A public overlay point. Use the official link when present."
+    };
+    const links = [];
+    function pushLink(label, url) {
+      if (!url) return;
+      for (let i = 0; i < links.length; i++) if (links[i].url === url) return;
+      links.push({ label: label, url: url });
+    }
+    if (b.url) pushLink("Open official source", b.url);
+    (b.public_checks || []).forEach(function (c) { pushLink(c.label || "Public check", c.url); });
+    if (layer === "quakes") {
+      if (b.id) pushLink("USGS event page", "https://earthquake.usgs.gov/earthquakes/eventpage/" + encodeURIComponent(b.id));
+      pushLink("USGS earthquake map", "https://earthquake.usgs.gov/earthquakes/map/");
+    }
+    if (layer === "events") {
+      pushLink("NASA EONET", b.id ? "https://eonet.gsfc.nasa.gov/api/v3/events/" + encodeURIComponent(b.id) : "https://eonet.gsfc.nasa.gov/");
+    }
+    if (layer === "iss") {
+      pushLink("Where The ISS At", "https://wheretheiss.at/");
+      pushLink("NASA Spot The Station", "https://spotthestation.nasa.gov/");
+    }
+    if (layer === "weather" || layer === "air" || layer === "marine") {
+      pushLink("Open-Meteo at this point", "https://open-meteo.com/en/docs#latitude=" + pin.lat + "&longitude=" + pin.lon);
+    }
+    if (layer === "radar") pushLink("RainViewer", "https://www.rainviewer.com/");
+    if (layer === "alerts") pushLink("NWS alerts", "https://api.weather.gov/alerts/active?status=actual");
+    if (layer === "launches") pushLink("Launch Library", "https://ll.thespacedevs.com/");
+    pushLink("OSM map", "https://www.openstreetmap.org/?mlat=" + pin.lat + "&mlon=" + pin.lon + "#map=6/" + pin.lat + "/" + pin.lon);
+    return {
+      tag: pin.miss ? "LOOK" : (pin.cls === "shadow" ? "SHADOW" : (pin.cls === "canon" ? "CANON" : "RESOURCE")),
+      cls: pin.miss ? "ref" : pin.cls,
+      agency: row.agency,
+      what: row.what,
+      links: links
+    };
+  }
+
+  function briefHtml(pin) {
+    const d = describePin(pin);
+    const km = pin.km != null && !pin.miss ? Math.round(pin.km) + " km from click" : "";
+    const extra = [];
+    const b = pin.body || {};
+    if (typeof b.mag === "number") extra.push("M" + b.mag.toFixed(1));
+    if (b.place) extra.push(b.place);
+    if (b.alt != null) extra.push("alt " + (typeof b.alt === "number" ? b.alt.toFixed(0) + " km" : b.alt));
+    const linkHtml = d.links.map(function (l) {
+      return "<a class=\"btn ghost\" href=\"" + escapeHtml(l.url) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(l.label) + "</a>";
+    }).join(" ");
+    return "<p class=\"kicker\">Selected node · " + escapeHtml(d.agency) + "</p>" +
+      "<h2>" + "<span class=\"tag " + d.cls + "\">" + d.tag + "</span> " + escapeHtml(pin.title) + "</h2>" +
+      "<p>" + escapeHtml(d.what) + "</p>" +
+      "<p class=\"legend\">" + fmtLL(pin) + (isLand(pin.lat, pin.lon) ? " · land" : " · ocean") +
+      (km ? " · " + km : "") + (extra.length ? " · " + escapeHtml(extra.join(" · ")) : "") + "</p>" +
+      (d.tag === "SHADOW" ? "<p class=\"legend\">Payload is null on purpose. Follow public checks only.</p>" : "") +
+      "<div class=\"brief-links\">" + linkHtml + "</div>";
+  }
+
   function showPick(pin) {
     if (!pin) return;
     state.pick = pin;
     state.cursor = { lat: pin.lat, lon: pin.lon };
-    const note = pin.miss
-      ? "Look-at only. Not a source. We do not invent a point here."
-      : (pin.cls === "shadow"
-        ? "Named shadow — existence only. Follow public_checks. Never invent the private payload."
-        : "Public resource — usable infrastructure.");
-    const detail = document.getElementById("detail");
-    if (detail) {
-      detail.textContent = JSON.stringify({ class: pin.cls, note: note, km: pin.km != null ? Math.round(pin.km) : null, body: pin.body }, null, 2);
+    const d = describePin(pin);
+    const html = briefHtml(pin);
+    const brief = document.getElementById("brief");
+    const mapBrief = document.getElementById("map-brief");
+    if (brief) {
+      brief.innerHTML = html;
+      brief.classList.remove("empty");
+      try { brief.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+    }
+    if (mapBrief) {
+      mapBrief.innerHTML = html + "<button type=\"button\" class=\"btn ghost\" id=\"brief-close\">Hide overlay</button>";
+      mapBrief.hidden = false;
+      const close = document.getElementById("brief-close");
+      if (close) close.onclick = function () { mapBrief.hidden = true; };
     }
     const card = document.getElementById("pick-card");
-    if (card) {
-      const tag = pin.miss ? "LOOK" : (pin.cls === "shadow" ? "SHADOW" : "RESOURCE");
-      card.innerHTML = "<span class=\"tag " + (pin.miss ? "ref" : pin.cls) + "\">" + tag + "</span> " +
-        escapeHtml(pin.title) +
-        (pin.km != null && !pin.miss ? " <span class=\"legend\">" + Math.round(pin.km) + " km</span>" : "") +
-        "<div class=\"legend\">" + fmtLL(pin) + (isLand(pin.lat, pin.lon) ? " · land" : " · ocean") + "</div>";
+    if (card) card.innerHTML = html;
+    const detail = document.getElementById("detail");
+    if (detail) {
+      detail.textContent = JSON.stringify({
+        class: d.tag, agency: d.agency, what: d.what, km: pin.km != null ? Math.round(pin.km) : null,
+        links: d.links, body: pin.body, payload: pin.cls === "shadow" ? null : undefined
+      }, null, 2);
     }
     try {
       history.replaceState(null, "", "#ll=" + pin.lat.toFixed(3) + "," + pin.lon.toFixed(3));
@@ -1470,7 +1570,13 @@
       const g = await getJson(REF_URLS.usgs);
       state.ref.quakes = (g.features || []).map(function (f) {
         const c = (f.geometry && f.geometry.coordinates) || [0, 0];
-        return { lon: c[0], lat: c[1], mag: (f.properties && f.properties.mag) || 0, place: (f.properties && f.properties.place) || "quake" };
+        const id = f.id || (f.properties && f.properties.code) || "";
+        return {
+          lon: c[0], lat: c[1], mag: (f.properties && f.properties.mag) || 0,
+          place: (f.properties && f.properties.place) || "quake",
+          id: id, layer: "quakes",
+          url: id ? "https://earthquake.usgs.gov/earthquakes/eventpage/" + encodeURIComponent(id) : "https://earthquake.usgs.gov/earthquakes/map/"
+        };
       });
       state.ref.live.usgs = true;
       setStatus("st-usgs", true);
@@ -1485,7 +1591,10 @@
       (ev.events || []).forEach(function (e) {
         const geo = e.geometry && e.geometry[e.geometry.length - 1];
         if (!geo || !geo.coordinates) return;
-        state.ref.events.push({ title: e.title, lon: geo.coordinates[0], lat: geo.coordinates[1], id: e.id });
+        state.ref.events.push({
+          title: e.title, lon: geo.coordinates[0], lat: geo.coordinates[1], id: e.id, layer: "events",
+          url: e.id ? "https://eonet.gsfc.nasa.gov/api/v3/events/" + encodeURIComponent(e.id) : "https://eonet.gsfc.nasa.gov/"
+        });
       });
       state.ref.live.eonet = true;
       setStatus("st-eonet", true);
@@ -1496,7 +1605,7 @@
     }
     try {
       const iss = await getJson(REF_URLS.iss);
-      state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS" };
+      state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS", layer: "iss", url: "https://wheretheiss.at/" };
       state.ref.live.iss = true;
       pushIss(state.ref.iss);
       setStatus("st-iss", true);
@@ -1512,7 +1621,10 @@
       if (rows.length) {
         state.ref.weather = rows.map(function (row, i) {
           const cur = row.current || {};
-          return { lat: row.latitude, lon: row.longitude, title: hubs[i] + " " + cur.temperature_2m + "°", layer: "weather" };
+          return {
+            lat: row.latitude, lon: row.longitude, title: hubs[i] + " " + cur.temperature_2m + "°", layer: "weather",
+            url: "https://open-meteo.com/en/docs#latitude=" + row.latitude + "&longitude=" + row.longitude
+          };
         });
         setStatus("st-wx", true);
       }
@@ -1526,7 +1638,12 @@
       (L.results || []).forEach(function (row) {
         const pad = row.pad || {};
         const lat = parseFloat(pad.latitude), lon = parseFloat(pad.longitude);
-        if (!isNaN(lat) && !isNaN(lon)) pads.push({ lat: lat, lon: lon, title: row.name || "launch", layer: "launches" });
+        if (!isNaN(lat) && !isNaN(lon)) {
+          pads.push({
+            lat: lat, lon: lon, title: row.name || "launch", layer: "launches",
+            url: row.url || (pad.name ? "https://en.wikipedia.org/wiki/" + encodeURIComponent(pad.name) : "https://ll.thespacedevs.com/")
+          });
+        }
       });
       if (pads.length) state.ref.launches = pads;
     } catch (e) { state.ref.errors.launches = String(e); }
@@ -1535,7 +1652,7 @@
   async function refreshIss() {
     try {
       const iss = await getJson(REF_URLS.iss);
-      state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS" };
+      state.ref.iss = { lat: Number(iss.latitude), lon: Number(iss.longitude), alt: iss.altitude, name: "ISS", layer: "iss", url: "https://wheretheiss.at/" };
       state.ref.live.iss = true;
       pushIss(state.ref.iss);
       if (state.followIss) lookAt(state.ref.iss);

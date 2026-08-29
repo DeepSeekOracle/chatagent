@@ -105,12 +105,30 @@
       <b>Disc model.</b> North Pole at the center. Equator is the mid ring. The outer ice is the southern rim. Same USGS / ISS / EONET points as the sphere — a different geometry, not a second dataset.
     </div>
   </div>
+  <div id="map-brief" class="map-brief" hidden></div>
   </div>
   <aside class="side">
     <p class="kicker">Δ9Φ963 · Public Witness · <span id="utc-clock">…</span></p>
     <p class="now-playing" id="nowPlaying">Now playing · idle</p>
     <h1>See the world. Name the shadow. Crunch what is public.</h1>
     <p class="lead">Pretty globes are not a moat. The moat is data that never became public. Scroll down for the <a href="#flat-earth">flat disc</a> — north at the center, ice at the rim — running the same public overlay. Two models. One set of resources.</p>
+    <article id="brief" class="brief empty">
+      <p class="kicker">Selected node</p>
+      <h2>Click a colored dot</h2>
+      <p>Each map mark is a <strong>public resource</strong>, a <strong>lattice receipt</strong>, or a <strong>named shadow</strong>. This card tells you what it is and opens the official page. We do not invent private interiors.</p>
+    </article>
+    <details class="help layer-key" open>
+      <summary>What the dots mean</summary>
+      <ul>
+        <li><span class="swatch" style="background:#f59e0b"></span> Amber fill — USGS quake (opens USGS)</li>
+        <li><span class="swatch ring" style="border-color:#fb7185"></span> Pink ring — NASA EONET event</li>
+        <li><span class="swatch" style="background:#7dd3fc"></span> Cyan glow — ISS (opens tracker)</li>
+        <li><span class="swatch" style="background:#fbbf24"></span> Gold — public weather / NWS-style alert</li>
+        <li><span class="swatch" style="background:#f472b6"></span> Pink fill — launch pad</li>
+        <li><span class="swatch hollow"></span> Hollow purple — named shadow (public checks only)</li>
+      </ul>
+      <p>Click a dot or a feed row. The card above fills and the buttons go to the agency site. JSON under the feed is for agents.</p>
+    </details>
     <div class="stat-row">
       <div class="stat"><b id="n-ref">0</b><span>public resource pings</span></div>
       <div class="stat"><b id="n-canon">0</b><span>canon nodes</span></div>
@@ -151,9 +169,8 @@
       <button class="chip shadow" data-filter="shadow" type="button">Shadows</button>
     </div>
     <ul class="feed" id="feed"></ul>
-    <p class="legend">Click the globe or disc to pick the nearest public pin. Shadows stay existence-only.</p>
-    <div id="pick-card" class="pick-card">Click a map point. Sphere and disc share the same pick.</div>
-    <pre class="out" id="detail">Signature: waiting…</pre>
+    <p class="legend">Click a map dot or a row here. Info and official links appear in the <strong>Selected node</strong> card at the top of this column.</p>
+    <pre class="out" id="detail" aria-label="Agent JSON for the selected node">Signature: waiting…</pre>
     <details class="help">
       <summary>Map controls</summary>
       <p>Drag rotate · Shift-drag pan · Wheel zoom · Double-click focus · Click pick · Click a feed row to fly both maps · ISS row follows · Fullscreen · Gold line is the day/night terminator · Country names appear when zoomed · <code>#ll=lat,lon</code> permalink.</p>
