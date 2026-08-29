@@ -108,6 +108,7 @@
   </div>
   <aside class="side">
     <p class="kicker">Δ9Φ963 · Public Witness · <span id="utc-clock">…</span></p>
+    <p class="now-playing" id="nowPlaying">Now playing · idle</p>
     <h1>See the world. Name the shadow. Crunch what is public.</h1>
     <p class="lead">Pretty globes are not a moat. The moat is data that never became public. Scroll down for the <a href="#flat-earth">flat disc</a> — north at the center, ice at the rim — running the same public overlay. Two models. One set of resources.</p>
     <div class="stat-row">
@@ -155,7 +156,7 @@
     <pre class="out" id="detail">Signature: waiting…</pre>
     <details class="help">
       <summary>Map controls</summary>
-      <p>Drag rotate · Shift-drag pan · Wheel zoom · Double-click focus · Click pick · Follow ISS · Fullscreen · <code>#ll=lat,lon</code> permalink.</p>
+      <p>Drag rotate · Shift-drag pan · Wheel zoom · Double-click focus · Click pick · Click a feed row to fly both maps · ISS row follows · Fullscreen · Gold line is the day/night terminator · Country names appear when zoomed · <code>#ll=lat,lon</code> permalink.</p>
     </details>
     <pre class="out" id="ollama-out">Ollama is optional (localhost:11434). Pair with lygo-ollama-army.</pre>
     <p class="legend">Agents: <code>npx clawhub@latest install deepseekoracle/lygo-public-witness</code><br>
@@ -223,6 +224,7 @@
     <button type="button" id="radioMute" title="Mute radio (does not stop playback)">Mute</button>
     <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
   </div>
+  <div class="radio-now" id="radioNow">Now playing · idle</div>
   <div class="radio-panel" id="radioPanel">
     <div class="radio-head">
       <strong>Listen portal radio</strong>

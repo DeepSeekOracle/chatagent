@@ -68,12 +68,19 @@
     const mute = $("radioMute");
     const view = $("radioView");
     const dock = $("radioDock");
+    const t = st.tracks[st.i];
+    const line = t
+      ? ((st.playing ? "Now playing · " : "Paused · ") + t.title)
+      : "Now playing · idle";
     if (title) {
-      const t = st.tracks[st.i];
       title.textContent = t
         ? (st.playing ? "▶ " : "❚❚ ") + t.title
         : "Loading listen portal…";
     }
+    const now = $("radioNow");
+    if (now) now.textContent = line;
+    const side = $("nowPlaying");
+    if (side) side.textContent = line;
     if (play) play.textContent = st.playing ? "Pause" : "Play";
     if (mute) mute.textContent = st.muted ? "Unmute" : "Mute";
     if (view) view.textContent = st.view ? "Hide" : "Radio";

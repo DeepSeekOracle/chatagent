@@ -59,6 +59,31 @@
     [-20, 25, 14, 16], [35, 90, 30, 16], [-25, 135, 18, 14], [-15, -60, 16, 22],
     [60, -40, 8, 6], [-80, 0, 20, 8]
   ];
+  const PLACES = [
+    { n: "Canada", lat: 56.1, lon: -106.3 }, { n: "USA", lat: 39.8, lon: -98.6 },
+    { n: "Mexico", lat: 23.6, lon: -102.5 }, { n: "Greenland", lat: 71.7, lon: -42.6 },
+    { n: "Brazil", lat: -14.2, lon: -51.9 }, { n: "Argentina", lat: -38.4, lon: -63.6 },
+    { n: "Chile", lat: -35.7, lon: -71.5 }, { n: "Peru", lat: -9.2, lon: -75.0 },
+    { n: "Colombia", lat: 4.6, lon: -74.3 }, { n: "UK", lat: 54.5, lon: -2.0 },
+    { n: "France", lat: 46.2, lon: 2.2 }, { n: "Germany", lat: 51.2, lon: 10.4 },
+    { n: "Spain", lat: 40.5, lon: -3.7 }, { n: "Italy", lat: 41.9, lon: 12.6 },
+    { n: "Norway", lat: 60.5, lon: 8.5 }, { n: "Sweden", lat: 60.1, lon: 18.6 },
+    { n: "Iceland", lat: 64.9, lon: -19.0 }, { n: "Poland", lat: 51.9, lon: 19.1 },
+    { n: "Ukraine", lat: 48.4, lon: 31.2 }, { n: "Russia", lat: 61.5, lon: 105.3 },
+    { n: "Turkey", lat: 38.96, lon: 35.2 }, { n: "Egypt", lat: 26.8, lon: 30.8 },
+    { n: "Nigeria", lat: 9.1, lon: 8.7 }, { n: "Kenya", lat: 0.02, lon: 37.9 },
+    { n: "South Africa", lat: -30.6, lon: 22.9 }, { n: "DRC", lat: -4.0, lon: 21.8 },
+    { n: "Morocco", lat: 31.8, lon: -7.1 }, { n: "Ethiopia", lat: 9.1, lon: 40.5 },
+    { n: "India", lat: 20.6, lon: 79.0 }, { n: "China", lat: 35.9, lon: 104.2 },
+    { n: "Japan", lat: 36.2, lon: 138.3 }, { n: "Korea", lat: 35.9, lon: 127.8 },
+    { n: "Indonesia", lat: -2.5, lon: 118.0 }, { n: "Australia", lat: -25.3, lon: 133.8 },
+    { n: "New Zealand", lat: -40.9, lon: 174.9 }, { n: "Philippines", lat: 12.9, lon: 121.8 },
+    { n: "Thailand", lat: 15.9, lon: 100.99 }, { n: "Vietnam", lat: 14.1, lon: 108.3 },
+    { n: "Pakistan", lat: 30.4, lon: 69.3 }, { n: "Iran", lat: 32.4, lon: 53.7 },
+    { n: "Saudi Arabia", lat: 23.9, lon: 45.1 }, { n: "Iraq", lat: 33.2, lon: 43.7 },
+    { n: "Kazakhstan", lat: 48.0, lon: 66.9 }, { n: "Mongolia", lat: 46.9, lon: 103.8 },
+    { n: "Alaska", lat: 64.2, lon: -153.4 }, { n: "Antarctica", lat: -82.0, lon: 0 }
+  ];
 
   function sizeCanvas(cv, c) {
     if (!cv || !c) return;
@@ -291,6 +316,23 @@
     state.disc.rot = -(ll.lon * Math.PI) / 180;
   }
 
+  function flyTo(ll, title, cls, body, follow) {
+    if (!ll || typeof ll.lat !== "number") return;
+    lookAt(ll);
+    const rect = canvas.getBoundingClientRect();
+    setZoom(Math.max(state.zoom, 2.45), rect.width / 2, rect.height * 0.48, rect.width, rect.height);
+    if (discCanvas) {
+      const dr = discCanvas.getBoundingClientRect();
+      setDiscZoom(Math.max(state.disc.zoom, 2.15), dr.width / 2, dr.height * 0.5, dr.width, dr.height);
+    }
+    showPick({ lat: ll.lat, lon: ll.lon, title: title || fmtLL(ll), cls: cls || "ref", body: body || ll, km: 0 });
+    if (follow) {
+      state.followIss = true;
+      const btn = document.getElementById("btn-follow-iss");
+      if (btn) btn.classList.add("on");
+    }
+  }
+
   function showPick(pin) {
     if (!pin) return;
     state.pick = pin;
@@ -345,6 +387,92 @@
     c.strokeStyle = "rgba(125,211,252,0.55)";
     c.lineWidth = 1.6;
     c.stroke();
+  }
+
+  function subsolar(date) {
+    const d = date || new Date();
+    const start = Date.UTC(d.getUTCFullYear(), 0, 0);
+    const doy = (d.getTime() - start) / 86400000;
+    const decl = 23.44 * Math.sin((2 * Math.PI / 365) * (doy - 81));
+    const utc = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
+    let lon = 15 * (12 - utc);
+    while (lon > 180) lon -= 360;
+    while (lon < -180) lon += 360;
+    return { lat: decl, lon: lon };
+  }
+
+  function sunCos(lat, lon, sun) {
+    const p = Math.PI / 180;
+    return Math.sin(lat * p) * Math.sin(sun.lat * p) + Math.cos(lat * p) * Math.cos(sun.lat * p) * Math.cos((lon - sun.lon) * p);
+  }
+
+  function destPoint(lat, lon, bearingDeg, distDeg) {
+    const p = Math.PI / 180;
+    const ph1 = lat * p;
+    const la1 = lon * p;
+    const th = bearingDeg * p;
+    const d = distDeg * p;
+    const ph2 = Math.asin(Math.sin(ph1) * Math.cos(d) + Math.cos(ph1) * Math.sin(d) * Math.cos(th));
+    const la2 = la1 + Math.atan2(Math.sin(th) * Math.sin(d) * Math.cos(ph1), Math.cos(d) - Math.sin(ph1) * Math.sin(ph2));
+    let lon2 = la2 / p;
+    while (lon2 > 180) lon2 -= 360;
+    while (lon2 < -180) lon2 += 360;
+    return { lat: ph2 / p, lon: lon2 };
+  }
+
+  function drawNight(c, projectFn, cx, cy, R, rot) {
+    const sun = subsolar();
+    const step = state.zoom > 2.2 ? 3 : 5;
+    for (let lat = -80; lat <= 80; lat += step) {
+      for (let lon = -180; lon < 180; lon += step) {
+        const cz = sunCos(lat, lon, sun);
+        if (cz > 0.05) continue;
+        const p = projectFn(lat, lon, cx, cy, R, rot);
+        if (!p.vis || p.z < 0.1) continue;
+        c.globalAlpha = cz > -0.14 ? 0.16 : 0.4;
+        c.fillStyle = "#020618";
+        const s = Math.max(2.4, (step / 88) * R * 1.35);
+        c.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+      }
+    }
+    c.globalAlpha = 1;
+    c.beginPath();
+    let first = true;
+    for (let b = 0; b <= 360; b += 3) {
+      const ll = destPoint(sun.lat, sun.lon, b, 90);
+      const p = projectFn(ll.lat, ll.lon, cx, cy, R, rot);
+      if (!p.vis) { first = true; continue; }
+      if (first) { c.moveTo(p.x, p.y); first = false; }
+      else c.lineTo(p.x, p.y);
+    }
+    c.strokeStyle = "rgba(253,224,71,0.5)";
+    c.lineWidth = 1.25;
+    c.stroke();
+  }
+
+  function drawLabels(c, projectFn, cx, cy, R, rot, zoom) {
+    if (zoom < 1.65) return;
+    c.font = (zoom > 2.6 ? 11 : 9) + "px IBM Plex Sans, sans-serif";
+    c.textAlign = "center";
+    c.textBaseline = "bottom";
+    const used = [];
+    PLACES.forEach(function (pl) {
+      const p = projectFn(pl.lat, pl.lon, cx, cy, R, rot);
+      if (!p.vis || p.z < 0.38) return;
+      let ok = true;
+      for (let i = 0; i < used.length; i++) {
+        const dx = used[i].x - p.x;
+        const dy = used[i].y - p.y;
+        if (dx * dx + dy * dy < 1400) { ok = false; break; }
+      }
+      if (!ok) return;
+      used.push(p);
+      const w = c.measureText(pl.n).width;
+      c.fillStyle = "rgba(8,14,24,0.62)";
+      c.fillRect(p.x - w / 2 - 3, p.y - 13, w + 6, 14);
+      c.fillStyle = "#e2e8f0";
+      c.fillText(pl.n, p.x, p.y - 1);
+    });
   }
 
   function drawMarks(c, projectFn, cx, cy, R, rot) {
@@ -561,6 +689,7 @@
       ctx.stroke();
     }
 
+    drawNight(ctx, project, cx, cy, R, rot);
     drawMatrixSkin(cx, cy, R, rot, kind);
     drawScan(cx, cy, R, rot, kind);
 
@@ -672,6 +801,7 @@
       }
     }
 
+    drawLabels(ctx, project, cx, cy, R, rot, state.zoom);
     drawMarks(ctx, project, cx, cy, R, rot);
 
     ctx.restore();
@@ -859,6 +989,8 @@
     c.lineWidth = state.disc.zoom > 1.6 ? 1.2 : 0.85;
     c.stroke();
 
+    drawNight(c, projectDisc, cx, cy, R, rot);
+
     c.beginPath();
     c.arc(cx, cy, R * 0.965, 0, Math.PI * 2);
     c.arc(cx, cy, R, 0, Math.PI * 2, true);
@@ -889,6 +1021,7 @@
     }
 
     overlayEarth(c, projectDisc, cx, cy, R, rot);
+    drawLabels(c, projectDisc, cx, cy, R, rot, state.disc.zoom);
 
     c.restore();
 
@@ -1089,18 +1222,21 @@
     const items = [];
     state.shadows.forEach(function (n) {
       const live = n.kind === "resource" && resourceLive(n.id);
+      const ll = nodeLL(n);
       items.push({
         cls: live ? "ref" : "shadow",
         title: n.label,
         sub: (live ? "RESOURCE live · " : "SHADOW · ") + n.why,
-        body: { class: live ? "RESOURCE" : "SHADOW", payload: null, why: n.why, public_checks: n.public_checks, id: n.id }
+        lat: ll.lat, lon: ll.lon,
+        body: { class: live ? "RESOURCE" : "SHADOW", payload: null, why: n.why, public_checks: n.public_checks, id: n.id, lat: ll.lat, lon: ll.lon }
       });
     });
     if (state.ref.iss) {
       items.push({
         cls: "ref",
         title: "ISS " + state.ref.iss.lat.toFixed(2) + ", " + state.ref.iss.lon.toFixed(2),
-        sub: "RESOURCE ping · public telemetry",
+        sub: "RESOURCE ping · click to fly both maps · public telemetry",
+        lat: state.ref.iss.lat, lon: state.ref.iss.lon, follow: true,
         body: state.ref.iss
       });
     }
@@ -1108,34 +1244,34 @@
       items.push({ cls: "ref", title: "Public markets " + JSON.stringify(state.ref.markets).slice(0, 80), sub: "RESOURCE · CoinGecko public prices", body: state.ref.markets });
     }
     (state.ref.launches || []).slice(0, 6).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · upcoming launch pad", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · upcoming launch pad", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.alerts || []).slice(0, 5).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · NWS public alert", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · NWS public alert", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.floods || []).slice(0, 4).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · UK flood monitoring", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · UK flood monitoring", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.weather || []).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo (CC BY 4.0)", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo (CC BY 4.0)", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.world_alerts || []).slice(0, 8).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · public CAP/WMO-style alert", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · public CAP/WMO-style alert", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.radar || []).slice(0, 5).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · RainViewer public mosaic (educational)", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · RainViewer public mosaic (educational)", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.air || []).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo air quality", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo air quality", lat: e.lat, lon: e.lon, body: e });
     });
     (state.ref.marine || []).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo marine", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · Open-Meteo marine", lat: e.lat, lon: e.lon, body: e });
     });
     state.ref.quakes.slice(0, 8).forEach(function (q) {
-      items.push({ cls: "ref", title: "M" + q.mag.toFixed(1) + " " + q.place, sub: "RESOURCE · USGS", body: q });
+      items.push({ cls: "ref", title: "M" + q.mag.toFixed(1) + " " + q.place, sub: "RESOURCE · USGS · click to fly", lat: q.lat, lon: q.lon, body: q });
     });
     state.ref.events.slice(0, 6).forEach(function (e) {
-      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · EONET", body: e });
+      items.push({ cls: "ref", title: e.title, sub: "RESOURCE · EONET · click to fly", lat: e.lat, lon: e.lon, body: e });
     });
     state.canon.star.slice(0, 6).forEach(function (n) {
       items.push({ cls: "canon", title: n.node_name || n.node_id, sub: "CANON · Star Chart " + (n.status || ""), body: n });
@@ -1164,8 +1300,12 @@
     }).join("");
     ul.querySelectorAll("li").forEach(function (li, i) {
       li.addEventListener("click", function () {
-        state.selected = items[i];
         const it = items[i];
+        state.selected = it;
+        if (typeof it.lat === "number" && typeof it.lon === "number") {
+          flyTo({ lat: it.lat, lon: it.lon }, it.title, it.cls, it.body, !!it.follow);
+          return;
+        }
         const note = it.cls === "shadow"
           ? "Named shadow — existence only. Follow public_checks. Never invent the private payload."
           : (it.cls === "ref" ? "Public resource — usable infrastructure." : "On-lattice canon receipt.");

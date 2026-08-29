@@ -85,8 +85,17 @@ a { color: var(--cyan); }
   padding: .45rem .55rem; backdrop-filter: blur(8px);
   box-shadow: 0 8px 28px #0008;
 }
-.radio-dock.collapsed { width: auto; }
+.radio-dock.collapsed { width: auto; max-width: min(320px, calc(100vw - 20px)); }
 .radio-dock.collapsed .radio-panel { display: none; }
+.radio-now {
+  font-family: var(--mono); font-size: .68rem; color: #86efac;
+  margin-top: .35rem; line-height: 1.35; max-width: 280px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.now-playing {
+  font-family: var(--mono); font-size: .72rem; color: #86efac;
+  margin: 0 0 .55rem; line-height: 1.35;
+}
 .radio-chip { display: flex; gap: .35rem; align-items: center; flex-wrap: wrap; }
 .radio-chip button, .radio-row button {
   background: #132033; color: var(--ink); border: 1px solid #334155; border-radius: 8px;
@@ -150,6 +159,7 @@ details.help { margin: .5rem 0; color: var(--muted); font-size: .78rem; }
 details.help summary { cursor: pointer; color: var(--amber); }
 #utc-clock { color: var(--cyan); letter-spacing: .04em; }
 .feed { list-style: none; margin: 0; padding: 0; }
+.feed li { cursor: pointer; }
 .feed li {
   border-bottom: 1px solid var(--line); padding: .55rem 0; font-size: .8rem; cursor: pointer;
 }
