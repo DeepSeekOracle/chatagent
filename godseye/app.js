@@ -13,7 +13,9 @@
     usgs: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
     eonet: "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=20",
     iss: "https://api.wheretheiss.at/v1/satellites/25544",
-    skynet: "/skynet/doctrine.json"
+    skynet: "/skynet/doctrine.json",
+    starchart: "/starchart/doctrine.json",
+    starMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json"
   };
   const canvas = document.getElementById("iris");
   const ctx = canvas.getContext("2d");
@@ -333,7 +335,26 @@
       addNode({
         id: "skynet", title: "LYGO SKYNET · AETHONΔ9", ring: "canon", live: true,
         url: "/skynet/",
-        why: "CANON limb · Sentinel Kernel Yielding Named Ethical Trust. Pulse public GET, score public titles, yield ALIGNED/REVIEW/SHADOW. No live Star Chart write."
+        why: "CANON limb · Sentinel Kernel Yielding Named Ethical Trust. Pulse public GET, score public titles, yield ALIGNED/REVIEW/SHADOW. Star Chart pending is consent-gated on /starchart/."
+      });
+    });
+    await ping("starchart", URLS.starchart, function (data, ok) {
+      board.push(boardRow("sc", ok, "Star Chart live monitor"));
+      if (!ok || !data) return;
+      addNode({
+        id: "star_monitor", title: "Star Chart live monitor", ring: "canon", live: true,
+        url: "/starchart/",
+        why: "CANON monitor · GET hash-chained feed. HF writes star-monitor.json + consent pending. Steward ingest remains LIVE."
+      });
+    });
+    await ping("starMon", URLS.starMon, function (data, ok) {
+      board.push(boardRow("sm", ok, "HF star-monitor.json"));
+      if (!ok || !data) return;
+      addNode({
+        id: "hf_star_mon",
+        title: "HF star-monitor seq " + ((data.latest && data.latest.seq) || "?"),
+        ring: "canon", live: !!data.ok, url: "/starchart/",
+        why: "CANON monitor snapshot on Hugging Face. Not a forged Pages chain entry."
       });
     });
     await ping("hf", URLS.hf, function (data, ok) {

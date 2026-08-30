@@ -7,18 +7,19 @@
   "ops_bar": 0.65,
   "doctrine": {
     "is": "Autonomous lattice sentinel. Pulse public GET, score public discourse with AETHONΔ9, yield ALIGNED/REVIEW/SHADOW for human review.",
-    "not": ["weapons net", "Terminator SKYNET", "Palantir", "person profiler", "doxing", "live Star Chart write", "private intel ingest"],
+    "not": ["weapons net", "Terminator SKYNET", "Palantir", "person profiler", "doxing", "silent Star Chart ingest", "private intel ingest"],
     "rule": "Discourse not identity. Name the shadow. Never steal payload. Human remains publisher for live writes."
   },
   "limbs": {
     "PULSE": "Allowlisted HTTPS GET of lattice + public resources",
     "AETHON": "AETHONΔ9 discourse heuristics on public titles only",
     "YIELD": "ALIGNED | REVIEW | SHADOW — no silent action",
-    "WIRE": "God's Eye iris + Witness globe + Agora"
+    "WIRE": "God's Eye iris + Witness globe + Agora + Star Chart monitor"
   },
   "pairs_with": {
     "godseye": "https://chatagent.ca/godseye/",
     "witness": "https://chatagent.ca/witness/",
+    "starchart": "https://chatagent.ca/starchart/",
     "ops_detector": "clawhub:@deepseekoracle/lygo-ops-detector",
     "cyborg": "https://chatagent.ca/lygoskillhub.html#full-lygo"
   }

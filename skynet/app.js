@@ -9,6 +9,8 @@
     hf: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/feed.json",
     anchors: "https://deepseekoracle.github.io/lygo-protocol-stack/network_builder/IMMUTABLE_ANCHORS.json",
     star: "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json",
+    starMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json",
+    starchart: "/starchart/doctrine.json",
     agora: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/pulse.json",
     lattice: "https://deepseekoracle.github.io/lygo-protocol-stack/GIT_LATTICE_OVERVIEW.json",
     usgs: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
@@ -20,7 +22,7 @@
     { id: "PULSE", title: "PULSE", why: "Allowlisted HTTPS GET of lattice + public resources.", url: "/godseye/" },
     { id: "AETHON", title: "AETHONΔ9", why: "Discourse heuristics on public titles. Not identity.", url: "/skynet/" },
     { id: "YIELD", title: "YIELD", why: "ALIGNED / REVIEW / SHADOW. Human remains publisher.", url: "/skynet/" },
-    { id: "WIRE", title: "WIRE", why: "God's Eye iris + Witness globe + Agora.", url: "/godseye/" }
+    { id: "WIRE", title: "WIRE", why: "God's Eye iris + Witness globe + Agora + Star Chart monitor.", url: "/starchart/" }
   ];
   const state = {
     tick: 0, yield: "ALIGNED", live: 0, miss: 0, queue: [], board: [],
@@ -137,7 +139,7 @@
       miss: state.miss,
       max_ops: state.maxOps,
       queue: state.queue.slice(0, 12),
-      live_star_chart_write: false
+      live_star_chart_write: "consent_pending_only"
     };
     try { localStorage.setItem("lygo-skynet-pulse", JSON.stringify(pulse)); } catch (e) {}
     state.lastPulse = pulse;
@@ -185,6 +187,8 @@
     await one("shadows", URLS.shadows);
     await one("anchors", URLS.anchors);
     await one("star", URLS.star);
+    await one("star-monitor", URLS.starMon);
+    await one("starchart doctrine", URLS.starchart);
     await one("agora", URLS.agora);
     await one("lattice", URLS.lattice);
     await one("usgs", URLS.usgs);
