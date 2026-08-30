@@ -12,6 +12,7 @@
     "witness": "https://chatagent.ca/witness/",
     "star_chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
     "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
-    "skillhub": "https://chatagent.ca/lygoskillhub.html#full-lygo"
+    "skillhub": "https://chatagent.ca/lygoskillhub.html#full-lygo",
+    "skynet": "https://chatagent.ca/skynet/"
   }
 }

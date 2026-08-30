@@ -12,7 +12,8 @@
     lattice: "https://deepseekoracle.github.io/lygo-protocol-stack/GIT_LATTICE_OVERVIEW.json",
     usgs: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
     eonet: "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=20",
-    iss: "https://api.wheretheiss.at/v1/satellites/25544"
+    iss: "https://api.wheretheiss.at/v1/satellites/25544",
+    skynet: "/skynet/doctrine.json"
   };
   const canvas = document.getElementById("iris");
   const ctx = canvas.getContext("2d");
@@ -324,6 +325,15 @@
         id: "iss_live", title: "ISS " + Number(data.latitude).toFixed(1) + ", " + Number(data.longitude).toFixed(1),
         ring: "resource", live: true, url: "https://wheretheiss.at/",
         why: "RESOURCE · public ISS position."
+      });
+    });
+    await ping("skynet", URLS.skynet, function (data, ok) {
+      board.push(boardRow("sk", ok, "LYGO SKYNET sentinel"));
+      if (!ok || !data) return;
+      addNode({
+        id: "skynet", title: "LYGO SKYNET · AETHONΔ9", ring: "canon", live: true,
+        url: "/skynet/",
+        why: "CANON limb · Sentinel Kernel Yielding Named Ethical Trust. Pulse public GET, score public titles, yield ALIGNED/REVIEW/SHADOW. No live Star Chart write."
       });
     });
     await ping("hf", URLS.hf, function (data, ok) {

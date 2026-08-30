@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LYGO SKYNET — AETHONΔ9 sentinel kernel | chatagent.ca</title>
+<meta name="description" content="LYGO SKYNET: Sentinel Kernel Yielding Named Ethical Trust. AETHONΔ9 discourse protocol on public lattice pulse. Not a weapons net. Not identity profiling. Human remains publisher.">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<link rel="canonical" href="https://chatagent.ca/skynet/">
+<link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/godseye/app.css">
+<link rel="stylesheet" href="/skynet/app.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<meta property="og:title" content="LYGO SKYNET">
+<meta property="og:description" content="AETHONΔ9 autonomous sentinel for the LYGO lattice. Pulse · yield · named shadows.">
+<meta property="og:url" content="https://chatagent.ca/skynet/">
+<meta property="og:image" content="https://chatagent.ca/witness/og.jpg">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">chatagent.ca</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/witness/">Witness</a>
+    <a href="/godseye/">God's Eye</a>
+    <a href="/skynet/" aria-current="page">SKYNET</a>
+    <a href="/lygoskillhub.html">SkillHub</a>
+    <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">Donate</a>
+  </nav>
+</header>
+<div class="stage">
+  <div class="iris-wrap">
+    <canvas id="net" aria-label="LYGO SKYNET hex net. Four limbs: Pulse, AETHON, Yield, Wire."></canvas>
+    <div class="hud">
+      <button class="chip on" id="btn-pulse" type="button">Pulse now</button>
+      <span class="chip" id="yield-chip">YIELD · …</span>
+    </div>
+  </div>
+  <aside class="side">
+    <p class="kicker">Δ9Φ963 · SKYNET · AETHONΔ9 · <span id="utc">…</span></p>
+    <h1>Sentinel Kernel Yielding Named Ethical Trust.</h1>
+    <p class="lead"><strong>Not</strong> a weapons net and <strong>not</strong> identity profiling. SKYNET is LYGO autonomy: pulse allowlisted public GET, score <em>public titles</em> with AETHONΔ9 (discourse, not people), yield ALIGNED / REVIEW / SHADOW. Human remains the publisher. No live Star Chart write.</p>
+    <div class="stat-row">
+      <div class="stat"><b id="n-pulse">0</b><span>lattice pings live</span></div>
+      <div class="stat"><b id="n-rev">0</b><span>AETHON REVIEW titles</span></div>
+      <div class="stat"><b id="n-sh">0</b><span>yield SHADOW</span></div>
+      <div class="stat"><b id="n-ops">—</b><span>max ops_score this pulse</span></div>
+    </div>
+    <article id="brief" class="brief empty">
+      <p class="kicker">Yield</p>
+      <h2>Pulse the lattice</h2>
+      <p>Four limbs: <b>PULSE</b> (GET) · <b>AETHON</b> (discourse) · <b>YIELD</b> (ALIGNED/REVIEW/SHADOW) · <b>WIRE</b> (God's Eye + Witness). Operational bar 0.65.</p>
+    </article>
+    <p class="legend">Public-title AETHONΔ9 queue (not identity)</p>
+    <ul class="feed" id="queue"></ul>
+    <p class="legend">Lattice limbs</p>
+    <div class="board" id="board"></div>
+    <p class="legend">Wire:
+      <a href="/godseye/">God's Eye</a> ·
+      <a href="/witness/">Witness</a> ·
+      <a href="https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/">Agora</a> ·
+      Ops Detector: <code>npx clawhub@latest install deepseekoracle/lygo-ops-detector</code>
+    </p>
+    <p class="legend" id="sig"></p>
+  </aside>
+</div>
+<section class="prose">
+  <h2>AETHONΔ9 in SKYNET</h2>
+  <p>The protocol lives in <code>lygo-ops-detector</code>: evasion, half-truth certainty, saturation bait. Unit of analysis is <strong>text</strong>, never a person. SKYNET applies a public-safe subset to <strong>already-public headlines</strong> from the Witness news monitor. It does not crawl private mail, does not dox, does not auto-publish.</p>
+  <h2>Autonomy that still obeys P0</h2>
+  <ul>
+    <li>Autonomous: re-pulse on an interval, classify, fill the yield queue.</li>
+    <li>Not autonomous: git push, HF upload, Star Chart live write, social outbound, payload invention.</li>
+  </ul>
+</section>
+<footer class="site">
+  <p>© <span class="y"></span> Justin Helmer / Excavationpro ·
+    <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a></p>
+</footer>
+<script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear();});</script>
+<script src="/skynet/aethon.js"></script>
+<script src="/skynet/app.js"></script>
+</body>
+</html>
