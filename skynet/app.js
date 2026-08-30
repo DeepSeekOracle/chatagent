@@ -11,6 +11,8 @@
     star: "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json",
     starMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json",
     starchart: "/starchart/doctrine.json",
+    lattice: "/lattice/doctrine.json",
+    latticeAudit: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json",
     agora: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/pulse.json",
     lattice: "https://deepseekoracle.github.io/lygo-protocol-stack/GIT_LATTICE_OVERVIEW.json",
     usgs: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
@@ -189,6 +191,8 @@
     await one("star", URLS.star);
     await one("star-monitor", URLS.starMon);
     await one("starchart doctrine", URLS.starchart);
+    await one("lattice kernel", URLS.lattice);
+    await one("lattice-audit", URLS.latticeAudit);
     await one("agora", URLS.agora);
     await one("lattice", URLS.lattice);
     await one("usgs", URLS.usgs);

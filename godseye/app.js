@@ -15,7 +15,9 @@
     iss: "https://api.wheretheiss.at/v1/satellites/25544",
     skynet: "/skynet/doctrine.json",
     starchart: "/starchart/doctrine.json",
-    starMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json"
+    starMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json",
+    lattice: "/lattice/doctrine.json",
+    latticeAudit: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json"
   };
   const canvas = document.getElementById("iris");
   const ctx = canvas.getContext("2d");
@@ -355,6 +357,25 @@
         title: "HF star-monitor seq " + ((data.latest && data.latest.seq) || "?"),
         ring: "canon", live: !!data.ok, url: "/starchart/",
         why: "CANON monitor snapshot on Hugging Face. Not a forged Pages chain entry."
+      });
+    });
+    await ping("lattice", URLS.lattice, function (data, ok) {
+      board.push(boardRow("lk", ok, "Lattice kernel"));
+      if (!ok || !data) return;
+      addNode({
+        id: "lattice_kernel", title: "Lattice kernel", ring: "canon", live: true,
+        url: "/lattice/",
+        why: "CANON · autonomous pulse + self-audit + future slots. Human remains publisher."
+      });
+    });
+    await ping("latticeAudit", URLS.latticeAudit, function (data, ok) {
+      board.push(boardRow("laud", ok, "HF lattice-audit.json"));
+      if (!ok || !data) return;
+      addNode({
+        id: "hf_lattice_audit",
+        title: "Lattice audit yield " + (data["yield"] || "?"),
+        ring: "canon", live: !!data.signature, url: "/lattice/",
+        why: "CANON self-audit receipt on Hugging Face. FUTURE slots never fail the kernel."
       });
     });
     await ping("hf", URLS.hf, function (data, ok) {

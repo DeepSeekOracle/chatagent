@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LYGO Lattice Kernel — autonomous self-audit | chatagent.ca</title>
+<meta name="description" content="Main LYGO lattice kernel: autonomous public pulse, self-audit yield ALIGNED/DRIFT/SHADOW, versioned future-tech slots. Empty is honest. Human remains publisher.">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<link rel="canonical" href="https://chatagent.ca/lattice/">
+<link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/lattice/app.css">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<meta property="og:title" content="LYGO Lattice Kernel">
+<meta property="og:description" content="Autonomous pulse. Self-audit. Future slots wait for proof.">
+<meta property="og:url" content="https://chatagent.ca/lattice/">
+<meta property="og:image" content="https://chatagent.ca/witness/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">chatagent.ca</a>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/lattice/" aria-current="page">Lattice</a>
+    <a href="/witness/">Witness</a>
+    <a href="/godseye/">God's Eye</a>
+    <a href="/skynet/">SKYNET</a>
+    <a href="/starchart/">Star Chart</a>
+    <a href="/lygoskillhub.html">SkillHub</a>
+    <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">Donate</a>
+  </nav>
+</header>
+<div class="stage">
+  <div class="iris-wrap">
+    <canvas id="core" aria-label="LYGO lattice kernel. Inner canon, mid resources, outer future slots."></canvas>
+    <div class="hud">
+      <button class="chip on" id="btn-audit" type="button">Audit now</button>
+      <span class="chip" id="yield-chip">YIELD · …</span>
+    </div>
+  </div>
+  <aside class="side">
+    <p class="kicker">Δ9Φ963 · Lattice kernel · <span id="utc">…</span></p>
+    <h1>Main lattice. Alive, audited, unfinished on purpose.</h1>
+    <p class="lead">This kernel <strong>pulses</strong> allowlisted public GET, <strong>audits</strong> hash chains and signatures, and keeps <strong>future slots</strong> empty until a public proof exists. Autonomy is the loop. Publishing Pages and steward ingest stay human.</p>
+    <div class="stat-row">
+      <div class="stat"><b id="n-live">0</b><span>slots live</span></div>
+      <div class="stat"><b id="n-miss">0</b><span>named misses</span></div>
+      <div class="stat"><b id="n-fut">0</b><span>future slots</span></div>
+      <div class="stat"><b id="n-yield">—</b><span>self-audit yield</span></div>
+    </div>
+    <article id="brief" class="brief empty">
+      <p class="kicker">Slot</p>
+      <h2>Run an audit</h2>
+      <p>Gold inner = CANON. Amber = public RESOURCE. Cyan outer = FUTURE (does not fail the kernel). Click a light.</p>
+    </article>
+    <p class="legend">Audit board</p>
+    <div class="board" id="board"></div>
+    <p class="legend">Slots</p>
+    <ul class="feed" id="feed"></ul>
+    <pre class="out" id="out">Awaiting audit…</pre>
+    <p class="legend">Limbs:
+      <a href="/witness/">Witness</a> ·
+      <a href="/godseye/">God's Eye</a> ·
+      <a href="/skynet/">SKYNET</a> ·
+      <a href="/starchart/">Star Chart</a> ·
+      <a href="https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot">HF bot</a> ·
+      <a href="https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/">Agora</a>
+    </p>
+    <p class="legend" id="sig"></p>
+  </aside>
+</div>
+<section class="prose">
+  <h2>Fully working</h2>
+  <p>Working means every CANON slot answers a GET, the Star Chart chain verifies, and Agora’s <code>feed_root</code> matches the chart <code>chain_root</code>. Misses stay named. Nothing is invented.</p>
+  <h2>Autonomous</h2>
+  <p>The kernel re-audits on a 90s interval, stores a receipt in this browser, and can persist <code>lattice-audit.json</code> on Hugging Face when a steward clicks the bot. It does not git-push or ingest the live chart.</p>
+  <h2>Self-auditing</h2>
+  <p>Yield is <b>ALIGNED</b>, <b>DRIFT</b> (stale overview, one canon miss, agora/star mismatch), or <b>SHADOW</b> (chain break or majority canon down). Agents should cite the receipt JSON, not vibes.</p>
+  <h2>Ready for future tech</h2>
+  <p>New limbs are rows in <code>slots.json</code>. A FUTURE slot never fails the kernel. When its public GET and expected signature succeed, it promotes to LIVE without rewriting the canvas.</p>
+</section>
+<footer class="site">
+  <p>© <span class="y"></span> Justin Helmer / Excavationpro ·
+    <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a></p>
+</footer>
+<script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear();});</script>
+<script src="/lattice/app.js"></script>
+</body>
+</html>

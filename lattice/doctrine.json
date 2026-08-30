@@ -1,0 +1,34 @@
+{
+  "signature": "Delta9Phi963-LATTICE-KERNEL-v1.0.0",
+  "name": "LYGO Lattice Kernel",
+  "version": "1.0.0",
+  "class": "CANON",
+  "doctrine": {
+    "is": "The main lattice looking at its own limbs. Autonomous pulse, self-audit, versioned future slots.",
+    "rule": "Empty is honest. Named shadows stay named. Future slots wait until a public GET proves them. Human remains publisher for git, HF ingest of Pages, and Star Chart steward ingest.",
+    "autonomous": ["HTTPS GET allowlist", "prev_hash / signature checks", "stale-overview drift", "re-audit interval", "localStorage receipt", "HF lattice-audit.json when token present"],
+    "not_autonomous": ["git push", "forged Star Chart hashes", "steward ingest", "social outbound", "inventing missing payloads"],
+    "not": ["Palantir", "weapons net", "identity profiler", "silent Pages mutate"]
+  },
+  "self_audit": {
+    "interval_ms": 90000,
+    "yield": ["ALIGNED", "DRIFT", "SHADOW"],
+    "aligned_when": "All CANON slots live, star chain valid, agora feed_root matches chain_root.",
+    "drift_when": "Overview older than 10 days, a CANON miss, or agora/star root mismatch.",
+    "shadow_when": "Star chain break or majority CANON slots unreachable."
+  },
+  "future_ready": {
+    "rule": "Add a slot in slots.json. FUTURE never fails the kernel. When GET + expected signature succeed, the slot promotes to LIVE without a rewrite of the canvas.",
+    "hooks": ["on_audit", "on_drift", "on_future_promote"]
+  },
+  "pairs_with": {
+    "witness": "https://chatagent.ca/witness/",
+    "godseye": "https://chatagent.ca/godseye/",
+    "skynet": "https://chatagent.ca/skynet/",
+    "starchart": "https://chatagent.ca/starchart/",
+    "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
+    "chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
+    "hf_bot": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",
+    "hf_audit": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json"
+  }
+}

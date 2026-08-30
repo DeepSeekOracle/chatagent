@@ -20,6 +20,7 @@
     "godseye": "https://chatagent.ca/godseye/",
     "witness": "https://chatagent.ca/witness/",
     "starchart": "https://chatagent.ca/starchart/",
+    "lattice": "https://chatagent.ca/lattice/",
     "ops_detector": "clawhub:@deepseekoracle/lygo-ops-detector",
     "cyborg": "https://chatagent.ca/lygoskillhub.html#full-lygo"
   }
