@@ -1,0 +1,62 @@
+{
+  "signature": "Delta9Phi963-LATTICE-SECURITY-AUDIT-v1.0.0",
+  "utc": "2026-08-30T04:00:00+00:00",
+  "scope": ["lattice", "godseye", "skynet", "starchart", "witness-brief", "hf-star-bot", "lattice_audit.py"],
+  "findings": [
+    {
+      "id": "H1",
+      "severity": "high",
+      "title": "JSON-driven href without protocol allowlist",
+      "status": "fixed",
+      "fix": "lattice/guard.js safeHref — reject javascript/data/vbscript/file/blob and userinfo URLs."
+    },
+    {
+      "id": "H2",
+      "severity": "high",
+      "title": "Fetch any URL from slots.json (SSRF / cookie leak)",
+      "status": "fixed",
+      "fix": "allowFetch HTTPS host allowlist + fetch credentials omit. Python ping allowlist + public-IP check + redirect guard."
+    },
+    {
+      "id": "M1",
+      "severity": "medium",
+      "title": "HTML escape missed apostrophe",
+      "status": "fixed",
+      "fix": "esc / escapeHtml now encode single quote."
+    },
+    {
+      "id": "M2",
+      "severity": "medium",
+      "title": "HF proposal queue unbounded + secret-shaped keys",
+      "status": "fixed",
+      "fix": "64KB cap, agent_id charset, scrub token/secret/password/api_key keys."
+    },
+    {
+      "id": "M3",
+      "severity": "medium",
+      "title": "No CSP on lattice limbs (GitHub Pages has no custom headers)",
+      "status": "fixed",
+      "fix": "CSP + referrer-policy meta on lattice, godseye, skynet, starchart. Witness keeps AdSense so CSP omitted; referrer-policy added."
+    },
+    {
+      "id": "L1",
+      "severity": "low",
+      "title": "target=_blank without noreferrer on JSON links",
+      "status": "fixed",
+      "fix": "noopener noreferrer on generated anchors."
+    },
+    {
+      "id": "I1",
+      "severity": "info",
+      "title": "GitHub Pages cannot set X-Frame-Options / HSTS",
+      "status": "accepted",
+      "fix": "CSP frame-ancestors 'none'. Enforce HTTPS in Pages settings remains operator."
+    }
+  ],
+  "open": [
+    "Witness/home still load AdSense — third-party script surface remains by design.",
+    "HF Jobs 402 — unattended audit still human/Space click.",
+    "PC hardening audit of full protocol-stack tree is slow; run weekly from playbook."
+  ],
+  "not": ["Palantir", "private intel", "doxing"]
+}

@@ -409,7 +409,8 @@
     if (b.place) extra.push(b.place);
     if (b.alt != null) extra.push("alt " + (typeof b.alt === "number" ? b.alt.toFixed(0) + " km" : b.alt));
     const linkHtml = d.links.map(function (l) {
-      return "<a class=\"btn ghost\" href=\"" + escapeHtml(l.url) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(l.label) + "</a>";
+      const href = safeHref(l.url);
+      return href ? "<a class=\"btn ghost\" href=\"" + escapeHtml(href) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + escapeHtml(l.label) + "</a>" : "";
     }).join(" ");
     return "<p class=\"kicker\">Selected node · " + escapeHtml(d.agency) + "</p>" +
       "<h2>" + "<span class=\"tag " + d.cls + "\">" + d.tag + "</span> " + escapeHtml(pin.title) + "</h2>" +
@@ -1294,9 +1295,21 @@
   }
 
   function escapeHtml(s) {
-    return String(s || "").replace(/[&<>"]/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c];
+    return String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c];
     });
+  }
+
+  function safeHref(u) {
+    const raw = String(u || "").trim();
+    if (!raw || /^(javascript|data|vbscript|file|blob):/i.test(raw.replace(/\s/g, ""))) return "";
+    if (raw.charAt(0) === "/" && raw.charAt(1) !== "/") return raw;
+    try {
+      const p = new URL(raw, location.origin);
+      if (p.protocol !== "https:" && p.protocol !== "http:") return "";
+      if (p.username || p.password) return "";
+      return p.href;
+    } catch (e) { return ""; }
   }
 
   function feedItems() {

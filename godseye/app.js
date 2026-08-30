@@ -35,16 +35,17 @@
   }
 
   function esc(s) {
-    return String(s || "").replace(/[&<>"]/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c];
+    return window.LYGO_GUARD ? window.LYGO_GUARD.esc(s) : String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c];
     });
   }
 
   async function getJson(url) {
+    if (window.LYGO_GUARD && !window.LYGO_GUARD.allowFetch(url)) throw new Error("blocked_host");
     const ctrl = new AbortController();
     const t = setTimeout(function () { ctrl.abort(); }, 14000);
     try {
-      const res = await fetch(url, { signal: ctrl.signal });
+      const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       return await res.json();
     } finally { clearTimeout(t); }
@@ -189,7 +190,8 @@
       "<p>" + esc(why) + "</p>" +
       (n.ring === "shadow" ? "<p class=\"legend\">Payload is null on purpose.</p>" : "") +
       "<div class=\"brief-links\">" + links.map(function (l) {
-        return "<a class=\"btn ghost\" href=\"" + esc(l.url) + "\" target=\"_blank\" rel=\"noopener\">" + esc(l.label) + "</a>";
+        const href = window.LYGO_GUARD ? window.LYGO_GUARD.safeHref(l.url) : "";
+        return href ? "<a class=\"btn ghost\" href=\"" + esc(href) + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + esc(l.label) + "</a>" : "";
       }).join(" ") + "</div>";
   }
 

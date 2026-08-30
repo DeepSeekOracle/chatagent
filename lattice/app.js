@@ -19,16 +19,19 @@
   }
 
   function esc(s) {
-    return String(s || "").replace(/[&<>"]/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c];
+    return window.LYGO_GUARD ? window.LYGO_GUARD.esc(s) : String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c];
     });
   }
 
   async function getAny(url) {
+    if (window.LYGO_GUARD && !window.LYGO_GUARD.allowFetch(url)) {
+      return { ok: false, status: 0, json: null, text: "blocked_host", bytes: 0 };
+    }
     const ctrl = new AbortController();
     const t = setTimeout(function () { ctrl.abort(); }, 14000);
     try {
-      const res = await fetch(url, { signal: ctrl.signal });
+      const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
       const text = await res.text();
       let json = null;
       try { json = JSON.parse(text); } catch (e) { json = null; }
@@ -148,7 +151,10 @@
     el.innerHTML = "<p class=\"kicker\">Slot</p><h2><span class=\"tag " + cls + "\">" + tag + "</span> " + esc(s.title) + "</h2>" +
       "<p>" + esc(s.why || r.note || (r.live ? "Public GET succeeded." : "Named miss. Payload not invented.")) + "</p>" +
       "<p class=\"legend\">" + esc(s.url) + "</p>" +
-      "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + esc(s.url) + "\" target=\"_blank\" rel=\"noopener\">Open</a></div>";
+      (function () {
+        const href = window.LYGO_GUARD ? window.LYGO_GUARD.safeHref(s.url) : "";
+        return href ? "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + esc(href) + "\" target=\"_blank\" rel=\"noopener noreferrer\">Open</a></div>" : "";
+      })();
   }
 
   function setYield(y) {

@@ -40,16 +40,17 @@
   }
 
   function esc(s) {
-    return String(s || "").replace(/[&<>"]/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c];
+    return window.LYGO_GUARD ? window.LYGO_GUARD.esc(s) : String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c];
     });
   }
 
   async function getJson(url) {
+    if (window.LYGO_GUARD && !window.LYGO_GUARD.allowFetch(url)) throw new Error("blocked_host");
     const ctrl = new AbortController();
     const t = setTimeout(function () { ctrl.abort(); }, 14000);
     try {
-      const res = await fetch(url, { signal: ctrl.signal });
+      const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       return await res.json();
     } finally { clearTimeout(t); }
@@ -153,7 +154,10 @@
     if (!el) return;
     el.classList.remove("empty");
     el.innerHTML = "<p class=\"kicker\">Limb</p><h2><span class=\"tag canon\">SKYNET</span> " + esc(L.title) + "</h2><p>" + esc(L.why) + "</p>" +
-      "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + esc(L.url) + "\">Open wire</a></div>";
+      (function () {
+        const href = window.LYGO_GUARD ? window.LYGO_GUARD.safeHref(L.url) : L.url;
+        return href ? "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + esc(href) + "\">Open wire</a></div>" : "";
+      })();
   }
 
   function renderQueue() {

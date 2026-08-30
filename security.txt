@@ -1,5 +1,8 @@
-Contact: https://www.paypal.com/paypalme/ExcavationPro
+Contact: https://github.com/DeepSeekOracle/chatagent/issues
+Contact: https://github.com/DeepSeekOracle/lygo-protocol-stack/security
 Preferred-Languages: en
-Expires: 2027-07-18T00:00:00.000Z
+Expires: 2027-08-30T00:00:00.000Z
+Canonical: https://chatagent.ca/security.txt
 Acknowledgments: https://github.com/DeepSeekOracle/lygo-protocol-stack
-# LYGO · AdSense sites · report via GitHub issues
+Policy: https://github.com/DeepSeekOracle/lygo-protocol-stack/blob/main/docs/LYGO_SECURITY_TAMPER_AUDIT.md
+# LYGO · report via GitHub issues. Do not send live secrets in the issue body.

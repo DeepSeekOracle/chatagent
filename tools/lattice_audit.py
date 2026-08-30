@@ -1,12 +1,16 @@
 """LYGO Lattice Kernel auditor — GET slots, Continuum-style claims, optional HF write."""
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
+import socket
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 UA = "LYGO-Lattice-Kernel/1.0 (+https://chatagent.ca/lattice/)"
 DS = "DeepSeekOracle/lygo-public-witness-feed"
@@ -26,6 +30,52 @@ def _slots_path() -> Path:
 
 SLOTS_PATH = _slots_path()
 
+ALLOW_HOSTS = frozenset(
+    {
+        "deepseekoracle.github.io",
+        "huggingface.co",
+        "cdn-lfs.huggingface.co",
+        "earthquake.usgs.gov",
+        "eonet.gsfc.nasa.gov",
+        "api.wheretheiss.at",
+        "chatagent.ca",
+        "www.chatagent.ca",
+        "eternalhaven.ca",
+    }
+)
+
+
+def _is_public_ip(host: str) -> bool:
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except OSError:
+        return False
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            return False
+    return True
+
+
+def allowed_url(url: str) -> bool:
+    p = urlparse(url)
+    if p.scheme != "https" or p.username or p.password:
+        return False
+    host = (p.hostname or "").lower()
+    return host in ALLOW_HOSTS and _is_public_ip(host)
+
+
+class _AllowRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not allowed_url(newurl):
+            raise urllib.error.HTTPError(newurl, code, "redirect off allowlist", headers, fp)
+        return urllib.request.HTTPRedirectHandler.redirect_request(
+            self, req, fp, code, msg, headers, newurl
+        )
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -44,9 +94,12 @@ def _token() -> Optional[str]:
 
 
 def ping(url: str) -> dict[str, Any]:
+    if not allowed_url(url):
+        return {"ok": False, "error": "blocked_host", "json": None}
     req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+    opener = urllib.request.build_opener(_AllowRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=16) as r:
+        with opener.open(req, timeout=16) as r:
             raw = r.read(1_500_000)
             text = raw.decode("utf-8", errors="replace")
             js = None

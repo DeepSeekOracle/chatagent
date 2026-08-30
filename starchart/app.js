@@ -29,16 +29,17 @@
   }
 
   function esc(s) {
-    return String(s || "").replace(/[&<>"]/g, function (c) {
-      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" })[c];
+    return window.LYGO_GUARD ? window.LYGO_GUARD.esc(s) : String(s || "").replace(/[&<>"']/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c];
     });
   }
 
   async function getJson(url) {
+    if (window.LYGO_GUARD && !window.LYGO_GUARD.allowFetch(url)) throw new Error("blocked_host");
     const ctrl = new AbortController();
     const t = setTimeout(function () { ctrl.abort(); }, 14000);
     try {
-      const res = await fetch(url, { signal: ctrl.signal });
+      const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       return await res.json();
     } finally { clearTimeout(t); }
@@ -147,8 +148,8 @@
       esc(n.node_name || n.node_id) + "</h2>" +
       "<p>" + esc(n.event_type || "") + " · seq " + esc(n.seq) + " · " + esc(n.agent_id || "") + "</p>" +
       "<p class=\"legend\">entry_hash " + esc((n.entry_hash || "").slice(0, 16)) + "…</p>" +
-      "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + URLS.chart + "\" target=\"_blank\" rel=\"noopener\">Open live chart</a>" +
-      "<a class=\"btn ghost\" href=\"" + URLS.feed + "\" target=\"_blank\" rel=\"noopener\">Feed JSON</a></div>";
+      "<div class=\"brief-links\"><a class=\"btn ghost\" href=\"" + esc((window.LYGO_GUARD && window.LYGO_GUARD.safeHref(URLS.chart)) || URLS.chart) + "\" target=\"_blank\" rel=\"noopener noreferrer\">Open live chart</a>" +
+      "<a class=\"btn ghost\" href=\"" + esc((window.LYGO_GUARD && window.LYGO_GUARD.safeHref(URLS.feed)) || URLS.feed) + "\" target=\"_blank\" rel=\"noopener noreferrer\">Feed JSON</a></div>";
   }
 
   function renderFeed() {
