@@ -184,8 +184,12 @@
     state.count = data.entry_count || entries.length;
     state.publishedValid = !!data.chain_valid;
     state.chainOk = chk.ok && data.chain_valid !== false;
-    state.pending = entries.filter(function (e) { return e.status === "PENDING"; }).length;
-    state.accepted = entries.filter(function (e) { return e.status === "ACCEPTED"; }).length;
+    const latestStatus = {};
+    entries.forEach(function (e) {
+      if (e.node_id && latestStatus[e.node_id] == null) latestStatus[e.node_id] = e.status;
+    });
+    state.pending = Object.keys(latestStatus).filter(function (k) { return latestStatus[k] === "PENDING"; }).length;
+    state.accepted = Object.keys(latestStatus).filter(function (k) { return latestStatus[k] === "ACCEPTED"; }).length;
     renderFeed();
     const out = document.getElementById("out");
     if (out) {
