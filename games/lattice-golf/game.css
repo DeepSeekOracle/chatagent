@@ -112,10 +112,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   grid-template-columns: 1.2fr minmax(320px, 480px);
 }
 .title-art { position: relative; min-height: 100vh; background: #050c08; }
-.title-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.title-art img { width: 100%; height: 100%; object-fit: cover; object-position: 38% center; display: block; }
 .title-art-fade {
   position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent 48%, #07140c 100%);
+  background: linear-gradient(90deg, transparent 70%, #07140c 100%);
   pointer-events: none;
 }
 .title-panel {
