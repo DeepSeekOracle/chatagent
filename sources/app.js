@@ -197,12 +197,14 @@
   function paintChips() {
     const box = $("chips");
     box.innerHTML = "";
-    const live = document.createElement("button");
-    live.type = "button";
-    live.className = "chip" + (st.bouquet === "live" ? " on" : "");
-    live.textContent = "Live now";
-    live.addEventListener("click", function () { loadLive(); });
-    box.appendChild(live);
+    if ((st.catalog.live || []).length) {
+      const live = document.createElement("button");
+      live.type = "button";
+      live.className = "chip" + (st.bouquet === "live" ? " on" : "");
+      live.textContent = "Pinned";
+      live.addEventListener("click", function () { loadLive(); });
+      box.appendChild(live);
+    }
     (st.catalog.bouquets || []).forEach(function (b) {
       const el = document.createElement("button");
       el.type = "button";
@@ -258,7 +260,8 @@
       st.i = -1;
       paintList();
       const vis = visible();
-      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one to watch.");
+      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one.");
+      if (vis.length) playAt(0, false);
     } catch (e) {
       setStatus("Could not load bouquet (" + (e.message || e) + ").", "bad");
     } finally {
@@ -286,17 +289,15 @@
     playAt(0, false);
   });
 
-  fetch("catalog.json?v=1.2.0", { credentials: "omit", cache: "no-store" })
+  fetch("catalog.json?v=1.3.0", { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       st.catalog = j;
       paintChips();
-      if ((j.default_bouquet || "live") === "live") loadLive();
-      else {
-        const b = (j.bouquets || []).filter(function (x) { return x.id === j.default_bouquet; })[0];
-        if (b) loadBouquet(b);
-        else loadLive();
-      }
+      const id = j.default_bouquet || "culture";
+      const b = (j.bouquets || []).filter(function (x) { return x.id === id; })[0] || (j.bouquets || [])[0];
+      if (b) loadBouquet(b);
+      else if ((j.live || []).length) loadLive();
     })
     .catch(function () { setStatus("catalog.json miss.", "bad"); });
 })();
