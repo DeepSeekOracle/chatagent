@@ -3,33 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lattice Golf — marker, clubs, wind | eternalhaven.ca</title>
-<meta name="description" content="Lattice Golf: pick a club, plant a marker, choose 25–100% power, and walk the ball in. Named 9 and 18-hole courses, endless holes, campaign vs AI, local scorecard and ledger. Free HTML5.">
+<title>Lattice Golf — plant the marker | eternalhaven.ca</title>
+<meta name="description" content="Free Lattice Golf in the browser. Pick a club, plant a marker, choose 25–100% power, read the wind. Pine Haven 9, Coral Lattice 9, Haven Open 18, endless, campaign vs AI. Local ledger. No account.">
+<meta name="keywords" content="Lattice Golf, golf game, HTML5 golf, Eternal Haven, Excavationpro, LYGO, browser golf, Pine Haven">
+<meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="theme-color" content="#07140c">
-<meta name="author" content="Justin Helmer / Excavationpro">
-<meta name="robots" content="index, follow">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-golf/">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="image_src" href="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="chatagent.ca">
+<meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/games/lattice-golf/">
 <meta property="og:title" content="Lattice Golf — plant the marker">
-<meta property="og:description" content="Minimal math golf. Clubs with ranges, wind you can read, named courses with lore, endless mode, local ledger.">
+<meta property="og:description" content="Minimal math golf. Clubs with ranges, wind you can read, named courses with lore, endless mode, local ledger. Free HTML5.">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta property="og:image:secure_url" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Lattice Golf key art: twilight green, gold-cyan lattice, titled LATTICE GOLF">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
-<meta name="twitter:title" content="Lattice Golf">
-<meta name="twitter:description" content="Pick club. Plant marker. Choose power. Walk it in.">
+<meta name="twitter:creator" content="@Excavationpro">
+<meta name="twitter:title" content="Lattice Golf — plant the marker">
+<meta name="twitter:description" content="Pick a club. Plant a marker. Choose power. Walk it in. Free on eternalhaven.ca.">
 <meta name="twitter:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta name="twitter:image:alt" content="Lattice Golf key art: twilight green with LATTICE GOLF title">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./game.css">
 <link rel="stylesheet" href="/games/hub.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Lattice Golf","url":"https://chatagent.ca/games/lattice-golf/","description":"Browser golf: club ranges, marker aiming, wind, named 9 and 18-hole courses, endless mode, campaign vs AI, local ledger.","image":"https://chatagent.ca/games/lattice-golf/assets/og.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://chatagent.ca/"},"genre":["Sports","Golf","Strategy"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"},"applicationCategory":"Game"}</script>
 </head>
 <body>
+<a class="games-exit" href="/games/">All games</a>
 <div id="boot" class="boot">
   <p class="kicker">Δ9Φ963 · chatagent.ca</p>
   <h1>Lattice Golf</h1>
@@ -84,6 +95,7 @@
     <button type="button" class="btn ghost" id="btnCard">Scorecard</button>
     <button type="button" class="btn ghost" id="btnUndo">Undo shot</button>
     <span class="grow" id="dockStatus">Plant a marker, then shoot.</span>
+    <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
     <button type="button" class="btn" id="btnMenu">Menu</button>
     <button type="button" class="btn gold" id="btnShoot">Shoot</button>
   </footer>
@@ -93,4 +105,3 @@
 <script src="./game.js"></script>
 </body>
 </html>
-

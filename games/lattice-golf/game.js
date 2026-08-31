@@ -521,10 +521,24 @@
     canvas.focus();
   }
 
-  function hideOverlay() { $("overlay").classList.add("hidden"); }
-  function showSheet(html) {
-    $("overlay").classList.remove("hidden");
-    $("overlay").innerHTML = "<div class='sheet'>" + html + "</div>";
+  function hideOverlay() {
+    $("overlay").classList.add("hidden");
+    $("overlay").classList.remove("studio");
+  }
+  function showSheet(html, studio) {
+    const ov = $("overlay");
+    ov.classList.remove("hidden");
+    ov.classList.toggle("studio", !!studio);
+    ov.innerHTML = studio ? html : "<div class='sheet'>" + html + "</div>";
+  }
+
+  function donateHtml() {
+    return (
+      "<div class='donate-row'>" +
+        "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener noreferrer'>PayPal.me/ExcavationPro</a>" +
+        "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener noreferrer'>Patreon</a>" +
+      "</div>"
+    );
   }
 
   function menu() {
@@ -533,20 +547,31 @@
     $("app").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
     showSheet(
-      "<p class='kicker'>Δ9Φ963 · Lattice Golf</p>" +
-      "<h2>Plant the marker.</h2>" +
-      "<p class='lore'>Pick a club. Set a marker. Choose 25–100%. Wind is slight and honest. Compensate if you can read it.</p>" +
-      "<label>Operator name</label><input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
-      "<div class='modes'>" +
-        "<button class='btn gold' data-go='pine'>Pine Haven 9</button>" +
-        "<button class='btn gold' data-go='coral'>Coral Lattice 9</button>" +
-        "<button class='btn gold' data-go='18'>Haven Open 18</button>" +
-        "<button class='btn' data-go='endless'>Endless</button>" +
-        "<button class='btn' data-go='campaign'>Campaign vs AI</button>" +
-        "<a class='btn' href='./ledger.html'>Local ledger</a>" +
-      "</div>" +
-      "<p class='lore'>" + PINE.lore + "<br>" + CORAL.lore + "</p>" +
-      "<p class='lore'>How to play: click the course to plant a marker. 1–4 power. [ ] clubs. Space shoot. Z undo. Esc menu.</p>"
+      "<div class='studio-hero'>" +
+        "<div class='studio-fade'>" +
+          "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
+          "<h1>LATTICE<br>GOLF</h1>" +
+          "<p class='lore'>Pick a club. Plant a marker. Choose 25–100%. Wind is slight and honest — compensate if you can read it.</p>" +
+          donateHtml() +
+          "<p class='lore' style='margin-top:1rem'>Click the course to plant a marker. 1–4 power. [ ] clubs. Space shoot. Z undo.</p>" +
+        "</div>" +
+        "<div class='studio-panel'>" +
+          "<p class='kicker'>Studio menu</p>" +
+          "<label>Operator name</label>" +
+          "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
+          "<div class='mode-grid'>" +
+            "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>Random holes. Count the walk.</span></button>" +
+            "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
+            "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of rounds.</span></a>" +
+          "</div>" +
+          donateHtml() +
+          "<p class='lore' style='margin-top:.8rem'><a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
+        "</div>" +
+      "</div>",
+      true
     );
     $("overlay").onclick = function (e) {
       const b = e.target.closest("[data-go]");
@@ -566,6 +591,7 @@
     showSheet(
       "<p class='kicker'>Campaign</p><h2>The Haven Circuit</h2>" +
       "<p class='lore'>Three events. You play the course. An AI walks the same holes with a colder swing. Lowest total vs par holds the lattice.</p>" +
+      donateHtml() +
       "<div class='modes'><button class='btn gold' id='cgo'>Begin Pine Haven</button><button class='btn' id='cno'>Back</button></div>"
     );
     $("cgo").onclick = function () { startRound("9", PINE, 1); };
