@@ -124,6 +124,15 @@
       "expect": "json"
     },
     {
+      "id": "free_sources",
+      "title": "Free sources portal catalog",
+      "era": "now",
+      "class": "RESOURCE",
+      "url": "/sources/catalog.json",
+      "expect": "json",
+      "expect_sig": "LYGO-FREE-SOURCES"
+    },
+    {
       "id": "usgs",
       "title": "USGS quakes (public)",
       "era": "now",

@@ -29,6 +29,7 @@
     "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
     "chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
     "hf_bot": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",
-    "hf_audit": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json"
+    "hf_audit": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json",
+    "sources": "https://chatagent.ca/sources/"
   }
 }
