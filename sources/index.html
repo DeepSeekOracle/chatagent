@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https:; upgrade-insecure-requests">
-<title>LYGO Free Sources — plug a URL, play what the lattice can | chatagent.ca</title>
-<meta name="description" content="Standalone LYGO page: paste public HTTPS URLs or M3U playlists, play HLS/mp3 in the browser when allowed, copy the rest for VLC. Steward catalog is RESOURCE. Donations: PayPal.me/ExcavationPro.">
+<title>LYGO TV — free channels in the browser | chatagent.ca</title>
+<meta name="description" content="Standalone LYGO TV: browse GitHub public channel lists and click to watch. Donate: PayPal.me/ExcavationPro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/sources/app.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<meta property="og:title" content="LYGO Free Sources">
-<meta property="og:description" content="Plug public HTTPS URLs into the lattice. Browser player + VLC copy. Not a pirate decoder.">
+<meta property="og:title" content="LYGO TV">
+<meta property="og:description" content="Click a channel. Watch free public streams in the browser.">
 <meta property="og:url" content="https://chatagent.ca/sources/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:site" content="@Excavationpro">
@@ -24,78 +24,45 @@
   <nav>
     <a href="/">Home</a>
     <a href="/lattice/">Lattice</a>
+    <a href="/sources/" aria-current="page">TV</a>
     <a href="/witness/">Witness</a>
-    <a href="/sources/" aria-current="page">Sources</a>
-    <a href="/starchart/">Star Chart</a>
     <a href="/lygoskillhub.html">SkillHub</a>
     <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
   </nav>
 </header>
-<div class="wrap">
-  <p class="kicker">Δ9Φ963 · Free sources · RESOURCE · not canon</p>
-  <h1>Plug a public URL. Play what this browser can. Copy the rest for VLC.</h1>
-  <p class="lead">This is a standalone LYGO limb: steward catalog + your paste box. HTTPS only. No private IPs. No POST. No silent Star Chart ingest. It is <strong>not</strong> a pay-TV crack — the X thread that named iptv-org / Free-TV playlists is a <em>named RESOURCE</em>, not lattice canon.</p>
-
-  <div class="donate">
-    <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
-    <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon / Excavationpro</a>
-  </div>
-
-  <div class="grid" style="margin-top:1rem">
-    <div>
-      <article class="card">
-        <h2>Player</h2>
-        <p class="note" id="now">Nothing loaded.</p>
-        <div class="row" style="margin-bottom:.5rem">
-          <button class="btn" type="button" id="demo-hls">Play HLS demo in this page</button>
-          <button class="btn ghost" type="button" id="demo-audio">Play LYGO mp3</button>
-          <button class="btn ghost" type="button" id="demo-yt">NASA YouTube live</button>
-        </div>
-        <video id="vid" controls playsinline hidden crossorigin="anonymous"></video>
-        <audio id="aud" controls hidden></audio>
-        <iframe id="yt" hidden title="YouTube live" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:.5rem"></iframe>
-        <p class="status" id="status">Ready. HLS demo and our mp3 play here. Most IPTV CDNs still block the browser (CORS) — those copy to VLC.</p>
-        <div class="row">
-          <button class="btn ghost" type="button" id="copy-url">Copy URL for VLC</button>
-          <button class="btn ghost" type="button" id="open-vlc">How to open in VLC</button>
-        </div>
-        <p class="note">VLC: Media → Open Network Stream → paste. Region blocks and dead links stay named — we do not invent a working channel.</p>
-      </article>
-      <article class="card">
-        <h2>Paste a URL</h2>
-        <label for="title">Label (optional)</label>
-        <input id="title" type="text" maxlength="120" placeholder="My public stream">
-        <label for="url">https:// …</label>
-        <input id="url" type="url" placeholder="https://example.com/live.m3u8">
-        <div class="row">
-          <button class="btn" type="button" id="go">Play / load playlist</button>
-          <button class="btn ok" type="button" id="save">Save local</button>
-          <button class="btn ghost" type="button" id="clear">Clear local</button>
-        </div>
-        <p class="note">Local saves stay in <em>this</em> browser (localStorage). They are not published. To add a steward source, edit <code>catalog.json</code> in the website repo and commit.</p>
-      </article>
-      <article class="card">
-        <h2>Loaded playlist</h2>
-        <ul class="list" id="tracks"></ul>
-      </article>
-    </div>
-    <div>
-      <article class="card">
-        <h2>Steward catalog</h2>
-        <p class="note">Repo file: <a href="/sources/catalog.json">/sources/catalog.json</a> · signature <span id="sig">…</span></p>
-        <div id="catalog"></div>
-      </article>
-      <article class="card">
-        <h2>Your local URLs</h2>
-        <ul class="list" id="mine"></ul>
-      </article>
-      <article class="card">
-        <h2>Doctrine</h2>
-        <p class="note">Public GET is REFERENCE. Dual ledgers / eggs / Star Chart are CANON. Unreachable rooms stay NAMED_SHADOW. Pages cannot POST. Human remains the publisher.</p>
-        <p class="note">Witnessed playlist indexes (2026-08-31): iptv-org GitHub Pages + Free-TV/IPTV raw playlist from <a href="https://x.com/romanftp/status/2094068353358860752">@romanftp</a>. Not LYGO-owned. CORS often blocks in-browser play.</p>
-      </article>
+<div class="stage">
+  <div class="screen">
+    <video id="vid" controls playsinline hidden crossorigin="anonymous"></video>
+    <audio id="aud" controls hidden></audio>
+    <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="hud">
+      <p class="now" id="now">LYGO TV</p>
+      <p class="status" id="status">Loading channels…</p>
+      <div class="row">
+        <button class="btn ghost" type="button" id="prev">◀ Prev</button>
+        <button class="btn" type="button" id="next">Next ▶</button>
+        <button class="btn ghost" type="button" id="copy-url">Copy stream URL</button>
+      </div>
     </div>
   </div>
+  <aside class="side">
+    <p class="kicker">Δ9Φ963 · LYGO TV</p>
+    <h1>Channels</h1>
+    <p class="note">Pick a bouquet, then click a channel — same flow as the listen player. Lists come from public GitHub M3U catalogs (iptv-org, Free-TV) plus steward live URLs.</p>
+    <div class="chips" id="chips"></div>
+    <input id="q" type="search" placeholder="Search channels" autocomplete="off">
+    <p class="note" id="count">0 channels</p>
+    <ul class="list" id="channels"></ul>
+    <div class="add">
+      <p class="note">Add a public HTTPS stream</p>
+      <input id="custom" type="url" placeholder="https://…m3u8">
+      <button class="btn" type="button" id="add">Play URL</button>
+    </div>
+    <div class="donate">
+      <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
+      <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon</a>
+    </div>
+  </aside>
 </div>
 <script src="/sources/guard.js"></script>
 <script src="/sources/app.js"></script>

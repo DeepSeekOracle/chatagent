@@ -42,6 +42,20 @@
     }
   }
 
+  function parseStream(raw, base) {
+    const u = String(raw || "").trim();
+    if (!u || BLOCK_SCHEMES.test(u.replace(/\s/g, ""))) return null;
+    try {
+      const p = new URL(u, base || "https://chatagent.ca");
+      if (p.protocol !== "https:" && p.protocol !== "http:") return null;
+      if (p.username || p.password) return null;
+      if (isPrivateHost(p.hostname)) return null;
+      return p;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function safeHref(u) {
     const p = parseHttps(u);
     return p ? p.href : "";
@@ -56,6 +70,7 @@
     safeHref: safeHref,
     allowFetch: allowFetch,
     parseHttps: parseHttps,
+    parseStream: parseStream,
     isPrivateHost: isPrivateHost
   };
 })(window);

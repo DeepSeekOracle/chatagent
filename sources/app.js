@@ -1,17 +1,23 @@
-/* LYGO Free Sources — plug HTTPS URLs, play what the browser can, copy the rest for VLC. */
+/* LYGO TV — bouquet → channel list → click to play (music-player flow). */
 (function () {
   "use strict";
   const G = window.LYGO_SRC_GUARD;
-  const LS_KEY = "lygo-free-sources-local-v1";
   const HLS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js";
-  const MAX_PLAYLIST = 180;
-  const MAX_BYTES = 1500000;
-  const DEMO_HLS = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
-  const DEMO_MP3 = "https://huggingface.co/datasets/DeepSeekOracle/excavationpro-music-stream/resolve/main/stream/3e448cb8e0e5b8c29987c20499a80cc39508d7f33acd7d0b3bb7605cda782d58.mp3";
-  const DEMO_YT = "https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ";
+  const MAX_PLAYLIST = 1200;
+  const MAX_BYTES = 4000000;
+  const SKIP_MAX = 10;
 
   const $ = function (id) { return document.getElementById(id); };
-  const state = { catalog: null, tracks: [], hls: null, hlsReady: false };
+  const st = {
+    catalog: null,
+    bouquet: "",
+    channels: [],
+    i: -1,
+    filter: "",
+    hls: null,
+    hlsReady: false,
+    skip: 0
+  };
 
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
 
@@ -21,60 +27,62 @@
     el.style.color = kind === "ok" ? "#34d399" : kind === "bad" ? "#fb923c" : "#8b9bb4";
   }
 
-  function loadLocal() {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function saveLocal(arr) {
-    localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 80)));
-  }
-
   function kindOfUrl(url) {
     const u = String(url || "").toLowerCase().split("?")[0];
-    if (/\.(mp3|ogg|wav|m4a|aac)(\s|$)/.test(u)) return "audio";
-    if (/\.(mp4|webm|ogv)(\s|$)/.test(u)) return "video";
-    if (/\.(m3u8?|m3u)(\s|$)/.test(u) || u.indexOf(".m3u") !== -1) return "playlist";
-    if (/\.(json)(\s|$)/.test(u)) return "json";
     if (u.indexOf("youtube.com") !== -1 || u.indexOf("youtube-nocookie.com") !== -1) return "youtube";
-    return "unknown";
+    if (/\.(mp3|ogg|wav|m4a|aac)$/.test(u)) return "audio";
+    if (/\.(mp4|webm|ogv)$/.test(u)) return "video";
+    if (/\.m3u8?$/.test(u) || u.indexOf(".m3u") !== -1) return "hls";
+    return "hls";
   }
 
   function parseM3U(text, baseHref) {
     const lines = String(text || "").split(/\r?\n/);
     const out = [];
     let title = "";
-    let base = "";
-    try { base = new URL(baseHref).href; } catch (e) { base = ""; }
+    let logo = "";
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
       if (line.indexOf("#EXTINF") === 0) {
         const comma = line.lastIndexOf(",");
-        title = comma >= 0 ? line.slice(comma + 1).trim() : "channel";
+        title = comma >= 0 ? line.slice(comma + 1).trim() : "Channel";
+        const lm = line.match(/tvg-logo="([^"]+)"/i);
+        logo = lm ? lm[1] : "";
         continue;
       }
       if (line.charAt(0) === "#") continue;
-      const abs = G.parseHttps(line, base);
-      if (!abs) continue;
-      out.push({ title: title || abs.pathname.split("/").pop() || abs.href, url: abs.href, kind: kindOfUrl(abs.href) });
+      const parsed = G.parseStream(line, baseHref);
+      if (!parsed) continue;
+      out.push({
+        title: title || parsed.hostname,
+        url: parsed.href,
+        https: parsed.protocol === "https:",
+        kind: kindOfUrl(parsed.href),
+        logo: logo
+      });
       title = "";
+      logo = "";
       if (out.length >= MAX_PLAYLIST) break;
     }
     return out;
   }
 
+  function visible() {
+    const q = st.filter.toLowerCase();
+    return st.channels.filter(function (c) {
+      if (!c.https && c.kind !== "youtube") return false;
+      if (!q) return true;
+      return (c.title || "").toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
   function loadHls(cb) {
-    if (state.hlsReady || window.Hls) { state.hlsReady = true; cb(); return; }
+    if (st.hlsReady || window.Hls) { st.hlsReady = true; cb(); return; }
     const s = document.createElement("script");
     s.src = HLS_SRC;
-    s.onload = function () { state.hlsReady = true; cb(); };
-    s.onerror = function () { cb(new Error("hls.js failed to load")); };
+    s.onload = function () { st.hlsReady = true; cb(); };
+    s.onerror = function () { cb(new Error("hls.js missing")); };
     document.head.appendChild(s);
   }
 
@@ -82,12 +90,12 @@
     const v = $("vid");
     const a = $("aud");
     const yt = $("yt");
-    if (state.hls) { try { state.hls.destroy(); } catch (e) {} state.hls = null; }
+    if (st.hls) { try { st.hls.destroy(); } catch (e) {} st.hls = null; }
     v.pause(); a.pause();
     v.removeAttribute("src"); a.removeAttribute("src");
     v.load(); a.load();
     v.hidden = true; a.hidden = true;
-    if (yt) { yt.hidden = true; yt.removeAttribute("src"); }
+    yt.hidden = true; yt.removeAttribute("src");
   }
 
   function tryPlay(el) {
@@ -95,228 +103,195 @@
     if (p && p.catch) {
       p.catch(function () {
         el.muted = true;
-        el.play().catch(function () { setStatus("Press play on the player.", "bad"); });
+        el.play().catch(function () {});
       });
     }
+  }
+
+  function skipOrStop(why) {
+    setStatus(why, "bad");
+    if (st.skip >= SKIP_MAX) return;
+    st.skip += 1;
+    window.setTimeout(function () { next(1, true); }, 400);
   }
 
   function playHls(url) {
     const v = $("vid");
     v.hidden = false;
-    $("aud").hidden = true;
-    if ($("yt")) $("yt").hidden = true;
-    v.muted = false;
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = url;
       tryPlay(v);
-      setStatus("Native HLS (Safari/iOS) — playing in this page.", "ok");
+      setStatus("Playing in this page.", "ok");
       return;
     }
     loadHls(function (err) {
       if (err || !window.Hls || !window.Hls.isSupported()) {
-        setStatus("No HLS in this browser. Copy URL into VLC.", "bad");
+        skipOrStop("No HLS in this browser — skipped.");
         return;
       }
-      if (state.hls) { try { state.hls.destroy(); } catch (e2) {} }
-      state.hls = new window.Hls({
+      if (st.hls) { try { st.hls.destroy(); } catch (e2) {} }
+      st.hls = new window.Hls({
         enableWorker: true,
         lowLatencyMode: false,
         xhrSetup: function (xhr) { xhr.withCredentials = false; }
       });
-      state.hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
-        setStatus("Playing in this page (hls.js).", "ok");
+      st.hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+        st.skip = 0;
+        setStatus("Playing in this page.", "ok");
         tryPlay(v);
       });
-      state.hls.on(window.Hls.Events.ERROR, function (_e, data) {
-        if (data && data.fatal) {
-          setStatus("CDN blocked the browser (no CORS on segments). Copy into VLC.", "bad");
-        }
+      st.hls.on(window.Hls.Events.ERROR, function (_e, data) {
+        if (data && data.fatal) skipOrStop("Channel blocked in browser — next…");
       });
-      state.hls.loadSource(url);
-      state.hls.attachMedia(v);
+      st.hls.loadSource(url);
+      st.hls.attachMedia(v);
     });
   }
 
-  function playYoutube(url) {
-    const yt = $("yt");
-    if (!yt) { window.open(url, "_blank", "noopener"); return; }
-    const href = G.safeHref(url);
-    if (!href || href.indexOf("youtube") === -1) {
-      setStatus("Not a YouTube embed URL.", "bad");
-      return;
-    }
-    yt.src = href.indexOf("embed") !== -1 ? href : href;
-    yt.hidden = false;
-    setStatus("YouTube live in this page.", "ok");
-  }
-
-  function playUrl(item) {
-    const href = G.safeHref(item.url);
-    if (!href) { setStatus("Blocked: HTTPS public hosts only.", "bad"); return; }
-    $("now").textContent = item.title || href;
-    $("open-vlc").dataset.url = href;
-    $("copy-url").dataset.url = href;
+  function playAt(i, fromSkip) {
+    if (!fromSkip) st.skip = 0;
+    const list = visible();
+    if (!list.length) { setStatus("No HTTPS channels in this bouquet."); return; }
+    if (i < 0) i = list.length - 1;
+    if (i >= list.length) i = 0;
+    const ch = list[i];
+    st.i = st.channels.indexOf(ch);
+    $("now").textContent = ch.title;
+    $("copy-url").dataset.url = ch.url;
+    paintList();
     stopMedia();
-    const kind = item.kind || kindOfUrl(href);
-    if (kind === "youtube") {
-      playYoutube(href);
+    if (ch.kind === "youtube") {
+      $("yt").src = ch.url;
+      $("yt").hidden = false;
+      setStatus("Playing in this page.", "ok");
       return;
     }
-    if (kind === "audio") {
-      const a = $("aud");
-      a.hidden = false;
-      a.src = href;
-      tryPlay(a);
-      setStatus("Playing audio in this page.", "ok");
+    if (!ch.https) {
+      skipOrStop("HTTP stream — skipped (page is HTTPS).");
       return;
     }
-    if (kind === "video" || kind === "hls" || /\.m3u8(\?|$)/i.test(href)) {
-      playHls(href);
+    if (ch.kind === "audio") {
+      $("aud").hidden = false;
+      $("aud").src = ch.url;
+      tryPlay($("aud"));
+      setStatus("Playing in this page.", "ok");
       return;
     }
-    if (kind === "page" || kind === "json") {
-      setStatus("Not a media stream — opening as a page/data URL.", "ok");
-      window.open(href, "_blank", "noopener");
-      return;
-    }
-    if (kind === "playlist") {
-      ingestPlaylist(href);
-      return;
-    }
-    playHls(href);
+    playHls(ch.url);
   }
 
-  async function ingestPlaylist(url) {
-    if (!G.allowFetch(url)) { setStatus("Blocked URL.", "bad"); return; }
-    setStatus("Fetching playlist…");
+  function next(dir, fromSkip) {
+    const list = visible();
+    if (!list.length) return;
+    const cur = st.channels[st.i];
+    let idx = list.indexOf(cur);
+    if (idx < 0) idx = 0;
+    else idx = idx + dir;
+    playAt(idx, fromSkip);
+  }
+
+  function paintChips() {
+    const box = $("chips");
+    box.innerHTML = "";
+    const live = document.createElement("button");
+    live.type = "button";
+    live.className = "chip" + (st.bouquet === "live" ? " on" : "");
+    live.textContent = "Live now";
+    live.addEventListener("click", function () { loadLive(); });
+    box.appendChild(live);
+    (st.catalog.bouquets || []).forEach(function (b) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "chip" + (st.bouquet === b.id ? " on" : "");
+      el.textContent = b.title;
+      el.addEventListener("click", function () { loadBouquet(b); });
+      box.appendChild(el);
+    });
+  }
+
+  function paintList() {
+    const ul = $("channels");
+    ul.innerHTML = "";
+    const list = visible();
+    $("count").textContent = list.length + " channels";
+    list.forEach(function (ch, n) {
+      const li = document.createElement("li");
+      if (st.channels[st.i] === ch) li.className = "on";
+      li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span><span>" + esc(ch.title) + "</span>";
+      li.addEventListener("click", function () {
+        playAt(list.indexOf(ch), false);
+      });
+      ul.appendChild(li);
+    });
+  }
+
+  function loadLive() {
+    st.bouquet = "live";
+    st.channels = (st.catalog.live || []).map(function (x) {
+      return { title: x.title, url: x.url, https: true, kind: x.kind || kindOfUrl(x.url) };
+    });
+    st.i = -1;
+    paintChips();
+    paintList();
+    setStatus("Live now — click a channel.");
+    if (st.channels.length) playAt(0, false);
+  }
+
+  async function loadBouquet(b) {
+    if (!G.allowFetch(b.url)) { setStatus("Blocked playlist URL.", "bad"); return; }
+    st.bouquet = b.id;
+    paintChips();
+    setStatus("Loading " + b.title + "…");
     const ctrl = new AbortController();
-    const t = setTimeout(function () { ctrl.abort(); }, 16000);
+    const t = window.setTimeout(function () { ctrl.abort(); }, 20000);
     try {
-      const res = await fetch(url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
+      const res = await fetch(b.url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
       const buf = await res.arrayBuffer();
       if (buf.byteLength > MAX_BYTES) throw new Error("playlist too large");
-      const text = new TextDecoder("utf-8").decode(buf);
       if (!res.ok) throw new Error("HTTP " + res.status);
-      const tracks = parseM3U(text, url);
-      if (!tracks.length) {
-        if (/\.m3u8/i.test(url)) { playHls(url); return; }
-        throw new Error("no HTTPS entries (CORS empty or not M3U)");
-      }
-      state.tracks = tracks;
-      renderTracks();
-      setStatus("Loaded " + tracks.length + " public HTTPS entries (capped at " + MAX_PLAYLIST + ").", "ok");
+      const text = new TextDecoder("utf-8").decode(buf);
+      st.channels = parseM3U(text, b.url);
+      st.i = -1;
+      paintList();
+      const vis = visible();
+      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one.");
+      if (vis.length) playAt(0, false);
     } catch (e) {
-      setStatus("Browser could not fetch playlist (" + (e.message || e) + "). Copy into VLC.", "bad");
+      setStatus("Could not load bouquet (" + (e.message || e) + ").", "bad");
     } finally {
-      clearTimeout(t);
+      window.clearTimeout(t);
     }
   }
 
-  function renderTracks() {
-    const ul = $("tracks");
-    ul.innerHTML = "";
-    state.tracks.forEach(function (tr, i) {
-      const li = document.createElement("li");
-      li.innerHTML = "<span class=\"tag\">" + esc(tr.kind || "") + "</span> " + esc(tr.title);
-      li.addEventListener("click", function () { playUrl(tr); });
-      ul.appendChild(li);
-      if (i === 0 && /\.m3u8/i.test(tr.url)) { /* list only */ }
-    });
-  }
-
-  function renderCatalog() {
-    const box = $("catalog");
-    box.innerHTML = "";
-    const cat = state.catalog;
-    if (!cat || !cat.groups) return;
-    cat.groups.forEach(function (g) {
-      const div = document.createElement("div");
-      div.className = "group";
-      div.innerHTML = "<h3>" + esc(g.title) + "</h3><p class=\"note\">" + esc(g.note || "") + "</p>";
-      const ul = document.createElement("ul");
-      ul.className = "list";
-      (g.items || []).forEach(function (it) {
-        const li = document.createElement("li");
-        const cls = (it.class || "RESOURCE").toLowerCase();
-        li.innerHTML = "<span class=\"tag " + esc(cls) + "\">" + esc(it.class || "RESOURCE") + "</span> " + esc(it.title);
-        li.title = it.url;
-        li.addEventListener("click", function () {
-          if (it.kind === "playlist") ingestPlaylist(it.url);
-          else if (it.kind === "youtube") playUrl(it);
-          else playUrl(it);
-        });
-        ul.appendChild(li);
-      });
-      div.appendChild(ul);
-      box.appendChild(div);
-    });
-    renderMine();
-  }
-
-  function renderMine() {
-    const mine = loadLocal();
-    const ul = $("mine");
-    ul.innerHTML = "";
-    mine.forEach(function (it, idx) {
-      const li = document.createElement("li");
-      li.innerHTML = esc(it.title || it.url);
-      li.addEventListener("click", function () { playUrl(it); });
-      ul.appendChild(li);
-    });
-    if (!mine.length) {
-      const li = document.createElement("li");
-      li.textContent = "(none yet — paste a URL and Save local)";
-      li.style.cursor = "default";
-      ul.appendChild(li);
-    }
-  }
-
-  function plugFromForm(save) {
-    const raw = $("url").value;
-    const title = $("title").value || raw;
-    const href = G.safeHref(raw);
-    if (!href) { setStatus("Need a public https:// URL (no localhost / private IP).", "bad"); return; }
-    const item = { title: title, url: href, kind: kindOfUrl(href), class: "RESOURCE" };
-    if (save) {
-      const mine = loadLocal().filter(function (x) { return x.url !== href; });
-      mine.unshift(item);
-      saveLocal(mine);
-      renderMine();
-    }
-    if (item.kind === "playlist" || /\.m3u8?(\?|$)/i.test(href)) ingestPlaylist(href);
-    else playUrl(item);
-  }
-
-  $("demo-hls").addEventListener("click", function () {
-    playUrl({ title: "Mux HLS demo (in-browser)", url: DEMO_HLS, kind: "hls" });
-  });
-  $("demo-audio").addEventListener("click", function () {
-    playUrl({ title: "LYGO HF mp3", url: DEMO_MP3, kind: "audio" });
-  });
-  $("demo-yt").addEventListener("click", function () {
-    playUrl({ title: "NASA YouTube live", url: DEMO_YT, kind: "youtube" });
-  });
-  $("go").addEventListener("click", function () { plugFromForm(false); });
-  $("save").addEventListener("click", function () { plugFromForm(true); });
-  $("clear").addEventListener("click", function () { saveLocal([]); renderMine(); setStatus("Local list cleared."); });
+  $("prev").addEventListener("click", function () { next(-1, false); });
+  $("next").addEventListener("click", function () { next(1, false); });
   $("copy-url").addEventListener("click", function () {
     const u = $("copy-url").dataset.url || "";
     if (!u) return;
-    navigator.clipboard.writeText(u).then(function () { setStatus("Copied for VLC: Media → Open Network Stream.", "ok"); });
+    navigator.clipboard.writeText(u).then(function () { setStatus("URL copied.", "ok"); });
   });
-  $("open-vlc").addEventListener("click", function () {
-    const u = $("open-vlc").dataset.url || "";
-    if (!u) return;
-    navigator.clipboard.writeText(u);
-    setStatus("URL copied. In VLC: Media → Open Network Stream → paste.", "ok");
+  $("q").addEventListener("input", function () {
+    st.filter = $("q").value || "";
+    paintList();
+  });
+  $("add").addEventListener("click", function () {
+    const href = G.safeHref($("custom").value);
+    if (!href) { setStatus("Need a public https:// URL.", "bad"); return; }
+    st.channels.unshift({ title: $("custom").value.split("/").pop() || href, url: href, https: true, kind: kindOfUrl(href) });
+    $("custom").value = "";
+    paintList();
+    playAt(0, false);
   });
 
   fetch("catalog.json", { credentials: "omit" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
-      state.catalog = j;
-      $("sig").textContent = j.signature || "";
-      renderCatalog();
+      st.catalog = j;
+      paintChips();
+      const id = j.default_bouquet || "news";
+      const b = (j.bouquets || []).filter(function (x) { return x.id === id; })[0] || j.bouquets[0];
+      if (b) loadBouquet(b);
+      else loadLive();
     })
-    .catch(function () { setStatus("catalog.json miss — named shadow.", "bad"); });
+    .catch(function () { setStatus("catalog.json miss.", "bad"); });
 })();
