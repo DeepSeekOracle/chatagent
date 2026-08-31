@@ -53,125 +53,185 @@
     id: "pine-haven",
     name: "Pine Haven Championship",
     wind: [0, 4],
-    lore: "Parkland doglegs through old-growth. Play the corner. The pin is rarely the first shot.",
+    lore: "Every hole is a club puzzle. Marker on the corner. Overclub and you pay.",
     holes: [
-      H(4, "Opening Cut", [{ x: 0, y: 0 }, { x: 255, y: -14 }, { x: 400, y: 40 }, { x: 520, y: 118 }], {
-        hint: "Long dogleg right, then another turn. Two corners. Trees own every cut.",
-        bunkers: [{ x: 248, y: -32, r: 14 }, { x: 392, y: 22, r: 12 }, { x: 504, y: 134, r: 11 }],
-        groves: [{ x: 270, y: -48, n: 6, r: 16 }],
-        fairW: 26,
-      }),
-      H(3, "Chapel Pond", [{ x: 0, y: 0 }, { x: 205, y: 6 }], {
-        hint: "Long island. Pond covers every line. Hybrid or wood — miss is wet.",
-        water: [{ x: 22, y: -62, w: 158, h: 124 }],
-        bunkers: [{ x: 194, y: 24, r: 9 }],
-        greenR: 11,
-        fairW: 15,
-      }),
-      H(5, "Twin Pines", [{ x: 0, y: 0 }, { x: 220, y: 80 }, { x: 420, y: -85 }, { x: 560, y: -10 }, { x: 660, y: 40 }], {
-        hint: "Switchback five. Four legs. Woods in every elbow. Three shots around.",
-        bunkers: [{ x: 212, y: 98, r: 14 }, { x: 412, y: -102, r: 13 }, { x: 552, y: 6, r: 12 }, { x: 646, y: 56, r: 11 }],
-        water: [{ x: 470, y: -36, w: 52, h: 42 }],
-        fairW: 28,
-      }),
-      H(4, "Orchard Elbow", [{ x: 0, y: 0 }, { x: 240, y: 10 }, { x: 370, y: -55 }, { x: 510, y: -128 }], {
-        hint: "Double left. Orchard fills both insides. Lay to the first elbow, then the second.",
-        groves: [{ x: 255, y: 32, n: 7, r: 18 }],
-        bunkers: [{ x: 232, y: -12, r: 13 }, { x: 362, y: -38, r: 12 }, { x: 494, y: -110, r: 11 }],
-        fairW: 25,
-      }),
-      H(3, "North Watch", [{ x: 0, y: 0 }, { x: 238, y: 62 }], {
-        hint: "Long redan. Diagonal green. Front-left bunker is on the pin line.",
-        bunkers: [{ x: 188, y: 44, r: 15 }, { x: 228, y: 82, r: 11 }],
-        greenR: 13,
-        fairW: 20,
-      }),
-      H(4, "Miller's Cape", [{ x: 0, y: 0 }, { x: 220, y: -78 }, { x: 390, y: -30 }, { x: 505, y: 36 }], {
-        hint: "Cape, then a turn inland. Water owns the pin line. Driver cannot clear it.",
-        water: [{ x: 40, y: -28, w: 360, h: 92 }],
-        bunkers: [{ x: 212, y: -96, r: 13 }, { x: 488, y: 52, r: 11 }],
-        fairW: 26,
-      }),
-      H(5, "Creek Walk", [{ x: 0, y: 0 }, { x: 230, y: 12 }, { x: 410, y: 12 }, { x: 540, y: -70 }, { x: 710, y: 18 }], {
-        hint: "Two creeks and a last dogleg. Carry, carry, then turn.",
-        water: [
-          { x: 188, y: -38, w: 50, h: 92 },
-          { x: 430, y: -78, w: 54, h: 96 },
+      H(4, "Opening Cut", [{ x: 0, y: 0 }, { x: 245, y: -16 }, { x: 410, y: 88 }, { x: 560, y: 24 }, { x: 680, y: 110 }], {
+        hint: "Driver to the first elbow — 100% flies the corner into pines. Then iron, then wedge.",
+        bunkers: [
+          { x: 236, y: -36, r: 14 }, { x: 252, y: 8, r: 13 },
+          { x: 400, y: 68, r: 13 }, { x: 418, y: 108, r: 12 },
+          { x: 548, y: 6, r: 12 }, { x: 666, y: 126, r: 11 },
         ],
-        bunkers: [{ x: 400, y: 30, r: 13 }, { x: 532, y: -52, r: 12 }, { x: 694, y: 34, r: 11 }],
-        fairW: 28,
+        water: [{ x: 258, y: -48, w: 40, h: 72 }],
+        fairW: 20,
+        greenR: 11,
       }),
-      H(4, "Ridge Turn", [{ x: 0, y: 0 }, { x: 250, y: -12 }, { x: 360, y: 55 }, { x: 530, y: 125 }], {
-        hint: "Bottleneck landing, then a hard right up the ridge. Slot, then corner.",
-        bunkers: [{ x: 238, y: -32, r: 15 }, { x: 246, y: 12, r: 14 }, { x: 352, y: 38, r: 12 }, { x: 514, y: 140, r: 11 }],
-        fairW: 24,
+      H(3, "Chapel Pond", [{ x: 0, y: 0 }, { x: 218, y: 8 }], {
+        hint: "Island at 218. 5-wood or 4-iron. Driver is the pond behind. Short is the pond in front.",
+        water: [{ x: 20, y: -66, w: 175, h: 132 }],
+        bunkers: [{ x: 208, y: 26, r: 10 }, { x: 226, y: -12, r: 9 }],
+        greenR: 10,
+        fairW: 13,
       }),
-      H(3, "Haven Stamp", [{ x: 0, y: 0 }, { x: 128, y: 0 }], {
-        hint: "Postage stamp. Tiny green. The front bunker is on the line — carry it.",
-        bunkers: [{ x: 96, y: 0, r: 15 }],
-        greenR: 9,
-        fairW: 15,
+      H(5, "Twin Pines", [{ x: 0, y: 0 }, { x: 230, y: 95 }, { x: 420, y: -90 }, { x: 580, y: 70 }, { x: 700, y: -50 }, { x: 820, y: 28 }], {
+        hint: "Five corners. Club each one. Creek after the third landing if you overshoot.",
+        bunkers: [
+          { x: 222, y: 114, r: 14 }, { x: 238, y: 76, r: 12 },
+          { x: 410, y: -108, r: 13 }, { x: 430, y: -72, r: 12 },
+          { x: 570, y: 88, r: 12 }, { x: 690, y: -68, r: 12 }, { x: 806, y: 44, r: 11 },
+        ],
+        water: [{ x: 590, y: 8, w: 48, h: 56 }],
+        fairW: 19,
+        greenR: 11,
+      }),
+      H(4, "Orchard Elbow", [{ x: 0, y: 0 }, { x: 240, y: 12 }, { x: 380, y: -80 }, { x: 520, y: 40 }, { x: 650, y: -100 }], {
+        hint: "Orchard left, bunkers right of every landing. 3-wood then 7-iron then wedge.",
+        groves: [{ x: 255, y: 36, n: 8, r: 18 }],
+        bunkers: [
+          { x: 232, y: -10, r: 14 }, { x: 248, y: 32, r: 12 },
+          { x: 370, y: -98, r: 13 }, { x: 388, y: -62, r: 12 },
+          { x: 512, y: 22, r: 12 }, { x: 636, y: -82, r: 11 },
+        ],
+        fairW: 19,
+        greenR: 10,
+      }),
+      H(3, "North Watch", [{ x: 0, y: 0 }, { x: 236, y: 70 }], {
+        hint: "Long redan. Hybrid. The front bunker is exactly on a line at the pin — aim the high side.",
+        bunkers: [{ x: 178, y: 48, r: 16 }, { x: 226, y: 90, r: 11 }, { x: 248, y: 52, r: 10 }],
+        water: [{ x: 40, y: -20, w: 90, h: 70 }],
+        greenR: 11,
+        fairW: 16,
+      }),
+      H(4, "Miller's Cape", [{ x: 0, y: 0 }, { x: 235, y: -100 }, { x: 410, y: -20 }, { x: 540, y: 85 }, { x: 670, y: 10 }], {
+        hint: "Cape, inland, cape. Water on the pin line the whole way. Club the shore, never the flag.",
+        water: [{ x: 35, y: -36, w: 500, h: 96 }],
+        bunkers: [
+          { x: 226, y: -118, r: 13 }, { x: 402, y: -38, r: 12 },
+          { x: 532, y: 104, r: 12 }, { x: 656, y: 26, r: 11 },
+        ],
+        fairW: 20,
+        greenR: 11,
+      }),
+      H(5, "Creek Walk", [{ x: 0, y: 0 }, { x: 220, y: 14 }, { x: 390, y: 14 }, { x: 520, y: -85 }, { x: 660, y: 50 }, { x: 800, y: -20 }], {
+        hint: "Three creeks. Carry with the club that finishes past water, not the one that dies in it.",
+        water: [
+          { x: 175, y: -40, w: 46, h: 96 },
+          { x: 405, y: -40, w: 48, h: 96 },
+          { x: 575, y: -30, w: 46, h: 90 },
+        ],
+        bunkers: [
+          { x: 212, y: 32, r: 13 }, { x: 382, y: -8, r: 12 },
+          { x: 512, y: -68, r: 12 }, { x: 652, y: 68, r: 12 }, { x: 786, y: -4, r: 11 },
+        ],
+        fairW: 20,
+        greenR: 11,
+      }),
+      H(4, "Ridge Turn", [{ x: 0, y: 0 }, { x: 250, y: -8 }, { x: 380, y: 95 }, { x: 530, y: -40 }, { x: 660, y: 80 }], {
+        hint: "Slot off the tee (bunkers both sides), then two hard turns. Tight fairway.",
+        bunkers: [
+          { x: 238, y: -28, r: 15 }, { x: 256, y: 14, r: 15 },
+          { x: 370, y: 76, r: 13 }, { x: 388, y: 114, r: 12 },
+          { x: 522, y: -58, r: 12 }, { x: 646, y: 96, r: 11 },
+        ],
+        fairW: 17,
+        greenR: 10,
+      }),
+      H(3, "Haven Stamp", [{ x: 0, y: 0 }, { x: 122, y: 0 }], {
+        hint: "Thimble green. Water, then a bunker ring. Sand wedge. Anything else is a mess.",
+        water: [{ x: 18, y: -50, w: 70, h: 100 }],
+        bunkers: [{ x: 92, y: 0, r: 15 }, { x: 122, y: -16, r: 10 }, { x: 122, y: 16, r: 10 }],
+        greenR: 8,
+        fairW: 12,
       }),
     ],
   };
   const CORAL = {
     id: "coral-lattice",
     name: "Coral Lattice Links",
-    wind: [2, 8],
-    lore: "Coastal lattice. Wind is a teacher. Water is the examiner. Play around the inlets.",
+    wind: [3, 10],
+    lore: "Wind plus water. Club the next landing. The flag is a trap.",
     holes: [
-      H(4, "Salt Flats", [{ x: 0, y: 0 }, { x: 240, y: 12 }, { x: 380, y: -70 }, { x: 520, y: -40 }], {
-        hint: "Shore switchback. Ocean left, second turn inland. Do not cut.",
-        water: [{ x: 20, y: -125, w: 420, h: 58 }],
-        bunkers: [{ x: 232, y: 30, r: 13 }, { x: 372, y: -52, r: 12 }, { x: 504, y: -24, r: 11 }],
-        fairW: 26,
+      H(4, "Salt Flats", [{ x: 0, y: 0 }, { x: 245, y: 14 }, { x: 400, y: -90 }, { x: 540, y: 50 }, { x: 670, y: -30 }], {
+        hint: "Ocean left. Four landings. Miss the slot and you're in the drink or the sand.",
+        water: [{ x: 18, y: -130, w: 520, h: 55 }],
+        bunkers: [
+          { x: 236, y: -8, r: 14 }, { x: 252, y: 34, r: 13 },
+          { x: 390, y: -108, r: 13 }, { x: 408, y: -72, r: 12 },
+          { x: 532, y: 32, r: 12 }, { x: 656, y: -14, r: 11 },
+        ],
+        fairW: 19,
+        greenR: 10,
       }),
-      H(3, "Cay Carry", [{ x: 0, y: 0 }, { x: 172, y: 0 }], {
-        hint: "Sawgrass island. Water on every line. Hit the green or swim.",
-        water: [{ x: 18, y: -64, w: 132, h: 128 }],
-        greenR: 11,
+      H(3, "Cay Carry", [{ x: 0, y: 0 }, { x: 188, y: 0 }], {
+        hint: "Island at 188. 6-iron or 5-iron. Driver skips the cay into the far water.",
+        water: [{ x: 16, y: -68, w: 148, h: 136 }],
+        bunkers: [{ x: 178, y: 16, r: 9 }],
+        greenR: 9,
+        fairW: 12,
+      }),
+      H(5, "Lagoon Bend", [{ x: 0, y: 0 }, { x: 235, y: 105 }, { x: 430, y: 105 }, { x: 560, y: -80 }, { x: 700, y: 60 }, { x: 830, y: -10 }], {
+        hint: "Lagoon, then woods, then lagoon. Five clubs. None of them is 'at the pin'.",
+        water: [{ x: 50, y: -12, w: 420, h: 78 }, { x: 620, y: -40, w: 50, h: 88 }],
+        bunkers: [
+          { x: 226, y: 124, r: 14 }, { x: 422, y: 124, r: 13 },
+          { x: 550, y: -62, r: 12 }, { x: 692, y: 78, r: 12 }, { x: 816, y: 8, r: 11 },
+        ],
+        fairW: 19,
+        greenR: 10,
+      }),
+      H(4, "Backwind", [{ x: 0, y: 0 }, { x: 250, y: -12 }, { x: 400, y: 90 }, { x: 540, y: -70 }, { x: 680, y: 55 }], {
+        hint: "Into the wind, two switchbacks. Club down. A long drive past the elbow is trees.",
+        bunkers: [
+          { x: 240, y: -32, r: 14 }, { x: 258, y: 10, r: 13 },
+          { x: 390, y: 72, r: 13 }, { x: 408, y: 108, r: 12 },
+          { x: 532, y: -88, r: 12 }, { x: 666, y: 72, r: 11 },
+        ],
+        fairW: 18,
+        greenR: 10,
+      }),
+      H(4, "Inlet Cape", [{ x: 0, y: 0 }, { x: 230, y: -105 }, { x: 400, y: -15 }, { x: 540, y: 95 }, { x: 670, y: 8 }], {
+        hint: "Bite the cape only as far as this club carries. Then inland, then another bite.",
+        water: [{ x: 32, y: -38, w: 500, h: 98 }],
+        bunkers: [
+          { x: 222, y: -122, r: 13 }, { x: 392, y: -32, r: 12 },
+          { x: 532, y: 114, r: 12 }, { x: 656, y: 24, r: 11 },
+        ],
+        fairW: 19,
+        greenR: 10,
+      }),
+      H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 248, y: 10 }], {
+        hint: "Forced carry 248. 4-iron / hybrid. Short is marsh. Long is marsh behind the pin.",
+        water: [{ x: 22, y: -58, w: 200, h: 116 }],
+        bunkers: [{ x: 238, y: 28, r: 10 }, { x: 258, y: -10, r: 9 }],
+        greenR: 10,
         fairW: 14,
       }),
-      H(5, "Lagoon Bend", [{ x: 0, y: 0 }, { x: 240, y: 92 }, { x: 430, y: 92 }, { x: 580, y: -40 }, { x: 700, y: 24 }], {
-        hint: "Lagoon horseshoe. Water in the first elbow, woods in the second. Four legs.",
-        water: [{ x: 60, y: -8, w: 400, h: 72 }],
-        bunkers: [{ x: 232, y: 110, r: 14 }, { x: 422, y: 110, r: 12 }, { x: 684, y: 40, r: 11 }],
-        fairW: 28,
+      H(5, "Two Cays", [{ x: 0, y: 0 }, { x: 220, y: -90 }, { x: 400, y: 80 }, { x: 560, y: -85 }, { x: 700, y: 70 }, { x: 840, y: -15 }], {
+        hint: "Serpent around two cays. Water down the spine. Pick a club for THIS corner.",
+        water: [{ x: 60, y: -24, w: 620, h: 46 }],
+        bunkers: [
+          { x: 212, y: -108, r: 13 }, { x: 392, y: 98, r: 13 },
+          { x: 552, y: -68, r: 12 }, { x: 692, y: 88, r: 12 }, { x: 826, y: 4, r: 11 },
+        ],
+        fairW: 18,
+        greenR: 10,
       }),
-      H(4, "Backwind", [{ x: 0, y: 0 }, { x: 250, y: -10 }, { x: 390, y: 50 }, { x: 540, y: 128 }], {
-        hint: "Long two-turn right. Forest owns the chord. Drive, then the second corner.",
-        bunkers: [{ x: 242, y: -28, r: 13 }, { x: 382, y: 32, r: 12 }, { x: 524, y: 144, r: 12 }],
-        fairW: 25,
-      }),
-      H(4, "Inlet Cape", [{ x: 0, y: 0 }, { x: 210, y: -82 }, { x: 370, y: -18 }, { x: 500, y: 48 }], {
-        hint: "Cape, then a kick inland. Water on the pin line. You cannot drive the green.",
-        water: [{ x: 40, y: -30, w: 340, h: 86 }],
-        bunkers: [{ x: 202, y: -98, r: 12 }, { x: 484, y: 64, r: 11 }],
-        fairW: 26,
-      }),
-      H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 242, y: 8 }], {
-        hint: "Forced carry. Marsh covers the shot. This plays like a four.",
-        water: [{ x: 26, y: -54, w: 188, h: 108 }],
-        bunkers: [{ x: 230, y: 28, r: 10 }],
-        greenR: 12,
+      H(4, "Dune Gate", [{ x: 0, y: 0 }, { x: 250, y: 6 }, { x: 390, y: 95 }, { x: 530, y: -50 }, { x: 660, y: 40 }], {
+        hint: "Two bunkers gate the drive. Then a dune left, dune right. Thread, don't spray.",
+        bunkers: [
+          { x: 236, y: -22, r: 16 }, { x: 258, y: 30, r: 16 },
+          { x: 380, y: 76, r: 13 }, { x: 398, y: 114, r: 13 },
+          { x: 522, y: -68, r: 12 }, { x: 648, y: 56, r: 11 },
+        ],
         fairW: 16,
+        greenR: 9,
       }),
-      H(5, "Two Cays", [{ x: 0, y: 0 }, { x: 210, y: -75 }, { x: 390, y: 65 }, { x: 530, y: -40 }, { x: 670, y: 12 }], {
-        hint: "Double S around two cays. Water down the spine. Four decisions.",
-        water: [{ x: 70, y: -22, w: 460, h: 44 }],
-        bunkers: [{ x: 202, y: -92, r: 13 }, { x: 382, y: 82, r: 13 }, { x: 522, y: -24, r: 12 }, { x: 656, y: 28, r: 11 }],
-        fairW: 27,
-      }),
-      H(4, "Dune Gate", [{ x: 0, y: 0 }, { x: 255, y: 6 }, { x: 380, y: 70 }, { x: 530, y: 40 }], {
-        hint: "Slot off the tee, then a dune dogleg. Two bunkers gate the landing.",
-        bunkers: [{ x: 242, y: -20, r: 15 }, { x: 250, y: 28, r: 15 }, { x: 372, y: 52, r: 12 }, { x: 514, y: 56, r: 11 }],
-        fairW: 23,
-      }),
-      H(3, "Last Light", [{ x: 0, y: 0 }, { x: 148, y: -18 }], {
-        hint: "Water short of the pin on the line. Carry the front or it's wet.",
-        water: [{ x: 34, y: -52, w: 86, h: 90 }],
-        bunkers: [{ x: 136, y: 8, r: 10 }],
-        greenR: 11,
+      H(3, "Last Light", [{ x: 0, y: 0 }, { x: 156, y: -22 }], {
+        hint: "Water short, bunker long, tiny green. 9-iron. Commit.",
+        water: [{ x: 28, y: -56, w: 95, h: 100 }],
+        bunkers: [{ x: 148, y: 8, r: 12 }, { x: 168, y: -36, r: 10 }],
+        greenR: 9,
+        fairW: 13,
       }),
     ],
   };
@@ -1418,13 +1478,13 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=12' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=13' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
           "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
           "<h1>LATTICE GOLF</h1>" +
-          "<p class='title-tag'>Trees stop the cut. Water you carry or drop. Play the hole that was built.</p>" +
+          "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
@@ -1470,8 +1530,8 @@
   function help() {
     showSheet(
       "<h2>How to play</h2>" +
-      "<ol class='lore'><li>Fairways bend on purpose. A forest or pond sits on the straight line to the pin. Fly through trees and the ball stops. Come up short of water and you drop.</li>" +
-      "<li>Click to plant a marker. Pick a club whose range covers that line. Gold ring is this power’s carry.</li>" +
+      "<ol class='lore'><li>Do not click the hole. The first marker sits on the next landing. Pick a club that finishes there — 100% driver often flies the corner into trouble.</li>" +
+      "<li>Gold ring is this power’s carry. Trees stop a cut. Water you must actually carry.</li>" +
       "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
