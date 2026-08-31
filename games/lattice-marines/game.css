@@ -157,6 +157,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .radio-head { display: flex; flex-direction: column; gap: .15rem; margin-bottom: .35rem; }
 .radio-head strong { font-size: .78rem; color: var(--cyan); }
 .radio-head a { font-size: .68rem; color: #7dd3fc; }
+.radio-dsp { margin: .25rem 0 0; font-size: .68rem; line-height: 1.45; }
+.radio-dsp a { color: var(--gold); }
 .radio-title {
   font-family: "IBM Plex Mono", monospace; font-size: .7rem; color: #cbd5e1;
   min-height: 2.2em; line-height: 1.3;

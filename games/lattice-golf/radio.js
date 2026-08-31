@@ -1,6 +1,17 @@
 /* Mini listen-portal radio. Toggle hides the panel; audio element stays in the DOM and keeps playing. Mute is volume, not pause. */
 (() => {
   const HUB = "https://asiancoastline.com/listen.html";
+  const DSP = {
+    hub: "https://ffm.to/eovnvo9",
+    spotify: "https://open.spotify.com/artist/6CkZ4bN2xu3WRKbjEL3u2S",
+    apple: "https://music.apple.com/us/artist/excavationpro/1586588545",
+    youtube: "https://music.youtube.com/channel/UCnCf9gjhMEfUFPvGkdlUabQ",
+  };
+  const DSP_HTML =
+    '<a href="' + DSP.hub + '" target="_blank" rel="noopener noreferrer">Stream Excavationpro</a>' +
+    ' · <a href="' + DSP.spotify + '" target="_blank" rel="noopener noreferrer">Spotify</a>' +
+    ' · <a href="' + DSP.apple + '" target="_blank" rel="noopener noreferrer">Apple Music</a>' +
+    ' · <a href="' + DSP.youtube + '" target="_blank" rel="noopener noreferrer">YouTube Music</a>';
   const PLAYLISTS = [
     "./radio.json",
     "https://asiancoastline.com/data/public_stream_playlist.json",
@@ -119,7 +130,27 @@
     paint();
   }
 
+  function ensureDsp() {
+    if (document.querySelector(".radio-dsp")) return;
+    const head = document.querySelector(".radio-head");
+    if (head) {
+      const p = document.createElement("p");
+      p.className = "radio-dsp";
+      p.innerHTML = DSP_HTML;
+      head.appendChild(p);
+      return;
+    }
+    const dock = $("radioDock");
+    if (dock) {
+      const p = document.createElement("span");
+      p.className = "radio-dsp";
+      p.innerHTML = DSP_HTML;
+      dock.appendChild(p);
+    }
+  }
+
   function bootRadio() {
+    ensureDsp();
     loadPlaylists().then(paint);
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });

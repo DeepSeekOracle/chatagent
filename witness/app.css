@@ -106,6 +106,8 @@ a { color: var(--cyan); }
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .radio-hub { font-family: var(--mono); font-size: .68rem; color: #7dd3fc; white-space: nowrap; }
+.radio-dsp { font-size: .68rem; margin-left: .45rem; }
+.radio-dsp a { color: var(--gold, #fbbf24); }
 .now-playing {
   font-family: var(--mono); font-size: .72rem; color: #86efac;
   margin: 0 0 .55rem; line-height: 1.35;

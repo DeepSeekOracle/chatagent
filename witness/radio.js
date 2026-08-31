@@ -1,6 +1,17 @@
 /* Mini listen-portal radio. Toggle hides the panel; audio element stays in the DOM and keeps playing. Mute is volume, not pause. */
 (() => {
   const HUB = "https://asiancoastline.com/listen.html";
+  const DSP = {
+    hub: "https://ffm.to/eovnvo9",
+    spotify: "https://open.spotify.com/artist/6CkZ4bN2xu3WRKbjEL3u2S",
+    apple: "https://music.apple.com/us/artist/excavationpro/1586588545",
+    youtube: "https://music.youtube.com/channel/UCnCf9gjhMEfUFPvGkdlUabQ",
+  };
+  const DSP_HTML =
+    '<a href="' + DSP.hub + '" target="_blank" rel="noopener noreferrer">Stream Excavationpro</a>' +
+    ' · <a href="' + DSP.spotify + '" target="_blank" rel="noopener noreferrer">Spotify</a>' +
+    ' · <a href="' + DSP.apple + '" target="_blank" rel="noopener noreferrer">Apple Music</a>' +
+    ' · <a href="' + DSP.youtube + '" target="_blank" rel="noopener noreferrer">YouTube Music</a>';
   const PLAYLISTS = [
     "./radio.json",
     "https://asiancoastline.com/data/public_stream_playlist.json",
@@ -68,19 +79,12 @@
     const mute = $("radioMute");
     const view = $("radioView");
     const dock = $("radioDock");
-    const t = st.tracks[st.i];
-    const line = t
-      ? ((st.playing ? "Now playing · " : "Paused · ") + t.title)
-      : "Now playing · idle";
     if (title) {
+      const t = st.tracks[st.i];
       title.textContent = t
         ? (st.playing ? "▶ " : "❚❚ ") + t.title
         : "Loading listen portal…";
     }
-    const now = $("radioNow");
-    if (now) now.textContent = line;
-    const side = $("nowPlaying");
-    if (side) side.textContent = line;
     if (play) play.textContent = st.playing ? "Pause" : "Play";
     if (mute) mute.textContent = st.muted ? "Unmute" : "Mute";
     if (view) view.textContent = st.view ? "Hide" : "Radio";
@@ -126,28 +130,43 @@
     paint();
   }
 
+  function ensureDsp() {
+    if (document.querySelector(".radio-dsp")) return;
+    const head = document.querySelector(".radio-head");
+    if (head) {
+      const p = document.createElement("p");
+      p.className = "radio-dsp";
+      p.innerHTML = DSP_HTML;
+      head.appendChild(p);
+      return;
+    }
+    const dock = $("radioDock");
+    if (dock) {
+      const p = document.createElement("span");
+      p.className = "radio-dsp";
+      p.innerHTML = DSP_HTML;
+      dock.appendChild(p);
+    }
+  }
+
   function bootRadio() {
+    ensureDsp();
     loadPlaylists().then(paint);
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });
     a.addEventListener("error", () => { if (st.playing) next(); });
-    const playBtn = $("radioPlay");
-    const nextBtn = $("radioNext");
-    const muteBtn = $("radioMute");
-    const viewBtn = $("radioView");
-    const vol = $("radioVol");
-    if (playBtn) playBtn.onclick = () => { st.playing ? pauseKeep() : play(); };
-    if (nextBtn) nextBtn.onclick = () => { st.playing = true; next(); };
-    if (muteBtn) muteBtn.onclick = () => {
+    $("radioPlay").onclick = () => { st.playing ? pauseKeep() : play(); };
+    $("radioNext").onclick = () => { st.playing = true; next(); };
+    $("radioMute").onclick = () => {
       st.muted = !st.muted;
       el().muted = st.muted;
       paint();
     };
-    if (viewBtn) viewBtn.onclick = () => {
+    $("radioView").onclick = () => {
       st.view = !st.view;
       paint();
     };
-    if (vol) vol.oninput = (e) => {
+    $("radioVol").oninput = (e) => {
       st.vol = Number(e.target.value) / 100;
       el().volume = st.vol;
       if (st.vol > 0 && st.muted) {
