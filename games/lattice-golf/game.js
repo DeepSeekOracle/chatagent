@@ -34,74 +34,212 @@
     };
   }
 
-  function H(par, yards, lat, bunkers, water, greenR) {
-    return { par: par, yards: yards, lat: lat || 0, bunkers: bunkers || [], water: water || [], greenR: greenR || 16 };
+  function H(par, name, path, opt) {
+    opt = opt || {};
+    return {
+      par: par,
+      name: name,
+      path: path,
+      bunkers: opt.bunkers || [],
+      water: opt.water || [],
+      groves: opt.groves || [],
+      greenR: opt.greenR || (par === 3 ? 13 : 16),
+      fairW: opt.fairW || (par === 3 ? 24 : par === 5 ? 34 : 30),
+      hint: opt.hint || "",
+    };
   }
 
   const PINE = {
     id: "pine-haven",
     name: "Pine Haven Championship",
     wind: [0, 4],
-    lore: "Parkland cut through old-growth in 1924. Fairways remember every lie.",
+    lore: "Parkland doglegs through old-growth. Play the corner. The pin is rarely the first shot.",
     holes: [
-      H(4, 378, 8, [{ x: 210, y: 18, r: 14 }], [], 16),
-      H(3, 168, -6, [{ x: 140, y: -22, r: 12 }], [], 14),
-      H(5, 512, 12, [{ x: 260, y: 20, r: 16 }, { x: 400, y: -18, r: 13 }], [], 17),
-      H(4, 405, -10, [{ x: 240, y: -24, r: 14 }], [{ x: 300, y: 40, w: 70, h: 36 }], 15),
-      H(3, 192, 4, [{ x: 150, y: 20, r: 11 }], [], 13),
-      H(4, 362, 14, [{ x: 200, y: 22, r: 13 }], [], 16),
-      H(5, 538, -8, [{ x: 280, y: -16, r: 15 }], [{ x: 420, y: -48, w: 80, h: 40 }], 18),
-      H(4, 428, 6, [{ x: 250, y: 18, r: 12 }, { x: 360, y: -20, r: 12 }], [], 15),
-      H(3, 146, -4, [{ x: 110, y: -16, r: 10 }], [], 12),
+      H(4, "Opening Cut", [{ x: 0, y: 0 }, { x: 185, y: 8 }, { x: 355, y: 62 }], {
+        hint: "Dogleg right. Lay up to the corner, then into the green.",
+        bunkers: [{ x: 178, y: 32, r: 13 }, { x: 338, y: 78, r: 11 }],
+        groves: [{ x: 210, y: -28, n: 7, r: 22 }],
+      }),
+      H(3, "Chapel Pond", [{ x: 0, y: 0 }, { x: 162, y: -18 }], {
+        hint: "Carry the pond. Short is wet.",
+        water: [{ x: 48, y: -52, w: 92, h: 78 }],
+        bunkers: [{ x: 148, y: 8, r: 10 }],
+        greenR: 12,
+      }),
+      H(5, "Twin Pines", [{ x: 0, y: 0 }, { x: 195, y: 48 }, { x: 340, y: -28 }, { x: 505, y: 22 }], {
+        hint: "S-curve. Two turns. Don't cut the second elbow.",
+        bunkers: [{ x: 188, y: 68, r: 14 }, { x: 338, y: -48, r: 13 }, { x: 488, y: 40, r: 12 }],
+        groves: [{ x: 250, y: 10, n: 6, r: 20 }],
+        water: [{ x: 300, y: 8, w: 70, h: 36 }],
+      }),
+      H(4, "Orchard Elbow", [{ x: 0, y: 0 }, { x: 200, y: -10 }, { x: 380, y: -78 }], {
+        hint: "Dogleg left around the orchard. The trees eat hero lines.",
+        groves: [{ x: 225, y: 22, n: 9, r: 26 }],
+        bunkers: [{ x: 192, y: -32, r: 12 }, { x: 362, y: -58, r: 11 }],
+      }),
+      H(3, "North Watch", [{ x: 0, y: 0 }, { x: 186, y: 22 }], {
+        hint: "Long three. Bunkers pinch both sides of the green.",
+        bunkers: [{ x: 158, y: 2, r: 11 }, { x: 162, y: 44, r: 11 }],
+        greenR: 13,
+      }),
+      H(4, "Miller's Cape", [{ x: 0, y: 0 }, { x: 155, y: -28 }, { x: 345, y: -8 }], {
+        hint: "Cape hole. Water all down the right. Stay left.",
+        water: [{ x: 70, y: 6, w: 290, h: 72 }],
+        bunkers: [{ x: 150, y: -48, r: 12 }],
+      }),
+      H(5, "Creek Walk", [{ x: 0, y: 0 }, { x: 210, y: 32 }, { x: 355, y: 32 }, { x: 525, y: -24 }], {
+        hint: "Creek twice. Carry, then carry again — or lay up twice.",
+        water: [
+          { x: 175, y: -8, w: 42, h: 72 },
+          { x: 390, y: -55, w: 48, h: 78 },
+        ],
+        bunkers: [{ x: 330, y: 50, r: 13 }, { x: 510, y: -6, r: 11 }],
+      }),
+      H(4, "Ridge Turn", [{ x: 0, y: 0 }, { x: 225, y: 58 }, { x: 408, y: 12 }], {
+        hint: "Dogleg right over the ridge. Bunkers sit in the landing.",
+        bunkers: [{ x: 215, y: 78, r: 14 }, { x: 218, y: 36, r: 11 }, { x: 392, y: -8, r: 12 }],
+        groves: [{ x: 260, y: 10, n: 5, r: 18 }],
+      }),
+      H(3, "Haven Stamp", [{ x: 0, y: 0 }, { x: 138, y: -14 }], {
+        hint: "Tiny green. Front bunker must be carried.",
+        bunkers: [{ x: 108, y: -8, r: 14 }],
+        greenR: 10,
+        fairW: 20,
+      }),
     ],
   };
   const CORAL = {
     id: "coral-lattice",
     name: "Coral Lattice Links",
     wind: [2, 8],
-    lore: "Coastal lattice. Wind is a teacher. Water is the examiner.",
+    lore: "Coastal lattice. Wind is a teacher. Water is the examiner. Play around the inlets.",
     holes: [
-      H(4, 391, -12, [{ x: 220, y: -20, r: 15 }], [{ x: 180, y: 48, w: 90, h: 34 }], 15),
-      H(3, 154, 10, [], [{ x: 80, y: -40, w: 60, h: 28 }], 13),
-      H(5, 521, 6, [{ x: 300, y: 18, r: 16 }], [{ x: 430, y: 42, w: 86, h: 38 }], 17),
-      H(4, 412, 16, [{ x: 240, y: 22, r: 13 }], [], 15),
-      H(4, 388, -14, [{ x: 200, y: -18, r: 14 }], [{ x: 310, y: -50, w: 70, h: 32 }], 16),
-      H(3, 201, 2, [{ x: 160, y: 16, r: 11 }], [], 13),
-      H(5, 548, -10, [{ x: 270, y: -14, r: 15 }, { x: 430, y: 16, r: 13 }], [{ x: 360, y: 48, w: 78, h: 36 }], 18),
-      H(4, 436, 8, [{ x: 260, y: 20, r: 12 }], [], 15),
-      H(3, 139, -8, [], [{ x: 70, y: 36, w: 55, h: 26 }], 12),
+      H(4, "Salt Flats", [{ x: 0, y: 0 }, { x: 195, y: -42 }, { x: 368, y: -16 }], {
+        hint: "Shoreline dogleg. Ocean left — don't leak.",
+        water: [{ x: 20, y: -95, w: 300, h: 48 }],
+        bunkers: [{ x: 188, y: -22, r: 13 }, { x: 350, y: 6, r: 11 }],
+      }),
+      H(3, "Cay Carry", [{ x: 0, y: 0 }, { x: 150, y: 6 }], {
+        hint: "Island green. Anything short or wide is the drink.",
+        water: [{ x: 28, y: -48, w: 118, h: 96 }],
+        greenR: 12,
+        fairW: 18,
+      }),
+      H(5, "Lagoon Bend", [{ x: 0, y: 0 }, { x: 205, y: 55 }, { x: 355, y: 55 }, { x: 498, y: -12 }], {
+        hint: "Lagoon fills the elbow. You cannot cut this one.",
+        water: [{ x: 210, y: -8, w: 130, h: 52 }],
+        bunkers: [{ x: 198, y: 74, r: 14 }, { x: 480, y: 8, r: 12 }],
+      }),
+      H(4, "Backwind", [{ x: 0, y: 0 }, { x: 175, y: 12 }, { x: 385, y: 82 }], {
+        hint: "Hard dogleg right. Drive to the corner, not the pin.",
+        bunkers: [{ x: 168, y: 34, r: 13 }, { x: 368, y: 98, r: 12 }],
+        groves: [{ x: 230, y: -18, n: 7, r: 22 }],
+      }),
+      H(4, "Inlet Cape", [{ x: 0, y: 0 }, { x: 148, y: -38 }, { x: 360, y: 18 }], {
+        hint: "Cape over the inlet. Aggressive line is wet.",
+        water: [{ x: 70, y: -8, w: 210, h: 58 }],
+        bunkers: [{ x: 142, y: -56, r: 11 }],
+      }),
+      H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 196, y: 28 }], {
+        hint: "Long carry over marsh. Club up.",
+        water: [{ x: 36, y: -18, w: 132, h: 78 }],
+        bunkers: [{ x: 182, y: 48, r: 10 }],
+        greenR: 12,
+      }),
+      H(5, "Two Cays", [{ x: 0, y: 0 }, { x: 185, y: -50 }, { x: 335, y: 42 }, { x: 525, y: -8 }], {
+        hint: "S around two cays. Water down the spine.",
+        water: [{ x: 170, y: -12, w: 175, h: 38 }],
+        bunkers: [{ x: 178, y: -68, r: 12 }, { x: 328, y: 60, r: 13 }, { x: 510, y: 12, r: 11 }],
+      }),
+      H(4, "Dune Gate", [{ x: 0, y: 0 }, { x: 215, y: 38 }, { x: 415, y: 64 }], {
+        hint: "Two bunkers gate the landing. Thread or lay short.",
+        bunkers: [{ x: 205, y: 14, r: 15 }, { x: 208, y: 62, r: 15 }, { x: 398, y: 46, r: 11 }],
+      }),
+      H(3, "Last Light", [{ x: 0, y: 0 }, { x: 132, y: -32 }], {
+        hint: "Short, downhill feel, water short-left of the pin.",
+        water: [{ x: 38, y: -58, w: 72, h: 64 }],
+        bunkers: [{ x: 118, y: -8, r: 10 }],
+        greenR: 11,
+      }),
     ],
   };
 
+  function pathLen(path) {
+    let n = 0;
+    for (let i = 0; i < path.length - 1; i++) n += dist(path[i], path[i + 1]);
+    return n;
+  }
+  function distToPath(p, path) {
+    let best = 1e9;
+    for (let i = 0; i < path.length - 1; i++) best = Math.min(best, distToSeg(p, path[i], path[i + 1]));
+    return best;
+  }
+  function nextAim(hole, ball) {
+    if (dist(ball, hole.pin) <= hole.greenR + 8) return { x: hole.pin.x, y: hole.pin.y };
+    const path = hole.path;
+    for (let i = 1; i < path.length; i++) {
+      if (dist(ball, path[i]) > 36) return { x: path[i].x, y: path[i].y };
+    }
+    return { x: hole.pin.x, y: hole.pin.y };
+  }
+
   function worldHole(h) {
-    const tee = { x: 28, y: CENTER };
-    const pin = { x: 28 + h.yards, y: CENTER + h.lat };
+    const origin = { x: 48, y: CENTER };
+    const path = (h.path && h.path.length ? h.path : [{ x: 0, y: 0 }, { x: h.yards || 350, y: 0 }]).map(function (p) {
+      return { x: origin.x + p.x, y: origin.y + p.y };
+    });
+    const tee = { x: path[0].x, y: path[0].y };
+    const pin = { x: path[path.length - 1].x, y: path[path.length - 1].y };
     const bunkers = (h.bunkers || []).map(function (b) {
-      return { x: tee.x + b.x, y: CENTER + b.y, r: b.r };
+      return { x: origin.x + b.x, y: origin.y + b.y, r: b.r };
     });
     const water = (h.water || []).map(function (w) {
-      return { x: tee.x + w.x, y: CENTER + w.y, w: w.w, h: w.h };
+      return { x: origin.x + w.x, y: origin.y + w.y, w: w.w, h: w.h };
     });
-    const fairW = h.par === 3 ? 28 : h.par === 5 ? 36 : 32;
-    const rng = mulberry(((h.yards * 97) ^ (h.par * 13) ^ ((h.lat || 0) * 31)) >>> 0);
+    const fairW = h.fairW || 30;
+    const seed = ((pathLen(path) * 97) ^ (h.par * 13) ^ (path.length * 19)) >>> 0;
+    const rng = mulberry(seed);
     const trees = [];
-    const nTree = 10 + (h.par === 5 ? 6 : h.par === 4 ? 3 : 0);
-    for (let i = 0; i < nTree; i++) {
-      const t = 0.06 + rng() * 0.86;
-      const side = rng() < 0.5 ? -1 : 1;
-      const lat = fairW + 30 + rng() * 26;
-      trees.push({
-        x: tee.x + (pin.x - tee.x) * t + (rng() * 8 - 4),
-        y: tee.y + (pin.y - tee.y) * t + side * lat,
-        r: 4.2 + rng() * 5.4,
-      });
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      const seg = dist(a, b);
+      const nx = -(b.y - a.y) / (seg || 1);
+      const ny = (b.x - a.x) / (seg || 1);
+      const nAlong = Math.max(2, Math.round(seg / 55));
+      for (let k = 0; k < nAlong; k++) {
+        const t = (k + 0.35) / nAlong;
+        const side = (k % 2 === 0 ? 1 : -1) * (rng() < 0.22 ? -1 : 1);
+        const lat = fairW + 26 + rng() * 22;
+        trees.push({
+          x: a.x + (b.x - a.x) * t + nx * side * lat,
+          y: a.y + (b.y - a.y) * t + ny * side * lat,
+          r: 4 + rng() * 5.2,
+        });
+      }
     }
+    (h.groves || []).forEach(function (g) {
+      const cx = origin.x + g.x, cy = origin.y + g.y;
+      const n = g.n || 6;
+      for (let i = 0; i < n; i++) {
+        const ang = (Math.PI * 2 * i) / n + rng() * 0.4;
+        const rad = rng() * (g.r || 20);
+        trees.push({
+          x: cx + Math.cos(ang) * rad,
+          y: cy + Math.sin(ang) * rad,
+          r: 4.5 + rng() * 4.5,
+          block: true,
+        });
+      }
+    });
     return {
       par: h.par,
-      yards: h.yards,
+      name: h.name || "",
+      hint: h.hint || "",
+      yards: pathLen(path),
       tee: tee,
       pin: pin,
-      greenR: h.greenR,
+      path: path,
+      greenR: h.greenR || 16,
       bunkers: bunkers,
       water: water,
       trees: trees,
@@ -158,12 +296,13 @@
     for (let i = 0; i < hole.bunkers.length; i++) {
       if (dist(p, hole.bunkers[i]) <= hole.bunkers[i].r) return "bunker";
     }
-    const t = Math.max(0, Math.min(1, (p.x - hole.tee.x) / Math.max(1, hole.pin.x - hole.tee.x)));
-    const cx = hole.tee.x + (hole.pin.x - hole.tee.x) * t;
-    const cy = hole.tee.y + (hole.pin.y - hole.tee.y) * t;
-    const lat = Math.hypot(p.x - cx, p.y - cy);
+    const trees = hole.trees || [];
+    for (let i = 0; i < trees.length; i++) {
+      if (trees[i].block && dist(p, trees[i]) <= trees[i].r * 0.9) return "rough";
+    }
+    const lat = distToPath(p, hole.path);
     if (lat < hole.fairW) return "fairway";
-    if (lat < hole.fairW + 28) return "rough";
+    if (lat < hole.fairW + 26) return "rough";
     return "oob";
   }
 
@@ -246,7 +385,7 @@
     const src = G.holes[G.hi];
     G.hole = worldHole(src);
     G.ball = { x: G.hole.tee.x, y: G.hole.tee.y };
-    G.marker = { x: G.hole.pin.x, y: G.hole.pin.y };
+    G.marker = nextAim(G.hole, G.ball);
     G.strokes = 0;
     G.lastBall = null;
     G.flying = null;
@@ -254,7 +393,9 @@
     autoClub();
     $("holePill").textContent = "HOLE " + (G.hi + 1);
     renderHoleCard();
-    log("Hole " + (G.hi + 1) + " · par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd");
+    log("Hole " + (G.hi + 1) + (G.hole.name ? " · " + G.hole.name : "") +
+      " · par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd" +
+      (G.hole.hint ? " — " + G.hole.hint : ""));
     fitView();
     draw();
   }
@@ -269,10 +410,25 @@
   function fitView() {
     const w = canvas.clientWidth || 800;
     const h = canvas.clientHeight || 480;
-    const maxX = G.hole.pin.x + 40;
-    view.scale = Math.min(w / maxX, h / 280) * 0.92;
-    view.ox = 16;
-    view.oy = h / 2 - CENTER * view.scale;
+    const hole = G.hole;
+    let minX = hole.tee.x, minY = hole.tee.y, maxX = hole.tee.x, maxY = hole.tee.y;
+    function grow(x, y, r) {
+      r = r || 0;
+      minX = Math.min(minX, x - r);
+      minY = Math.min(minY, y - r);
+      maxX = Math.max(maxX, x + r);
+      maxY = Math.max(maxY, y + r);
+    }
+    (hole.path || []).forEach(function (p) { grow(p.x, p.y, hole.fairW + 36); });
+    hole.bunkers.forEach(function (b) { grow(b.x, b.y, b.r); });
+    hole.water.forEach(function (wt) { grow(wt.x, wt.y, 0); grow(wt.x + wt.w, wt.y + wt.h, 0); });
+    grow(hole.pin.x, hole.pin.y, hole.greenR + 8);
+    const pad = 28;
+    const bw = Math.max(80, maxX - minX + pad * 2);
+    const bh = Math.max(80, maxY - minY + pad * 2);
+    view.scale = Math.min(w / bw, h / bh) * 0.94;
+    view.ox = (w - (minX + maxX) * view.scale) / 2;
+    view.oy = (h - (minY + maxY) * view.scale) / 2;
   }
 
   function toScr(p) {
@@ -313,15 +469,18 @@
     c.fill();
 
     function ribbon(widthYd, color) {
-      const a = toScr(hole.tee);
-      const b = toScr(hole.pin);
+      const pts = hole.path || [hole.tee, hole.pin];
       c.lineWidth = widthYd * 2 * view.scale;
       c.strokeStyle = color;
       c.lineCap = "round";
       c.lineJoin = "round";
       c.beginPath();
+      const a = toScr(pts[0]);
       c.moveTo(a.x, a.y);
-      c.lineTo(b.x, b.y);
+      for (let i = 1; i < pts.length; i++) {
+        const p = toScr(pts[i]);
+        c.lineTo(p.x, p.y);
+      }
       c.stroke();
     }
     ribbon(hole.fairW + 44, "#14321e");
@@ -329,26 +488,39 @@
     ribbon(hole.fairW, "#2f7a45");
     ribbon(hole.fairW * 0.4, "rgba(90,190,110,.28)");
 
-    const a = toScr(hole.tee);
-    const b = toScr(hole.pin);
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const px = -dy / len, py = dx / len;
+    const pts = hole.path || [hole.tee, hole.pin];
     c.save();
     c.globalAlpha = 0.14;
     c.strokeStyle = "#5eead4";
     c.lineWidth = 1;
-    for (let i = 1; i < 12; i++) {
-      const t = i / 12;
-      const x = a.x + dx * t;
-      const y = a.y + dy * t;
-      const hw = hole.fairW * view.scale;
-      c.beginPath();
-      c.moveTo(x + px * hw, y + py * hw);
-      c.lineTo(x - px * hw, y - py * hw);
-      c.stroke();
+    for (let s = 0; s < pts.length - 1; s++) {
+      const a = toScr(pts[s]);
+      const b = toScr(pts[s + 1]);
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const px = -dy / len, py = dx / len;
+      const n = Math.max(3, Math.round(len / 38));
+      for (let i = 1; i < n; i++) {
+        const t = i / n;
+        const x = a.x + dx * t;
+        const y = a.y + dy * t;
+        const hw = hole.fairW * view.scale;
+        c.beginPath();
+        c.moveTo(x + px * hw, y + py * hw);
+        c.lineTo(x - px * hw, y - py * hw);
+        c.stroke();
+      }
     }
     c.restore();
+
+    (pts || []).forEach(function (wp, i) {
+      if (i === 0 || i === pts.length - 1) return;
+      const p = toScr(wp);
+      c.fillStyle = "rgba(251,191,36,.85)";
+      c.beginPath();
+      c.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      c.fill();
+    });
 
     (hole.trees || []).forEach(function (tr) {
       const p = toScr(tr);
@@ -494,9 +666,10 @@
     const lie = lieAt(G.hole, G.ball);
     $("holeCard").innerHTML =
       "<p><b>" + (G.course ? G.course.name : "Endless") + "</b></p>" +
-      "<p>Par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd</p>" +
+      "<p>" + (G.hole.name ? G.hole.name + " · " : "") + "Par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd</p>" +
       "<p>To pin <b>" + d.toFixed(1) + " yd</b></p>" +
-      "<p>Lie: " + lie + " · strokes " + G.strokes + "</p>";
+      "<p>Lie: " + lie + " · strokes " + G.strokes + "</p>" +
+      (G.hole.hint ? "<p class='lore'>" + G.hole.hint + "</p>" : "");
     const wx = Math.cos(G.wind.ang);
     const wy = Math.sin(G.wind.ang);
     const dir = Math.abs(wx) > Math.abs(wy) ? (wx > 0 ? "tail" : "head") : (wy > 0 ? "right" : "left");
@@ -571,8 +744,8 @@
       } else {
         log(G.club.name + " " + Math.round(G.power * 100) + "% → " + actual.toFixed(1) + " yd · " + now);
       }
+      G.marker = nextAim(G.hole, G.ball);
       autoClub();
-      G.marker = { x: pin.x, y: pin.y };
       renderHoleCard();
       draw();
     });
@@ -664,15 +837,53 @@
   }
 
   function randomHole() {
+    const rng = G.rng;
     const pars = [3, 3, 4, 4, 4, 5, 5];
-    const par = pars[(G.rng() * pars.length) | 0];
-    const yards = par === 3 ? 130 + G.rng() * 80 : par === 5 ? 480 + G.rng() * 80 : 340 + G.rng() * 90;
-    const lat = (G.rng() * 2 - 1) * 18;
-    const bunkers = [];
-    const nB = 1 + ((G.rng() * 2) | 0);
-    for (let i = 0; i < nB; i++) bunkers.push({ x: yards * (0.35 + G.rng() * 0.45), y: (G.rng() * 2 - 1) * 26, r: 10 + G.rng() * 6 });
-    const water = G.rng() > 0.55 ? [{ x: yards * 0.5, y: 30 + G.rng() * 20, w: 50 + G.rng() * 40, h: 24 + G.rng() * 14 }] : [];
-    return H(par, yards, lat, bunkers, water, 12 + G.rng() * 6);
+    const par = pars[(rng() * pars.length) | 0];
+    const shapes = par === 3 ? ["carry", "pinch"] : par === 5 ? ["s", "double"] : ["dogL", "dogR", "cape"];
+    const shape = shapes[(rng() * shapes.length) | 0];
+    let path, water = [], bunkers = [], groves = [], hint = "Play the fairway.";
+    if (par === 3 && shape === "carry") {
+      const yds = 135 + rng() * 70;
+      path = [{ x: 0, y: 0 }, { x: yds, y: (rng() * 2 - 1) * 28 }];
+      water = [{ x: 32, y: -40, w: yds * 0.62, h: 82 }];
+      hint = "Carry the water.";
+    } else if (par === 3) {
+      const yds = 140 + rng() * 60;
+      path = [{ x: 0, y: 0 }, { x: yds, y: (rng() * 2 - 1) * 22 }];
+      bunkers = [{ x: yds * 0.78, y: -16, r: 11 }, { x: yds * 0.8, y: 18, r: 10 }];
+      hint = "Bunkers pinch the green.";
+    } else if (shape === "dogL") {
+      path = [{ x: 0, y: 0 }, { x: 175 + rng() * 40, y: -8 }, { x: 340 + rng() * 50, y: -70 - rng() * 20 }];
+      groves = [{ x: 210, y: 20, n: 7, r: 22 }];
+      bunkers = [{ x: 180, y: -28, r: 12 }];
+      hint = "Dogleg left. Don't cut the trees.";
+    } else if (shape === "dogR") {
+      path = [{ x: 0, y: 0 }, { x: 175 + rng() * 40, y: 10 }, { x: 345 + rng() * 50, y: 68 + rng() * 22 }];
+      groves = [{ x: 215, y: -22, n: 7, r: 22 }];
+      bunkers = [{ x: 182, y: 32, r: 12 }];
+      hint = "Dogleg right. Aim the corner.";
+    } else if (shape === "cape") {
+      path = [{ x: 0, y: 0 }, { x: 150 + rng() * 20, y: -30 }, { x: 340 + rng() * 40, y: -4 }];
+      water = [{ x: 70, y: 4, w: 270, h: 68 }];
+      hint = "Cape. Water right.";
+    } else if (shape === "s") {
+      path = [{ x: 0, y: 0 }, { x: 190, y: 50 }, { x: 340, y: -30 }, { x: 500 + rng() * 30, y: 18 }];
+      water = [{ x: 300, y: 4, w: 70, h: 34 }];
+      bunkers = [{ x: 188, y: 68, r: 13 }, { x: 336, y: -48, r: 12 }];
+      hint = "S-curve. Two turns.";
+    } else {
+      path = [{ x: 0, y: 0 }, { x: 200, y: 28 }, { x: 350, y: 28 }, { x: 520, y: -22 }];
+      water = [{ x: 178, y: -6, w: 40, h: 68 }, { x: 385, y: -50, w: 46, h: 74 }];
+      hint = "Two carries.";
+    }
+    return H(par, "Random " + shape, path, {
+      bunkers: bunkers,
+      water: water,
+      groves: groves,
+      hint: hint,
+      greenR: 11 + rng() * 6,
+    });
   }
 
   function startRound(mode, course, campaign) {
@@ -723,13 +934,13 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=5' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=6' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
           "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
           "<h1>LATTICE GOLF</h1>" +
-          "<p class='title-tag'>Plant the marker on the cup. 100% rolls that line in.</p>" +
+          "<p class='title-tag'>Doglegs, carries, cape holes. Play the fairway — the pin is rarely the first shot.</p>" +
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
@@ -775,10 +986,10 @@
   function help() {
     showSheet(
       "<h2>How to play</h2>" +
-      "<ol class='lore'><li>Click the course to plant a marker. It shows distance and line.</li>" +
-      "<li>Pick a club whose range covers that line. Gold ring is this power’s carry.</li>" +
-      "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little. Aim off the pin to compensate.</li>" +
-      "<li>On the green, plant the marker on the cup. Power is a fraction of that line — 100% rolls to the marker, 25% is a tap. The cup swallows the ball if the path goes through it.</li>" +
+      "<ol class='lore'><li>Fairways bend. The first marker sits on the corner, not always the pin. Play around water and groves — cutting the elbow is often wet or trees.</li>" +
+      "<li>Click to plant a marker. Pick a club whose range covers that line. Gold ring is this power’s carry.</li>" +
+      "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little.</li>" +
+      "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>Z undoes the last shot. Esc opens the menu.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
