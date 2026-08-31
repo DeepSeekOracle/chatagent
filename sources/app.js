@@ -93,9 +93,12 @@
     if (st.hls) { try { st.hls.destroy(); } catch (e) {} st.hls = null; }
     v.pause(); a.pause();
     v.removeAttribute("src"); a.removeAttribute("src");
+    v.crossOrigin = null;
     v.load(); a.load();
-    v.hidden = true; a.hidden = true;
-    yt.hidden = true; yt.removeAttribute("src");
+    v.hidden = false;
+    a.hidden = true;
+    yt.hidden = true;
+    yt.removeAttribute("src");
   }
 
   function tryPlay(el) {
@@ -161,6 +164,7 @@
     paintList();
     stopMedia();
     if (ch.kind === "youtube") {
+      $("vid").hidden = true;
       $("yt").src = ch.url;
       $("yt").hidden = false;
       setStatus("Playing in this page.", "ok");
@@ -245,7 +249,7 @@
     const ctrl = new AbortController();
     const t = window.setTimeout(function () { ctrl.abort(); }, 20000);
     try {
-      const res = await fetch(b.url, { signal: ctrl.signal, credentials: "omit", redirect: "follow" });
+      const res = await fetch(b.url, { signal: ctrl.signal, credentials: "omit", redirect: "follow", cache: "no-store" });
       const buf = await res.arrayBuffer();
       if (buf.byteLength > MAX_BYTES) throw new Error("playlist too large");
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -254,8 +258,7 @@
       st.i = -1;
       paintList();
       const vis = visible();
-      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one.");
-      if (vis.length) playAt(0, false);
+      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one to watch.");
     } catch (e) {
       setStatus("Could not load bouquet (" + (e.message || e) + ").", "bad");
     } finally {
@@ -283,15 +286,17 @@
     playAt(0, false);
   });
 
-  fetch("catalog.json", { credentials: "omit" })
+  fetch("catalog.json?v=1.2.0", { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       st.catalog = j;
       paintChips();
-      const id = j.default_bouquet || "news";
-      const b = (j.bouquets || []).filter(function (x) { return x.id === id; })[0] || j.bouquets[0];
-      if (b) loadBouquet(b);
-      else loadLive();
+      if ((j.default_bouquet || "live") === "live") loadLive();
+      else {
+        const b = (j.bouquets || []).filter(function (x) { return x.id === j.default_bouquet; })[0];
+        if (b) loadBouquet(b);
+        else loadLive();
+      }
     })
     .catch(function () { setStatus("catalog.json miss.", "bad"); });
 })();
