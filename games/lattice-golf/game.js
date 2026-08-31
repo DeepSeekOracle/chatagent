@@ -723,7 +723,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=4' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=5' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -731,7 +731,6 @@
           "<h1>LATTICE GOLF</h1>" +
           "<p class='title-tag'>Plant the marker on the cup. 100% rolls that line in.</p>" +
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
-          donateHtml() +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
           "<div class='mode-grid'>" +
