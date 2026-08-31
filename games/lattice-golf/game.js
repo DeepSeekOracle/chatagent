@@ -532,6 +532,7 @@
     card: [],
     log: [],
     flying: null,
+    trail: [],
     seed: 1,
     rng: Math.random,
     campaign: 0,
@@ -596,6 +597,7 @@
     G.strokes = 0;
     G.lastBall = null;
     G.flying = null;
+    G.trail = [];
     rollWind();
     autoClub();
     $("holePill").textContent = "HOLE " + (G.hi + 1);
@@ -893,23 +895,41 @@
       c.arc(m.x, m.y, 5, 0, Math.PI * 2);
       c.fill();
     }
+    const trail = G.trail || [];
+    for (let i = 0; i < trail.length; i++) {
+      const t = trail[i];
+      const p = toScr(t);
+      const lift = (t.z || 0) * view.scale * 0.4;
+      const a = 0.08 + (i / trail.length) * 0.35;
+      c.fillStyle = "rgba(247,250,246," + a + ")";
+      c.beginPath();
+      c.arc(p.x, p.y - lift, 1.6 + (t.z || 0) * 0.08, 0, Math.PI * 2);
+      c.fill();
+    }
     const ball = G.flying || G.ball;
-    const bp = toScr(ball);
-    c.fillStyle = "rgba(0,0,0,.28)";
+    const z = ball.z || 0;
+    const ground = toScr(ball);
+    const bp = { x: ground.x, y: ground.y - z * view.scale * 0.42 };
+    const r = 5.6 + z * 0.22;
+    c.fillStyle = "rgba(0,0,0," + (0.22 + Math.min(0.28, z * 0.008)) + ")";
     c.beginPath();
-    c.ellipse(bp.x + 1, bp.y + 4, 5, 2.2, 0, 0, Math.PI * 2);
+    c.ellipse(ground.x + 1, ground.y + 3 + z * 0.08, 5.2 + z * 0.12, 2.1 + z * 0.04, 0, 0, Math.PI * 2);
     c.fill();
-    c.fillStyle = "#f7faf6";
+    const shine = c.createRadialGradient(bp.x - r * 0.28, bp.y - r * 0.32, r * 0.1, bp.x, bp.y, r);
+    shine.addColorStop(0, "#ffffff");
+    shine.addColorStop(0.35, "#f4f7f2");
+    shine.addColorStop(1, "#c5cdc0");
+    c.fillStyle = shine;
     c.beginPath();
-    c.arc(bp.x, bp.y, 5.4, 0, Math.PI * 2);
+    c.arc(bp.x, bp.y, r, 0, Math.PI * 2);
     c.fill();
-    c.strokeStyle = "#111";
+    c.strokeStyle = "#1a1a1a";
     c.lineWidth = 1;
     c.stroke();
-    c.fillStyle = "rgba(255,255,255,.55)";
+    c.strokeStyle = "rgba(40,40,40,.35)";
     c.beginPath();
-    c.arc(bp.x - 1.6, bp.y - 1.8, 1.6, 0, Math.PI * 2);
-    c.fill();
+    c.arc(bp.x, bp.y, r * 0.55, -0.4, 1.1);
+    c.stroke();
   }
 
   function renderHoleCard() {
@@ -1013,16 +1033,26 @@
   }
 
   function animateShot(from, to, done) {
+    const len = dist(from, to);
+    const putt = !!(G.club && G.club.putt);
+    const loft = putt ? 0.8 : Math.min(42, 7 + len * 0.09);
+    const ms = (putt ? 360 : 520) + len * (putt ? 8.5 : 3.5);
     const t0 = performance.now();
-    const ms = 420 + dist(from, to) * 2.2;
+    G.trail = [];
     function tick(now) {
       const u = Math.min(1, (now - t0) / ms);
-      const e = 1 - Math.pow(1 - u, 2);
-      G.flying = { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e };
+      const e = putt ? (1 - Math.pow(1 - u, 1.6)) : (1 - Math.pow(1 - u, 2.15));
+      const x = from.x + (to.x - from.x) * e;
+      const y = from.y + (to.y - from.y) * e;
+      const z = Math.sin(Math.PI * u) * loft * (putt ? 0.35 : 1);
+      G.flying = { x: x, y: y, z: z };
+      G.trail.push({ x: x, y: y, z: z });
+      if (G.trail.length > 22) G.trail.shift();
       draw();
       if (u < 1) requestAnimationFrame(tick);
       else {
         G.flying = null;
+        G.trail = [];
         done();
       }
     }
@@ -1557,7 +1587,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=16' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=18' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -1566,6 +1596,7 @@
           "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
+          "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
           "<p class='kicker' style='margin-top:.75rem'>Choose golfer</p>" +

@@ -141,7 +141,7 @@
       return;
     }
     const dock = $("radioDock");
-    if (dock) {
+    if (dock && !dock.classList.contains("radio-inline")) {
       const p = document.createElement("span");
       p.className = "radio-dsp";
       p.innerHTML = DSP_HTML;
@@ -155,18 +155,20 @@
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });
     a.addEventListener("error", () => { if (st.playing) next(); });
-    $("radioPlay").onclick = () => { st.playing ? pauseKeep() : play(); };
-    $("radioNext").onclick = () => { st.playing = true; next(); };
-    $("radioMute").onclick = () => {
+    const on = (id, fn) => { const n = $(id); if (n) n.onclick = fn; };
+    on("radioPlay", () => { st.playing ? pauseKeep() : play(); });
+    on("radioNext", () => { st.playing = true; next(); });
+    on("radioMute", () => {
       st.muted = !st.muted;
       el().muted = st.muted;
       paint();
-    };
-    $("radioView").onclick = () => {
+    });
+    on("radioView", () => {
       st.view = !st.view;
       paint();
-    };
-    $("radioVol").oninput = (e) => {
+    });
+    const vol = $("radioVol");
+    if (vol) vol.oninput = (e) => {
       st.vol = Number(e.target.value) / 100;
       el().volume = st.vol;
       if (st.vol > 0 && st.muted) {
