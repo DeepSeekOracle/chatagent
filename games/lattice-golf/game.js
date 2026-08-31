@@ -23,6 +23,17 @@
     { id: "lw", name: "Lob Wedge", min: 70, max: 100 },
     { id: "pt", name: "Putter", min: 0, max: 40, putt: true },
   ];
+  const CAST = [
+    { id: "mira", name: "Mira Quinn", tag: "Parkland", src: "./assets/g-mira.jpg" },
+    { id: "sancora", name: "Sancora Vale", tag: "Links", src: "./assets/g-sancora.jpg" },
+    { id: "lyra", name: "Lyra Helmer", tag: "Night green", src: "./assets/g-lyra.jpg" },
+    { id: "reed", name: "Reed Hollow", tag: "Pines", src: "./assets/g-reed.jpg" },
+    { id: "calder", name: "Calder Voss", tag: "Wind", src: "./assets/g-calder.jpg" },
+    { id: "kai", name: "Kai Park", tag: "Lights", src: "./assets/g-kai.jpg" },
+  ];
+  function golferOf(id) {
+    return CAST.find(function (c) { return c.id === id; }) || CAST[0];
+  }
 
   function mulberry(seed) {
     let t = seed >>> 0;
@@ -489,7 +500,7 @@
   }
 
   function defaultSave() {
-    return { name: "", bestHole: {}, rounds: [], endlessHoles: 0, games: 0 };
+    return { name: "", golfer: "mira", bestHole: {}, rounds: [], endlessHoles: 0, games: 0 };
   }
   function loadSave() {
     try {
@@ -1058,6 +1069,8 @@
     G.save.games += 1;
     G.save.rounds.unshift({
       name: (G.save.name || "Operator").slice(0, 24),
+      golfer: golferOf(G.save.golfer).name,
+      golferId: G.save.golfer || "mira",
       mode: G.mode,
       course: G.course ? G.course.name : "Endless",
       courseId: G.course ? G.course.id : "endless",
@@ -1192,6 +1205,7 @@
     const meta =
       "<div class='sc-meta'>" +
         "<div><span>Operator</span><b>" + (G.save.name || "Operator").replace(/[<>]/g, "") + "</b></div>" +
+        "<div><span>Golfer</span><b>" + golferOf(G.save.golfer).name.replace(/[<>]/g, "") + "</b></div>" +
         "<div><span>Course</span><b>" + ((G.course && G.course.name) || "Endless") + "</b></div>" +
         "<div><span>Thru</span><b>" + thru + "/" + rows.length + "</b></div>" +
         "<div><span>Par</span><b>" + parTot + "</b></div>" +
@@ -1458,9 +1472,20 @@
     $("app").classList.remove("hidden");
     $("boot").classList.add("hidden");
     paintEndBtn();
+    paintGolfer();
     setupHole();
     paintClubs();
     canvas.focus();
+  }
+
+  function paintGolfer() {
+    const g = golferOf(G.save.golfer);
+    const img = $("golferImg");
+    if (!img) return;
+    img.src = g.src;
+    img.alt = g.name;
+    $("golferName").textContent = g.name;
+    $("golferTag").textContent = g.tag;
   }
 
   function paintEndBtn() {
@@ -1532,7 +1557,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=14' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=15' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -1542,6 +1567,15 @@
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
+          "<p class='kicker' style='margin-top:.75rem'>Choose golfer</p>" +
+          "<div class='cast-grid'>" +
+            CAST.map(function (c) {
+              const on = (G.save.golfer || "mira") === c.id ? " on" : "";
+              return "<button type='button' class='cast" + on + "' data-cast='" + c.id + "'>" +
+                "<img src='" + c.src + "' alt='" + c.name + "'>" +
+                "<b>" + c.name + "</b><span>" + c.tag + "</span></button>";
+            }).join("") +
+          "</div>" +
           "<div class='mode-grid'>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span></button>" +
@@ -1557,6 +1591,16 @@
       true
     );
     $("overlay").onclick = function (e) {
+      const pick = e.target.closest("[data-cast]");
+      if (pick) {
+        G.save.golfer = pick.getAttribute("data-cast");
+        writeSave(G.save);
+        document.querySelectorAll(".cast").forEach(function (el) {
+          el.classList.toggle("on", el.getAttribute("data-cast") === G.save.golfer);
+        });
+        paintGolfer();
+        return;
+      }
       const b = e.target.closest("[data-go]");
       if (!b) return;
       const nm = ($("nm") && $("nm").value || "").replace(/[<>]/g, "").trim().slice(0, 24);
