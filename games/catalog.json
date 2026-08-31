@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-24",
+  "updated": "2026-08-31",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -27,7 +27,7 @@
       "slug": "lattice-swarm",
       "title": "Lattice Swarm",
       "tagline": "Hex-grid command",
-      "blurb": "Command node agents across a hexagonal resonance grid. Build, defend, and keep entropy from unraveling the lattice.",
+      "blurb": "Hex command — Week 1: slower opening, undo, keys 1–6. Build, defend, keep entropy from unraveling the lattice.",
       "status": "live",
       "featured": true,
       "order": 2,
