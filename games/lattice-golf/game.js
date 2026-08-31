@@ -1204,16 +1204,59 @@
     G.card = [];
     G.log = [];
     G.hi = 0;
-    if (mode === "endless") G.holes = [randomHole()];
-    else if (mode === "18") G.holes = PINE.holes.concat(CORAL.holes);
+    if (mode === "endless") {
+      G.holes = [randomHole()];
+      G.course = { id: "endless", name: "Endless walk", wind: [1, 7], lore: "Random holes. End the walk to post the card." };
+    } else if (mode === "18") G.holes = PINE.holes.concat(CORAL.holes);
     else G.holes = (course || PINE).holes.slice();
     if (mode === "18") G.course = { id: "haven-open", name: "Haven Open 18", wind: [1, 7], lore: "Pine Haven front nine, Coral Lattice back nine." };
     hideOverlay();
     $("app").classList.remove("hidden");
     $("boot").classList.add("hidden");
+    paintEndBtn();
     setupHole();
     paintClubs();
     canvas.focus();
+  }
+
+  function paintEndBtn() {
+    const b = $("btnEnd");
+    if (!b) return;
+    b.classList.toggle("hidden", G.mode !== "endless");
+  }
+
+  function askEndEndless() {
+    if (G.mode !== "endless" || G.flying) return;
+    if (!G.card.length) {
+      showSheet(
+        "<p class='kicker'>Endless</p><h2>No holes closed</h2>" +
+        "<p class='lore'>Finish at least one hole, then End walk posts the card to this browser’s ledger.</p>" +
+        "<button class='btn gold' id='keepWalk'>Keep walking</button>"
+      );
+      $("keepWalk").onclick = hideOverlay;
+      return;
+    }
+    const t = total(G.card);
+    const v = vsPar(G.card);
+    showSheet(
+      "<p class='kicker'>End the walk</p><h2>" + G.card.length + " holes · " + t + " strokes · " + vsLabel(v) + "</h2>" +
+      "<p class='lore'>The hole you are on now is not counted. Posting writes this card to the local ledger.</p>" +
+      scorecardHtml() +
+      "<div class='modes'><button class='btn gold' id='postWalk'>Post card</button><button class='btn' id='keepWalk'>Keep walking</button></div>",
+      false,
+      true
+    );
+    bindScorecard();
+    $("postWalk").onclick = function () { finishEndless(); };
+    $("keepWalk").onclick = hideOverlay;
+  }
+
+  function finishEndless() {
+    if (G.mode !== "endless") return;
+    if (!G.card.length) return;
+    G.holes = G.holes.slice(0, G.card.length);
+    G.hi = G.card.length;
+    roundOver();
   }
 
   function hideOverlay() {
@@ -1238,13 +1281,14 @@
 
   function menu() {
     G.mode = "menu";
+    paintEndBtn();
     $("boot").classList.add("hidden");
     $("app").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=9' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=10' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -1301,22 +1345,26 @@
       "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
-      "<li>Z undoes the last shot. Esc opens the menu.</li></ol>" +
+      "<li>Z undoes the last shot. Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
     $("hk").onclick = hideOverlay;
   }
 
   function cardSheet() {
+    const endBtn = G.mode === "endless"
+      ? "<button class='btn gold' id='scEnd'>End walk</button>"
+      : "";
     showSheet(
       "<p class='kicker'>Scorecard</p><h2>" + ((G.course && G.course.name) || "Endless") + "</h2>" +
       scorecardHtml() +
-      "<div class='modes'><button class='btn gold' id='ck'>Back to the tee</button><button class='btn' id='scCopy'>Copy card</button></div>",
+      "<div class='modes'><button class='btn gold' id='ck'>Back to the tee</button><button class='btn' id='scCopy'>Copy card</button>" + endBtn + "</div>",
       false,
       true
     );
     bindScorecard();
     $("ck").onclick = hideOverlay;
+    if ($("scEnd")) $("scEnd").onclick = askEndEndless;
   }
 
   canvas.addEventListener("pointerdown", function (e) {
@@ -1360,6 +1408,7 @@
   };
   $("btnHelp").onclick = help;
   $("btnCard").onclick = cardSheet;
+  $("btnEnd").onclick = askEndEndless;
   $("btnMenu").onclick = menu;
 
   window.addEventListener("keydown", function (e) {
