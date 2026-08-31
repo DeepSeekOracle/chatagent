@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lattice Golf — plant the marker | eternalhaven.ca</title>
-<meta name="description" content="Free Lattice Golf in the browser. Pick a club, plant a marker, choose 25–100% power, read the wind. Pine Haven 9, Coral Lattice 9, Haven Open 18, endless, campaign vs AI. Local ledger. No account.">
+<meta name="description" content="Free Lattice Golf in the browser. Pick a club, plant a marker, slide full power 0–100% for the exact carry, read the wind. Pine Haven 9, Coral Lattice 9, Haven Open 18, endless, campaign vs AI. Local ledger. No account.">
 <meta name="keywords" content="Lattice Golf, golf game, HTML5 golf, Eternal Haven, Excavationpro, LYGO, browser golf, Pine Haven">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="theme-color" content="#07140c">
@@ -35,7 +35,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=18">
+<link rel="stylesheet" href="./game.css?v=19">
 <link rel="stylesheet" href="/games/hub.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Lattice Golf","url":"https://eternalhaven.ca/games/lattice-golf/","description":"Browser golf: club ranges, marker aiming, wind, named 9 and 18-hole courses, endless mode, campaign vs AI, local ledger.","image":"https://eternalhaven.ca/games/lattice-golf/assets/og.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Sports","Golf","Strategy"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"},"applicationCategory":"Game"}</script>
 </head>
@@ -68,7 +68,15 @@
         </div>
       </div>
       <div class="hint" id="hint">Club the gold marker, not the flag. Wrong club is bunkers, trees, or water.</div>
-      <div class="keys">Click marker · 1–4 power · [ ] club · Space shoot · Z undo · Esc menu</div>
+      <div class="power-hud" id="powerHud">
+        <div class="power-hud-track">
+          <div class="power-hud-groove"></div>
+          <div class="power-hud-fill" id="powerHudFill"></div>
+          <input id="powerHudRange" type="range" min="0" max="100" step="1" value="75" aria-label="Shot power">
+        </div>
+        <div class="power-hud-read" id="powerHudRead">75% · 273 yd</div>
+      </div>
+      <div class="keys">Click marker · drag power · ← → fine · 1–4 snap · [ ] club · Space shoot</div>
     </div>
     <aside class="rail">
       <div class="panel">
@@ -79,13 +87,30 @@
         <h3>Club</h3>
         <div class="clubs" id="clubs"></div>
       </div>
-      <div class="panel">
+      <div class="panel power-panel">
         <h3>Power</h3>
-        <div class="powers">
-          <button type="button" class="pow" data-p="0.25">25%</button>
-          <button type="button" class="pow" data-p="0.5">50%</button>
-          <button type="button" class="pow on" data-p="0.75">75%</button>
-          <button type="button" class="pow" data-p="1">100%</button>
+        <div class="power-board">
+          <div class="power-readout">
+            <b id="powPct">75%</b>
+            <span id="powYd">273 yd</span>
+          </div>
+          <div class="power-track-wrap">
+            <div class="power-groove"></div>
+            <div class="power-fill" id="powerFill"></div>
+            <div class="power-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <input id="powerRange" type="range" min="0" max="100" step="1" value="75" aria-label="Shot power">
+          </div>
+          <div class="power-scale">
+            <span id="powMin">220 yd</span>
+            <span class="power-scale-mid" id="powClub">Driver</span>
+            <span id="powMax">290 yd</span>
+          </div>
+          <div class="powers">
+            <button type="button" class="pow" data-p="0.25">25</button>
+            <button type="button" class="pow" data-p="0.5">50</button>
+            <button type="button" class="pow on" data-p="0.75">75</button>
+            <button type="button" class="pow" data-p="1">100</button>
+          </div>
         </div>
       </div>
       <div class="panel">
@@ -118,6 +143,6 @@
 
 <div id="overlay" class="overlay"></div>
 <script src="./radio.js"></script>
-<script src="./game.js?v=19"></script>
+<script src="./game.js?v=20"></script>
 </body>
 </html>

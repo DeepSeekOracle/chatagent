@@ -890,6 +890,18 @@
       c.beginPath();
       c.arc(bp.x, bp.y, reach * view.scale, 0, Math.PI * 2);
       c.stroke();
+      const aimA = ang(G.ball, G.marker);
+      const land = toScr({
+        x: G.ball.x + Math.cos(aimA) * reach,
+        y: G.ball.y + Math.sin(aimA) * reach,
+      });
+      c.fillStyle = "#fbbf24";
+      c.beginPath();
+      c.arc(land.x, land.y, 4.5, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#111";
+      c.lineWidth = 1.2;
+      c.stroke();
       c.fillStyle = "#5eead4";
       c.beginPath();
       c.arc(m.x, m.y, 5, 0, Math.PI * 2);
@@ -949,7 +961,42 @@
       "<span>Strokes <b>" + G.strokes + "</b></span>" +
       "<span>Thru <b>" + G.hi + "/" + G.holes.length + "</b></span>" +
       "<span>To pin <b>" + d.toFixed(0) + " yd</b></span>";
-    $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
+    $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
+    paintPower();
+  }
+
+  function setPower(p) {
+    G.power = Math.max(0, Math.min(1, p));
+    paintPower();
+    if (G.hole) {
+      renderHoleCard();
+      draw();
+    }
+  }
+
+  function paintPower() {
+    const pct = Math.round(G.power * 100);
+    const yd = intendedCarry();
+    const putt = !!(G.club && G.club.putt);
+    const minLab = putt ? "0 yd" : (G.club.min + " yd");
+    const maxLab = putt ? "to marker" : (G.club.max + " yd");
+    const fill = pct + "%";
+    if ($("powPct")) $("powPct").textContent = pct + "%";
+    if ($("powYd")) $("powYd").textContent = yd.toFixed(0) + " yd";
+    if ($("powMin")) $("powMin").textContent = minLab;
+    if ($("powMax")) $("powMax").textContent = maxLab;
+    if ($("powClub")) $("powClub").textContent = G.club ? G.club.name : "";
+    if ($("powerFill")) $("powerFill").style.width = fill;
+    if ($("powerHudFill")) $("powerHudFill").style.width = fill;
+    if ($("powerHudRead")) $("powerHudRead").textContent = pct + "% · " + yd.toFixed(0) + " yd";
+    ["powerRange", "powerHudRange"].forEach(function (id) {
+      const el = $(id);
+      if (el && String(el.value) !== String(pct)) el.value = String(pct);
+    });
+    document.querySelectorAll(".pow").forEach(function (btn) {
+      const v = Number(btn.getAttribute("data-p"));
+      btn.classList.toggle("on", Math.abs(v - G.power) < 0.005);
+    });
   }
 
   function paintClubs() {
@@ -1594,7 +1641,7 @@
           "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
           "<h1>LATTICE GOLF</h1>" +
           "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
-          "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
+          "<p class='lore'>Drag the power bar · ← → fine · 1–4 snap · [ ] clubs · Space shoot</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
@@ -1669,8 +1716,8 @@
     showSheet(
       "<h2>How to play</h2>" +
       "<ol class='lore'><li>Do not click the hole. The first marker sits on the next landing. Pick a club that finishes there — 100% driver often flies the corner into trouble.</li>" +
-      "<li>Gold ring is this power’s carry. Trees stop a cut. Water you must actually carry.</li>" +
-      "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little.</li>" +
+      "<li>Gold ring is this power’s carry. Gold pip is the landing. Trees stop a cut. Water you must actually carry.</li>" +
+      "<li>Drag the full power bar (0–100%) inside this club’s range. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%. Wind still moves the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>Z undoes the last shot. Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
@@ -1713,15 +1760,26 @@
       draw();
     }
     const pow = e.target.closest(".pow");
-    if (pow) {
-      G.power = Number(pow.getAttribute("data-p"));
-      document.querySelectorAll(".pow").forEach(function (p) {
-        p.classList.toggle("on", p === pow);
-      });
-      renderHoleCard();
-      draw();
-    }
+    if (pow) setPower(Number(pow.getAttribute("data-p")));
   });
+
+  function bindPowerBar(el) {
+    if (!el) return;
+    el.addEventListener("input", function () {
+      G.power = Math.max(0, Math.min(1, Number(el.value) / 100));
+      paintPower();
+      if (G.hole) {
+        $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
+        draw();
+      }
+    });
+    el.addEventListener("wheel", function (ev) {
+      ev.preventDefault();
+      setPower(G.power + (ev.deltaY < 0 ? 0.01 : -0.01));
+    }, { passive: false });
+  }
+  bindPowerBar($("powerRange"));
+  bindPowerBar($("powerHudRange"));
 
   $("btnShoot").onclick = shoot;
   $("btnUndo").onclick = function () {
@@ -1755,12 +1813,12 @@
     }
     if (e.key >= "1" && e.key <= "4") {
       const map = { 1: 0.25, 2: 0.5, 3: 0.75, 4: 1 };
-      G.power = map[e.key];
-      document.querySelectorAll(".pow").forEach(function (p) {
-        p.classList.toggle("on", Number(p.getAttribute("data-p")) === G.power);
-      });
-      renderHoleCard();
-      draw();
+      setPower(map[e.key]);
+    }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const step = e.shiftKey ? 0.05 : 0.01;
+      setPower(G.power + (e.key === "ArrowRight" ? step : -step));
     }
   });
 
