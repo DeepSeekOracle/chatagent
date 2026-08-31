@@ -5,22 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com; connect-src 'self' https:; upgrade-insecure-requests">
-<title>LYGO TV — free public channels in the browser | chatagent.ca</title>
-<meta name="description" content="Watch free public TV in your browser. Click GitHub IPTV catalogs (culture, local, country, language) or Excavationpro’s monetized Rumble live. Independent LYGO tool by Justin Helmer. Optional tip: PayPal.me/ExcavationPro.">
+<title>LYGO TV — free online TV player | chatagent.ca</title>
+<meta name="description" content="Free online TV in your browser. Pick a list, click a channel, watch. No account. LYGO player by Justin Helmer / Excavationpro. Tip: PayPal.me/ExcavationPro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="keywords" content="LYGO TV, free IPTV, public M3U, iptv-org, Free-TV GitHub, Rumble live, Excavationpro, chatagent.ca">
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css">
+<link rel="stylesheet" href="/sources/app.css?v=1.6.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://chatagent.ca/sources/">
-<meta property="og:title" content="LYGO TV — free public channels in the browser">
-<meta property="og:description" content="Click a channel. GitHub public catalogs plus Excavationpro Rumble LIVE. No account required.">
+<meta property="og:title" content="LYGO TV — free online TV player">
+<meta property="og:description" content="Pick a list. Click a channel. Watch free TV in your browser. No account.">
 <meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/assets/og-home.jpg">
 <meta property="og:image:width" content="1200">
@@ -30,8 +30,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
-<meta name="twitter:title" content="LYGO TV — free public channels in the browser">
-<meta name="twitter:description" content="Click a channel. GitHub public catalogs plus Excavationpro Rumble LIVE.">
+<meta name="twitter:title" content="LYGO TV — free online TV player">
+<meta name="twitter:description" content="Pick a list. Click a channel. Watch free TV in your browser.">
 <meta name="twitter:image" content="https://chatagent.ca/assets/og-home.jpg">
 <meta name="twitter:image:alt" content="LYGO TV on chatagent.ca">
 <script type="application/ld+json">
@@ -56,30 +56,31 @@
       <video id="vid" controls playsinline></video>
       <audio id="aud" controls hidden></audio>
       <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="idle" id="idle">Click a channel →</div>
     </div>
     <div class="hud">
       <p class="now" id="now">LYGO TV</p>
-      <p class="status" id="status">Loading channels…</p>
+      <p class="status" id="status">Opening TV…</p>
       <div class="row">
-        <button class="btn ghost" type="button" id="prev">◀ Prev</button>
-        <button class="btn" type="button" id="next">Next ▶</button>
-        <button class="btn ghost" type="button" id="copy-url">Copy stream URL</button>
+        <button class="btn ghost" type="button" id="prev" title="Previous channel">◀</button>
+        <button class="btn" type="button" id="next" title="Next channel">Next ▶</button>
+        <button class="btn ghost" type="button" id="fs" title="Fullscreen">Fullscreen</button>
       </div>
     </div>
   </div>
   <aside class="side">
-    <p class="kicker">Δ9Φ963 · LYGO TV</p>
-    <h1>Channels</h1>
-    <p class="note">GitHub public M3U catalogs (iptv-org + Free-TV) plus Excavationpro’s monetized Rumble live. Click a channel.</p>
+    <h1>LYGO TV</h1>
+    <p class="note">Pick a list → click a channel → watch. Free. No login. ← → next · F fullscreen · / search</p>
+    <div class="tabs" id="tabs"></div>
     <div class="chips" id="chips"></div>
-    <input id="q" type="search" placeholder="Search channels" autocomplete="off">
+    <input id="q" type="search" placeholder="Search this list" autocomplete="off">
     <p class="note" id="count">0 channels</p>
     <ul class="list" id="channels"></ul>
-    <div class="add">
-      <p class="note">Add a public HTTPS stream</p>
+    <details class="add">
+      <summary>Paste your own stream</summary>
       <input id="custom" type="url" placeholder="https://…m3u8">
-      <button class="btn" type="button" id="add">Play URL</button>
-    </div>
+      <button class="btn" type="button" id="add">Play</button>
+    </details>
     <div class="donate">
       <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
       <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon</a>
@@ -91,6 +92,6 @@
   <p><strong>Disclaimer.</strong> LYGO TV is a public catalog browser. Most channel streams are hosted by third parties (including GitHub-published M3U lists from iptv-org and Free-TV). We do not operate those CDNs, do not decrypt pay-TV, and cannot guarantee a stream is live, legal in your region, or accurate. Geo-blocks, dead links, and CORS limits are named as misses — we do not invent a working channel. Excavationpro Rumble LIVE is our own monetized room (referral pub <code>1th29y</code>). Use at your own judgment. Optional support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a>.</p>
 </footer>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js"></script>
+<script src="/sources/app.js?v=1.6.0"></script>
 </body>
 </html>

@@ -1,15 +1,36 @@
-/* LYGO TV — bouquet → channel list → click to play (music-player flow). */
+/* LYGO TV — pick a list, click a channel, watch. */
 (function () {
   "use strict";
   const G = window.LYGO_SRC_GUARD;
   const HLS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js";
   const MAX_PLAYLIST = 2500;
   const MAX_BYTES = 8000000;
-  const SKIP_MAX = 10;
+  const SKIP_MAX = 4;
+  const CAT_VER = "1.6.0";
+
+  const TABS = [
+    { id: "watch", label: "Watch" },
+    { id: "lists", label: "Lists" },
+    { id: "topics", label: "Topics" },
+    { id: "places", label: "Places" },
+    { id: "langs", label: "Languages" }
+  ];
+  const LIST_IDS = { worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1 };
+  const TOPIC_IDS = {
+    culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,
+    outdoor: 1, religious: 1, classic: 1, relax: 1, general: 1, science: 1,
+    music: 1, sports: 1, weather: 1, animation: 1, comedy: 1, series: 1,
+    cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1, news: 1
+  };
+  const LANG_IDS = {
+    ara: 1, fas: 1, kur: 1, rus: 1, ukr: 1, zho: 1, spa: 1, por: 1,
+    tur: 1, hin: 1, urd: 1, ben: 1, tam: 1, swa: 1, amh: 1, heb: 1
+  };
 
   const $ = function (id) { return document.getElementById(id); };
   const st = {
     catalog: null,
+    tab: "watch",
     bouquet: "",
     channels: [],
     i: -1,
@@ -21,10 +42,23 @@
 
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
 
+  function groupOf(id) {
+    if (id === "live") return "watch";
+    if (LIST_IDS[id]) return "lists";
+    if (TOPIC_IDS[id]) return "topics";
+    if (LANG_IDS[id]) return "langs";
+    return "places";
+  }
+
   function setStatus(msg, kind) {
     const el = $("status");
     el.textContent = msg || "";
     el.style.color = kind === "ok" ? "#34d399" : kind === "bad" ? "#fb923c" : "#8b9bb4";
+  }
+
+  function setIdle(on) {
+    const el = $("idle");
+    if (el) el.hidden = !on;
   }
 
   function kindOfUrl(url) {
@@ -114,23 +148,28 @@
 
   function skipOrStop(why) {
     setStatus(why, "bad");
-    if (st.skip >= SKIP_MAX) return;
+    if (st.skip >= SKIP_MAX) {
+      setStatus(why + " Click another channel.", "bad");
+      setIdle(true);
+      return;
+    }
     st.skip += 1;
-    window.setTimeout(function () { next(1, true); }, 400);
+    window.setTimeout(function () { next(1, true); }, 350);
   }
 
   function playHls(url) {
     const v = $("vid");
     v.hidden = false;
+    setIdle(false);
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = url;
       tryPlay(v);
-      setStatus("Playing in this page.", "ok");
+      setStatus("Playing.", "ok");
       return;
     }
     loadHls(function (err) {
       if (err || !window.Hls || !window.Hls.isSupported()) {
-        skipOrStop("No HLS in this browser — skipped.");
+        skipOrStop("This browser cannot play this stream.");
         return;
       }
       if (st.hls) { try { st.hls.destroy(); } catch (e2) {} }
@@ -141,11 +180,12 @@
       });
       st.hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
         st.skip = 0;
-        setStatus("Playing in this page.", "ok");
+        setIdle(false);
+        setStatus("Playing.", "ok");
         tryPlay(v);
       });
       st.hls.on(window.Hls.Events.ERROR, function (_e, data) {
-        if (data && data.fatal) skipOrStop("Channel blocked in browser — next…");
+        if (data && data.fatal) skipOrStop("This channel is blocked here — next…");
       });
       st.hls.loadSource(url);
       st.hls.attachMedia(v);
@@ -155,31 +195,35 @@
   function playAt(i, fromSkip) {
     if (!fromSkip) st.skip = 0;
     const list = visible();
-    if (!list.length) { setStatus("No HTTPS channels in this bouquet."); return; }
+    if (!list.length) {
+      setStatus("No playable channels in this list. Try another list.");
+      setIdle(true);
+      return;
+    }
     if (i < 0) i = list.length - 1;
     if (i >= list.length) i = 0;
     const ch = list[i];
     st.i = st.channels.indexOf(ch);
     $("now").textContent = ch.title;
-    $("copy-url").dataset.url = ch.url;
     paintList();
     stopMedia();
+    setIdle(false);
     if (ch.kind === "youtube" || ch.kind === "rumble") {
       $("vid").hidden = true;
       $("yt").src = ch.url;
       $("yt").hidden = false;
-      setStatus("Playing in this page.", "ok");
+      setStatus("Playing.", "ok");
       return;
     }
     if (!ch.https) {
-      skipOrStop("HTTP stream — skipped (page is HTTPS).");
+      skipOrStop("HTTP stream skipped (this page is HTTPS).");
       return;
     }
     if (ch.kind === "audio") {
       $("aud").hidden = false;
       $("aud").src = ch.url;
       tryPlay($("aud"));
-      setStatus("Playing in this page.", "ok");
+      setStatus("Playing.", "ok");
       return;
     }
     playHls(ch.url);
@@ -195,23 +239,45 @@
     playAt(idx, fromSkip);
   }
 
+  function paintTabs() {
+    const box = $("tabs");
+    box.innerHTML = "";
+    TABS.forEach(function (t) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "tab" + (st.tab === t.id ? " on" : "");
+      el.textContent = t.label;
+      el.setAttribute("aria-pressed", st.tab === t.id ? "true" : "false");
+      el.addEventListener("click", function () {
+        st.tab = t.id;
+        paintTabs();
+        paintChips();
+      });
+      box.appendChild(el);
+    });
+  }
+
   function paintChips() {
     const box = $("chips");
     box.innerHTML = "";
-    if ((st.catalog.live || []).length) {
-      const live = document.createElement("button");
-      live.type = "button";
-      live.className = "chip" + (st.bouquet === "live" ? " on" : "");
-      live.textContent = "Excavationpro";
-      live.addEventListener("click", function () { loadLive(); });
-      box.appendChild(live);
+    if (st.tab === "watch") {
+      if ((st.catalog.live || []).length) {
+        const live = document.createElement("button");
+        live.type = "button";
+        live.className = "chip" + (st.bouquet === "live" ? " on" : "");
+        live.textContent = "Excavationpro";
+        live.addEventListener("click", function () { loadLive(); });
+        box.appendChild(live);
+      }
+      return;
     }
     (st.catalog.bouquets || []).forEach(function (b) {
+      if (groupOf(b.id) !== st.tab) return;
       const el = document.createElement("button");
       el.type = "button";
       el.className = "chip" + (st.bouquet === b.id ? " on" : "");
       el.textContent = b.title;
-      el.addEventListener("click", function () { loadBouquet(b); });
+      el.addEventListener("click", function () { loadBouquet(b, false); });
       box.appendChild(el);
     });
   }
@@ -220,7 +286,7 @@
     const ul = $("channels");
     ul.innerHTML = "";
     const list = visible();
-    $("count").textContent = list.length + " channels";
+    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels");
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       if (st.channels[st.i] === ch) li.className = "on";
@@ -234,13 +300,15 @@
 
   function loadLive() {
     st.bouquet = "live";
+    st.tab = "watch";
     st.channels = (st.catalog.live || []).map(function (x) {
       return { title: x.title, url: x.url, https: true, kind: x.kind || kindOfUrl(x.url) };
     });
     st.i = -1;
+    paintTabs();
     paintChips();
     paintList();
-    setStatus("Excavationpro — Rumble LIVE (monetized).");
+    setStatus("Excavationpro LIVE — playing.");
     if (st.channels.length) playAt(0, false);
     fetch("/data/rumble-live.json?t=" + Date.now(), { cache: "no-store", credentials: "omit" })
       .then(function (r) { return r.ok ? r.json() : null; })
@@ -255,9 +323,11 @@
       .catch(function () {});
   }
 
-  async function loadBouquet(b) {
-    if (!G.allowFetch(b.url)) { setStatus("Blocked playlist URL.", "bad"); return; }
+  async function loadBouquet(b, autoplay) {
+    if (!G.allowFetch(b.url)) { setStatus("That list URL is blocked.", "bad"); return; }
     st.bouquet = b.id;
+    st.tab = groupOf(b.id);
+    paintTabs();
     paintChips();
     setStatus("Loading " + b.title + "…");
     const ctrl = new AbortController();
@@ -272,22 +342,36 @@
       st.i = -1;
       paintList();
       const vis = visible();
-      setStatus(b.title + " — " + vis.length + " HTTPS channels. Click one.");
-      if (vis.length) playAt(0, false);
+      if (!vis.length) {
+        setStatus(b.title + " — no HTTPS channels. Try another list.", "bad");
+        setIdle(true);
+        return;
+      }
+      setStatus(b.title + " — click a channel.");
+      setIdle(true);
+      if (autoplay) playAt(0, false);
     } catch (e) {
-      setStatus("Could not load bouquet (" + (e.message || e) + ").", "bad");
+      setStatus("Could not load that list. Try another.", "bad");
+      setIdle(true);
     } finally {
       window.clearTimeout(t);
     }
   }
 
+  function toggleFs() {
+    const box = document.querySelector(".player-box");
+    if (!box) return;
+    if (!document.fullscreenElement) {
+      const req = box.requestFullscreen || box.webkitRequestFullscreen;
+      if (req) req.call(box).catch(function () {});
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen().catch(function () {});
+    }
+  }
+
   $("prev").addEventListener("click", function () { next(-1, false); });
   $("next").addEventListener("click", function () { next(1, false); });
-  $("copy-url").addEventListener("click", function () {
-    const u = $("copy-url").dataset.url || "";
-    if (!u) return;
-    navigator.clipboard.writeText(u).then(function () { setStatus("URL copied.", "ok"); });
-  });
+  $("fs").addEventListener("click", function () { toggleFs(); });
   $("q").addEventListener("input", function () {
     st.filter = $("q").value || "";
     paintList();
@@ -300,16 +384,33 @@
     paintList();
     playAt(0, false);
   });
+  $("custom").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") $("add").click();
+  });
+  document.addEventListener("keydown", function (e) {
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); next(-1, false); }
+    if (e.key === "ArrowRight") { e.preventDefault(); next(1, false); }
+    if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFs(); }
+    if (e.key === "/") { e.preventDefault(); $("q").focus(); }
+  });
 
-  fetch("catalog.json?v=1.5.0", { credentials: "omit", cache: "no-store" })
+  fetch("catalog.json?v=" + CAT_VER, { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       st.catalog = j;
+      paintTabs();
       paintChips();
-      const id = j.default_bouquet || "culture";
+      const id = j.default_bouquet || "live";
+      if (id === "live" && (j.live || []).length) {
+        loadLive();
+        return;
+      }
       const b = (j.bouquets || []).filter(function (x) { return x.id === id; })[0] || (j.bouquets || [])[0];
-      if (b) loadBouquet(b);
+      if (b) loadBouquet(b, false);
       else if ((j.live || []).length) loadLive();
+      else setStatus("No lists in catalog.", "bad");
     })
-    .catch(function () { setStatus("catalog.json miss.", "bad"); });
+    .catch(function () { setStatus("Could not load the channel catalog.", "bad"); });
 })();
