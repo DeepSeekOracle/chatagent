@@ -1557,7 +1557,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=15' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=16' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -1565,6 +1565,7 @@
           "<h1>LATTICE GOLF</h1>" +
           "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
           "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
+          "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
           "<p class='kicker' style='margin-top:.75rem'>Choose golfer</p>" +
@@ -1612,6 +1613,14 @@
       if (go === "endless") startRound("endless");
       if (go === "campaign") startCampaign();
     };
+    const mr = $("menuRadio");
+    if (mr) {
+      mr.onclick = function (e) {
+        e.stopPropagation();
+        const b = $("radioPlay");
+        if (b) b.click();
+      };
+    }
   }
 
   function startCampaign() {
