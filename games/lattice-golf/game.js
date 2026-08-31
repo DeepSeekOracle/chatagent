@@ -1141,96 +1141,188 @@
 
   function randomHole() {
     const rng = G.rng;
-    const pars = [3, 3, 4, 4, 4, 4, 5, 5, 5];
-    const par = pars[(rng() * pars.length) | 0];
-    const shapes = par === 3
-      ? ["island", "redan", "postage", "long3"]
-      : par === 5
-        ? ["switch5", "creek5", "cape5", "horse5"]
-        : ["switch", "cape", "horse", "bottle", "dog2"];
-    const shape = shapes[(rng() * shapes.length) | 0];
-    let path, water = [], bunkers = [], groves = [], forests = [], hint = "Play the fairway.", fairW, greenR;
-    if (shape === "island") {
-      const yds = 185 + rng() * 50;
-      path = [{ x: 0, y: 0 }, { x: yds, y: (rng() * 2 - 1) * 10 }];
-      water = [{ x: 20, y: -60, w: yds * 0.74, h: 120 }];
-      hint = "Island. Every line is wet except the green.";
-      fairW = 14; greenR = 11;
-    } else if (shape === "postage") {
-      const yds = 118 + rng() * 28;
-      path = [{ x: 0, y: 0 }, { x: yds, y: 0 }];
-      bunkers = [{ x: yds * 0.72, y: 0, r: 14 }];
-      hint = "Postage stamp. Carry the front bunker.";
-      fairW = 15; greenR = 9;
-    } else if (shape === "redan" || shape === "long3") {
-      const yds = 215 + rng() * 40;
-      const lat = 40 + rng() * 30;
+    const j = function (n, s) { return n + (rng() * 2 - 1) * s; };
+    const par = [3, 4, 4, 4, 5, 5, 5][(rng() * 7) | 0];
+    const pack = par === 3
+      ? ["alcatraz", "needle3", "redan", "postage"]
+      : par === 4
+        ? ["zigzag", "hairpin", "gauntlet", "capeKick", "pretzel"]
+        : ["serpent", "archipelago", "spiral", "doubleCape", "maze"];
+    const shape = pack[(rng() * pack.length) | 0];
+    let path = [], water = [], bunkers = [], groves = [], hint = "Wild hole.", fairW = 18, greenR = 9;
+    if (shape === "alcatraz") {
+      const yds = 220 + rng() * 45;
+      path = [{ x: 0, y: 0 }, { x: yds, y: j(0, 12) }];
+      water = [{ x: 18, y: -70, w: yds * 0.78, h: 140 }];
+      hint = "Alcatraz. Tiny island. One club, no miss.";
+      fairW = 12; greenR = 8;
+    } else if (shape === "needle3") {
+      const yds = 230 + rng() * 40;
+      path = [{ x: 0, y: 0 }, { x: yds * 0.55, y: j(50, 20) }, { x: yds, y: j(-20, 16) }];
+      water = [{ x: 24, y: -55, w: yds * 0.7, h: 110 }];
+      hint = "Needle over water, then a kick. Both lines are wet if you're short.";
+      fairW = 14; greenR = 9;
+    } else if (shape === "redan") {
+      const yds = 235 + rng() * 35;
+      const lat = 70 + rng() * 40;
       path = [{ x: 0, y: 0 }, { x: yds, y: lat }];
-      bunkers = [{ x: yds * 0.78, y: lat * 0.7, r: 15 }, { x: yds * 0.92, y: lat + 18, r: 11 }];
-      hint = "Long redan. Diagonal green. Bunker on the pin line.";
-      fairW = 20; greenR = 13;
-    } else if (shape === "switch") {
-      path = [{ x: 0, y: 0 }, { x: 250 + rng() * 20, y: -12 }, { x: 390 + rng() * 20, y: 70 + rng() * 20 }, { x: 530 + rng() * 25, y: 20 + rng() * 30 }];
-      bunkers = [{ x: 248, y: -30, r: 13 }, { x: 388, y: 52, r: 12 }, { x: 520, y: 40, r: 11 }];
-      hint = "Two-turn par 4. Play each corner. Trees own the cuts.";
-      fairW = 25;
-    } else if (shape === "dog2") {
-      const sign = rng() < 0.5 ? 1 : -1;
-      path = [{ x: 0, y: 0 }, { x: 255, y: -10 * sign }, { x: 400, y: 55 * sign }, { x: 540, y: 120 * sign }];
-      bunkers = [{ x: 248, y: -28 * sign, r: 13 }, { x: 392, y: 40 * sign, r: 12 }, { x: 524, y: 136 * sign, r: 11 }];
-      hint = "Long double dogleg. Two elbows. Do not bomb the pin.";
-      fairW = 25;
-    } else if (shape === "cape") {
-      path = [{ x: 0, y: 0 }, { x: 220, y: -80 }, { x: 380, y: -24 }, { x: 510, y: 40 }];
-      water = [{ x: 40, y: -28, w: 360, h: 90 }];
-      bunkers = [{ x: 212, y: -96, r: 12 }, { x: 496, y: 56, r: 11 }];
-      hint = "Cape then a turn. Water on the pin line. Driver cannot clear it.";
-      fairW = 26;
-    } else if (shape === "horse") {
-      path = [{ x: 0, y: 0 }, { x: 240, y: 16 }, { x: 330, y: 110 }, { x: 500, y: 28 }];
-      bunkers = [{ x: 232, y: 34, r: 13 }, { x: 322, y: 126, r: 13 }, { x: 486, y: 44, r: 11 }];
-      hint = "Horseshoe. The inside is woods. Go out and around.";
-      fairW = 24;
-    } else if (shape === "bottle") {
-      path = [{ x: 0, y: 0 }, { x: 250, y: 4 }, { x: 370, y: 75 }, { x: 520, y: 50 }];
-      bunkers = [{ x: 238, y: -20, r: 15 }, { x: 246, y: 28, r: 15 }, { x: 362, y: 58, r: 12 }, { x: 506, y: 66, r: 11 }];
-      hint = "Bottleneck landing, then a dune turn.";
-      fairW = 22;
-    } else if (shape === "switch5") {
-      path = [{ x: 0, y: 0 }, { x: 230, y: 90 }, { x: 450, y: -90 }, { x: 620, y: -15 }, { x: 730, y: 50 }];
-      bunkers = [{ x: 222, y: 108, r: 14 }, { x: 442, y: -108, r: 13 }, { x: 612, y: 2, r: 12 }, { x: 716, y: 66, r: 11 }];
-      hint = "Switchback five. Four legs. Three honest shots around.";
-      fairW = 28;
-    } else if (shape === "creek5") {
-      path = [{ x: 0, y: 0 }, { x: 230, y: 10 }, { x: 410, y: 10 }, { x: 540, y: -75 }, { x: 710, y: 20 }];
-      water = [{ x: 188, y: -40, w: 50, h: 92 }, { x: 430, y: -80, w: 54, h: 96 }];
-      bunkers = [{ x: 400, y: 28, r: 13 }, { x: 532, y: -56, r: 12 }, { x: 696, y: 36, r: 11 }];
-      hint = "Two creeks, then a last dogleg.";
-      fairW = 28;
-    } else if (shape === "cape5") {
-      path = [{ x: 0, y: 0 }, { x: 230, y: -85 }, { x: 430, y: -20 }, { x: 600, y: 70 }, { x: 720, y: 20 }];
-      water = [{ x: 40, y: -30, w: 420, h: 88 }];
-      bunkers = [{ x: 222, y: -102, r: 13 }, { x: 592, y: 88, r: 12 }, { x: 706, y: 36, r: 11 }];
-      hint = "Long cape five. Water on the chord. Play the shore, then inland.";
-      fairW = 27;
+      bunkers = [{ x: yds * 0.74, y: lat * 0.62, r: 16 }, { x: yds * 0.9, y: lat + 22, r: 12 }];
+      hint = "Extreme redan. Long diagonal. The bunker is the pin line.";
+      fairW = 16; greenR = 10;
+    } else if (shape === "postage") {
+      const yds = 105 + rng() * 22;
+      path = [{ x: 0, y: 0 }, { x: yds, y: 0 }];
+      bunkers = [{ x: yds * 0.68, y: 0, r: 16 }, { x: yds, y: -14, r: 10 }, { x: yds, y: 14, r: 10 }];
+      water = [{ x: 20, y: -48, w: yds * 0.5, h: 96 }];
+      hint = "Postage from hell. Water, then a bunker ring around a thimble green.";
+      fairW = 12; greenR = 7;
+    } else if (shape === "zigzag") {
+      const s = rng() < 0.5 ? 1 : -1;
+      path = [
+        { x: 0, y: 0 },
+        { x: 200, y: 150 * s },
+        { x: 390, y: -145 * s },
+        { x: 560, y: 140 * s },
+        { x: 700, y: -20 * s },
+      ];
+      hint = "Zigzag four. Four elbows. Every cut is trees. Walk it.";
+      fairW = 17;
+    } else if (shape === "hairpin") {
+      const s = rng() < 0.5 ? 1 : -1;
+      path = [
+        { x: 0, y: 0 },
+        { x: 280, y: 18 * s },
+        { x: 310, y: 165 * s },
+        { x: 560, y: 155 * s },
+        { x: 620, y: 40 * s },
+      ];
+      water = [{ x: 50, y: s > 0 ? 42 : -142, w: 200, h: 100 }];
+      hint = "Hairpin. Almost 180°. Inside is dead. Go out, turn, come back.";
+      fairW = 16;
+    } else if (shape === "gauntlet") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 240, y: -8 },
+        { x: 380, y: 90 },
+        { x: 520, y: -70 },
+        { x: 660, y: 50 },
+      ];
+      path.forEach(function (pt, i) {
+        if (!i) return;
+        bunkers.push({ x: pt.x - 8, y: pt.y - 22, r: 13 });
+        bunkers.push({ x: pt.x + 6, y: pt.y + 22, r: 13 });
+      });
+      hint = "Gauntlet. Bunkers gate every landing. The fairway is a slot.";
+      fairW = 16;
+    } else if (shape === "capeKick") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 230, y: -110 },
+        { x: 420, y: -30 },
+        { x: 560, y: 90 },
+        { x: 680, y: 20 },
+      ];
+      water = [{ x: 30, y: -40, w: 500, h: 100 }];
+      hint = "Cape, kick, cape again. Water owns the chord. Driver never clears it.";
+      fairW = 18;
+    } else if (shape === "pretzel") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 210, y: 120 },
+        { x: 250, y: -80 },
+        { x: 480, y: -100 },
+        { x: 520, y: 90 },
+        { x: 700, y: 10 },
+      ];
+      hint = "Pretzel. The fairway folds over itself. Five turns. No hero line.";
+      fairW = 17;
+    } else if (shape === "serpent") {
+      const s = rng() < 0.5 ? 1 : -1;
+      path = [
+        { x: 0, y: 0 },
+        { x: 200, y: 160 * s },
+        { x: 400, y: -165 * s },
+        { x: 580, y: 155 * s },
+        { x: 740, y: -140 * s },
+        { x: 880, y: 30 * s },
+      ];
+      hint = "Serpent five. Six legs. This is a hike.";
+      fairW = 18;
+    } else if (shape === "archipelago") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 210, y: 20 },
+        { x: 360, y: -90 },
+        { x: 530, y: 80 },
+        { x: 700, y: -30 },
+        { x: 820, y: 40 },
+      ];
+      water = [
+        { x: 160, y: -50, w: 70, h: 110 },
+        { x: 400, y: -40, w: 70, h: 110 },
+        { x: 620, y: -70, w: 64, h: 120 },
+      ];
+      hint = "Archipelago. Three carries on a snaking five. Short is the drink.";
+      fairW = 17;
+    } else if (shape === "spiral") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 220, y: 40 },
+        { x: 360, y: 170 },
+        { x: 280, y: 280 },
+        { x: 480, y: 300 },
+        { x: 640, y: 160 },
+        { x: 760, y: 40 },
+      ];
+      hint = "Spiral. The hole coils. You play around the woods, never through.";
+      fairW = 17;
+    } else if (shape === "doubleCape") {
+      path = [
+        { x: 0, y: 0 },
+        { x: 210, y: -100 },
+        { x: 400, y: 20 },
+        { x: 580, y: -110 },
+        { x: 760, y: 30 },
+        { x: 860, y: 80 },
+      ];
+      water = [
+        { x: 30, y: -36, w: 340, h: 92 },
+        { x: 420, y: -40, w: 280, h: 92 },
+      ];
+      hint = "Double cape. Two bites of water. Neither is driveable.";
+      fairW = 18;
     } else {
-      path = [{ x: 0, y: 0 }, { x: 240, y: 20 }, { x: 360, y: 115 }, { x: 560, y: 30 }, { x: 710, y: 70 }];
-      bunkers = [{ x: 232, y: 38, r: 13 }, { x: 352, y: 132, r: 13 }, { x: 552, y: 48, r: 12 }, { x: 696, y: 86, r: 11 }];
-      hint = "Horseshoe five. The inside is dead. Walk the rim.";
-      fairW = 27;
+      path = [
+        { x: 0, y: 0 },
+        { x: 190, y: 130 },
+        { x: 360, y: 20 },
+        { x: 390, y: -130 },
+        { x: 580, y: -40 },
+        { x: 620, y: 140 },
+        { x: 800, y: 20 },
+      ];
+      water = [{ x: 300, y: -50, w: 80, h: 90 }];
+      hint = "Maze five. Six corners and a creek. The pin is a rumor.";
+      fairW = 16;
     }
+    path = path.map(function (p) { return { x: j(p.x, 8), y: j(p.y, 10) }; });
+    path[0] = { x: 0, y: 0 };
     path.forEach(function (pt, i) {
-      if (i > 0 && i < path.length - 1) bunkers.push({ x: pt.x, y: pt.y + (pt.y >= 0 ? 18 : -18), r: 11 + rng() * 3 });
+      if (i === 0) return;
+      const side = (i % 2 ? 1 : -1) * (20 + rng() * 8);
+      bunkers.push({ x: pt.x + j(0, 10), y: pt.y + side, r: 12 + rng() * 4 });
     });
-    if (path.length >= 3) forests = elbowForest(path, fairW || 30);
-    return H(par, "Random " + shape, path, {
+    const last = path[path.length - 1];
+    groves.push({ x: last.x - 30, y: last.y + 40, n: 5, r: 16 });
+    const forests = path.length >= 3 ? elbowForest(path, fairW) : [];
+    return H(par, "Wild " + shape, path, {
       bunkers: bunkers,
       water: water,
       groves: groves,
       forests: forests,
       hint: hint,
       fairW: fairW,
-      greenR: greenR || (11 + rng() * 5),
+      greenR: greenR,
     });
   }
 
@@ -1244,7 +1336,7 @@
     G.hi = 0;
     if (mode === "endless") {
       G.holes = [randomHole()];
-      G.course = { id: "endless", name: "Endless walk", wind: [1, 7], lore: "Random holes. End the walk to post the card." };
+      G.course = { id: "endless", name: "Endless wilds", wind: [4, 12], lore: "Extreme random holes. End the walk to post the card." };
     } else if (mode === "18") G.holes = PINE.holes.concat(CORAL.holes);
     else G.holes = (course || PINE).holes.slice();
     if (mode === "18") G.course = { id: "haven-open", name: "Haven Open 18", wind: [1, 7], lore: "Pine Haven front nine, Coral Lattice back nine." };
@@ -1326,7 +1418,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=11' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=12' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -1340,7 +1432,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>Random holes. Count the walk.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End walk to post the card.</span></button>" +
             "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of rounds.</span></a>" +
           "</div>" +
