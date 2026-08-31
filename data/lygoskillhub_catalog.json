@@ -2,7 +2,7 @@
   "signature": "Delta9Phi963-LYGOSKILLHUB-CATALOG-v1.5",
   "name": "LYGOSKILLHUB",
   "version": "1.5.0",
-  "updated_utc": "2026-08-28T04:08:53+00:00",
+  "updated_utc": "2026-08-24T13:55:56+00:00",
   "publisher": "deepseekoracle",
   "steward": "Justin Helmer / Excavationpro / Lightfather",
   "clawhub_profile": "https://clawhub.ai/deepseekoracle",
@@ -24,18 +24,18 @@
     "excavationpro_mirror": "https://deepseekoracle.github.io/Excavationpro/LYGOSKILLHUB.html"
   },
   "counts": {
-    "total": 112,
-    "skills": 91,
+    "total": 110,
+    "skills": 90,
     "plugins": 1,
     "downloads": 4,
-    "surfaces": 17,
+    "surfaces": 16,
     "clawhub_skills_indexed": 90,
     "local_only_skills": 0,
     "clawhub_profile_skills_listed": 90,
     "stack_skills_json": 39
   },
-  "skill_count": 91,
-  "item_count": 112,
+  "skill_count": 90,
+  "item_count": 110,
   "categories": [
     "champion",
     "creative",
@@ -50,25 +50,6 @@
     "tools"
   ],
   "skills": [
-    {
-      "kind": "skill",
-      "slug": "lygo-public-witness",
-      "name": "LYGO Public Witness",
-      "summary": "Public feeds are REFERENCE; dual ledgers, kernel eggs, and Haven Star Chart are CANON. HTTPS GET allowlist (USGS, NASA EONET, ISS, lattice JSON). Never invent missing sources. Never live Star Chart write. Optional localhost Ollama.",
-      "downloads": 0,
-      "version": "1.0.0",
-      "published": true,
-      "category": "lattice",
-      "clawhub_url": "https://clawhub.ai/deepseekoracle/skills/lygo-public-witness",
-      "install": "npx clawhub@latest install deepseekoracle/lygo-public-witness",
-      "has_local_skill": true,
-      "has_stack_mirror": true,
-      "source": "mirror",
-      "channel": "public_tentacle",
-      "channel_label": "Public tentacle (ClawHub)",
-      "has_full_zip": true,
-      "full_lygo": "https://chatagent.ca/lygoskillhub.html#full-lygo"
-    },
     {
       "kind": "skill",
       "slug": "eternal-haven-lore-pack",
@@ -1357,9 +1338,9 @@
       "kind": "skill",
       "slug": "lygo-ops-detector",
       "name": "LYGO Ops Detector",
-      "summary": "LYGO Ops Detector — local AETHONΔ9 discourse heuristics for evasion, half-truth certainty, saturation bait, coordination language, and policy-refusal signals in operator-supplied text. Opt-in only. Stdlib CLI; --text-file/--assoc-file require --i-consent; eval writes under tests/. Not for doxing or identity profiling. Dual-threshold (operational 0.65 vs calibration). Pairs with lygo-flame-ward. Triggers: lygo ops detector, aethon d9, evasion index (explicit).",
+      "summary": "LYGO Ops Detector — local AETHONΔ9 discourse heuristics plus weighted public metadata (geo mismatch, VPN-hint, HTTPS-cited incidents, same-geo+scripted batch). Opt-in only. Stdlib CLI; file reads require --i-consent. Not for doxing or nationality guilt. Dual-threshold (operational 0.65 vs calibration). Pairs with lygo-flame-ward.",
       "downloads": 0,
-      "version": "1.3.1",
+      "version": "1.4.0",
       "published": true,
       "category": "security",
       "clawhub_url": "https://clawhub.ai/deepseekoracle/lygo-ops-detector",
@@ -1907,22 +1888,8 @@
       "source": "surface",
       "channel": "surface",
       "channel_label": "Lattice surface"
-    },
-    {
-      "kind": "surface",
-      "slug": "public-witness",
-      "name": "LYGO Public Witness (site)",
-      "summary": "Two globes: Earth REFERENCE (USGS/EONET/ISS) and lattice CANON (dual ledgers, eggs, Star Chart). Empty beats fake.",
-      "category": "surface",
-      "url": "https://chatagent.ca/witness/",
-      "mirrors": [
-        "https://eternalhaven.ca/witness/"
-      ],
-      "source": "surface",
-      "channel": "surface",
-      "channel_label": "Lattice surface"
     }
   ],
   "note": "Immutable LYGO skill ledger for chatagent.ca/lygoskillhub.html. Every clawhub/skills.json entry + mirror is listed. Public tentacles → ClawHub (all green security audits); FULL unlocked engineer packs → #full-lygo vault only.",
-  "catalog_sha256": "bcefbb55a25309093943f6e0c05d2c501e11c3972bfb08448224a1c06f66d828"
+  "catalog_sha256": "71acb71376883e89324632168b8f4cb7d62b4da25f8b438b3236cbee5d034ed1"
 }

@@ -1,7 +1,7 @@
 {
   "signature": "Delta9Phi963-FULL-LYGO-SKILLS-v2",
   "version": "2.1.0",
-  "updated_utc": "2026-08-28T04:08:53+00:00",
+  "updated_utc": "2026-08-31T03:39:07Z",
   "channel": "FULL_LYGO_ENGINEER",
   "clawhub": "never",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
@@ -25,7 +25,6 @@
   "cyborg_principle": "boot limbs → task with Continuum self-police → can_claim_done only when claims hold → human consent for plant/publish",
   "featured": [
     "lygo-cyborg-kernel",
-    "lygo-public-witness",
     "lygo-continuum",
     "lygo-continuum-integrator",
     "lygo-quantum-attestor",
@@ -37,23 +36,6 @@
     "lygo-emotional-ram"
   ],
   "skills": [
-    {
-      "slug": "lygo-public-witness",
-      "name": "LYGO Public Witness — FULL zip",
-      "package": "lygo-public-witness-full",
-      "zip": "lygo-public-witness-full.zip",
-      "zip_rel": "dist/lygo-public-witness-full.zip",
-      "zip_sha256": "58cdd283e55fdaf60cafd9ebcc1b99e224a5efa4af51c96dc1b720ee6e632a57",
-      "bytes": 260480,
-      "file_count": 22,
-      "role": "Unlocked Public Witness: labeled REFERENCE vs CANON overlay CLI + website + optional Celestrak REFERENCE feeds. Never live Star Chart write.",
-      "tier": "lattice",
-      "featured": true,
-      "harm_default": "read_mostly",
-      "source_path": "I:\\E Drive\\.grok\\skills\\lygo-public-witness",
-      "tier_label": "Lattice mesh",
-      "channel_label": "FULL engineer zip (not ClawHub)"
-    },
     {
       "slug": "lygo-public-agent-join-kit",
       "name": "Public Agent Join Kit — FULL zip — FULL zip",
@@ -483,14 +465,14 @@
       "package": "lygo-ops-detector-full",
       "zip": "lygo-ops-detector-full.zip",
       "zip_rel": "dist/lygo-ops-detector-full.zip",
-      "zip_sha256": "fe0091c7a844bbfcd8a50c1d90c0bb470d867db9633a491724fe13477f41bb63",
-      "bytes": 34110,
+      "zip_sha256": "aa338f15718a77de30f0721dea428dc7511eca50fe37edec5f69b007b7a79946",
+      "bytes": 39896,
       "file_count": 15,
-      "role": "AETHONΔ9 discourse ops/evasion heuristics (FULL eval suite)",
+      "role": "AETHONΔ9 discourse ops/evasion heuristics + weighted public metadata (FULL eval suite)",
       "tier": "security",
       "featured": false,
       "harm_default": "consent_gated",
-      "source_path": "I:\\E Drive\\lygo-protocol-stack\\clawhub\\mirrors\\lygo-ops-detector",
+      "source_path": "I:\\\\E Drive\\\\lygo-protocol-stack\\\\clawhub\\\\mirrors\\\\lygo-ops-detector",
       "tier_label": "Security / audit",
       "channel_label": "FULL engineer zip (not ClawHub)"
     },
