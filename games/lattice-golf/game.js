@@ -3,7 +3,8 @@
   "use strict";
 
   const SAVE_KEY = "lygo-lattice-golf-v1";
-  const CUP = 2.4;
+  const CUP = 3.2;
+  const GIMME = 1.8;
   const CENTER = 140;
   const CLUBS = [
     { id: "dr", name: "Driver", min: 220, max: 290 },
@@ -20,7 +21,7 @@
     { id: "gw", name: "Gap Wedge", min: 90, max: 120 },
     { id: "sw", name: "Sand Wedge", min: 80, max: 110 },
     { id: "lw", name: "Lob Wedge", min: 70, max: 100 },
-    { id: "pt", name: "Putter", min: 0, max: 32, putt: true },
+    { id: "pt", name: "Putter", min: 0, max: 40, putt: true },
   ];
 
   function mulberry(seed) {
@@ -81,6 +82,20 @@
     const water = (h.water || []).map(function (w) {
       return { x: tee.x + w.x, y: CENTER + w.y, w: w.w, h: w.h };
     });
+    const fairW = h.par === 3 ? 28 : h.par === 5 ? 36 : 32;
+    const rng = mulberry(((h.yards * 97) ^ (h.par * 13) ^ ((h.lat || 0) * 31)) >>> 0);
+    const trees = [];
+    const nTree = 10 + (h.par === 5 ? 6 : h.par === 4 ? 3 : 0);
+    for (let i = 0; i < nTree; i++) {
+      const t = 0.06 + rng() * 0.86;
+      const side = rng() < 0.5 ? -1 : 1;
+      const lat = fairW + 30 + rng() * 26;
+      trees.push({
+        x: tee.x + (pin.x - tee.x) * t + (rng() * 8 - 4),
+        y: tee.y + (pin.y - tee.y) * t + side * lat,
+        r: 4.2 + rng() * 5.4,
+      });
+    }
     return {
       par: h.par,
       yards: h.yards,
@@ -89,7 +104,8 @@
       greenR: h.greenR,
       bunkers: bunkers,
       water: water,
-      fairW: h.par === 3 ? 28 : h.par === 5 ? 36 : 32,
+      trees: trees,
+      fairW: fairW,
     };
   }
 
@@ -99,6 +115,38 @@
   }
   function ang(a, b) {
     return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+  function distToSeg(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    if (l2 < 1e-8) return dist(p, a);
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  }
+  function shotHolesOut(from, to, pin, putt) {
+    const len = dist(from, to);
+    if (dist(to, pin) <= CUP) return true;
+    if (dist(from, pin) <= GIMME) return true;
+    const shortGame = putt || len < 52 || dist(from, pin) < 42;
+    if (!shortGame) return false;
+    return distToSeg(pin, from, to) <= CUP * 0.92;
+  }
+  function roundRect(c, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + rr, y);
+    c.arcTo(x + w, y, x + w, y + h, rr);
+    c.arcTo(x + w, y + h, x, y + h, rr);
+    c.arcTo(x, y + h, x, y, rr);
+    c.arcTo(x, y, x + w, y, rr);
+    c.closePath();
+  }
+  function intendedCarry() {
+    const markD = G.marker ? dist(G.ball, G.marker) : 0;
+    const near = G.hole && (G.club.putt || dist(G.ball, G.hole.pin) < 45);
+    if (near) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
+    return G.club.min + (G.club.max - G.club.min) * G.power;
   }
 
   function lieAt(hole, p) {
@@ -246,71 +294,176 @@
     c.clearRect(0, 0, canvas.width, canvas.height);
     if (!G.hole) return;
     const hole = G.hole;
-    c.fillStyle = "#16351f";
+
+    const sky = c.createLinearGradient(0, 0, 0, canvas.height);
+    sky.addColorStop(0, "#7eb0d4");
+    sky.addColorStop(0.34, "#c9dec8");
+    sky.addColorStop(0.5, "#1a3d26");
+    sky.addColorStop(1, "#0a1810");
+    c.fillStyle = sky;
     c.fillRect(0, 0, canvas.width, canvas.height);
 
-    function stadium() {
+    c.fillStyle = "#1b4a30";
+    c.beginPath();
+    c.moveTo(0, canvas.height * 0.4);
+    c.quadraticCurveTo(canvas.width * 0.22, canvas.height * 0.3, canvas.width * 0.48, canvas.height * 0.38);
+    c.quadraticCurveTo(canvas.width * 0.78, canvas.height * 0.46, canvas.width, canvas.height * 0.33);
+    c.lineTo(canvas.width, canvas.height);
+    c.lineTo(0, canvas.height);
+    c.fill();
+
+    function ribbon(widthYd, color) {
       const a = toScr(hole.tee);
       const b = toScr(hole.pin);
-      c.lineWidth = hole.fairW * 2 * view.scale;
-      c.strokeStyle = "#2f7a45";
+      c.lineWidth = widthYd * 2 * view.scale;
+      c.strokeStyle = color;
       c.lineCap = "round";
+      c.lineJoin = "round";
       c.beginPath();
       c.moveTo(a.x, a.y);
       c.lineTo(b.x, b.y);
       c.stroke();
     }
-    stadium();
-    c.lineWidth = (hole.fairW + 28) * 2 * view.scale;
-    c.strokeStyle = "#1d4d2e";
-    c.globalCompositeOperation = "destination-over";
-    stadium();
-    c.globalCompositeOperation = "source-over";
+    ribbon(hole.fairW + 44, "#14321e");
+    ribbon(hole.fairW + 28, "#1d4d2e");
+    ribbon(hole.fairW, "#2f7a45");
+    ribbon(hole.fairW * 0.4, "rgba(90,190,110,.28)");
+
+    const a = toScr(hole.tee);
+    const b = toScr(hole.pin);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len, py = dx / len;
+    c.save();
+    c.globalAlpha = 0.14;
+    c.strokeStyle = "#5eead4";
+    c.lineWidth = 1;
+    for (let i = 1; i < 12; i++) {
+      const t = i / 12;
+      const x = a.x + dx * t;
+      const y = a.y + dy * t;
+      const hw = hole.fairW * view.scale;
+      c.beginPath();
+      c.moveTo(x + px * hw, y + py * hw);
+      c.lineTo(x - px * hw, y - py * hw);
+      c.stroke();
+    }
+    c.restore();
+
+    (hole.trees || []).forEach(function (tr) {
+      const p = toScr(tr);
+      const r = Math.max(6, tr.r * view.scale);
+      c.fillStyle = "rgba(0,0,0,.22)";
+      c.beginPath();
+      c.ellipse(p.x, p.y + r * 0.4, r * 0.9, r * 0.32, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#14532d";
+      c.beginPath();
+      c.arc(p.x, p.y - r * 0.12, r, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#166534";
+      c.beginPath();
+      c.arc(p.x - r * 0.28, p.y - r * 0.32, r * 0.62, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#4ade80";
+      c.beginPath();
+      c.arc(p.x + r * 0.18, p.y - r * 0.48, r * 0.28, 0, Math.PI * 2);
+      c.fill();
+    });
 
     hole.water.forEach(function (wtr) {
       const p = toScr({ x: wtr.x, y: wtr.y });
-      c.fillStyle = "#1d4e6e";
-      c.fillRect(p.x, p.y, wtr.w * view.scale, wtr.h * view.scale);
+      const ww = wtr.w * view.scale, hh = wtr.h * view.scale;
+      const grd = c.createLinearGradient(p.x, p.y, p.x + ww * 0.2, p.y + hh);
+      grd.addColorStop(0, "#4aa0c8");
+      grd.addColorStop(0.4, "#1d4e6e");
+      grd.addColorStop(1, "#0c2438");
+      c.fillStyle = grd;
+      roundRect(c, p.x, p.y, ww, hh, 12);
+      c.fill();
+      c.strokeStyle = "rgba(186,230,253,.4)";
+      c.lineWidth = 1.2;
+      for (let i = 1; i < 4; i++) {
+        c.beginPath();
+        c.moveTo(p.x + 8, p.y + hh * i / 4);
+        c.quadraticCurveTo(p.x + ww * 0.5, p.y + hh * i / 4 - 5, p.x + ww - 8, p.y + hh * i / 4);
+        c.stroke();
+      }
     });
-    hole.bunkers.forEach(function (b) {
-      const p = toScr(b);
-      c.fillStyle = "#c4a574";
+
+    hole.bunkers.forEach(function (bnk) {
+      const p = toScr(bnk);
+      const r = bnk.r * view.scale;
+      c.fillStyle = "#7a5c28";
       c.beginPath();
-      c.arc(p.x, p.y, b.r * view.scale, 0, Math.PI * 2);
+      c.ellipse(p.x, p.y, r, r * 0.7, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#e7d3a1";
+      c.beginPath();
+      c.ellipse(p.x, p.y - r * 0.08, r * 0.84, r * 0.55, 0, 0, Math.PI * 2);
       c.fill();
     });
+
+    const tee = toScr(hole.tee);
+    c.fillStyle = "#3f8f54";
+    c.fillRect(tee.x - 12, tee.y - 9, 18, 18);
+    c.fillStyle = "#f8fafc";
+    c.fillRect(tee.x - 9, tee.y - 4, 3, 3);
+    c.fillRect(tee.x - 9, tee.y + 3, 3, 3);
+
     const g = toScr(hole.pin);
-    c.fillStyle = "#3d9a58";
+    const gR = hole.greenR * view.scale;
+    c.fillStyle = "#245c34";
     c.beginPath();
-    c.arc(g.x, g.y, hole.greenR * view.scale, 0, Math.PI * 2);
+    c.arc(g.x, g.y, gR * 1.2, 0, Math.PI * 2);
     c.fill();
-    c.strokeStyle = "#fbbf24";
+    const gg = c.createRadialGradient(g.x - gR * 0.28, g.y - gR * 0.28, 3, g.x, g.y, gR);
+    gg.addColorStop(0, "#63d07e");
+    gg.addColorStop(0.5, "#3d9a58");
+    gg.addColorStop(1, "#2a7542");
+    c.fillStyle = gg;
+    c.beginPath();
+    c.arc(g.x, g.y, gR, 0, Math.PI * 2);
+    c.fill();
+
+    const cupR = Math.max(5.5, 2.1 * view.scale);
+    c.fillStyle = "#070b08";
+    c.beginPath();
+    c.arc(g.x, g.y, cupR, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = "#efe8d6";
+    c.lineWidth = 1.6;
+    c.stroke();
+
+    c.strokeStyle = "#f8fafc";
     c.lineWidth = 2;
     c.beginPath();
     c.moveTo(g.x, g.y);
-    c.lineTo(g.x, g.y - 18);
+    c.lineTo(g.x, g.y - 28);
     c.stroke();
-    c.fillStyle = "#fbbf24";
+    c.fillStyle = "#ef4444";
     c.beginPath();
-    c.moveTo(g.x, g.y - 18);
-    c.lineTo(g.x + 10, g.y - 14);
-    c.lineTo(g.x, g.y - 10);
+    c.moveTo(g.x, g.y - 28);
+    c.lineTo(g.x + 15, g.y - 21);
+    c.lineTo(g.x, g.y - 14);
     c.fill();
+    c.fillStyle = "#fbbf24";
+    c.fillRect(g.x - 2.2, g.y - 2.2, 4.4, 4.4);
 
     if (G.marker) {
       const m = toScr(G.marker);
-      const b = toScr(G.ball);
-      c.strokeStyle = "rgba(94,234,212,.7)";
+      const bp = toScr(G.ball);
+      c.strokeStyle = "rgba(94,234,212,.75)";
       c.setLineDash([6, 5]);
       c.beginPath();
-      c.moveTo(b.x, b.y);
+      c.moveTo(bp.x, bp.y);
       c.lineTo(m.x, m.y);
       c.stroke();
       c.setLineDash([]);
-      const reach = G.club.min + (G.club.max - G.club.min) * G.power;
-      c.strokeStyle = "rgba(251,191,36,.35)";
+      const reach = intendedCarry();
+      c.strokeStyle = "rgba(251,191,36,.4)";
       c.beginPath();
-      c.arc(b.x, b.y, reach * view.scale, 0, Math.PI * 2);
+      c.arc(bp.x, bp.y, reach * view.scale, 0, Math.PI * 2);
       c.stroke();
       c.fillStyle = "#5eead4";
       c.beginPath();
@@ -319,13 +472,21 @@
     }
     const ball = G.flying || G.ball;
     const bp = toScr(ball);
-    c.fillStyle = "#f4f7f2";
+    c.fillStyle = "rgba(0,0,0,.28)";
     c.beginPath();
-    c.arc(bp.x, bp.y, 5, 0, Math.PI * 2);
+    c.ellipse(bp.x + 1, bp.y + 4, 5, 2.2, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "#f7faf6";
+    c.beginPath();
+    c.arc(bp.x, bp.y, 5.4, 0, Math.PI * 2);
     c.fill();
     c.strokeStyle = "#111";
     c.lineWidth = 1;
     c.stroke();
+    c.fillStyle = "rgba(255,255,255,.55)";
+    c.beginPath();
+    c.arc(bp.x - 1.6, bp.y - 1.8, 1.6, 0, Math.PI * 2);
+    c.fill();
   }
 
   function renderHoleCard() {
@@ -350,55 +511,68 @@
   function paintClubs() {
     $("clubs").innerHTML = CLUBS.map(function (c) {
       return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '">' +
-        c.name + "<small>" + c.min + "–" + c.max + " yd</small></button>";
+        c.name + "<small>" + (c.putt ? "to marker" : (c.min + "–" + c.max + " yd")) + "</small></button>";
     }).join("");
   }
 
   function shoot() {
     if (G.flying || !G.hole || !G.marker) return;
+    const pin = G.hole.pin;
     const onG = lieAt(G.hole, G.ball) === "green";
-    if (G.club.putt && !onG && dist(G.ball, G.hole.pin) > 40) {
+    if (G.club.putt && !onG && dist(G.ball, pin) > 40) {
       log("Putter wants the green.");
       return;
     }
     G.lastBall = { x: G.ball.x, y: G.ball.y };
+    const from = { x: G.ball.x, y: G.ball.y };
+    if (onG && dist(from, pin) <= GIMME) {
+      G.strokes += 1;
+      G.ball = { x: pin.x, y: pin.y };
+      log("Tap-in. " + G.strokes + " · par " + G.hole.par);
+      holeDone();
+      return;
+    }
     const lie = lieAt(G.hole, G.ball);
     let lieMul = 1;
     if (lie === "rough") lieMul = 0.88;
     if (lie === "bunker") lieMul = 0.72;
     if (lie === "oob") lieMul = 0.8;
-    const span = G.club.max - G.club.min;
-    let want = G.club.min + span * G.power;
-    if (G.club.putt) want = G.club.max * G.power;
-    want *= lieMul;
+    let want = intendedCarry() * lieMul;
     const aim = ang(G.ball, G.marker);
-    const windAlong = Math.cos(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.35;
-    const windCross = Math.sin(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.55;
-    const jitterD = (G.rng() * 2 - 1) * 0.03 * want;
-    const jitterA = (G.rng() * 2 - 1) * (Math.PI / 180) * 1.5;
-    const actual = Math.max(1, want + windAlong + jitterD);
+    const greenPutt = G.club.putt && onG;
+    const windScale = greenPutt ? 0 : (dist(from, pin) < 45 ? 0.28 : 1);
+    const windAlong = Math.cos(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.35 * windScale;
+    const windCross = Math.sin(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.55 * windScale;
+    const jD = greenPutt ? 0.006 : 0.03;
+    const jA = greenPutt ? 0.35 : 1.5;
+    const jitterD = (G.rng() * 2 - 1) * jD * want;
+    const jitterA = (G.rng() * 2 - 1) * (Math.PI / 180) * jA;
+    const actual = Math.max(0.25, want + windAlong + jitterD);
     const a2 = aim + jitterA + windCross / Math.max(12, actual);
-    const dest = {
+    let dest = {
       x: G.ball.x + Math.cos(a2) * actual,
       y: G.ball.y + Math.sin(a2) * actual,
     };
+    const holed = shotHolesOut(from, dest, pin, G.club.putt);
+    if (holed) dest = { x: pin.x, y: pin.y };
     G.strokes += 1;
-    animateShot(G.ball, dest, function () {
+    animateShot(from, dest, function () {
       G.ball = dest;
+      if (holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
+        log("Cup. " + G.strokes + " · par " + G.hole.par);
+        holeDone();
+        return;
+      }
       const now = lieAt(G.hole, G.ball);
       if (now === "water" || now === "oob") {
         G.strokes += 1;
         G.ball = { x: G.lastBall.x, y: G.lastBall.y };
         log((now === "water" ? "Water. Drop +1." : "Out of bounds. Stroke and distance.") + " Now " + G.strokes);
-      } else if (dist(G.ball, G.hole.pin) <= CUP) {
-        log("Cup. " + G.strokes + " · par " + G.hole.par);
-        holeDone();
-        return;
       } else {
-        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + actual.toFixed(0) + " yd · " + now);
+        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + actual.toFixed(1) + " yd · " + now);
       }
       autoClub();
-      G.marker = { x: G.hole.pin.x, y: G.hole.pin.y };
+      G.marker = { x: pin.x, y: pin.y };
       renderHoleCard();
       draw();
     });
@@ -551,7 +725,7 @@
         "<div class='studio-fade'>" +
           "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
           "<h1>LATTICE<br>GOLF</h1>" +
-          "<p class='lore'>Pick a club. Plant a marker. Choose 25–100%. Wind is slight and honest — compensate if you can read it.</p>" +
+          "<p class='lore'>Pick a club. Plant a marker. Power is 25–100% of that line on the green — 100% rolls to the cup. Wind is slight and honest.</p>" +
           donateHtml() +
           "<p class='lore' style='margin-top:1rem'>Click the course to plant a marker. 1–4 power. [ ] clubs. Space shoot. Z undo.</p>" +
         "</div>" +
@@ -604,7 +778,8 @@
       "<ol class='lore'><li>Click the course to plant a marker. It shows distance and line.</li>" +
       "<li>Pick a club whose range covers that line. Gold ring is this power’s carry.</li>" +
       "<li>Choose 25 / 50 / 75 / 100. Wind shifts the ball a little. Aim off the pin to compensate.</li>" +
-      "<li>Putter on the green. Water and OOB cost a stroke and you drop.</li>" +
+      "<li>On the green, plant the marker on the cup. Power is a fraction of that line — 100% rolls to the marker, 25% is a tap. The cup swallows the ball if the path goes through it.</li>" +
+      "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>Z undoes the last shot. Esc opens the menu.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
