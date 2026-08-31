@@ -3,8 +3,8 @@
   "use strict";
   const G = window.LYGO_SRC_GUARD;
   const HLS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js";
-  const MAX_PLAYLIST = 1200;
-  const MAX_BYTES = 4000000;
+  const MAX_PLAYLIST = 2500;
+  const MAX_BYTES = 8000000;
   const SKIP_MAX = 10;
 
   const $ = function (id) { return document.getElementById(id); };
@@ -301,7 +301,7 @@
     playAt(0, false);
   });
 
-  fetch("catalog.json?v=1.4.0", { credentials: "omit", cache: "no-store" })
+  fetch("catalog.json?v=1.5.0", { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       st.catalog = j;
