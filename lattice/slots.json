@@ -141,6 +141,25 @@
       "expect": "json"
     },
     {
+      "id": "witness_news",
+      "title": "Public Witness news monitor",
+      "era": "now",
+      "class": "RESOURCE",
+      "url": "/witness/news-monitor.json",
+      "expect": "json",
+      "expect_sig": "PUBLIC-WITNESS-MONITOR"
+    },
+    {
+      "id": "witness_event_ledger",
+      "title": "Public Witness event ledger",
+      "era": "now",
+      "class": "RESOURCE",
+      "url": "/witness/event-ledger.json",
+      "expect": "json",
+      "expect_sig": "PUBLIC-WITNESS-EVENT-LEDGER",
+      "note": "Append-only public headlines. Not Star Chart CANON."
+    },
+    {
       "id": "p6_quantum",
       "title": "P6 quantum attest",
       "era": "future",

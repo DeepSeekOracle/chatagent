@@ -57,7 +57,7 @@ def main() -> int:
     # website mirrors
     for dest in (HAVEN / "witness", STACK_DOCS):
         dest.mkdir(parents=True, exist_ok=True)
-        for name in ("index.html", "app.js", "app.css", "doctrine.json", "favicon.svg", "shadows.json", "feed-snapshot.json", "cameras.json", "news-monitor.json"):
+        for name in ("index.html", "app.js", "app.css", "doctrine.json", "favicon.svg", "shadows.json", "feed-snapshot.json", "cameras.json", "news-monitor.json", "event-ledger.json", "world-land.json", "radio.js", "radio.json", "disc.js"):
             src = CHAT / "witness" / name
             text = src.read_text(encoding="utf-8")
             if dest == HAVEN / "witness":

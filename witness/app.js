@@ -1629,6 +1629,38 @@
       state.ref.markets = await getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd");
     } catch (e) { state.ref.errors.markets = String(e); }
     try {
+      const nws = await getJson("https://api.weather.gov/alerts/active?status=actual");
+      const alerts = [];
+      (nws.features || []).slice(0, 40).forEach(function (f) {
+        const p = f.properties || {};
+        const g = f.geometry;
+        let lat = null, lon = null;
+        const coords = g && g.coordinates;
+        function firstPair(x) {
+          if (!Array.isArray(x) || !x.length) return null;
+          if (typeof x[0] === "number" && typeof x[1] === "number") return x;
+          return firstPair(x[0]);
+        }
+        const pair = firstPair(coords);
+        if (pair) { lon = pair[0]; lat = pair[1]; }
+        const href = (p["@id"] && String(p["@id"]).indexOf("https://") === 0) ? p["@id"] : "https://api.weather.gov/alerts/active?status=actual";
+        const row = { title: p.headline || p.event || "NWS alert", url: href, layer: "alerts", source: "nws_live" };
+        if (lat != null && lon != null) { row.lat = lat; row.lon = lon; }
+        alerts.push(row);
+      });
+      if (alerts.length) {
+        state.ref.world_alerts = alerts;
+        state.ref.live.nws = true;
+        setStatus("st-nws", true);
+      } else {
+        setStatus("st-nws", "shadow", "named");
+      }
+    } catch (e) {
+      state.ref.errors.nws = String(e);
+      state.ref.live.nws = false;
+      setStatus("st-nws", "shadow", "named");
+    }
+    try {
       const L = await getJson("https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=8&mode=list");
       const pads = [];
       (L.results || []).forEach(function (row) {
@@ -1938,17 +1970,23 @@
   }
 
   function renderNews(pack) {
-    function fill(id, rows, st) {
+    function fill(id, rows, st, cap) {
       const ul = document.getElementById(id);
       const tag = document.getElementById(st);
       if (!ul) return;
-      ul.innerHTML = (rows || []).slice(0, 18).map(function (r) {
-        return "<li><a href=\"" + escapeHtml(r.url) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(r.title) + "</a><div class=\"src\">" + escapeHtml(r.source) + (r.date ? " · " + escapeHtml(r.date).slice(0, 22) : "") + "</div></li>";
+      ul.innerHTML = (rows || []).slice(0, cap || 18).map(function (r) {
+        const when = r.date || r.last_seen_utc || r.first_seen_utc || "";
+        return "<li><a href=\"" + escapeHtml(r.url) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(r.title) + "</a><div class=\"src\">" + escapeHtml(r.source || "") + (when ? " · " + escapeHtml(String(when).slice(0, 22)) : "") + "</div></li>";
       }).join("") || "<li>No public items in this lane.</li>";
       if (tag) { tag.textContent = String((rows || []).length); tag.className = "tag ok"; }
     }
-    fill("news-severe", pack.severe, "st-news-sev");
-    fill("news-world", pack.world, "st-news-world");
+    fill("news-severe", pack.severe, "st-news-sev", 18);
+    fill("news-world", pack.world, "st-news-world", 18);
+    const meta = document.getElementById("news-meta");
+    if (meta) {
+      const failed = (pack.sources || []).filter(function (s) { return !s.ok; }).map(function (s) { return s.id; });
+      meta.textContent = "Monitor " + (pack.utc || "") + " · " + ((pack.sources || []).filter(function (s) { return s.ok; }).length) + " live wires" + (failed.length ? " · named miss: " + failed.join(", ") : "");
+    }
   }
 
   async function loadNews() {
@@ -1956,15 +1994,34 @@
       const pack = await getJson("news-monitor.json");
       const extra = [];
       (state.ref.quakes || []).filter(function (q) { return (q.mag || 0) >= 5.5; }).forEach(function (q) {
-        extra.push({ title: "M" + q.mag + " " + (q.title || q.place || "quake"), url: "https://earthquake.usgs.gov/", source: "usgs_live", lane: "severe", date: "", class: "RESOURCE" });
+        extra.push({ title: "M" + q.mag + " " + (q.title || q.place || "quake"), url: q.url || "https://earthquake.usgs.gov/", source: "usgs_live", lane: "severe", date: "", class: "RESOURCE" });
+      });
+      (state.ref.events || []).slice(0, 8).forEach(function (e) {
+        extra.push({ title: e.title || "EONET", url: e.url || "https://eonet.gsfc.nasa.gov/", source: "eonet_live", lane: "severe", date: "", class: "RESOURCE" });
       });
       (state.ref.world_alerts || []).slice(0, 8).forEach(function (a) {
-        extra.push({ title: a.title, url: "https://api.weather.gov/alerts/active?status=actual", source: "wxalert_live", lane: "severe", date: "", class: "RESOURCE" });
+        extra.push({ title: a.title, url: a.url || "https://api.weather.gov/alerts/active?status=actual", source: "nws_live", lane: "severe", date: "", class: "RESOURCE" });
       });
       pack.severe = extra.concat(pack.severe || []);
       renderNews(pack);
     } catch (e) {
       const tag = document.getElementById("st-news-sev");
+      if (tag) { tag.textContent = "named"; tag.className = "tag shadow"; }
+    }
+    try {
+      const led = await getJson("event-ledger.json");
+      const ul = document.getElementById("news-ledger");
+      const tag = document.getElementById("st-news-led");
+      const tip = document.getElementById("ledger-tip");
+      if (ul) {
+        ul.innerHTML = (led.entries || []).slice(0, 18).map(function (r) {
+          return "<li><a href=\"" + escapeHtml(r.url) + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(r.title) + "</a><div class=\"src\">" + escapeHtml(r.source || "") + " · " + escapeHtml(String(r.last_seen_utc || "").slice(0, 19)) + "</div></li>";
+        }).join("") || "<li>Ledger empty this run.</li>";
+      }
+      if (tag) { tag.textContent = String(led.count || (led.entries || []).length); tag.className = "tag ok"; }
+      if (tip) tip.textContent = "RESOURCE log · tip " + String(led.tip_sha256 || "").slice(0, 16) + " · not Star Chart";
+    } catch (e) {
+      const tag = document.getElementById("st-news-led");
       if (tag) { tag.textContent = "named"; tag.className = "tag shadow"; }
     }
   }

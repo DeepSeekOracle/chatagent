@@ -213,8 +213,9 @@
   <div class="cam-grid" id="cam-grid"></div>
   <p class="kicker">Public monitor · disasters and severe headlines</p>
   <h2>World disaster &amp; severe news monitor</h2>
-  <p class="legend">GDACS, USGS significant quakes, BBC World, Guardian World, NYT World — public RSS/ATOM only. Severe lane = disaster agencies plus a keyword filter. Headlines stay RESOURCE; we do not invent the story.</p>
-  <div class="news-grid">
+  <p class="legend">Public GET only: GDACS, USGS, ReliefWeb, NHC, NASA EONET, NWS, UN News, WHO, BBC/Guardian/NYT World. Severe lane = disaster agencies plus a keyword filter. Headlines stay <strong>RESOURCE</strong>. The event ledger is an append-only public log — <strong>not</strong> Star Chart CANON. Empty beats fake.</p>
+  <p class="legend" id="news-meta">Monitor · waiting…</p>
+  <div class="news-grid three">
     <div class="news-col">
       <h3>Severe / disaster <span id="st-news-sev" class="tag miss">…</span></h3>
       <ul id="news-severe"></ul>
@@ -222,6 +223,11 @@
     <div class="news-col">
       <h3>World public wire <span id="st-news-world" class="tag miss">…</span></h3>
       <ul id="news-world"></ul>
+    </div>
+    <div class="news-col">
+      <h3>Eternal event ledger <span id="st-news-led" class="tag miss">…</span></h3>
+      <p class="src" id="ledger-tip">RESOURCE log · tip pending</p>
+      <ul id="news-ledger"></ul>
     </div>
   </div>
 </section>
