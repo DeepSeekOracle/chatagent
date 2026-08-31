@@ -721,17 +721,18 @@
     $("app").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
     showSheet(
-      "<div class='studio-hero'>" +
-        "<div class='studio-fade'>" +
-          "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
-          "<h1>LATTICE<br>GOLF</h1>" +
-          "<p class='lore'>Pick a club. Plant a marker. Power is 25–100% of that line on the green — 100% rolls to the cup. Wind is slight and honest.</p>" +
-          donateHtml() +
-          "<p class='lore' style='margin-top:1rem'>Click the course to plant a marker. 1–4 power. [ ] clubs. Space shoot. Z undo.</p>" +
+      "<div class='title-screen'>" +
+        "<div class='title-art'>" +
+          "<img src='./assets/menu.jpg?v=3' alt='Lattice Golf — twilight pin and cup'>" +
+          "<div class='title-art-fade'></div>" +
         "</div>" +
-        "<div class='studio-panel'>" +
-          "<p class='kicker'>Studio menu</p>" +
-          "<label>Operator name</label>" +
+        "<div class='title-panel'>" +
+          "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
+          "<h1>LATTICE GOLF</h1>" +
+          "<p class='title-tag'>Plant the marker on the cup. 100% rolls that line in.</p>" +
+          "<p class='lore'>1–4 power · [ ] clubs · Space shoot · Z undo</p>" +
+          donateHtml() +
+          "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
           "<div class='mode-grid'>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
