@@ -30,6 +30,7 @@
   function kindOfUrl(url) {
     const u = String(url || "").toLowerCase().split("?")[0];
     if (u.indexOf("youtube.com") !== -1 || u.indexOf("youtube-nocookie.com") !== -1) return "youtube";
+    if (u.indexOf("rumble.com") !== -1) return "rumble";
     if (/\.(mp3|ogg|wav|m4a|aac)$/.test(u)) return "audio";
     if (/\.(mp4|webm|ogv)$/.test(u)) return "video";
     if (/\.m3u8?$/.test(u) || u.indexOf(".m3u") !== -1) return "hls";
@@ -163,7 +164,7 @@
     $("copy-url").dataset.url = ch.url;
     paintList();
     stopMedia();
-    if (ch.kind === "youtube") {
+    if (ch.kind === "youtube" || ch.kind === "rumble") {
       $("vid").hidden = true;
       $("yt").src = ch.url;
       $("yt").hidden = false;
@@ -201,7 +202,7 @@
       const live = document.createElement("button");
       live.type = "button";
       live.className = "chip" + (st.bouquet === "live" ? " on" : "");
-      live.textContent = "Pinned";
+      live.textContent = "Excavationpro";
       live.addEventListener("click", function () { loadLive(); });
       box.appendChild(live);
     }
@@ -239,8 +240,19 @@
     st.i = -1;
     paintChips();
     paintList();
-    setStatus("Live now — click a channel.");
+    setStatus("Excavationpro — Rumble LIVE (monetized).");
     if (st.channels.length) playAt(0, false);
+    fetch("/data/rumble-live.json?t=" + Date.now(), { cache: "no-store", credentials: "omit" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j || !j.embed_url) return;
+        const href = G.safeHref(j.embed_url);
+        if (!href || !st.channels[0] || st.channels[0].kind !== "rumble") return;
+        st.channels[0].url = href;
+        if (st.i === 0) playAt(0, false);
+        else paintList();
+      })
+      .catch(function () {});
   }
 
   async function loadBouquet(b) {
@@ -289,7 +301,7 @@
     playAt(0, false);
   });
 
-  fetch("catalog.json?v=1.3.0", { credentials: "omit", cache: "no-store" })
+  fetch("catalog.json?v=1.4.0", { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       st.catalog = j;

@@ -4,19 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https:; upgrade-insecure-requests">
-<title>LYGO TV — free channels in the browser | chatagent.ca</title>
-<meta name="description" content="Standalone LYGO TV: browse GitHub public channel lists and click to watch. Donate: PayPal.me/ExcavationPro.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com; connect-src 'self' https:; upgrade-insecure-requests">
+<title>LYGO TV — free public channels in the browser | chatagent.ca</title>
+<meta name="description" content="Watch free public TV in your browser. Click GitHub IPTV catalogs (culture, local, country, language) or Excavationpro’s monetized Rumble live. Independent LYGO tool by Justin Helmer. Optional tip: PayPal.me/ExcavationPro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="keywords" content="LYGO TV, free IPTV, public M3U, iptv-org, Free-TV GitHub, Rumble live, Excavationpro, chatagent.ca">
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
+<link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
 <link rel="stylesheet" href="/sources/app.css">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<meta property="og:title" content="LYGO TV">
-<meta property="og:description" content="Click a channel. Watch free public streams in the browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="chatagent.ca">
+<meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://chatagent.ca/sources/">
-<meta name="twitter:card" content="summary">
+<meta property="og:title" content="LYGO TV — free public channels in the browser">
+<meta property="og:description" content="Click a channel. GitHub public catalogs plus Excavationpro Rumble LIVE. No account required.">
+<meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image:secure_url" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:alt" content="LYGO TV on chatagent.ca">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:creator" content="@Excavationpro">
+<meta name="twitter:title" content="LYGO TV — free public channels in the browser">
+<meta name="twitter:description" content="Click a channel. GitHub public catalogs plus Excavationpro Rumble LIVE.">
+<meta name="twitter:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta name="twitter:image:alt" content="LYGO TV on chatagent.ca">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"LYGO TV","url":"https://chatagent.ca/sources/","description":"Browser TV for public GitHub M3U catalogs and Excavationpro Rumble live.","applicationCategory":"MultimediaApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro","url":"https://chatagent.ca/about.html"}}
+</script>
 </head>
 <body>
 <header class="top">
@@ -32,9 +52,11 @@
 </header>
 <div class="stage">
   <div class="screen">
-    <video id="vid" controls playsinline></video>
-    <audio id="aud" controls hidden></audio>
-    <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <div class="player-box">
+      <video id="vid" controls playsinline></video>
+      <audio id="aud" controls hidden></audio>
+      <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
     <div class="hud">
       <p class="now" id="now">LYGO TV</p>
       <p class="status" id="status">Loading channels…</p>
@@ -48,7 +70,7 @@
   <aside class="side">
     <p class="kicker">Δ9Φ963 · LYGO TV</p>
     <h1>Channels</h1>
-    <p class="note">GitHub public M3U catalogs (iptv-org + Free-TV). Culture, local, legislative, language and country lists — click a channel. Not cable news YouTube.</p>
+    <p class="note">GitHub public M3U catalogs (iptv-org + Free-TV) plus Excavationpro’s monetized Rumble live. Click a channel.</p>
     <div class="chips" id="chips"></div>
     <input id="q" type="search" placeholder="Search channels" autocomplete="off">
     <p class="note" id="count">0 channels</p>
@@ -61,9 +83,13 @@
     <div class="donate">
       <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
       <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon</a>
+      <a class="btn ghost" href="https://rumble.com/register/Excavationpro/" target="_blank" rel="noopener noreferrer sponsored">Join Rumble</a>
     </div>
   </aside>
 </div>
+<footer class="foot">
+  <p><strong>Disclaimer.</strong> LYGO TV is a public catalog browser. Most channel streams are hosted by third parties (including GitHub-published M3U lists from iptv-org and Free-TV). We do not operate those CDNs, do not decrypt pay-TV, and cannot guarantee a stream is live, legal in your region, or accurate. Geo-blocks, dead links, and CORS limits are named as misses — we do not invent a working channel. Excavationpro Rumble LIVE is our own monetized room (referral pub <code>1th29y</code>). Use at your own judgment. Optional support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a>.</p>
+</footer>
 <script src="/sources/guard.js"></script>
 <script src="/sources/app.js"></script>
 </body>
