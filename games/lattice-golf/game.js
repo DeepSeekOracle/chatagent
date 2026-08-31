@@ -531,6 +531,37 @@
   const canvas = $("fairway");
   const ctx = canvas.getContext("2d");
   let view = { scale: 2.2, ox: 20, oy: 40 };
+  const IMGS = { pine: new Image(), coral: new Image(), wild: new Image(), water: new Image() };
+  IMGS.pine.src = "./assets/bg-pine.jpg";
+  IMGS.coral.src = "./assets/bg-coral.jpg";
+  IMGS.wild.src = "./assets/bg-wild.jpg";
+  IMGS.water.src = "./assets/tex-water.jpg";
+  function onArt() { if (G.hole) draw(); }
+  IMGS.pine.onload = onArt;
+  IMGS.coral.onload = onArt;
+  IMGS.wild.onload = onArt;
+  IMGS.water.onload = onArt;
+
+  function courseBg() {
+    const id = G.course && G.course.id;
+    if (id === "endless") return IMGS.wild;
+    if (id === "coral-lattice") return IMGS.coral;
+    if (id === "haven-open") return G.hi >= 9 ? IMGS.coral : IMGS.pine;
+    return IMGS.pine;
+  }
+  function drawCover(c, img, cw, ch) {
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    const ir = img.naturalWidth / img.naturalHeight;
+    const cr = cw / Math.max(1, ch);
+    let dw, dh, dx, dy;
+    if (ir > cr) {
+      dh = ch; dw = ch * ir; dx = (cw - dw) / 2; dy = 0;
+    } else {
+      dw = cw; dh = cw / ir; dx = 0; dy = (ch - dh) / 2;
+    }
+    c.drawImage(img, dx, dy, dw, dh);
+    return true;
+  }
 
   function log(t) {
     G.log.unshift(t);
@@ -617,22 +648,20 @@
     if (!G.hole) return;
     const hole = G.hole;
 
-    const sky = c.createLinearGradient(0, 0, 0, canvas.height);
-    sky.addColorStop(0, "#7eb0d4");
-    sky.addColorStop(0.34, "#c9dec8");
-    sky.addColorStop(0.5, "#1a3d26");
-    sky.addColorStop(1, "#0a1810");
-    c.fillStyle = sky;
+    if (!drawCover(c, courseBg(), canvas.width, canvas.height)) {
+      const sky = c.createLinearGradient(0, 0, 0, canvas.height);
+      sky.addColorStop(0, "#7eb0d4");
+      sky.addColorStop(0.4, "#1a3d26");
+      sky.addColorStop(1, "#0a1810");
+      c.fillStyle = sky;
+      c.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    const veil = c.createLinearGradient(0, 0, 0, canvas.height);
+    veil.addColorStop(0, "rgba(7,20,12,.28)");
+    veil.addColorStop(0.42, "rgba(7,20,12,.55)");
+    veil.addColorStop(1, "rgba(7,20,12,.82)");
+    c.fillStyle = veil;
     c.fillRect(0, 0, canvas.width, canvas.height);
-
-    c.fillStyle = "#1b4a30";
-    c.beginPath();
-    c.moveTo(0, canvas.height * 0.4);
-    c.quadraticCurveTo(canvas.width * 0.22, canvas.height * 0.3, canvas.width * 0.48, canvas.height * 0.38);
-    c.quadraticCurveTo(canvas.width * 0.78, canvas.height * 0.46, canvas.width, canvas.height * 0.33);
-    c.lineTo(canvas.width, canvas.height);
-    c.lineTo(0, canvas.height);
-    c.fill();
 
     const pathPts = hole.path || [hole.tee, hole.pin];
     if (pathPts.length >= 3) {
@@ -732,21 +761,46 @@
     hole.water.forEach(function (wtr) {
       const p = toScr({ x: wtr.x, y: wtr.y });
       const ww = wtr.w * view.scale, hh = wtr.h * view.scale;
-      const grd = c.createLinearGradient(p.x, p.y, p.x + ww * 0.2, p.y + hh);
-      grd.addColorStop(0, "#4aa0c8");
-      grd.addColorStop(0.4, "#1d4e6e");
-      grd.addColorStop(1, "#0c2438");
-      c.fillStyle = grd;
-      roundRect(c, p.x, p.y, ww, hh, 12);
+      const tex = IMGS.water;
+      c.save();
+      roundRect(c, p.x - 2, p.y - 2, ww + 4, hh + 4, 14);
+      c.fillStyle = "#0a3a4a";
       c.fill();
-      c.strokeStyle = "rgba(186,230,253,.4)";
-      c.lineWidth = 1.2;
-      for (let i = 1; i < 4; i++) {
+      roundRect(c, p.x, p.y, ww, hh, 12);
+      c.clip();
+      if (tex.complete && tex.naturalWidth) {
+        const tile = Math.max(96, Math.min(ww, hh) * 1.4);
+        for (let x = p.x - 8; x < p.x + ww + tile; x += tile) {
+          for (let y = p.y - 8; y < p.y + hh + tile; y += tile) {
+            c.drawImage(tex, x, y, tile, tile);
+          }
+        }
+        c.fillStyle = "rgba(8,40,60,.28)";
+        c.fillRect(p.x, p.y, ww, hh);
+      } else {
+        const grd = c.createLinearGradient(p.x, p.y, p.x + ww * 0.2, p.y + hh);
+        grd.addColorStop(0, "#4aa0c8");
+        grd.addColorStop(0.45, "#1d4e6e");
+        grd.addColorStop(1, "#0c2438");
+        c.fillStyle = grd;
+        c.fillRect(p.x, p.y, ww, hh);
+      }
+      c.strokeStyle = "rgba(220,245,255,.45)";
+      c.lineWidth = 1.4;
+      for (let i = 1; i < 5; i++) {
         c.beginPath();
-        c.moveTo(p.x + 8, p.y + hh * i / 4);
-        c.quadraticCurveTo(p.x + ww * 0.5, p.y + hh * i / 4 - 5, p.x + ww - 8, p.y + hh * i / 4);
+        c.moveTo(p.x + 6, p.y + hh * i / 5);
+        c.quadraticCurveTo(p.x + ww * 0.35, p.y + hh * i / 5 - 6, p.x + ww * 0.7, p.y + hh * i / 5 + 3);
+        c.quadraticCurveTo(p.x + ww * 0.85, p.y + hh * i / 5 + 2, p.x + ww - 6, p.y + hh * i / 5);
         c.stroke();
       }
+      c.restore();
+      c.save();
+      c.strokeStyle = "rgba(186,230,253,.55)";
+      c.lineWidth = 2;
+      roundRect(c, p.x, p.y, ww, hh, 12);
+      c.stroke();
+      c.restore();
     });
 
     hole.bunkers.forEach(function (bnk) {
@@ -1478,7 +1532,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=13' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=14' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
