@@ -66,20 +66,20 @@
         bunkers: [{ x: 148, y: 8, r: 10 }],
         greenR: 12,
       }),
-      H(5, "Twin Pines", [{ x: 0, y: 0 }, { x: 195, y: 48 }, { x: 340, y: -28 }, { x: 505, y: 22 }], {
-        hint: "S-curve. Two turns. Don't cut the second elbow.",
-        bunkers: [{ x: 188, y: 68, r: 14 }, { x: 338, y: -48, r: 13 }, { x: 488, y: 40, r: 12 }],
-        groves: [{ x: 250, y: 10, n: 6, r: 20 }],
-        water: [{ x: 300, y: 8, w: 70, h: 36 }],
+      H(5, "Twin Pines", [{ x: 0, y: 0 }, { x: 220, y: 52 }, { x: 400, y: -32 }, { x: 590, y: 28 }], {
+        hint: "Long S-curve. Three honest shots. Don't cut the second elbow.",
+        bunkers: [{ x: 212, y: 72, r: 14 }, { x: 398, y: -52, r: 13 }, { x: 572, y: 46, r: 12 }],
+        groves: [{ x: 280, y: 12, n: 6, r: 20 }],
+        water: [{ x: 350, y: 6, w: 80, h: 36 }],
       }),
       H(4, "Orchard Elbow", [{ x: 0, y: 0 }, { x: 200, y: -10 }, { x: 380, y: -78 }], {
         hint: "Dogleg left around the orchard. The trees eat hero lines.",
         groves: [{ x: 225, y: 22, n: 9, r: 26 }],
         bunkers: [{ x: 192, y: -32, r: 12 }, { x: 362, y: -58, r: 11 }],
       }),
-      H(3, "North Watch", [{ x: 0, y: 0 }, { x: 186, y: 22 }], {
-        hint: "Long three. Bunkers pinch both sides of the green.",
-        bunkers: [{ x: 158, y: 2, r: 11 }, { x: 162, y: 44, r: 11 }],
+      H(3, "North Watch", [{ x: 0, y: 0 }, { x: 218, y: 24 }], {
+        hint: "Long three — wood or hybrid. Bunkers pinch both sides of the green.",
+        bunkers: [{ x: 188, y: 2, r: 11 }, { x: 192, y: 48, r: 11 }],
         greenR: 13,
       }),
       H(4, "Miller's Cape", [{ x: 0, y: 0 }, { x: 155, y: -28 }, { x: 345, y: -8 }], {
@@ -87,18 +87,18 @@
         water: [{ x: 70, y: 6, w: 290, h: 72 }],
         bunkers: [{ x: 150, y: -48, r: 12 }],
       }),
-      H(5, "Creek Walk", [{ x: 0, y: 0 }, { x: 210, y: 32 }, { x: 355, y: 32 }, { x: 525, y: -24 }], {
-        hint: "Creek twice. Carry, then carry again — or lay up twice.",
+      H(5, "Creek Walk", [{ x: 0, y: 0 }, { x: 230, y: 34 }, { x: 400, y: 34 }, { x: 590, y: -28 }], {
+        hint: "Long five. Creek twice. Carry, then carry again — or lay up twice.",
         water: [
-          { x: 175, y: -8, w: 42, h: 72 },
-          { x: 390, y: -55, w: 48, h: 78 },
+          { x: 190, y: -8, w: 42, h: 72 },
+          { x: 430, y: -55, w: 48, h: 78 },
         ],
-        bunkers: [{ x: 330, y: 50, r: 13 }, { x: 510, y: -6, r: 11 }],
+        bunkers: [{ x: 370, y: 52, r: 13 }, { x: 574, y: -8, r: 11 }],
       }),
-      H(4, "Ridge Turn", [{ x: 0, y: 0 }, { x: 225, y: 58 }, { x: 408, y: 12 }], {
-        hint: "Dogleg right over the ridge. Bunkers sit in the landing.",
-        bunkers: [{ x: 215, y: 78, r: 14 }, { x: 218, y: 36, r: 11 }, { x: 392, y: -8, r: 12 }],
-        groves: [{ x: 260, y: 10, n: 5, r: 18 }],
+      H(4, "Ridge Turn", [{ x: 0, y: 0 }, { x: 250, y: 62 }, { x: 460, y: 14 }], {
+        hint: "Long dogleg right over the ridge. Two woods if you miss the corner.",
+        bunkers: [{ x: 240, y: 82, r: 14 }, { x: 242, y: 40, r: 11 }, { x: 444, y: -6, r: 12 }],
+        groves: [{ x: 290, y: 12, n: 5, r: 18 }],
       }),
       H(3, "Haven Stamp", [{ x: 0, y: 0 }, { x: 138, y: -14 }], {
         hint: "Tiny green. Front bunker must be carried.",
@@ -125,35 +125,35 @@
         greenR: 12,
         fairW: 18,
       }),
-      H(5, "Lagoon Bend", [{ x: 0, y: 0 }, { x: 205, y: 55 }, { x: 355, y: 55 }, { x: 498, y: -12 }], {
-        hint: "Lagoon fills the elbow. You cannot cut this one.",
-        water: [{ x: 210, y: -8, w: 130, h: 52 }],
-        bunkers: [{ x: 198, y: 74, r: 14 }, { x: 480, y: 8, r: 12 }],
+      H(5, "Lagoon Bend", [{ x: 0, y: 0 }, { x: 220, y: 58 }, { x: 400, y: 58 }, { x: 575, y: -14 }], {
+        hint: "Long lagoon five. Water fills the elbow. You cannot cut this one.",
+        water: [{ x: 230, y: -8, w: 150, h: 52 }],
+        bunkers: [{ x: 212, y: 78, r: 14 }, { x: 556, y: 8, r: 12 }],
       }),
-      H(4, "Backwind", [{ x: 0, y: 0 }, { x: 175, y: 12 }, { x: 385, y: 82 }], {
-        hint: "Hard dogleg right. Drive to the corner, not the pin.",
-        bunkers: [{ x: 168, y: 34, r: 13 }, { x: 368, y: 98, r: 12 }],
-        groves: [{ x: 230, y: -18, n: 7, r: 22 }],
+      H(4, "Backwind", [{ x: 0, y: 0 }, { x: 200, y: 14 }, { x: 450, y: 90 }], {
+        hint: "Long hard dogleg right. Drive to the corner, not the pin.",
+        bunkers: [{ x: 192, y: 36, r: 13 }, { x: 432, y: 108, r: 12 }],
+        groves: [{ x: 255, y: -18, n: 7, r: 22 }],
       }),
       H(4, "Inlet Cape", [{ x: 0, y: 0 }, { x: 148, y: -38 }, { x: 360, y: 18 }], {
         hint: "Cape over the inlet. Aggressive line is wet.",
         water: [{ x: 70, y: -8, w: 210, h: 58 }],
         bunkers: [{ x: 142, y: -56, r: 11 }],
       }),
-      H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 196, y: 28 }], {
-        hint: "Long carry over marsh. Club up.",
-        water: [{ x: 36, y: -18, w: 132, h: 78 }],
-        bunkers: [{ x: 182, y: 48, r: 10 }],
+      H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 228, y: 30 }], {
+        hint: "Long carry over marsh. Club up — this plays like a four.",
+        water: [{ x: 40, y: -18, w: 155, h: 82 }],
+        bunkers: [{ x: 214, y: 52, r: 10 }],
         greenR: 12,
       }),
-      H(5, "Two Cays", [{ x: 0, y: 0 }, { x: 185, y: -50 }, { x: 335, y: 42 }, { x: 525, y: -8 }], {
-        hint: "S around two cays. Water down the spine.",
-        water: [{ x: 170, y: -12, w: 175, h: 38 }],
-        bunkers: [{ x: 178, y: -68, r: 12 }, { x: 328, y: 60, r: 13 }, { x: 510, y: 12, r: 11 }],
+      H(5, "Two Cays", [{ x: 0, y: 0 }, { x: 200, y: -52 }, { x: 370, y: 46 }, { x: 600, y: -10 }], {
+        hint: "Long S around two cays. Three shots. Water down the spine.",
+        water: [{ x: 185, y: -12, w: 195, h: 38 }],
+        bunkers: [{ x: 192, y: -70, r: 12 }, { x: 362, y: 64, r: 13 }, { x: 584, y: 12, r: 11 }],
       }),
-      H(4, "Dune Gate", [{ x: 0, y: 0 }, { x: 215, y: 38 }, { x: 415, y: 64 }], {
-        hint: "Two bunkers gate the landing. Thread or lay short.",
-        bunkers: [{ x: 205, y: 14, r: 15 }, { x: 208, y: 62, r: 15 }, { x: 398, y: 46, r: 11 }],
+      H(4, "Dune Gate", [{ x: 0, y: 0 }, { x: 240, y: 40 }, { x: 470, y: 70 }], {
+        hint: "Long four. Two bunkers gate the landing. Thread or lay short.",
+        bunkers: [{ x: 230, y: 16, r: 15 }, { x: 232, y: 64, r: 15 }, { x: 452, y: 52, r: 11 }],
       }),
       H(3, "Last Light", [{ x: 0, y: 0 }, { x: 132, y: -32 }], {
         hint: "Short, downhill feel, water short-left of the pin.",
@@ -1007,42 +1007,51 @@
     const rng = G.rng;
     const pars = [3, 3, 4, 4, 4, 5, 5];
     const par = pars[(rng() * pars.length) | 0];
+    const long = rng() > 0.58;
     const shapes = par === 3 ? ["carry", "pinch"] : par === 5 ? ["s", "double"] : ["dogL", "dogR", "cape"];
     const shape = shapes[(rng() * shapes.length) | 0];
     let path, water = [], bunkers = [], groves = [], hint = "Play the fairway.";
     if (par === 3 && shape === "carry") {
-      const yds = 135 + rng() * 70;
+      const yds = long ? 200 + rng() * 40 : 135 + rng() * 55;
       path = [{ x: 0, y: 0 }, { x: yds, y: (rng() * 2 - 1) * 28 }];
       water = [{ x: 32, y: -40, w: yds * 0.62, h: 82 }];
-      hint = "Carry the water.";
+      hint = long ? "Long carry. Club up." : "Carry the water.";
     } else if (par === 3) {
-      const yds = 140 + rng() * 60;
+      const yds = long ? 205 + rng() * 35 : 140 + rng() * 50;
       path = [{ x: 0, y: 0 }, { x: yds, y: (rng() * 2 - 1) * 22 }];
       bunkers = [{ x: yds * 0.78, y: -16, r: 11 }, { x: yds * 0.8, y: 18, r: 10 }];
-      hint = "Bunkers pinch the green.";
+      hint = long ? "Long three. Wood or hybrid." : "Bunkers pinch the green.";
     } else if (shape === "dogL") {
-      path = [{ x: 0, y: 0 }, { x: 175 + rng() * 40, y: -8 }, { x: 340 + rng() * 50, y: -70 - rng() * 20 }];
-      groves = [{ x: 210, y: 20, n: 7, r: 22 }];
-      bunkers = [{ x: 180, y: -28, r: 12 }];
-      hint = "Dogleg left. Don't cut the trees.";
+      const mid = long ? 210 + rng() * 30 : 175 + rng() * 40;
+      const end = long ? 450 + rng() * 45 : 340 + rng() * 50;
+      path = [{ x: 0, y: 0 }, { x: mid, y: -8 }, { x: end, y: -70 - rng() * 20 }];
+      groves = [{ x: mid + 20, y: 20, n: 7, r: 22 }];
+      bunkers = [{ x: mid, y: -28, r: 12 }];
+      hint = long ? "Long dogleg left. Two woods if you miss the corner." : "Dogleg left. Don't cut the trees.";
     } else if (shape === "dogR") {
-      path = [{ x: 0, y: 0 }, { x: 175 + rng() * 40, y: 10 }, { x: 345 + rng() * 50, y: 68 + rng() * 22 }];
-      groves = [{ x: 215, y: -22, n: 7, r: 22 }];
-      bunkers = [{ x: 182, y: 32, r: 12 }];
-      hint = "Dogleg right. Aim the corner.";
+      const mid = long ? 210 + rng() * 30 : 175 + rng() * 40;
+      const end = long ? 450 + rng() * 45 : 345 + rng() * 50;
+      path = [{ x: 0, y: 0 }, { x: mid, y: 10 }, { x: end, y: 68 + rng() * 22 }];
+      groves = [{ x: mid + 20, y: -22, n: 7, r: 22 }];
+      bunkers = [{ x: mid, y: 32, r: 12 }];
+      hint = long ? "Long dogleg right. Aim the corner." : "Dogleg right. Aim the corner.";
     } else if (shape === "cape") {
-      path = [{ x: 0, y: 0 }, { x: 150 + rng() * 20, y: -30 }, { x: 340 + rng() * 40, y: -4 }];
-      water = [{ x: 70, y: 4, w: 270, h: 68 }];
-      hint = "Cape. Water right.";
+      const mid = long ? 175 + rng() * 20 : 150 + rng() * 20;
+      const end = long ? 430 + rng() * 40 : 340 + rng() * 40;
+      path = [{ x: 0, y: 0 }, { x: mid, y: -30 }, { x: end, y: -4 }];
+      water = [{ x: 70, y: 4, w: Math.max(220, end - 90), h: 68 }];
+      hint = long ? "Long cape. Water right the whole way." : "Cape. Water right.";
     } else if (shape === "s") {
-      path = [{ x: 0, y: 0 }, { x: 190, y: 50 }, { x: 340, y: -30 }, { x: 500 + rng() * 30, y: 18 }];
-      water = [{ x: 300, y: 4, w: 70, h: 34 }];
-      bunkers = [{ x: 188, y: 68, r: 13 }, { x: 336, y: -48, r: 12 }];
-      hint = "S-curve. Two turns.";
+      const end = long ? 590 + rng() * 45 : 500 + rng() * 30;
+      path = [{ x: 0, y: 0 }, { x: 210, y: 52 }, { x: 380, y: -32 }, { x: end, y: 18 }];
+      water = [{ x: 340, y: 4, w: 80, h: 34 }];
+      bunkers = [{ x: 200, y: 70, r: 13 }, { x: 372, y: -50, r: 12 }];
+      hint = long ? "Long S-curve. Three honest shots." : "S-curve. Two turns.";
     } else {
-      path = [{ x: 0, y: 0 }, { x: 200, y: 28 }, { x: 350, y: 28 }, { x: 520, y: -22 }];
-      water = [{ x: 178, y: -6, w: 40, h: 68 }, { x: 385, y: -50, w: 46, h: 74 }];
-      hint = "Two carries.";
+      const end = long ? 600 + rng() * 40 : 520;
+      path = [{ x: 0, y: 0 }, { x: 220, y: 28 }, { x: 390, y: 28 }, { x: end, y: -22 }];
+      water = [{ x: 190, y: -6, w: 42, h: 68 }, { x: 420, y: -50, w: 46, h: 74 }];
+      hint = long ? "Long five. Two carries." : "Two carries.";
     }
     return H(par, "Random " + shape, path, {
       bunkers: bunkers,
@@ -1101,7 +1110,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=7' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=8' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
