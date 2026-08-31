@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-31",
+  "updated": "2026-09-01",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -74,6 +74,24 @@
       "players": "1",
       "links": [
         { "label": "About", "href": "/lygo-eternal-lattice.html" }
+      ]
+    },
+    {
+      "id": "lattice-golf",
+      "slug": "lattice-golf",
+      "title": "Lattice Golf",
+      "tagline": "Marker, club, wind",
+      "blurb": "Pick a club, plant a marker, choose 25–100% power. Named 9 and 18-hole courses with lore, endless holes, campaign vs AI, local ledger.",
+      "status": "live",
+      "featured": true,
+      "order": 5,
+      "href": "/games/lattice-golf/",
+      "cover": "/games/lattice-golf/assets/og.jpg",
+      "coverAlt": "Lattice Golf twilight course",
+      "genre": ["sports", "golf"],
+      "players": "1",
+      "links": [
+        { "label": "Local ledger", "href": "/games/lattice-golf/ledger.html" }
       ]
     },
     {

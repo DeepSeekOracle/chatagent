@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lattice Golf — marker, clubs, wind | eternalhaven.ca</title>
+<meta name="description" content="Lattice Golf: pick a club, plant a marker, choose 25–100% power, and walk the ball in. Named 9 and 18-hole courses, endless holes, campaign vs AI, local scorecard and ledger. Free HTML5.">
+<meta name="theme-color" content="#07140c">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<meta name="robots" content="index, follow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-golf/">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://chatagent.ca/games/lattice-golf/">
+<meta property="og:title" content="Lattice Golf — plant the marker">
+<meta property="og:description" content="Minimal math golf. Clubs with ranges, wind you can read, named courses with lore, endless mode, local ledger.">
+<meta property="og:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="Lattice Golf">
+<meta name="twitter:description" content="Pick club. Plant marker. Choose power. Walk it in.">
+<meta name="twitter:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./game.css">
+<link rel="stylesheet" href="/games/hub.css">
+</head>
+<body>
+<div id="boot" class="boot">
+  <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+  <h1>Lattice Golf</h1>
+  <p class="boot-msg">Lining up the first tee…</p>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="top">
+    <a class="brand" href="/">eternalhaven.ca</a>
+    <a class="games-mini" href="/games/">Games</a>
+    <div class="phase-pill" id="holePill">HOLE 1</div>
+    <div class="hud-meta" id="hudMeta"></div>
+    <span class="grow"></span>
+    <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal</a>
+  </header>
+  <div class="stage">
+    <div class="viewport">
+      <canvas id="fairway" tabindex="0" aria-label="Golf hole"></canvas>
+      <div class="hint" id="hint">Click the course to plant a marker. Then pick power and shoot.</div>
+      <div class="keys">Click marker · 1–4 power · [ ] club · Space shoot · Z undo · Esc menu</div>
+    </div>
+    <aside class="rail">
+      <div class="panel">
+        <h3>Wind</h3>
+        <div class="wind" id="windHud">—</div>
+      </div>
+      <div class="panel">
+        <h3>Club</h3>
+        <div class="clubs" id="clubs"></div>
+      </div>
+      <div class="panel">
+        <h3>Power</h3>
+        <div class="powers">
+          <button type="button" class="pow" data-p="0.25">25%</button>
+          <button type="button" class="pow" data-p="0.5">50%</button>
+          <button type="button" class="pow on" data-p="0.75">75%</button>
+          <button type="button" class="pow" data-p="1">100%</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>This hole</h3>
+        <div class="card" id="holeCard"></div>
+      </div>
+      <div class="panel">
+        <h3>Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+  <footer class="dock">
+    <button type="button" class="btn ghost" id="btnHelp">How to play</button>
+    <button type="button" class="btn ghost" id="btnCard">Scorecard</button>
+    <button type="button" class="btn ghost" id="btnUndo">Undo shot</button>
+    <span class="grow" id="dockStatus">Plant a marker, then shoot.</span>
+    <button type="button" class="btn" id="btnMenu">Menu</button>
+    <button type="button" class="btn gold" id="btnShoot">Shoot</button>
+  </footer>
+</div>
+
+<div id="overlay" class="overlay"></div>
+<script src="./game.js"></script>
+</body>
+</html>
+

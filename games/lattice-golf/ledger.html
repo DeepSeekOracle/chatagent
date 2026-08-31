@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lattice Golf — Local ledger | eternalhaven.ca</title>
+<meta name="description" content="Local Lattice Golf scorecard hall. Rounds stay on this browser. Human remains publisher.">
+<meta name="theme-color" content="#07140c">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-golf/ledger.html">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:title" content="Lattice Golf — Local ledger">
+<meta property="og:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/games/hub.css">
+<style>
+body { margin:0; background:#07140c; color:#e8f5ec; font-family:"Source Sans 3",system-ui,sans-serif; }
+.wrap { max-width:820px; margin:0 auto; padding:1.4rem 1.1rem 3rem; }
+.kicker { letter-spacing:.2em; text-transform:uppercase; color:#5eead4; font-size:.72rem; }
+h1 { font-family:Syne,sans-serif; }
+a { color:#5eead4; }
+table { width:100%; border-collapse:collapse; font-size:.9rem; }
+th,td { border-bottom:1px solid #1e4a32; padding:.45rem .3rem; text-align:left; }
+th { color:#94a3b8; font-weight:600; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; }
+.row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
+.btn { display:inline-flex; padding:.5rem .8rem; border:1px solid #1e4a32; border-radius:8px; text-decoration:none; color:#e8f5ec; }
+.muted { color:#94a3b8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Δ9Φ963 · local only</p>
+  <h1>Lattice Golf ledger</h1>
+  <p class="muted">This hall is this browser. No network write. Empty beats a fake global board.</p>
+  <div class="row">
+    <a class="btn" href="./">Play</a>
+    <a class="btn" href="/games/">All games</a>
+    <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">PayPal</a>
+  </div>
+  <table>
+    <thead><tr><th>When</th><th>Name</th><th>Mode</th><th>Holes</th><th>Total</th><th>vs par</th></tr></thead>
+    <tbody id="tb"><tr><td colspan="6" class="muted">No rounds on this device yet.</td></tr></tbody>
+  </table>
+</div>
+<script>
+(function(){
+  try {
+    var s = JSON.parse(localStorage.getItem("lygo-lattice-golf-v1") || "{}");
+    var rows = s.rounds || [];
+    if (!rows.length) return;
+    document.getElementById("tb").innerHTML = rows.map(function(r){
+      var d = r.at ? new Date(r.at).toLocaleString() : "—";
+      var v = r.vsPar === 0 ? "E" : (r.vsPar > 0 ? "+"+r.vsPar : String(r.vsPar));
+      return "<tr><td>"+d+"</td><td>"+String(r.name||"Operator").replace(/[<>]/g,"")+"</td><td>"+String(r.course||r.mode||"").replace(/[<>]/g,"")+"</td><td>"+(r.holes||"—")+"</td><td>"+(r.total||"—")+"</td><td>"+v+"</td></tr>";
+    }).join("");
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>
+
