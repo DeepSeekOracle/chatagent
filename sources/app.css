@@ -48,6 +48,7 @@ input[type="url"], input[type="text"], select, textarea {
 .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .btn.ok { background: #065f46; color: #ecfdf5; }
 video, audio { width: 100%; background: #000; border-radius: 10px; margin-top: .5rem; }
+#yt { display: block; }
 .status { font-family: var(--mono); font-size: .75rem; color: var(--muted); min-height: 1.2rem; }
 .list { list-style: none; margin: 0; padding: 0; max-height: 42vh; overflow: auto; }
 .list li {

@@ -2,7 +2,8 @@
 
 Standalone page: https://chatagent.ca/sources/
 
-Paste public **HTTPS** URLs (HLS/m3u8, mp3/mp4, M3U playlists). The browser plays what CORS and the codec allow. Everything else copies into **VLC** (Media → Open Network Stream).
+**In this browser:** HLS with CORS (Mux demo), our HF mp3/mp4, YouTube live embeds.  
+**Not in Chrome:** most IPTV CDNs — they omit CORS on video segments. Those still copy into **VLC**. We do not run an open TV proxy (bandwidth + piracy).
 
 ## Add a steward URL
 

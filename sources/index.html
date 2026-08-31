@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' https: blob:; connect-src 'self' https:; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com; connect-src 'self' https:; upgrade-insecure-requests">
 <title>LYGO Free Sources — plug a URL, play what the lattice can | chatagent.ca</title>
 <meta name="description" content="Standalone LYGO page: paste public HTTPS URLs or M3U playlists, play HLS/mp3 in the browser when allowed, copy the rest for VLC. Steward catalog is RESOURCE. Donations: PayPal.me/ExcavationPro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
@@ -46,9 +46,15 @@
       <article class="card">
         <h2>Player</h2>
         <p class="note" id="now">Nothing loaded.</p>
-        <video id="vid" controls playsinline hidden></video>
+        <div class="row" style="margin-bottom:.5rem">
+          <button class="btn" type="button" id="demo-hls">Play HLS demo in this page</button>
+          <button class="btn ghost" type="button" id="demo-audio">Play LYGO mp3</button>
+          <button class="btn ghost" type="button" id="demo-yt">NASA YouTube live</button>
+        </div>
+        <video id="vid" controls playsinline hidden crossorigin="anonymous"></video>
         <audio id="aud" controls hidden></audio>
-        <p class="status" id="status">Ready.</p>
+        <iframe id="yt" hidden title="YouTube live" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" style="width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000;margin-top:.5rem"></iframe>
+        <p class="status" id="status">Ready. HLS demo and our mp3 play here. Most IPTV CDNs still block the browser (CORS) — those copy to VLC.</p>
         <div class="row">
           <button class="btn ghost" type="button" id="copy-url">Copy URL for VLC</button>
           <button class="btn ghost" type="button" id="open-vlc">How to open in VLC</button>

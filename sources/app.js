@@ -6,6 +6,9 @@
   const HLS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js";
   const MAX_PLAYLIST = 180;
   const MAX_BYTES = 1500000;
+  const DEMO_HLS = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+  const DEMO_MP3 = "https://huggingface.co/datasets/DeepSeekOracle/excavationpro-music-stream/resolve/main/stream/3e448cb8e0e5b8c29987c20499a80cc39508d7f33acd7d0b3bb7605cda782d58.mp3";
+  const DEMO_YT = "https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ";
 
   const $ = function (id) { return document.getElementById(id); };
   const state = { catalog: null, tracks: [], hls: null, hlsReady: false };
@@ -38,6 +41,7 @@
     if (/\.(mp4|webm|ogv)(\s|$)/.test(u)) return "video";
     if (/\.(m3u8?|m3u)(\s|$)/.test(u) || u.indexOf(".m3u") !== -1) return "playlist";
     if (/\.(json)(\s|$)/.test(u)) return "json";
+    if (u.indexOf("youtube.com") !== -1 || u.indexOf("youtube-nocookie.com") !== -1) return "youtube";
     return "unknown";
   }
 
@@ -77,36 +81,73 @@
   function stopMedia() {
     const v = $("vid");
     const a = $("aud");
+    const yt = $("yt");
     if (state.hls) { try { state.hls.destroy(); } catch (e) {} state.hls = null; }
     v.pause(); a.pause();
     v.removeAttribute("src"); a.removeAttribute("src");
     v.load(); a.load();
     v.hidden = true; a.hidden = true;
+    if (yt) { yt.hidden = true; yt.removeAttribute("src"); }
+  }
+
+  function tryPlay(el) {
+    const p = el.play();
+    if (p && p.catch) {
+      p.catch(function () {
+        el.muted = true;
+        el.play().catch(function () { setStatus("Press play on the player.", "bad"); });
+      });
+    }
   }
 
   function playHls(url) {
     const v = $("vid");
     v.hidden = false;
     $("aud").hidden = true;
+    if ($("yt")) $("yt").hidden = true;
+    v.muted = false;
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = url;
-      v.play().catch(function () { setStatus("Autoplay blocked — press play.", "bad"); });
+      tryPlay(v);
+      setStatus("Native HLS (Safari/iOS) — playing in this page.", "ok");
       return;
     }
     loadHls(function (err) {
       if (err || !window.Hls || !window.Hls.isSupported()) {
-        setStatus("This browser cannot play HLS here. Copy URL into VLC.", "bad");
+        setStatus("No HLS in this browser. Copy URL into VLC.", "bad");
         return;
       }
       if (state.hls) { try { state.hls.destroy(); } catch (e2) {} }
-      state.hls = new window.Hls({ enableWorker: true, xhrSetup: function (xhr) { xhr.withCredentials = false; } });
+      state.hls = new window.Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        xhrSetup: function (xhr) { xhr.withCredentials = false; }
+      });
+      state.hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+        setStatus("Playing in this page (hls.js).", "ok");
+        tryPlay(v);
+      });
       state.hls.on(window.Hls.Events.ERROR, function (_e, data) {
-        if (data && data.fatal) setStatus("Stream blocked (CORS/region). Copy into VLC.", "bad");
+        if (data && data.fatal) {
+          setStatus("CDN blocked the browser (no CORS on segments). Copy into VLC.", "bad");
+        }
       });
       state.hls.loadSource(url);
       state.hls.attachMedia(v);
-      v.play().catch(function () { setStatus("Press play on the video.", "bad"); });
     });
+  }
+
+  function playYoutube(url) {
+    const yt = $("yt");
+    if (!yt) { window.open(url, "_blank", "noopener"); return; }
+    const href = G.safeHref(url);
+    if (!href || href.indexOf("youtube") === -1) {
+      setStatus("Not a YouTube embed URL.", "bad");
+      return;
+    }
+    yt.src = href.indexOf("embed") !== -1 ? href : href;
+    yt.hidden = false;
+    setStatus("YouTube live in this page.", "ok");
   }
 
   function playUrl(item) {
@@ -117,17 +158,20 @@
     $("copy-url").dataset.url = href;
     stopMedia();
     const kind = item.kind || kindOfUrl(href);
+    if (kind === "youtube") {
+      playYoutube(href);
+      return;
+    }
     if (kind === "audio") {
       const a = $("aud");
       a.hidden = false;
       a.src = href;
-      a.play().catch(function () { setStatus("Press play on the audio.", "bad"); });
-      setStatus("Playing audio.", "ok");
+      tryPlay(a);
+      setStatus("Playing audio in this page.", "ok");
       return;
     }
     if (kind === "video" || kind === "hls" || /\.m3u8(\?|$)/i.test(href)) {
       playHls(href);
-      setStatus("Trying in-browser player (HLS). If it fails, use VLC.", "ok");
       return;
     }
     if (kind === "page" || kind === "json") {
@@ -140,7 +184,6 @@
       return;
     }
     playHls(href);
-    setStatus("Unknown type — treating as HLS/media.", "ok");
   }
 
   async function ingestPlaylist(url) {
@@ -199,6 +242,7 @@
         li.title = it.url;
         li.addEventListener("click", function () {
           if (it.kind === "playlist") ingestPlaylist(it.url);
+          else if (it.kind === "youtube") playUrl(it);
           else playUrl(it);
         });
         ul.appendChild(li);
@@ -243,6 +287,15 @@
     else playUrl(item);
   }
 
+  $("demo-hls").addEventListener("click", function () {
+    playUrl({ title: "Mux HLS demo (in-browser)", url: DEMO_HLS, kind: "hls" });
+  });
+  $("demo-audio").addEventListener("click", function () {
+    playUrl({ title: "LYGO HF mp3", url: DEMO_MP3, kind: "audio" });
+  });
+  $("demo-yt").addEventListener("click", function () {
+    playUrl({ title: "NASA YouTube live", url: DEMO_YT, kind: "youtube" });
+  });
   $("go").addEventListener("click", function () { plugFromForm(false); });
   $("save").addEventListener("click", function () { plugFromForm(true); });
   $("clear").addEventListener("click", function () { saveLocal([]); renderMine(); setStatus("Local list cleared."); });
