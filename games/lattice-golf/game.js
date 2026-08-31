@@ -24,12 +24,12 @@
     { id: "pt", name: "Putter", min: 0, max: 40, putt: true },
   ];
   const CAST = [
-    { id: "mira", name: "Mira Quinn", tag: "Parkland", src: "./assets/g-mira.jpg" },
-    { id: "sancora", name: "Sancora Vale", tag: "Links", src: "./assets/g-sancora.jpg" },
-    { id: "lyra", name: "Lyra Helmer", tag: "Night green", src: "./assets/g-lyra.jpg" },
-    { id: "reed", name: "Reed Hollow", tag: "Pines", src: "./assets/g-reed.jpg" },
-    { id: "calder", name: "Calder Voss", tag: "Wind", src: "./assets/g-calder.jpg" },
-    { id: "kai", name: "Kai Park", tag: "Lights", src: "./assets/g-kai.jpg" },
+    { id: "mira", name: "Mira Quinn", tag: "Parkland", src: "./assets/g-mira.jpg?v=2" },
+    { id: "sancora", name: "Sancora Vale", tag: "Links", src: "./assets/g-sancora.jpg?v=2" },
+    { id: "lyra", name: "Lyra Helmer", tag: "Night green", src: "./assets/g-lyra.jpg?v=2" },
+    { id: "reed", name: "Reed Hollow", tag: "Pines", src: "./assets/g-reed.jpg?v=2" },
+    { id: "calder", name: "Calder Voss", tag: "Wind", src: "./assets/g-calder.jpg?v=2" },
+    { id: "kai", name: "Kai Park", tag: "Lights", src: "./assets/g-kai.jpg?v=2" },
   ];
   function golferOf(id) {
     return CAST.find(function (c) { return c.id === id; }) || CAST[0];
@@ -1587,7 +1587,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=18' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=19' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
