@@ -769,7 +769,15 @@
   }
 
   function holeDone() {
-    G.card.push({ hole: G.hi + 1, par: G.hole.par, strokes: G.strokes });
+    G.card.push({
+      hole: G.hi + 1,
+      name: G.hole.name || ("Hole " + (G.hi + 1)),
+      par: G.hole.par,
+      yards: Math.round(G.hole.yards),
+      strokes: G.strokes,
+      vsPar: G.strokes - G.hole.par,
+      hint: G.hole.hint || "",
+    });
     const vs = G.strokes - G.hole.par;
     const key = (G.course ? G.course.id : "endless") + ":" + (G.hi + 1);
     const prev = G.save.bestHole[key];
@@ -802,10 +810,14 @@
       name: (G.save.name || "Operator").slice(0, 24),
       mode: G.mode,
       course: G.course ? G.course.name : "Endless",
+      courseId: G.course ? G.course.id : "endless",
       holes: G.card.length,
+      par: G.card.reduce(function (n, h) { return n + h.par; }, 0),
+      yards: G.card.reduce(function (n, h) { return n + (h.yards || 0); }, 0),
       total: t,
       vsPar: v,
       at: Date.now(),
+      card: G.card.slice(),
     });
     G.save.rounds = G.save.rounds.slice(0, 30);
     writeSave(G.save);
@@ -819,21 +831,176 @@
         (t <= ai ? "You hold the lattice." : "The rival walks away with the pin.") + "</p>";
     }
     showSheet(
-      "<p class='kicker'>Round closed</p><h2>" + t + " strokes · " + (v === 0 ? "E" : (v > 0 ? "+" + v : String(v))) + "</h2>" +
-      extra + scoreTable() +
-      "<div class='modes'><button class='btn gold' id='again'>Play again</button><button class='btn' id='toMenu'>Menu</button></div>"
+      "<p class='kicker'>Round closed</p><h2>" + t + " strokes · " + vsLabel(v) + "</h2>" +
+      extra + scorecardHtml(true) +
+      "<div class='modes'><button class='btn gold' id='again'>Play again</button><button class='btn' id='scCopy'>Copy card</button><button class='btn' id='toMenu'>Menu</button></div>",
+      false,
+      true
     );
+    bindScorecard();
     $("again").onclick = function () { startRound(G.mode, G.course, G.campaign); };
     $("toMenu").onclick = menu;
   }
 
-  function scoreTable() {
-    let h = "<table class='score-table'><tr>";
-    G.card.forEach(function (x) { h += "<th>" + x.hole + "</th>"; });
-    h += "<th>T</th></tr><tr>";
-    G.card.forEach(function (x) { h += "<td>" + x.strokes + "</td>"; });
-    h += "<td><b>" + total(G.card) + "</b></td></tr></table>";
-    return h;
+  function vsLabel(n) {
+    if (n == null || n === 0) return "E";
+    return n > 0 ? "+" + n : String(n);
+  }
+  function scoreWord(vs) {
+    if (vs <= -3) return "albatross";
+    if (vs === -2) return "eagle";
+    if (vs === -1) return "birdie";
+    if (vs === 0) return "par";
+    if (vs === 1) return "bogey";
+    if (vs === 2) return "double bogey";
+    return "+" + vs;
+  }
+  function scoreClass(vs) {
+    if (vs <= -2) return "sc-eagle";
+    if (vs === -1) return "sc-birdie";
+    if (vs === 0) return "sc-par";
+    if (vs === 1) return "sc-bogey";
+    return "sc-double";
+  }
+  function holeYards(src) {
+    if (!src) return 0;
+    if (src.yards) return Math.round(src.yards);
+    if (src.path && src.path.length) return Math.round(pathLen(src.path));
+    return 0;
+  }
+  function cardRows() {
+    const n = Math.max(G.holes.length, G.card.length);
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      const src = G.holes[i] || {};
+      const played = G.card[i];
+      const par = (played && played.par) || src.par || 4;
+      rows.push({
+        n: i + 1,
+        name: (played && played.name) || src.name || ("Hole " + (i + 1)),
+        par: par,
+        yards: (played && played.yards) || holeYards(src),
+        hint: (played && played.hint) || src.hint || "",
+        strokes: played ? played.strokes : null,
+        vs: played ? played.strokes - par : null,
+        current: G.mode !== "menu" && i === G.hi && !played,
+        best: G.save.bestHole[(G.course ? G.course.id : "endless") + ":" + (i + 1)],
+      });
+    }
+    return rows;
+  }
+  function sumField(rows, key) {
+    return rows.reduce(function (n, r) { return n + (r[key] || 0); }, 0);
+  }
+  function scoreGroupTable(label, rows, offset) {
+    let head = "<th class='sc-lab'>" + label + "</th>";
+    let yds = "<th class='sc-lab'>Yds</th>";
+    let par = "<th class='sc-lab'>Par</th>";
+    let sc = "<th class='sc-lab'>Score</th>";
+    let rel = "<th class='sc-lab'>+/−</th>";
+    rows.forEach(function (r, i) {
+      const idx = offset + i;
+      const cls = (r.current ? " sc-now" : "") + (r.strokes != null ? " " + scoreClass(r.vs) : " sc-open");
+      const attr = " data-sc='" + idx + "' tabindex='0' role='button' title='" + String(r.name || "").replace(/'/g, "") + "'";
+      head += "<th" + attr + " class='sc-h" + (r.current ? " sc-now" : "") + "'>" + r.n + "</th>";
+      yds += "<td" + attr + ">" + (r.yards || "—") + "</td>";
+      par += "<td" + attr + ">" + r.par + "</td>";
+      sc += "<td" + attr + " class='sc-score" + cls + "'>" + (r.strokes == null ? (r.current ? "·" : "—") : r.strokes) + "</td>";
+      rel += "<td" + attr + " class='" + (r.strokes == null ? "" : scoreClass(r.vs)) + "'>" + (r.strokes == null ? "" : vsLabel(r.vs)) + "</td>";
+    });
+    const played = rows.filter(function (r) { return r.strokes != null; });
+    const totS = sumField(played, "strokes");
+    const totP = sumField(rows, "par");
+    const totY = sumField(rows, "yards");
+    const totV = played.length ? totS - sumField(played, "par") : null;
+    head += "<th>T</th>";
+    yds += "<td>" + totY + "</td>";
+    par += "<td>" + totP + "</td>";
+    sc += "<td><b>" + (played.length ? totS : "—") + "</b></td>";
+    rel += "<td><b>" + (totV == null ? "—" : vsLabel(totV)) + "</b></td>";
+    return "<div class='sc-wrap'><table class='score-table sc-table'><tr>" + head + "</tr><tr>" + yds +
+      "</tr><tr>" + par + "</tr><tr>" + sc + "</tr><tr>" + rel + "</tr></table></div>";
+  }
+  function scorecardHtml() {
+    const rows = cardRows();
+    if (!rows.length) return "<p class='lore'>No holes on this card yet.</p>";
+    const groups = [];
+    if (rows.length > 9) {
+      groups.push({ label: "Out", rows: rows.slice(0, 9), off: 0 });
+      groups.push({ label: "In", rows: rows.slice(9, 18), off: 9 });
+      if (rows.length > 18) groups.push({ label: "Extra", rows: rows.slice(18), off: 18 });
+    } else {
+      groups.push({ label: "Nine", rows: rows, off: 0 });
+    }
+    const played = G.card;
+    const t = played.length ? total(played) : 0;
+    const v = played.length ? vsPar(played) : 0;
+    const parTot = rows.reduce(function (n, r) { return n + r.par; }, 0);
+    const ydsTot = rows.reduce(function (n, r) { return n + r.yards; }, 0);
+    const thru = played.length;
+    const when = new Date().toLocaleString();
+    const meta =
+      "<div class='sc-meta'>" +
+        "<div><span>Operator</span><b>" + (G.save.name || "Operator").replace(/[<>]/g, "") + "</b></div>" +
+        "<div><span>Course</span><b>" + ((G.course && G.course.name) || "Endless") + "</b></div>" +
+        "<div><span>Thru</span><b>" + thru + "/" + rows.length + "</b></div>" +
+        "<div><span>Par</span><b>" + parTot + "</b></div>" +
+        "<div><span>Yards</span><b>" + ydsTot + "</b></div>" +
+        "<div><span>Score</span><b>" + (thru ? t + " · " + vsLabel(v) : "—") + "</b></div>" +
+        "<div><span>Wind</span><b>" + (G.wind.mph ? G.wind.mph.toFixed(1) + " mph" : "—") + "</b></div>" +
+        "<div><span>Local</span><b>" + when + "</b></div>" +
+      "</div>";
+    let tables = "";
+    groups.forEach(function (g) {
+      if (g.rows.length) tables += scoreGroupTable(g.label, g.rows, g.off);
+    });
+    return meta + tables +
+      "<p class='sc-legend'><span class='sc-eagle'>eagle</span> <span class='sc-birdie'>birdie</span> <span class='sc-par'>par</span> <span class='sc-bogey'>bogey</span> <span class='sc-double'>double+</span> · click a hole</p>" +
+      "<div class='sc-detail' id='scDetail'>Click a hole for name, yards, your line, and the best this browser has posted there.</div>";
+  }
+  function cardPlaintext() {
+    const rows = cardRows();
+    let t = "Lattice Golf — " + ((G.course && G.course.name) || "Endless") + "\n";
+    t += (G.save.name || "Operator") + " · " + new Date().toLocaleString() + "\n";
+    rows.forEach(function (r) {
+      t += r.n + ". " + r.name + "  par " + r.par + "  " + r.yards + " yd  " +
+        (r.strokes == null ? "—" : r.strokes + "  " + vsLabel(r.vs)) + "\n";
+    });
+    if (G.card.length) t += "Total " + total(G.card) + "  " + vsLabel(vsPar(G.card)) + "\n";
+    t += "eternalhaven.ca/games/lattice-golf/\n";
+    return t;
+  }
+  function bindScorecard() {
+    const detail = $("scDetail");
+    const cells = document.querySelectorAll("[data-sc]");
+    function show(i, el) {
+      const rows = cardRows();
+      const r = rows[i];
+      if (!r || !detail) return;
+      cells.forEach(function (c) { c.classList.toggle("sc-pick", c.getAttribute("data-sc") === String(i)); });
+      const line = r.strokes == null
+        ? (r.current ? "On this hole now." : "Not played yet.")
+        : (r.strokes + " strokes · " + scoreWord(r.vs) + " (" + vsLabel(r.vs) + ")");
+      detail.innerHTML = "<b>" + r.n + ". " + r.name + "</b> · par " + r.par + " · " + r.yards + " yd" +
+        (r.best != null ? " · best here " + r.best : "") +
+        "<br>" + line +
+        (r.hint ? "<br><span class='lore'>" + r.hint + "</span>" : "");
+    }
+    cells.forEach(function (el) {
+      el.onclick = function () { show(Number(el.getAttribute("data-sc")), el); };
+    });
+    const copy = $("scCopy");
+    if (copy) {
+      copy.onclick = function () {
+        const text = cardPlaintext();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            copy.textContent = "Copied";
+            setTimeout(function () { copy.textContent = "Copy card"; }, 1400);
+          }).catch(function () { /* private */ });
+        }
+      };
+    }
   }
 
   function randomHole() {
@@ -910,11 +1077,11 @@
     $("overlay").classList.add("hidden");
     $("overlay").classList.remove("studio");
   }
-  function showSheet(html, studio) {
+  function showSheet(html, studio, wide) {
     const ov = $("overlay");
     ov.classList.remove("hidden");
     ov.classList.toggle("studio", !!studio);
-    ov.innerHTML = studio ? html : "<div class='sheet'>" + html + "</div>";
+    ov.innerHTML = studio ? html : "<div class='sheet" + (wide ? " sheet-wide" : "") + "'>" + html + "</div>";
   }
 
   function donateHtml() {
@@ -934,7 +1101,7 @@
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'>" +
-          "<img src='./assets/menu.jpg?v=6' alt='Lattice Golf — twilight pin and cup'>" +
+          "<img src='./assets/menu.jpg?v=7' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
@@ -998,8 +1165,14 @@
   }
 
   function cardSheet() {
-    showSheet("<h2>Scorecard</h2>" + (G.card.length ? scoreTable() : "<p class='lore'>No holes closed yet.</p>") +
-      "<button class='btn gold' id='ck'>Close</button>");
+    showSheet(
+      "<p class='kicker'>Scorecard</p><h2>" + ((G.course && G.course.name) || "Endless") + "</h2>" +
+      scorecardHtml() +
+      "<div class='modes'><button class='btn gold' id='ck'>Back to the tee</button><button class='btn' id='scCopy'>Copy card</button></div>",
+      false,
+      true
+    );
+    bindScorecard();
     $("ck").onclick = hideOverlay;
   }
 

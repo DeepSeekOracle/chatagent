@@ -7,14 +7,14 @@
 <meta name="description" content="Local Lattice Golf scorecard hall. Rounds stay on this browser. Human remains publisher.">
 <meta name="theme-color" content="#07140c">
 <meta name="robots" content="index, follow">
-<link rel="canonical" href="https://chatagent.ca/games/lattice-golf/ledger.html">
+<link rel="canonical" href="https://eternalhaven.ca/games/lattice-golf/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="chatagent.ca">
-<meta property="og:url" content="https://chatagent.ca/games/lattice-golf/ledger.html">
+<meta property="og:site_name" content="Eternal Haven">
+<meta property="og:url" content="https://eternalhaven.ca/games/lattice-golf/ledger.html">
 <meta property="og:title" content="Lattice Golf — Local ledger">
 <meta property="og:description" content="This browser’s hall of Lattice Golf rounds. Empty until you close a card.">
-<meta property="og:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta property="og:image" content="https://eternalhaven.ca/games/lattice-golf/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -22,7 +22,7 @@
 <meta name="twitter:creator" content="@Excavationpro">
 <meta name="twitter:title" content="Lattice Golf — Local ledger">
 <meta name="twitter:description" content="Local hall of rounds. No fake global board.">
-<meta name="twitter:image" content="https://chatagent.ca/games/lattice-golf/assets/og.jpg">
+<meta name="twitter:image" content="https://eternalhaven.ca/games/lattice-golf/assets/og.jpg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/games/hub.css">
 <style>
@@ -37,6 +37,22 @@ th { color:#94a3b8; font-weight:600; font-size:.75rem; letter-spacing:.08em; tex
 .row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
 .btn { display:inline-flex; padding:.5rem .8rem; border:1px solid #1e4a32; border-radius:8px; text-decoration:none; color:#e8f5ec; }
 .muted { color:#94a3b8; }
+.hidden { display:none; }
+.round {
+  width:100%; text-align:left; background:#0c1c12; color:#e8f5ec; border:1px solid #1e4a32;
+  border-radius:10px; padding:.7rem .8rem; margin:.4rem 0 0; cursor:pointer; font:inherit;
+}
+.round:hover { border-color:#fbbf24; }
+.rtop { display:flex; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
+.rtop b { font-family:Syne,sans-serif; }
+.rtop span, .rmeta { color:#94a3b8; font-size:.82rem; }
+.rmeta b { color:#fbbf24; }
+.holes { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.4rem; padding:.55rem 0 1rem; }
+.holes.hidden { display:none; }
+.hcell { background:#102418; border:1px solid #1e4a32; border-radius:8px; padding:.45rem .5rem; font-size:.78rem; }
+.hcell b { color:#fbbf24; display:block; }
+.hcell span { display:block; color:#94a3b8; }
+.hcell strong { color:#5eead4; }
 </style>
 </head>
 <body>
@@ -49,22 +65,42 @@ th { color:#94a3b8; font-weight:600; font-size:.75rem; letter-spacing:.08em; tex
     <a class="btn" href="/games/">All games</a>
     <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">PayPal</a>
   </div>
-  <table>
-    <thead><tr><th>When</th><th>Name</th><th>Mode</th><th>Holes</th><th>Total</th><th>vs par</th></tr></thead>
-    <tbody id="tb"><tr><td colspan="6" class="muted">No rounds on this device yet.</td></tr></tbody>
-  </table>
+  <p class="muted" id="lead">Click a round to open the hole-by-hole card. Older rounds may only have totals.</p>
+  <div id="hall"></div>
 </div>
 <script>
 (function(){
+  function vs(n){ if (n==null || n===0) return "E"; return n>0 ? "+"+n : String(n); }
+  function esc(s){ return String(s||"").replace(/[<>]/g,""); }
   try {
     var s = JSON.parse(localStorage.getItem("lygo-lattice-golf-v1") || "{}");
     var rows = s.rounds || [];
-    if (!rows.length) return;
-    document.getElementById("tb").innerHTML = rows.map(function(r){
+    var hall = document.getElementById("hall");
+    if (!rows.length) {
+      hall.innerHTML = "<p class='muted'>No rounds on this device yet.</p>";
+      return;
+    }
+    hall.innerHTML = rows.map(function(r, i){
       var d = r.at ? new Date(r.at).toLocaleString() : "—";
-      var v = r.vsPar === 0 ? "E" : (r.vsPar > 0 ? "+"+r.vsPar : String(r.vsPar));
-      return "<tr><td>"+d+"</td><td>"+String(r.name||"Operator").replace(/[<>]/g,"")+"</td><td>"+String(r.course||r.mode||"").replace(/[<>]/g,"")+"</td><td>"+(r.holes||"—")+"</td><td>"+(r.total||"—")+"</td><td>"+v+"</td></tr>";
+      var v = vs(r.vsPar);
+      var holes = (r.card || []).map(function(h, n){
+        var rel = (h.vsPar != null) ? h.vsPar : (h.strokes - h.par);
+        return "<div class='hcell'><b>"+(h.hole||n+1)+"</b><span>"+esc(h.name||"")+"</span><span>par "+h.par+(h.yards?" · "+h.yards+" yd":"")+"</span><strong>"+h.strokes+" · "+vs(rel)+"</strong></div>";
+      }).join("");
+      return "<button type='button' class='round' data-i='"+i+"'>" +
+        "<div class='rtop'><b>"+esc(r.course||r.mode)+"</b><span>"+d+"</span></div>" +
+        "<div class='rmeta'>"+esc(r.name||"Operator")+" · "+(r.holes||"?")+" holes" +
+        (r.par ? " · par "+r.par : "") +
+        (r.yards ? " · "+r.yards+" yd" : "") +
+        " · <b>"+(r.total||"—")+" · "+v+"</b></div></button>" +
+        "<div class='holes hidden' id='h"+i+"'>"+(holes || "<p class='muted'>This round was saved before hole metadata.</p>")+"</div>";
     }).join("");
+    hall.addEventListener("click", function(e){
+      var b = e.target.closest(".round");
+      if (!b) return;
+      var panel = document.getElementById("h"+b.getAttribute("data-i"));
+      if (panel) panel.classList.toggle("hidden");
+    });
   } catch (e) {}
 })();
 </script>
