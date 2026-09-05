@@ -6,7 +6,8 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.12.0";
+  const CAT_VER = "1.13.0";
+  const TERMS_KEY = "lygo_tv_terms_ok";
   const NUDGE_KEY = "lygo_tv_nudge_at";
   const NUDGE_MS = 30 * 60 * 1000;
   const SID_KEY = "lygo_tv_sid";
@@ -84,10 +85,42 @@
     httpSkipped: 0,
     audience: "all",
     ageOk: false,
-    gateCb: null
+    gateCb: null,
+    termsOk: false
   };
 
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
+
+  function termsOk() {
+    if (st.termsOk) return true;
+    try { return sessionStorage.getItem(TERMS_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function paintTerms() {
+    const el = $("terms");
+    if (!el) return;
+    const need = !termsOk() && st.tab !== "channel" && st.tab !== "watch";
+    el.hidden = !need;
+  }
+
+  function acceptTerms() {
+    const box = $("terms-box");
+    if (!box || !box.checked) {
+      setStatus("Tick the box to agree to the Terms of Use.", "bad");
+      return;
+    }
+    st.termsOk = true;
+    try { sessionStorage.setItem(TERMS_KEY, "1"); } catch (e) {}
+    paintTerms();
+    paintTabs();
+    paintChips();
+    setStatus("Terms accepted for this session. Public lists unlocked.", "ok");
+  }
+
+  function needTerms() {
+    setStatus("Agree to the Terms of Use to open public TV lists. Channel rooms stay open.", "bad");
+    paintTerms();
+  }
 
   function groupOf(id) {
     if (id === "live") return "channel";
@@ -520,14 +553,22 @@
     TABS.forEach(function (t) {
       const el = document.createElement("button");
       el.type = "button";
-      el.className = "tab" + (st.tab === t.id ? " on" : "");
+      const locked = !termsOk() && t.id !== "channel";
+      el.className = "tab" + (st.tab === t.id ? " on" : "") + (locked ? " lock" : "");
       el.textContent = t.label;
       el.setAttribute("aria-pressed", st.tab === t.id ? "true" : "false");
+      el.title = locked ? "Agree to Terms to open public lists" : t.label;
       el.addEventListener("click", function () {
         st.tab = t.id;
         paintTabs();
         paintChips();
-        if (t.id === "saved") loadSaved();
+        paintTerms();
+        if (t.id === "saved") {
+          if (!termsOk()) needTerms();
+          else loadSaved();
+          return;
+        }
+        if (t.id !== "channel" && !termsOk()) needTerms();
       });
       box.appendChild(el);
     });
@@ -645,6 +686,13 @@
   }
 
   function loadSaved() {
+    if (!termsOk()) {
+      st.tab = "saved";
+      paintTabs();
+      paintChips();
+      needTerms();
+      return;
+    }
     st.tab = "saved";
     st.bouquet = "saved";
     st.httpSkipped = 0;
@@ -702,7 +750,10 @@
     paintList();
     remember("live");
     hashSet();
-    setStatus("Excavationpro Channel — Kick, Rumble, Twitch, YouTube.");
+    paintTerms();
+    setStatus(termsOk()
+      ? "Excavationpro Channel — Kick, Rumble, Twitch, YouTube."
+      : "Channel rooms are open. Agree to Terms to unlock public TV lists.");
     let start = 0;
     if (preferId) {
       const found = st.channels.findIndex(function (c) { return c.id === preferId; });
@@ -724,6 +775,13 @@
   }
 
   async function loadBouquet(b, autoplay) {
+    if (!termsOk()) {
+      st.tab = groupOf(b.id);
+      paintTabs();
+      paintChips();
+      needTerms();
+      return;
+    }
     if (!G.allowFetch(b.url)) { setStatus("That list URL is blocked.", "bad"); return; }
     st.bouquet = b.id;
     st.tab = groupOf(b.id);
@@ -839,6 +897,7 @@
     paintList();
   });
   $("add").addEventListener("click", function () {
+    if (!termsOk()) { needTerms(); return; }
     const href = G.safeHref($("custom").value);
     if (!href) { setStatus("Need a public https:// URL.", "bad"); return; }
     const customTitle = $("custom").value.split("/").pop() || href;
@@ -1036,6 +1095,13 @@
     const bid = parts[1] ? decodeURIComponent(parts[1]) : "";
     if (tab === "saved") { loadSaved(); return true; }
     if (tab === "channel" || tab === "watch" || bid === "live") { loadLive(bid && bid !== "live" ? bid : ""); return true; }
+    if (!termsOk()) {
+      loadLive("");
+      st.tab = tab || "fast";
+      paintTabs();
+      needTerms();
+      return true;
+    }
     if (!bid) return false;
     const b = (st.catalog.bouquets || []).filter(function (x) { return x.id === bid; })[0];
     if (b) { loadBouquet(b, false); return true; }
@@ -1051,10 +1117,16 @@
       paintAudience();
       startPulse();
       startNudge();
+      st.termsOk = termsOk();
+      if ($("terms-ok")) $("terms-ok").addEventListener("click", acceptTerms);
       if (openFromHash()) return;
       let last = null;
       try { last = JSON.parse(localStorage.getItem(LAST_KEY) || "null"); } catch (e) {}
       if (last && last.bouquet && last.bouquet !== "live" && last.bouquet !== "saved") {
+        if (!termsOk()) {
+          loadLive("");
+          return;
+        }
         const b = (j.bouquets || []).filter(function (x) { return x.id === last.bouquet; })[0];
         if (b) { loadBouquet(b, false); return; }
       }

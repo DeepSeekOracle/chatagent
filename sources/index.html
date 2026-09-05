@@ -15,7 +15,7 @@
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css?v=1.12.0">
+<link rel="stylesheet" href="/sources/app.css?v=1.13.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -83,26 +83,45 @@
   </div>
   <aside class="side">
     <h1>LYGO TV</h1>
-    <p class="note"><strong>Portal only.</strong> Free public links, not a pirate host. Unlabeled rows are <strong>All ages</strong>. <span class="badge kids">Kids</span> and <span class="badge adult">18+</span> are separate shelves from list metadata — we do not run an XXX catalog. <a href="/sources/disclaimer.html">Full disclaimer</a>.</p>
+    <p class="note"><strong>Portal only.</strong> Channel tab = Excavationpro rooms (always open). FAST and world lists need a Terms tick each session. Unlabeled = <strong>All ages</strong>. <a href="/terms.html">Terms</a> · <a href="/sources/disclaimer.html">Disclaimer</a>.</p>
     <div class="tabs" id="tabs"></div>
-    <div class="chips" id="chips"></div>
-    <input id="q" type="search" placeholder="Search this list" autocomplete="off">
-    <div class="audience" id="audience" role="tablist" aria-label="Age shelves">
-      <button type="button" class="aud on" id="aud-all" data-aud="all" aria-pressed="true">All ages</button>
-      <button type="button" class="aud" id="aud-kids" data-aud="kids" aria-pressed="false">Kids</button>
-      <button type="button" class="aud" id="aud-adult" data-aud="adult" aria-pressed="false">18+ gated</button>
+    <div class="catalog" id="catalog">
+      <div class="chips" id="chips"></div>
+      <input id="q" type="search" placeholder="Search this list" autocomplete="off">
+      <div class="audience" id="audience" role="tablist" aria-label="Age shelves">
+        <button type="button" class="aud on" id="aud-all" data-aud="all" aria-pressed="true">All ages</button>
+        <button type="button" class="aud" id="aud-kids" data-aud="kids" aria-pressed="false">Kids</button>
+        <button type="button" class="aud" id="aud-adult" data-aud="adult" aria-pressed="false">18+ gated</button>
+      </div>
+      <div class="filters">
+        <select id="grp" hidden aria-label="Filter by group"></select>
+        <button class="btn ghost" type="button" id="sort" title="Sort A–Z">A–Z</button>
+      </div>
+      <p class="note" id="count">0 channels</p>
+      <ul class="list" id="channels"></ul>
+      <details class="add">
+        <summary>Paste your own stream</summary>
+        <input id="custom" type="url" placeholder="https://…m3u8">
+        <button class="btn" type="button" id="add">Play</button>
+      </details>
+      <div class="terms-cover" id="terms" hidden>
+        <p class="nudge-kicker">Terms of Use</p>
+        <h2 class="terms-h">Unlock public TV lists</h2>
+        <p>You can already watch <strong>Excavationpro</strong> on Kick, Rumble, Twitch, and YouTube from the Channel tab. FAST and world lists are a public catalog portal — not our streams.</p>
+        <p>This site does not host, decrypt, or proxy TV. Kids and 18+ rows are split by list metadata. Optional donations keep the portal running.</p>
+        <p class="gate-links">
+          <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>
+          · <a href="/sources/disclaimer.html" target="_blank" rel="noopener">TV disclaimer</a>
+          · <a href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+        </p>
+        <label class="terms-check">
+          <input type="checkbox" id="terms-box">
+          I agree to the Terms of Use for this session
+        </label>
+        <button class="btn" type="button" id="terms-ok">I agree — unlock lists</button>
+        <p class="nudge-note">Agreement is stored for this browser session only. A new session asks again. Channel rooms stay open either way.</p>
+      </div>
     </div>
-    <div class="filters">
-      <select id="grp" hidden aria-label="Filter by group"></select>
-      <button class="btn ghost" type="button" id="sort" title="Sort A–Z">A–Z</button>
-    </div>
-    <p class="note" id="count">0 channels</p>
-    <ul class="list" id="channels"></ul>
-    <details class="add">
-      <summary>Paste your own stream</summary>
-      <input id="custom" type="url" placeholder="https://…m3u8">
-      <button class="btn" type="button" id="add">Play</button>
-    </details>
     <div class="donate">
       <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
       <a class="btn ghost" href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">Stream Excavationpro</a>
@@ -140,6 +159,6 @@
   </div>
 </div>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.12.0"></script>
+<script src="/sources/app.js?v=1.13.0"></script>
 </body>
 </html>
