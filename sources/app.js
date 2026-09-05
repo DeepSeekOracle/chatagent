@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.15.0";
+  const CAT_VER = "1.12.0";
   const BM_KEY = "lygo_tv_bm_ok";
   const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
@@ -45,8 +45,9 @@
   ];
   const FAST_IDS = {
     mjh_raw: 1, mjh_radio: 1, plex_fast: 1, plex_all: 1, rw1986: 1,
-    ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1,
-    tubi_fast: 1, distro_fast: 1, vizio_fast: 1, rakuten_uk: 1, lg_us: 1
+    ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1, ftv_music: 1,
+    tubi_fast: 1, distro_fast: 1, vizio_fast: 1, rakuten_uk: 1, lg_us: 1,
+    xumo_fast: 1
   };
   const LIST_IDS = {
     worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1,
@@ -54,12 +55,15 @@
     pbs_src: 1, bbc_src: 1,
     ftv_canada: 1, ftv_australia: 1, ftv_ireland: 1, ftv_netherlands: 1,
     ftv_japan: 1, ftv_india: 1, ftv_mexico: 1, ftv_poland: 1, ftv_sweden: 1,
-    ftv_austria: 1, ftv_portugal: 1, ftv_belgium: 1, ftv_brazil: 1
+    ftv_austria: 1, ftv_portugal: 1, ftv_belgium: 1, ftv_brazil: 1,
+    ftv_finland: 1, ftv_norway: 1, ftv_denmark: 1, ftv_greece: 1, ftv_czech: 1,
+    ftv_croatia: 1, ftv_hungary: 1, ftv_romania: 1, ftv_turkey: 1,
+    ftv_chile: 1, ftv_argentina: 1, ftv_egypt: 1, ftv_taiwan: 1, ftv_israel: 1
   };
   const TOPIC_IDS = {
     culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,
-    outdoor: 1, religious: 1, classic: 1, relax: 1, general: 1, science: 1,
-    music: 1, sports: 1, weather: 1, animation: 1, comedy: 1, series: 1,
+    outdoor: 1, religious: 1, relax: 1, general: 1, science: 1,
+    music: 1, sports: 1, weather: 1,
     cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1,
     news: 1, kids: 1, movies: 1, entertainment: 1, shop: 1
   };
