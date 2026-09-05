@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.14.0";
+  const CAT_VER = "1.15.0";
   const BM_KEY = "lygo_tv_bm_ok";
   const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
@@ -66,7 +66,7 @@
     music: 1, sports: 1, weather: 1,
     cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1,
     news: 1, kids: 1, movies: 1, entertainment: 1, shop: 1,
-    mature_18: 1, adult_pub: 1
+    mature_18: 1
   };
   const LANG_IDS = {
     ara: 1, fas: 1, kur: 1, rus: 1, ukr: 1, zho: 1, spa: 1, por: 1,
@@ -161,7 +161,7 @@
     const adultGroup = /^(xxx|adult|18\+|nsfw|porn|porno)$/.test(g);
     const adultWords = /\bxxx\b|\bnsfw\b|\bporn\b|\bporno\b|\bhentai\b|\b18\s*\+/.test(hay) ||
       (/\badult\b/.test(hay) && !/\badult swim\b/.test(hay));
-    if (bouquetId === "mature_18" || bouquetId === "mature" || bouquetId === "adult_pub") return "adult";
+    if (bouquetId === "mature_18" || bouquetId === "mature") return "adult";
     if (bouquetId === "xxx" || adultGroup || adultWords) return "adult";
     if (bouquetId === "kids") return "kids";
     if (/^(kids|children|children'?s|infantil|ninos|niños)$/.test(g)) return "kids";
