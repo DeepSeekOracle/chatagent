@@ -6,7 +6,7 @@
   "live_star_chart_ingest": false,
   "doctrine": {
     "is": "Portal-only free TV pointer. Public lists plus Excavationpro rooms. Does not host or decrypt streams.",
-    "rule": "HTTPS only. No POST. No XXX catalog. Unlabeled = all ages. Kids and 18+ separated by metadata; 18+ gated. Human remains publisher of catalog.json."
+    "rule": "HTTPS only. No POST. Not branded XXX. Unlabeled = all ages. Kids and Adult separated; Adult gated and labeled Adult. Human remains publisher of catalog.json."
   },
   "donate": {
     "paypal": "https://www.paypal.com/paypalme/ExcavationPro",

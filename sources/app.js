@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.13.0";
+  const CAT_VER = "1.14.0";
   const BM_KEY = "lygo_tv_bm_ok";
   const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
@@ -66,7 +66,7 @@
     music: 1, sports: 1, weather: 1,
     cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1,
     news: 1, kids: 1, movies: 1, entertainment: 1, shop: 1,
-    mature_18: 1
+    mature_18: 1, adult_pub: 1
   };
   const LANG_IDS = {
     ara: 1, fas: 1, kur: 1, rus: 1, ukr: 1, zho: 1, spa: 1, por: 1,
@@ -161,7 +161,7 @@
     const adultGroup = /^(xxx|adult|18\+|nsfw|porn|porno)$/.test(g);
     const adultWords = /\bxxx\b|\bnsfw\b|\bporn\b|\bporno\b|\bhentai\b|\b18\s*\+/.test(hay) ||
       (/\badult\b/.test(hay) && !/\badult swim\b/.test(hay));
-    if (bouquetId === "mature_18" || bouquetId === "mature") return "adult";
+    if (bouquetId === "mature_18" || bouquetId === "mature" || bouquetId === "adult_pub") return "adult";
     if (bouquetId === "xxx" || adultGroup || adultWords) return "adult";
     if (bouquetId === "kids") return "kids";
     if (/^(kids|children|children'?s|infantil|ninos|niños)$/.test(g)) return "kids";
@@ -217,7 +217,7 @@
           st.audience = "all";
           paintAudience();
           paintList();
-          setStatus("Staying on All ages. We do not run an XXX catalog.");
+          setStatus("Staying on All ages. Adult shelf stays gated.");
           if (after) after(false);
           return;
         }
@@ -225,7 +225,7 @@
         st.audience = "adult";
         paintAudience();
         paintList();
-        setStatus("18+ shelf — leftover list metadata only, not an XXX catalog.");
+        setStatus("Adult shelf — gated. Labeled Adult, not XXX.");
         if (after) after(true);
       });
       return;
@@ -234,7 +234,7 @@
     paintAudience();
     paintList();
     if (st.audience === "kids") setStatus("Kids shelf — metadata hint, not a child lock. Supervise minors.");
-    else if (st.audience === "adult") setStatus("18+ shelf — leftover list metadata only, not an XXX catalog.");
+    else if (st.audience === "adult") setStatus("Adult shelf — gated. Labeled Adult, not XXX.");
     else setStatus("All ages — unlabeled public channels.");
     if (after) after(true);
   }
@@ -495,7 +495,7 @@
     const ch = list[i];
     if (ratingOf(ch) === "adult" && (st.audience !== "adult" || !adultAllowed())) {
       if (fromSkip) {
-        skipOrStop("Skipped 18+ listing — not on the All ages shelf.");
+        skipOrStop("Skipped Adult listing — not on the All ages shelf.");
         return;
       }
       setAudience("adult", function (ok) {
@@ -653,8 +653,8 @@
     const nKids = st.channels.filter(function (c) { return ratingOf(c) === "kids"; }).length;
     const nAdult = st.channels.filter(function (c) { return ratingOf(c) === "adult"; }).length;
     const extra = st.httpSkipped ? (" · " + st.httpSkipped + " HTTP skipped") : "";
-    const shelf = st.audience === "kids" ? "Kids shelf" : (st.audience === "adult" ? "18+ shelf" : "All ages");
-    $("count").textContent = list.length + " on " + shelf + " · " + nAll + " all ages · " + nKids + " Kids · " + nAdult + "×18+ held" + extra;
+    const shelf = st.audience === "kids" ? "Kids shelf" : (st.audience === "adult" ? "Adult shelf" : "All ages");
+    $("count").textContent = list.length + " on " + shelf + " · " + nAll + " all ages · " + nKids + " Kids · " + nAdult + " Adult held" + extra;
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       const rowClass = [];
@@ -668,7 +668,7 @@
         : "<span class=\"logo blank\"></span>";
       const star = isFav(ch.url) ? " ★" : "";
       const mark = ch.rating === "adult"
-        ? "<span class=\"badge adult\">18+</span>"
+        ? "<span class=\"badge adult\">Adult</span>"
         : (ch.rating === "kids" ? "<span class=\"badge kids\">Kids</span>" : "");
       const grp = ch.group ? "<span class=\"g\">" + esc(ch.group) + "</span>" : "";
       const kindTag = (!ch.group && EMBED_KINDS[ch.kind])

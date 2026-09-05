@@ -98,7 +98,7 @@
       <div class="audience" id="audience" role="tablist" aria-label="Age shelves">
         <button type="button" class="aud on" id="aud-all" data-aud="all" aria-pressed="true">All ages</button>
         <button type="button" class="aud" id="aud-kids" data-aud="kids" aria-pressed="false">Kids</button>
-        <button type="button" class="aud" id="aud-adult" data-aud="adult" aria-pressed="false">18+ gated</button>
+        <button type="button" class="aud" id="aud-adult" data-aud="adult" aria-pressed="false">Adult</button>
       </div>
       <div class="filters">
         <select id="grp" hidden aria-label="Filter by group"></select>
@@ -115,7 +115,7 @@
         <p class="nudge-kicker">Terms of Use</p>
         <h2 class="terms-h">Unlock public TV lists</h2>
         <p>You can already watch <strong>Excavationpro</strong> on Kick, Rumble, Twitch, and YouTube from the Channel tab. FAST and world lists are a public catalog portal — not our streams.</p>
-        <p>This site does not host, decrypt, or proxy TV. Kids and 18+ rows are split by list metadata. Optional donations keep the portal running.</p>
+        <p>This site does not host, decrypt, or proxy TV. Kids and Adult rows are split. Adult is gated and labeled Adult, not XXX. Optional donations keep the portal running.</p>
         <p class="gate-links">
           <a href="/terms.html" target="_blank" rel="noopener">Terms of Use</a>
           · <a href="/sources/disclaimer.html" target="_blank" rel="noopener">TV disclaimer</a>
@@ -140,7 +140,7 @@
   </aside>
 </div>
 <footer class="foot" role="contentinfo">
-  <p><strong>Disclaimer — portal only.</strong> chatagent.ca/sources is a catalog pointer, not a TV host and not an XXX site. We do not store, decrypt, or proxy streams. Channels here are found free to watch online. Unlabeled = All ages. Kids and 18+ are split by public metadata and can be wrong. 18+ needs an age gate. Supervise minors. <a href="/sources/disclaimer.html"><strong>Full LYGO TV disclaimer</strong></a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>.</p>
+  <p><strong>Disclaimer — portal only.</strong> chatagent.ca/sources is a catalog pointer, not a TV host. We do not store, decrypt, or proxy streams. Channels here are found free to watch online. Unlabeled = All ages. Kids and Adult are split. Adult is gated and labeled Adult, not XXX. Supervise minors. <a href="/sources/disclaimer.html"><strong>Full LYGO TV disclaimer</strong></a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>.</p>
 </footer>
 <aside class="nudge bm-nudge" id="bm-card" hidden role="dialog" aria-label="Bookmark LYGO TV">
   <button class="nudge-x" type="button" id="bm-x" title="Not now">×</button>
@@ -166,9 +166,9 @@
 </aside>
 <div class="gate" id="gate" hidden>
   <div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">
-    <h2 id="gate-title">18+ listing</h2>
-    <p>LYGO TV does <strong>not</strong> run an XXX catalog. This row was flagged 18+ from public list metadata (title or group). It is held on a separate shelf behind this gate. We do not verify the video. Metadata can be wrong.</p>
-    <p>Confirm you are <strong>18 or older</strong> to open the 18+ shelf. If you are under 18, choose Not 18 and stay on All ages or Kids.</p>
+    <h2 id="gate-title">Adult listing</h2>
+    <p>This shelf is labeled <strong>Adult</strong>. It may include adult entertainment from public lists. LYGO TV is not branded as an XXX catalog. We do not host or proxy the video. Metadata can be wrong.</p>
+    <p>Confirm you are <strong>18 or older</strong> to open the Adult shelf. If you are under 18, choose Not 18 and stay on All ages or Kids.</p>
     <p class="gate-links"><a href="/sources/disclaimer.html">Full disclaimer</a></p>
     <div class="row">
       <button class="btn" type="button" id="gate-yes">I am 18+</button>
@@ -177,6 +177,6 @@
   </div>
 </div>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.18.1"></script>
+<script src="/sources/app.js?v=1.18.2"></script>
 </body>
 </html>
