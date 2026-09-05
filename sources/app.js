@@ -6,7 +6,16 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.11.0";
+  const CAT_VER = "1.12.0";
+  const NUDGE_KEY = "lygo_tv_nudge_at";
+  const NUDGE_MS = 30 * 60 * 1000;
+  const SID_KEY = "lygo_tv_sid";
+  const MQTT_SRC = "https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js";
+  const MQTT_URLS = [
+    "wss://broker.hivemq.com:8884/mqtt",
+    "wss://broker.emqx.io:8084/mqtt"
+  ];
+  const MQTT_TOPIC = "lygo/tv/pulse/chatagent/sources/";
   const FAV_KEY = "lygo_tv_favs";
   const LAST_KEY = "lygo_tv_last";
   const AGE_KEY = "lygo_tv_18";
@@ -855,6 +864,11 @@
       closeGate(false);
       return;
     }
+    if (e.key === "Escape" && $("nudge") && !$("nudge").hidden) {
+      e.preventDefault();
+      hideNudge();
+      return;
+    }
     const tag = (e.target && e.target.tagName) || "";
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     if (e.key === "ArrowLeft") { e.preventDefault(); next(-1, false); }
@@ -867,6 +881,152 @@
     if (e.key === "s" || e.key === "S") { e.preventDefault(); stopMedia(); setIdle(true); setStatus("Stopped."); }
     if (e.key === "p" || e.key === "P") { e.preventDefault(); togglePip(); }
   });
+
+  function sessionId() {
+    try {
+      let s = sessionStorage.getItem(SID_KEY);
+      if (!s) {
+        s = (crypto.randomUUID && crypto.randomUUID()) || ("lygo" + Date.now() + Math.random().toString(16).slice(2));
+        sessionStorage.setItem(SID_KEY, s);
+      }
+      return s;
+    } catch (e) {
+      return "lygo" + Date.now();
+    }
+  }
+
+  function paintWatchers(n, ok) {
+    const wrap = $("watchers");
+    const el = $("watch-n");
+    if (!wrap || !el) return;
+    wrap.className = "watchers" + (ok ? "" : " off");
+    if (!ok) {
+      el.textContent = n || "Live count offline";
+      return;
+    }
+    const c = Math.max(1, n | 0);
+    el.textContent = c === 1 ? "1 person here now" : c + " people here now";
+  }
+
+  function startPulse() {
+    const sid = sessionId();
+    const heard = {};
+    heard[sid] = Date.now();
+    let broker = 0;
+    let client = null;
+    let mqttOk = false;
+
+    function liveN() {
+      const cut = Date.now() - 75000;
+      let n = 0;
+      Object.keys(heard).forEach(function (k) {
+        if (heard[k] >= cut) n += 1;
+        else delete heard[k];
+      });
+      return n;
+    }
+
+    function tickView() {
+      if (mqttOk) paintWatchers(liveN(), true);
+    }
+
+    function loadMqtt(cb) {
+      if (window.mqtt) { cb(); return; }
+      const s = document.createElement("script");
+      s.src = MQTT_SRC;
+      s.onload = function () { cb(); };
+      s.onerror = function () { paintWatchers("Live count offline", false); };
+      document.head.appendChild(s);
+    }
+
+    function connect() {
+      if (!window.mqtt || broker >= MQTT_URLS.length) {
+        paintWatchers("Live count offline", false);
+        return;
+      }
+      try {
+        if (client) { try { client.end(true); } catch (e) {} }
+        client = window.mqtt.connect(MQTT_URLS[broker], {
+          clientId: ("l" + sid.replace(/[^a-zA-Z0-9]/g, "")).slice(0, 23),
+          keepalive: 30,
+          reconnectPeriod: 8000,
+          clean: true,
+          connectTimeout: 8000
+        });
+        client.on("connect", function () {
+          mqttOk = true;
+          client.subscribe(MQTT_TOPIC + "+", { qos: 0 });
+          client.publish(MQTT_TOPIC + sid, String(Date.now()), { qos: 0, retain: false });
+          tickView();
+        });
+        client.on("message", function (topic, payload) {
+          const parts = String(topic || "").split("/");
+          const other = parts[parts.length - 1];
+          if (!other || other.length < 8) return;
+          heard[other] = Date.now();
+          tickView();
+        });
+        client.on("error", function () {});
+        client.on("close", function () {
+          if (!mqttOk) {
+            broker += 1;
+            window.setTimeout(connect, 400);
+          }
+        });
+      } catch (e) {
+        broker += 1;
+        window.setTimeout(connect, 400);
+      }
+    }
+
+    loadMqtt(connect);
+    window.setInterval(function () {
+      if (client && mqttOk) {
+        try { client.publish(MQTT_TOPIC + sid, String(Date.now()), { qos: 0, retain: false }); } catch (e2) {}
+        heard[sid] = Date.now();
+        tickView();
+      }
+    }, 20000);
+    window.addEventListener("pagehide", function () {
+      if (client) { try { client.end(true); } catch (e3) {} }
+    });
+  }
+
+  let nudgeTimer = 0;
+  function armNudge(ms) {
+    window.clearTimeout(nudgeTimer);
+    nudgeTimer = window.setTimeout(showNudge, ms || NUDGE_MS);
+  }
+  function hideNudge() {
+    const el = $("nudge");
+    if (el) el.hidden = true;
+    try { localStorage.setItem(NUDGE_KEY, String(Date.now())); } catch (e) {}
+    armNudge(NUDGE_MS);
+  }
+  function showNudge() {
+    if ($("gate") && !$("gate").hidden) { armNudge(60000); return; }
+    if (document.fullscreenElement) { armNudge(60000); return; }
+    const el = $("nudge");
+    if (el && el.hidden) el.hidden = false;
+    armNudge(NUDGE_MS);
+  }
+  function startNudge() {
+    const box = $("nudge");
+    if (!box) return;
+    $("nudge-x").addEventListener("click", hideNudge);
+    box.addEventListener("click", function (e) {
+      const a = e.target && e.target.closest ? e.target.closest("a") : null;
+      if (a && a.href) hideNudge();
+    });
+    let last = 0;
+    try { last = parseInt(localStorage.getItem(NUDGE_KEY) || "0", 10) || 0; } catch (e) {}
+    let wait = NUDGE_MS;
+    if (last) {
+      wait = NUDGE_MS - (Date.now() - last);
+      if (wait < 5000) wait = NUDGE_MS;
+    }
+    armNudge(wait);
+  }
 
   function openFromHash() {
     const raw = (location.hash || "").replace(/^#/, "");
@@ -889,6 +1049,8 @@
       paintTabs();
       paintChips();
       paintAudience();
+      startPulse();
+      startNudge();
       if (openFromHash()) return;
       let last = null;
       try { last = JSON.parse(localStorage.getItem(LAST_KEY) || "null"); } catch (e) {}

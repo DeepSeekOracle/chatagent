@@ -59,9 +59,17 @@
     </p>
     <h3>3.3 Local storage on your device</h3>
     <p>
-      Some pages store small preferences in your browser (for example cookie-notice acceptance).
+      Some pages store small preferences in your browser (for example cookie-notice acceptance, LYGO TV
+      favorites, and a donation-reminder snooze).
       Continuum verification hashes files <strong>locally in your browser</strong>; file contents are not uploaded
       to chatagent.ca by that tool for verification.
+    </p>
+    <h3>3.4 LYGO TV live occupancy</h3>
+    <p>
+      The TV portal may publish a random session id (not your name or account) to a public MQTT topic so
+      other open copies of the page can count how many browsers are on it right now. That count is occupancy,
+      not a marketing pixel and not a sold profile. You can block WebSockets in the browser; the player still
+      works and the live number simply stays offline.
     </p>
 
     <h2>4. Cookies and similar technologies</h2>
