@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com https://player.twitch.tv https://player.kick.com; connect-src 'self' https: wss:; upgrade-insecure-requests">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
@@ -21,7 +21,7 @@
 <link rel="apple-touch-icon" href="/witness/favicon.svg">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css?v=1.14.0">
+<link rel="stylesheet" href="/sources/app.css?v=1.15.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -64,7 +64,7 @@
 <div class="stage">
   <div class="screen">
     <div class="player-box">
-      <video id="vid" controls playsinline></video>
+      <video id="vid" controls playsinline webkit-playsinline></video>
       <audio id="aud" controls hidden></audio>
       <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
       <div class="idle" id="idle">Click a channel →</div>
@@ -177,6 +177,6 @@
   </div>
 </div>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.14.0"></script>
+<script src="/sources/app.js?v=1.15.0"></script>
 </body>
 </html>
