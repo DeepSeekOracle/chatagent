@@ -1,0 +1,20 @@
+{
+  "name": "LYGO TV",
+  "short_name": "LYGO TV",
+  "description": "Free online TV player on chatagent.ca — Excavationpro rooms plus public catalogs.",
+  "start_url": "https://chatagent.ca/sources/",
+  "scope": "https://chatagent.ca/sources/",
+  "id": "https://chatagent.ca/sources/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#05070d",
+  "theme_color": "#05070d",
+  "icons": [
+    {
+      "src": "https://chatagent.ca/witness/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

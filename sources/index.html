@@ -13,9 +13,15 @@
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="keywords" content="LYGO TV, Excavationpro, Kick, Rumble, Twitch, YouTube Justin Helmer, free IPTV, public M3U, FAST, chatagent.ca">
 <link rel="canonical" href="https://chatagent.ca/sources/">
+<link rel="manifest" href="/sources/manifest.json">
+<meta name="theme-color" content="#05070d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LYGO TV">
+<link rel="apple-touch-icon" href="/witness/favicon.svg">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css?v=1.13.0">
+<link rel="stylesheet" href="/sources/app.css?v=1.14.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -77,6 +83,7 @@
         <button class="btn ghost" type="button" id="pip" title="Picture in picture (P)">PiP</button>
         <button class="btn ghost" type="button" id="fs" title="Fullscreen (F)">Fullscreen</button>
         <button class="btn ghost" type="button" id="fav" title="Save on this device">☆ Save</button>
+        <button class="btn ghost" type="button" id="bm" title="Bookmark or install this player">Bookmark</button>
         <a class="btn ghost" id="open" href="https://kick.com/excavationpro" target="_blank" rel="noopener noreferrer" hidden>Open on Kick</a>
       </div>
     </div>
@@ -135,6 +142,17 @@
 <footer class="foot" role="contentinfo">
   <p><strong>Disclaimer — portal only.</strong> chatagent.ca/sources is a catalog pointer, not a TV host and not an XXX site. We do not store, decrypt, or proxy streams. Channels here are found free to watch online. Unlabeled = All ages. Kids and 18+ are split by public metadata and can be wrong. 18+ needs an age gate. Supervise minors. <a href="/sources/disclaimer.html"><strong>Full LYGO TV disclaimer</strong></a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>.</p>
 </footer>
+<aside class="nudge bm-nudge" id="bm-card" hidden role="dialog" aria-label="Bookmark LYGO TV">
+  <button class="nudge-x" type="button" id="bm-x" title="Not now">×</button>
+  <p class="nudge-kicker">Keep this player</p>
+  <p>Bookmark <strong>LYGO TV</strong> so you can open it like an app. Ctrl+D / Cmd+D, or copy the link.</p>
+  <div class="nudge-row">
+    <button class="btn" type="button" id="bm-copy">Copy player link</button>
+    <button class="btn ghost" type="button" id="bm-install" hidden>Install app</button>
+    <a class="btn ghost" id="bm-claw" href="https://clawhub.ai/deepseekoracle/skills/lygo-tv" target="_blank" rel="noopener noreferrer">ClawHub skill</a>
+  </div>
+  <p class="nudge-note">Player: <code>https://chatagent.ca/sources/</code> · Agents: <code>npx clawhub@latest install deepseekoracle/lygo-tv</code></p>
+</aside>
 <aside class="nudge" id="nudge" hidden role="dialog" aria-label="Support the portal">
   <button class="nudge-x" type="button" id="nudge-x" title="Not now">×</button>
   <p class="nudge-kicker">Keep the portal on</p>
@@ -159,6 +177,6 @@
   </div>
 </div>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.13.0"></script>
+<script src="/sources/app.js?v=1.14.0"></script>
 </body>
 </html>

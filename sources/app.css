@@ -240,8 +240,10 @@ input[type="search"], input[type="url"] {
   position: absolute; top: .35rem; right: .45rem; background: transparent;
   border: 0; color: var(--muted); font-size: 1.2rem; cursor: pointer; line-height: 1;
 }
+.bm-nudge { right: auto; left: 1rem; }
 @media (max-width: 900px) {
   .nudge { bottom: .7rem; right: .6rem; }
+  .bm-nudge { left: .6rem; right: .6rem; width: auto; }
 }
 .gate-card {
   max-width: 28rem; background: var(--panel); border: 1px solid var(--gold);

@@ -6,7 +6,9 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.13.0";
+  const CAT_VER = "1.14.0";
+  const BM_KEY = "lygo_tv_bm_ok";
+  const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
   const NUDGE_KEY = "lygo_tv_nudge_at";
   const NUDGE_MS = 30 * 60 * 1000;
@@ -1087,6 +1089,56 @@
     armNudge(wait);
   }
 
+  let deferredInstall = null;
+  function copyPlayerLink() {
+    const url = PLAYER_URL;
+    const done = function () { setStatus("Player link copied — paste it into a bookmark.", "ok"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function () {
+        window.prompt("Copy this player link:", url);
+      });
+    } else {
+      window.prompt("Copy this player link:", url);
+    }
+  }
+  function hideBm() {
+    const el = $("bm-card");
+    if (el) el.hidden = true;
+    try { localStorage.setItem(BM_KEY, "1"); } catch (e) {}
+  }
+  function showBm() {
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) return;
+    if ($("gate") && !$("gate").hidden) return;
+    if ($("nudge") && !$("nudge").hidden) return;
+    try { if (localStorage.getItem(BM_KEY) === "1") return; } catch (e) {}
+    const el = $("bm-card");
+    if (el) el.hidden = false;
+  }
+  function startBookmark() {
+    const card = $("bm-card");
+    if (!card) return;
+    if ($("bm-x")) $("bm-x").addEventListener("click", hideBm);
+    if ($("bm-copy")) $("bm-copy").addEventListener("click", function () { copyPlayerLink(); hideBm(); });
+    if ($("bm")) $("bm").addEventListener("click", function () {
+      const el = $("bm-card");
+      if (el) el.hidden = !el.hidden;
+    });
+    if ($("bm-install")) {
+      $("bm-install").addEventListener("click", function () {
+        if (!deferredInstall) return;
+        deferredInstall.prompt();
+        deferredInstall.userChoice.then(function () { deferredInstall = null; hideBm(); }).catch(function () {});
+      });
+    }
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      deferredInstall = e;
+      const b = $("bm-install");
+      if (b) b.hidden = false;
+    });
+    window.setTimeout(showBm, 18000);
+  }
+
   function openFromHash() {
     const raw = (location.hash || "").replace(/^#/, "");
     if (!raw) return false;
@@ -1117,6 +1169,7 @@
       paintAudience();
       startPulse();
       startNudge();
+      startBookmark();
       st.termsOk = termsOk();
       if ($("terms-ok")) $("terms-ok").addEventListener("click", acceptTerms);
       if (openFromHash()) return;

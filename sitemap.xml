@@ -57,6 +57,7 @@
   <url><loc>https://chatagent.ca/lattice/</loc><lastmod>2026-08-30</lastmod><changefreq>hourly</changefreq><priority>0.96</priority></url>
   <url><loc>https://chatagent.ca/sources/</loc><lastmod>2026-09-05</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>
   <url><loc>https://chatagent.ca/sources/disclaimer.html</loc><lastmod>2026-09-05</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://chatagent.ca/sources/manifest.json</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://chatagent.ca/sources/CATALOG.md</loc><lastmod>2026-09-05</lastmod><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://chatagent.ca/sources/catalog.json</loc><lastmod>2026-09-05</lastmod><changefreq>daily</changefreq><priority>0.5</priority></url>
   <url><loc>https://chatagent.ca/guides/lygo-public-witness.html</loc><lastmod>2026-08-27</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
