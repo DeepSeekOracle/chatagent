@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com https://player.twitch.tv https://player.kick.com; connect-src 'self' https:; upgrade-insecure-requests">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
 <title>LYGO TV — free online TV player | chatagent.ca</title>
 <meta name="description" content="Watch Excavationpro on Kick, Rumble, Twitch, and YouTube, plus free public TV lists. No account. LYGO player by Justin Helmer / Excavationpro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
@@ -13,7 +15,7 @@
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css?v=1.8.0">
+<link rel="stylesheet" href="/sources/app.css?v=1.9.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -45,6 +47,7 @@
     <a href="/">Home</a>
     <a href="/lattice/">Lattice</a>
     <a href="/sources/" aria-current="page">TV</a>
+    <a href="/sources/disclaimer.html">Disclaimer</a>
     <a href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener noreferrer">Listen</a>
     <a href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">Stream</a>
     <a href="/witness/">Witness</a>
@@ -79,13 +82,18 @@
   </div>
   <aside class="side">
     <h1>LYGO TV</h1>
-    <p class="note"><strong>Channel</strong> tab = Excavationpro rooms (Kick, Rumble, Twitch, YouTube). Other tabs are public lists. Free. No login. ← → next · space pause · F fullscreen · M mute · R retry · S stop · / search. Music: <a href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">ffm.to/eovnvo9</a>.</p>
+    <p class="note"><strong>Portal only.</strong> We do not host TV. Listings are public links found free to watch online. <strong>Channel</strong> = Excavationpro rooms. <span class="badge kids">Kids</span> and <span class="badge adult">18+</span> come from list names — not a guarantee. <a href="/sources/disclaimer.html">Full disclaimer</a>.</p>
     <div class="tabs" id="tabs"></div>
     <div class="chips" id="chips"></div>
     <input id="q" type="search" placeholder="Search this list" autocomplete="off">
     <div class="filters">
       <select id="grp" hidden aria-label="Filter by group"></select>
       <button class="btn ghost" type="button" id="sort" title="Sort A–Z">A–Z</button>
+      <button class="btn ghost" type="button" id="kidsonly" title="Show only listings labeled Kids" aria-pressed="false">Kids</button>
+      <label class="tog" title="18+ rows stay hidden until you confirm you are 18 or older">
+        <input type="checkbox" id="hide18" checked>
+        Hide 18+
+      </label>
     </div>
     <p class="note" id="count">0 channels</p>
     <ul class="list" id="channels"></ul>
@@ -104,10 +112,22 @@
     </div>
   </aside>
 </div>
-<footer class="foot">
-  <p><strong>Disclaimer.</strong> LYGO TV is a public catalog browser. The Channel tab embeds Excavationpro rooms on Kick, Rumble, Twitch, and YouTube. Other lists come from iptv-org, Free-TV, i.mjh.nz, Plex FAST, and RW1986. We do not operate those CDNs, do not decrypt pay-TV, and do not proxy streams. Offline rooms, geo-blocks, dead links, HTTP-only URLs, and CORS limits are named misses. Support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a>.</p>
+<footer class="foot" role="contentinfo">
+  <p><strong>Disclaimer — portal only.</strong> chatagent.ca/sources is a catalog pointer, not a TV host. We do not store, decrypt, or proxy streams. Channels in these lists are published elsewhere as free to watch online. <span class="badge kids">Kids</span> and <span class="badge adult">18+</span> marks are from public metadata and can be wrong. 18+ stays hidden until you confirm you are 18 or older. Supervise minors. Read the <a href="/sources/disclaimer.html"><strong>full LYGO TV disclaimer</strong></a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a>.</p>
 </footer>
+<div class="gate" id="gate" hidden>
+  <div class="gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+    <h2 id="gate-title">18+ listing</h2>
+    <p>This row is marked <strong>18+</strong> from public playlist metadata (title or group). LYGO TV is a <strong>portal only</strong> and does not verify the video. Metadata can be wrong.</p>
+    <p>Confirm you are <strong>18 or older</strong> to play or to show 18+ rows. If you are under 18, choose Not 18.</p>
+    <p class="gate-links"><a href="/sources/disclaimer.html">Full disclaimer</a></p>
+    <div class="row">
+      <button class="btn" type="button" id="gate-yes">I am 18+</button>
+      <button class="btn ghost" type="button" id="gate-no">Not 18</button>
+    </div>
+  </div>
+</div>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.8.0"></script>
+<script src="/sources/app.js?v=1.9.0"></script>
 </body>
 </html>

@@ -6,9 +6,10 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.8.0";
+  const CAT_VER = "1.9.0";
   const FAV_KEY = "lygo_tv_favs";
   const LAST_KEY = "lygo_tv_last";
+  const AGE_KEY = "lygo_tv_18";
   const EMBED_KINDS = { youtube: 1, rumble: 1, twitch: 1, kick: 1 };
   const ROOM_CHIP = {
     kick_live: "Kick",
@@ -64,7 +65,11 @@
     hls: null,
     hlsReady: false,
     skip: 0,
-    httpSkipped: 0
+    httpSkipped: 0,
+    hideAdult: true,
+    kidsOnly: false,
+    ageOk: false,
+    gateCb: null
   };
 
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
@@ -94,6 +99,47 @@
     if (el) el.hidden = !on;
   }
 
+  function rateChannel(title, group, bouquetId) {
+    const t = String(title || "").toLowerCase();
+    const g = String(group || "").toLowerCase().trim();
+    const hay = t + " " + g + " " + String(bouquetId || "").toLowerCase();
+    const adultGroup = /^(xxx|adult|18\+|nsfw|porn|porno)$/.test(g);
+    const adultWords = /\bxxx\b|\bnsfw\b|\bporn\b|\bporno\b|\bhentai\b|\b18\s*\+/.test(hay) ||
+      (/\badult\b/.test(hay) && !/\badult swim\b/.test(hay));
+    if (bouquetId === "xxx" || adultGroup || adultWords) return "adult";
+    if (bouquetId === "kids") return "kids";
+    if (/^(kids|children|children'?s|infantil|ninos|niños)$/.test(g)) return "kids";
+    if (/\bkids\b|\bchildren'?s\b|\bpbs kids\b|\bcbeebies\b|\bnick jr\b|\bnickjr\b/.test(hay)) return "kids";
+    return "";
+  }
+
+  function adultAllowed() {
+    if (st.ageOk) return true;
+    try { return localStorage.getItem(AGE_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function setAdultAllowed(on) {
+    st.ageOk = !!on;
+    try {
+      if (on) localStorage.setItem(AGE_KEY, "1");
+      else localStorage.removeItem(AGE_KEY);
+    } catch (e) {}
+  }
+
+  function openGate(cb) {
+    st.gateCb = cb;
+    const el = $("gate");
+    if (el) el.hidden = false;
+  }
+
+  function closeGate(ok) {
+    const el = $("gate");
+    if (el) el.hidden = true;
+    const cb = st.gateCb;
+    st.gateCb = null;
+    if (cb) cb(!!ok);
+  }
+
   function kindOfUrl(url) {
     const u = String(url || "").toLowerCase().split("?")[0];
     if (u.indexOf("youtube.com") !== -1 || u.indexOf("youtube-nocookie.com") !== -1) return "youtube";
@@ -106,7 +152,7 @@
     return "hls";
   }
 
-  function parseM3U(text, baseHref) {
+  function parseM3U(text, baseHref, bouquetId) {
     const lines = String(text || "").split(/\r?\n/);
     const out = [];
     let title = "";
@@ -141,7 +187,8 @@
         https: true,
         kind: kindOfUrl(parsed.href),
         logo: logo && logo.indexOf("https://") === 0 ? logo : "",
-        group: group
+        group: group,
+        rating: rateChannel(title, group, bouquetId)
       });
       title = "";
       logo = "";
@@ -175,7 +222,7 @@
     const list = loadFavs();
     const i = list.findIndex(function (x) { return x.url === ch.url; });
     if (i >= 0) list.splice(i, 1);
-    else list.unshift({ title: ch.title, url: ch.url, kind: ch.kind, logo: ch.logo || "", group: ch.group || "" });
+    else list.unshift({ title: ch.title, url: ch.url, kind: ch.kind, logo: ch.logo || "", group: ch.group || "", rating: ch.rating || "" });
     saveFavs(list);
     paintList();
     paintFavBtn();
@@ -199,6 +246,8 @@
     const q = st.filter.toLowerCase();
     let list = st.channels.filter(function (c) {
       if (!c.https && !EMBED_KINDS[c.kind]) return false;
+      if (st.hideAdult && c.rating === "adult") return false;
+      if (st.kidsOnly && c.rating !== "kids") return false;
       if (st.group && (c.group || "") !== st.group) return false;
       if (!q) return true;
       const hay = ((c.title || "") + " " + (c.group || "")).toLowerCase();
@@ -344,6 +393,25 @@
     if (i < 0) i = list.length - 1;
     if (i >= list.length) i = 0;
     const ch = list[i];
+    if (ch.rating === "adult" && !adultAllowed()) {
+      if (fromSkip) {
+        skipOrStop("Skipped 18+ listing.");
+        return;
+      }
+      openGate(function (ok) {
+        if (!ok) {
+          setStatus("18+ listing not played. Portal only — see disclaimer.", "bad");
+          setIdle(true);
+          return;
+        }
+        setAdultAllowed(true);
+        st.hideAdult = false;
+        if ($("hide18")) $("hide18").checked = false;
+        paintList();
+        playAt(visible().indexOf(ch), false);
+      });
+      return;
+    }
     st.i = st.channels.indexOf(ch);
     $("now").textContent = ch.title;
     paintList();
@@ -476,18 +544,30 @@
     const ul = $("channels");
     ul.innerHTML = "";
     const list = visible();
+    const hiddenAdult = st.channels.filter(function (c) { return c.rating === "adult"; }).length;
+    const kidsN = list.filter(function (c) { return c.rating === "kids"; }).length;
     const extra = st.httpSkipped ? (" · " + st.httpSkipped + " HTTP skipped") : "";
-    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels") + extra;
+    const age = st.hideAdult && hiddenAdult ? (" · " + hiddenAdult + "×18+ hidden") : "";
+    const kids = kidsN ? (" · " + kidsN + " Kids") : "";
+    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels") + kids + age + extra;
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       if (st.channels[st.i] === ch) li.className = "on";
       const logo = ch.logo
         ? "<img class=\"logo\" alt=\"\" loading=\"lazy\" src=\"" + esc(ch.logo) + "\">"
         : "<span class=\"logo blank\"></span>";
+      if (ch.rating === "adult") li.className = (li.className ? li.className + " " : "") + "adult-row";
+      if (ch.rating === "kids") li.className = (li.className ? li.className + " " : "") + "kids-row";
       const star = isFav(ch.url) ? " ★" : "";
+      const mark = ch.rating === "adult"
+        ? "<span class=\"badge adult\">18+</span>"
+        : (ch.rating === "kids" ? "<span class=\"badge kids\">Kids</span>" : "");
       const grp = ch.group ? "<span class=\"g\">" + esc(ch.group) + "</span>" : "";
-      li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span>" + logo +
-        "<span class=\"meta\"><span class=\"t\">" + esc(ch.title) + star + "</span>" + grp + "</span>";
+      const showLogo = ch.rating === "adult" && !adultAllowed()
+        ? "<span class=\"logo blank\"></span>"
+        : logo;
+      li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span>" + showLogo +
+        "<span class=\"meta\"><span class=\"t\">" + esc(ch.title) + star + mark + "</span>" + grp + "</span>";
       li.addEventListener("click", function () {
         playAt(list.indexOf(ch), false);
       });
@@ -524,7 +604,8 @@
         https: true,
         kind: x.kind || kindOfUrl(x.url),
         logo: x.logo || "",
-        group: x.group || ""
+        group: x.group || "",
+        rating: x.rating || rateChannel(x.title, x.group, "")
       };
     });
     st.i = -1;
@@ -556,7 +637,8 @@
         logo: x.logo || "",
         group: x.group || "",
         watch: x.watch || "",
-        channel: x.channel || ""
+        channel: x.channel || "",
+        rating: ""
       };
     });
     st.i = -1;
@@ -605,7 +687,7 @@
       if (buf.byteLength > MAX_BYTES) throw new Error("playlist too large");
       if (!res.ok) throw new Error("HTTP " + res.status);
       const text = new TextDecoder("utf-8").decode(buf);
-      st.channels = parseM3U(text, b.url);
+      st.channels = parseM3U(text, b.url, b.id);
       st.i = -1;
       paintList();
       const vis = visible();
@@ -687,6 +769,45 @@
     st.group = $("grp").value || "";
     paintList();
   });
+  $("kidsonly").addEventListener("click", function () {
+    st.kidsOnly = !st.kidsOnly;
+    $("kidsonly").className = "btn ghost" + (st.kidsOnly ? " on" : "");
+    $("kidsonly").setAttribute("aria-pressed", st.kidsOnly ? "true" : "false");
+    paintList();
+    setStatus(st.kidsOnly
+      ? "Kids filter on — labels are metadata hints, not a child-safe lock."
+      : "Kids filter off.");
+  });
+  $("hide18").addEventListener("change", function () {
+    if ($("hide18").checked) {
+      st.hideAdult = true;
+      paintList();
+      setStatus("18+ listings hidden.");
+      return;
+    }
+    if (adultAllowed()) {
+      st.hideAdult = false;
+      paintList();
+      setStatus("18+ listings shown. Labels can be wrong. Portal only.");
+      return;
+    }
+    $("hide18").checked = true;
+    openGate(function (ok) {
+      if (!ok) {
+        st.hideAdult = true;
+        $("hide18").checked = true;
+        setStatus("18+ listings stay hidden.");
+        return;
+      }
+      setAdultAllowed(true);
+      st.hideAdult = false;
+      $("hide18").checked = false;
+      paintList();
+      setStatus("18+ listings shown. Labels can be wrong. Portal only.");
+    });
+  });
+  $("gate-yes").addEventListener("click", function () { closeGate(true); });
+  $("gate-no").addEventListener("click", function () { closeGate(false); });
   $("q").addEventListener("input", function () {
     st.filter = $("q").value || "";
     paintList();
@@ -694,7 +815,16 @@
   $("add").addEventListener("click", function () {
     const href = G.safeHref($("custom").value);
     if (!href) { setStatus("Need a public https:// URL.", "bad"); return; }
-    st.channels.unshift({ title: $("custom").value.split("/").pop() || href, url: href, https: true, kind: kindOfUrl(href), logo: "", group: "Custom" });
+    const customTitle = $("custom").value.split("/").pop() || href;
+    st.channels.unshift({
+      title: customTitle,
+      url: href,
+      https: true,
+      kind: kindOfUrl(href),
+      logo: "",
+      group: "Custom",
+      rating: rateChannel(customTitle, "Custom", "")
+    });
     $("custom").value = "";
     paintList();
     playAt(0, false);
@@ -703,6 +833,11 @@
     if (e.key === "Enter") $("add").click();
   });
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("gate") && !$("gate").hidden) {
+      e.preventDefault();
+      closeGate(false);
+      return;
+    }
     const tag = (e.target && e.target.tagName) || "";
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     if (e.key === "ArrowLeft") { e.preventDefault(); next(-1, false); }
