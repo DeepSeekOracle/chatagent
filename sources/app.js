@@ -557,6 +557,7 @@
       el.type = "button";
       const locked = !termsOk() && t.id !== "channel";
       el.className = "tab" + (st.tab === t.id ? " on" : "") + (locked ? " lock" : "");
+      el.dataset.tab = t.id;
       el.textContent = t.label;
       el.setAttribute("aria-pressed", st.tab === t.id ? "true" : "false");
       el.title = locked ? "Agree to Terms to open public lists" : t.label;
@@ -584,6 +585,7 @@
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "chip on";
+      chip.dataset.chip = "saved";
       chip.textContent = n ? (n + " saved") : "None saved";
       chip.addEventListener("click", loadSaved);
       box.appendChild(chip);
@@ -593,7 +595,8 @@
       (st.catalog.live || []).forEach(function (room) {
         const chip = document.createElement("button");
         chip.type = "button";
-        chip.className = "chip" + (st.channels[st.i] && st.channels[st.i].id === room.id ? " on" : "");
+        chip.className = "chip chip-room" + (st.channels[st.i] && st.channels[st.i].id === room.id ? " on" : "");
+        chip.dataset.room = room.id;
         chip.textContent = ROOM_CHIP[room.id] || room.group || room.title;
         chip.title = room.title;
         chip.addEventListener("click", function () { playRoom(room.id); });
@@ -606,6 +609,7 @@
       const el = document.createElement("button");
       el.type = "button";
       el.className = "chip" + (st.bouquet === b.id ? " on" : "");
+      el.dataset.chip = b.id;
       el.textContent = b.title;
       el.addEventListener("click", function () { loadBouquet(b, false); });
       box.appendChild(el);
@@ -624,7 +628,7 @@
       if (g === st.group) o.selected = true;
       sel.appendChild(o);
     });
-    sel.hidden = groups.length < 2;
+    sel.hidden = groups.length < 2 || st.tab === "channel" || st.tab === "watch";
   }
 
   function paintFavBtn() {
@@ -647,22 +651,29 @@
     $("count").textContent = list.length + " on " + shelf + " · " + nAll + " all ages · " + nKids + " Kids · " + nAdult + "×18+ held" + extra;
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
-      if (st.channels[st.i] === ch) li.className = "on";
+      const rowClass = [];
+      if (st.channels[st.i] === ch) rowClass.push("on");
+      if (ch.rating === "adult") rowClass.push("adult-row");
+      if (ch.rating === "kids") rowClass.push("kids-row");
+      if (ch.kind && EMBED_KINDS[ch.kind]) rowClass.push("kind-" + ch.kind);
+      li.className = rowClass.join(" ");
       const logo = ch.logo
         ? "<img class=\"logo\" alt=\"\" loading=\"lazy\" src=\"" + esc(ch.logo) + "\">"
         : "<span class=\"logo blank\"></span>";
-      if (ch.rating === "adult") li.className = (li.className ? li.className + " " : "") + "adult-row";
-      if (ch.rating === "kids") li.className = (li.className ? li.className + " " : "") + "kids-row";
       const star = isFav(ch.url) ? " ★" : "";
       const mark = ch.rating === "adult"
         ? "<span class=\"badge adult\">18+</span>"
         : (ch.rating === "kids" ? "<span class=\"badge kids\">Kids</span>" : "");
       const grp = ch.group ? "<span class=\"g\">" + esc(ch.group) + "</span>" : "";
+      const kindTag = (!ch.group && EMBED_KINDS[ch.kind])
+        ? "<span class=\"g kind\">" + esc(ch.kind) + "</span>"
+        : "";
+      const tags = (grp || kindTag) ? "<span class=\"tags\">" + grp + kindTag + "</span>" : "";
       const showLogo = ch.rating === "adult" && !adultAllowed()
         ? "<span class=\"logo blank\"></span>"
         : logo;
       li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span>" + showLogo +
-        "<span class=\"meta\"><span class=\"t\">" + esc(ch.title) + star + mark + "</span>" + grp + "</span>";
+        "<span class=\"meta\"><span class=\"t\">" + esc(ch.title) + star + mark + "</span>" + tags + "</span>";
       li.addEventListener("click", function () {
         playAt(list.indexOf(ch), false);
       });
