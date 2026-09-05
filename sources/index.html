@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com; connect-src 'self' https:; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com https://player.twitch.tv https://player.kick.com; connect-src 'self' https:; upgrade-insecure-requests">
 <title>LYGO TV — free online TV player | chatagent.ca</title>
-<meta name="description" content="Free online TV in your browser. FAST, iptv-org, Free-TV, Rumble live. Pick a list, click a channel, watch. No account. LYGO player by Justin Helmer / Excavationpro.">
+<meta name="description" content="Watch Excavationpro on Kick, Rumble, Twitch, and YouTube, plus free public TV lists. No account. LYGO player by Justin Helmer / Excavationpro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-<meta name="keywords" content="LYGO TV, free IPTV, public M3U, FAST, Plex, iptv-org, Free-TV GitHub, Rumble live, Excavationpro, chatagent.ca">
+<meta name="keywords" content="LYGO TV, Excavationpro, Kick, Rumble, Twitch, YouTube Justin Helmer, free IPTV, public M3U, FAST, chatagent.ca">
 <link rel="canonical" href="https://chatagent.ca/sources/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/assets/og-home.jpg">
-<link rel="stylesheet" href="/sources/app.css?v=1.7.0">
+<link rel="stylesheet" href="/sources/app.css?v=1.8.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -57,7 +57,7 @@
     <div class="player-box">
       <video id="vid" controls playsinline></video>
       <audio id="aud" controls hidden></audio>
-      <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <iframe id="yt" hidden title="Live TV" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
       <div class="idle" id="idle">Click a channel →</div>
       <div class="spin" id="spin" hidden></div>
     </div>
@@ -73,12 +73,13 @@
         <button class="btn ghost" type="button" id="pip" title="Picture in picture (P)">PiP</button>
         <button class="btn ghost" type="button" id="fs" title="Fullscreen (F)">Fullscreen</button>
         <button class="btn ghost" type="button" id="fav" title="Save on this device">☆ Save</button>
+        <a class="btn ghost" id="open" href="https://kick.com/excavationpro" target="_blank" rel="noopener noreferrer" hidden>Open on Kick</a>
       </div>
     </div>
   </div>
   <aside class="side">
     <h1>LYGO TV</h1>
-    <p class="note">Pick a list → click a channel → watch. Free. No login. FAST = ad-supported public TV. ← → next · space pause · F fullscreen · M mute · R retry · S stop · / search. Music: <a href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">ffm.to/eovnvo9</a>.</p>
+    <p class="note"><strong>Channel</strong> tab = Excavationpro rooms (Kick, Rumble, Twitch, YouTube). Other tabs are public lists. Free. No login. ← → next · space pause · F fullscreen · M mute · R retry · S stop · / search. Music: <a href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">ffm.to/eovnvo9</a>.</p>
     <div class="tabs" id="tabs"></div>
     <div class="chips" id="chips"></div>
     <input id="q" type="search" placeholder="Search this list" autocomplete="off">
@@ -97,14 +98,16 @@
       <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
       <a class="btn ghost" href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">Stream Excavationpro</a>
       <a class="btn ghost" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener noreferrer">Patreon</a>
+      <a class="btn ghost" href="https://kick.com/excavationpro" target="_blank" rel="noopener noreferrer">Kick</a>
+      <a class="btn ghost" href="https://www.twitch.tv/excavationpro" target="_blank" rel="noopener noreferrer">Twitch</a>
       <a class="btn ghost" href="https://rumble.com/register/Excavationpro/" target="_blank" rel="noopener noreferrer sponsored">Join Rumble</a>
     </div>
   </aside>
 </div>
 <footer class="foot">
-  <p><strong>Disclaimer.</strong> LYGO TV is a public catalog browser. Lists come from iptv-org, Free-TV, i.mjh.nz, Plex FAST, RW1986, and Excavationpro Rumble. We do not operate those CDNs, do not decrypt pay-TV, and do not proxy streams. Geo-blocks, dead links, HTTP-only URLs, and CORS limits are named misses — we do not invent a working channel. Use at your own judgment. Support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a>.</p>
+  <p><strong>Disclaimer.</strong> LYGO TV is a public catalog browser. The Channel tab embeds Excavationpro rooms on Kick, Rumble, Twitch, and YouTube. Other lists come from iptv-org, Free-TV, i.mjh.nz, Plex FAST, and RW1986. We do not operate those CDNs, do not decrypt pay-TV, and do not proxy streams. Offline rooms, geo-blocks, dead links, HTTP-only URLs, and CORS limits are named misses. Support: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> · <a href="https://www.patreon.com/Excavationpro">Patreon</a>.</p>
 </footer>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.7.0"></script>
+<script src="/sources/app.js?v=1.8.0"></script>
 </body>
 </html>

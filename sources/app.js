@@ -6,12 +6,23 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.7.0";
+  const CAT_VER = "1.8.0";
   const FAV_KEY = "lygo_tv_favs";
   const LAST_KEY = "lygo_tv_last";
+  const EMBED_KINDS = { youtube: 1, rumble: 1, twitch: 1, kick: 1 };
+  const ROOM_CHIP = {
+    kick_live: "Kick",
+    rumble_live: "Rumble LIVE",
+    twitch_live: "Twitch",
+    yt_justin_live: "YT Justin LIVE",
+    yt_excav_live: "YT Excav LIVE",
+    rumble_radio: "Rumble radio",
+    yt_justin_videos: "YT Justin videos",
+    yt_excav_videos: "YT Excav videos"
+  };
 
   const TABS = [
-    { id: "watch", label: "Watch" },
+    { id: "channel", label: "Channel" },
     { id: "fast", label: "FAST" },
     { id: "lists", label: "Lists" },
     { id: "topics", label: "Topics" },
@@ -59,7 +70,7 @@
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
 
   function groupOf(id) {
-    if (id === "live") return "watch";
+    if (id === "live") return "channel";
     if (FAST_IDS[id]) return "fast";
     if (LIST_IDS[id]) return "lists";
     if (TOPIC_IDS[id]) return "topics";
@@ -87,6 +98,8 @@
     const u = String(url || "").toLowerCase().split("?")[0];
     if (u.indexOf("youtube.com") !== -1 || u.indexOf("youtube-nocookie.com") !== -1) return "youtube";
     if (u.indexOf("rumble.com") !== -1) return "rumble";
+    if (u.indexOf("twitch.tv") !== -1 || u.indexOf("player.twitch.tv") !== -1) return "twitch";
+    if (u.indexOf("kick.com") !== -1 || u.indexOf("player.kick.com") !== -1) return "kick";
     if (/\.(mp3|ogg|wav|m4a|aac)$/.test(u)) return "audio";
     if (/\.(mp4|webm|ogv)$/.test(u)) return "video";
     if (/\.m3u8?$/.test(u) || u.indexOf(".m3u") !== -1) return "hls";
@@ -173,14 +186,19 @@
   }
 
   function hashSet() {
-    const h = st.bouquet ? ("#" + st.tab + "/" + encodeURIComponent(st.bouquet)) : ("#" + st.tab);
+    let h;
+    if (st.tab === "channel" && st.channels[st.i] && st.channels[st.i].id) {
+      h = "#channel/" + encodeURIComponent(st.channels[st.i].id);
+    } else {
+      h = st.bouquet ? ("#" + st.tab + "/" + encodeURIComponent(st.bouquet)) : ("#" + st.tab);
+    }
     if (location.hash !== h) history.replaceState(null, "", h);
   }
 
   function visible() {
     const q = st.filter.toLowerCase();
     let list = st.channels.filter(function (c) {
-      if (!c.https && c.kind !== "youtube" && c.kind !== "rumble") return false;
+      if (!c.https && !EMBED_KINDS[c.kind]) return false;
       if (st.group && (c.group || "") !== st.group) return false;
       if (!q) return true;
       const hay = ((c.title || "") + " " + (c.group || "")).toLowerCase();
@@ -253,6 +271,30 @@
     window.setTimeout(function () { next(1, true); }, 350);
   }
 
+  function embedUrl(ch) {
+    if (ch.kind === "twitch") {
+      const chan = ch.channel || "excavationpro";
+      return "https://player.twitch.tv/?channel=" + encodeURIComponent(chan) +
+        "&parent=" + encodeURIComponent(location.hostname) + "&autoplay=true";
+    }
+    return ch.url;
+  }
+
+  function paintOpen(ch) {
+    const el = $("open");
+    if (!el) return;
+    const href = ch && ch.watch ? G.safeHref(ch.watch) : "";
+    if (!href) {
+      el.hidden = true;
+      el.removeAttribute("href");
+      return;
+    }
+    el.hidden = false;
+    el.href = href;
+    const labels = { kick: "Open on Kick", rumble: "Open on Rumble", twitch: "Open on Twitch", youtube: "Open on YouTube" };
+    el.textContent = labels[ch.kind] || "Open room";
+  }
+
   function playHls(url) {
     const v = $("vid");
     v.hidden = false;
@@ -306,13 +348,19 @@
     $("now").textContent = ch.title;
     paintList();
     paintFavBtn();
+    paintChips();
+    hashSet();
     stopMedia();
     setIdle(false);
-    if (ch.kind === "youtube" || ch.kind === "rumble") {
+    paintOpen(ch);
+    if (EMBED_KINDS[ch.kind]) {
       $("vid").hidden = true;
-      $("yt").src = ch.url;
+      $("yt").src = embedUrl(ch);
       $("yt").hidden = false;
-      setStatus("Playing.", "ok");
+      $("yt").title = ch.title || "Live room";
+      setStatus(ch.kind === "youtube" && /live_stream/.test(ch.url)
+        ? "YouTube live embed — if offline, try the videos room or Open."
+        : "Playing.", "ok");
       return;
     }
     if (!ch.https) {
@@ -378,15 +426,16 @@
       box.appendChild(chip);
       return;
     }
-    if (st.tab === "watch") {
-      if ((st.catalog.live || []).length) {
-        const live = document.createElement("button");
-        live.type = "button";
-        live.className = "chip" + (st.bouquet === "live" ? " on" : "");
-        live.textContent = "Excavationpro";
-        live.addEventListener("click", function () { loadLive(); });
-        box.appendChild(live);
-      }
+    if (st.tab === "channel" || st.tab === "watch") {
+      (st.catalog.live || []).forEach(function (room) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip" + (st.channels[st.i] && st.channels[st.i].id === room.id ? " on" : "");
+        chip.textContent = ROOM_CHIP[room.id] || room.group || room.title;
+        chip.title = room.title;
+        chip.addEventListener("click", function () { playRoom(room.id); });
+        box.appendChild(chip);
+      });
       return;
     }
     (st.catalog.bouquets || []).forEach(function (b) {
@@ -447,6 +496,22 @@
     paintGroups();
   }
 
+  function playRoom(id) {
+    st.filter = "";
+    st.group = "";
+    if ($("q")) $("q").value = "";
+    if (st.bouquet !== "live") {
+      loadLive(id);
+      return;
+    }
+    const ch = st.channels.filter(function (c) { return c.id === id; })[0];
+    if (!ch) {
+      loadLive(id);
+      return;
+    }
+    playAt(visible().indexOf(ch), false);
+  }
+
   function loadSaved() {
     st.tab = "saved";
     st.bouquet = "saved";
@@ -476,13 +541,23 @@
     setIdle(true);
   }
 
-  function loadLive() {
+  function loadLive(preferId) {
     st.bouquet = "live";
-    st.tab = "watch";
+    st.tab = "channel";
     st.httpSkipped = 0;
     st.group = "";
     st.channels = (st.catalog.live || []).map(function (x) {
-      return { title: x.title, url: x.url, https: true, kind: x.kind || kindOfUrl(x.url), logo: "", group: "Rumble" };
+      return {
+        id: x.id,
+        title: x.title,
+        url: x.url,
+        https: true,
+        kind: x.kind || kindOfUrl(x.url),
+        logo: x.logo || "",
+        group: x.group || "",
+        watch: x.watch || "",
+        channel: x.channel || ""
+      };
     });
     st.i = -1;
     paintTabs();
@@ -490,16 +565,22 @@
     paintList();
     remember("live");
     hashSet();
-    setStatus("Excavationpro LIVE — playing.");
-    if (st.channels.length) playAt(0, false);
+    setStatus("Excavationpro Channel — Kick, Rumble, Twitch, YouTube.");
+    let start = 0;
+    if (preferId) {
+      const found = st.channels.findIndex(function (c) { return c.id === preferId; });
+      if (found >= 0) start = found;
+    }
+    if (st.channels.length) playAt(start, false);
     fetch("/data/rumble-live.json?t=" + Date.now(), { cache: "no-store", credentials: "omit" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         if (!j || !j.embed_url) return;
         const href = G.safeHref(j.embed_url);
-        if (!href || !st.channels[0] || st.channels[0].kind !== "rumble") return;
-        st.channels[0].url = href;
-        if (st.i === 0) playAt(0, false);
+        const rumble = st.channels.filter(function (c) { return c.id === "rumble_live"; })[0];
+        if (!href || !rumble) return;
+        rumble.url = href;
+        if (st.channels[st.i] === rumble) playAt(visible().indexOf(rumble), false);
         else paintList();
       })
       .catch(function () {});
@@ -588,6 +669,7 @@
   $("stop").addEventListener("click", function () {
     stopMedia();
     setIdle(true);
+    paintOpen(null);
     setStatus("Stopped.");
   });
   $("retry").addEventListener("click", function () { retry(); });
@@ -641,7 +723,7 @@
     const tab = parts[0];
     const bid = parts[1] ? decodeURIComponent(parts[1]) : "";
     if (tab === "saved") { loadSaved(); return true; }
-    if (tab === "watch" || bid === "live") { loadLive(); return true; }
+    if (tab === "channel" || tab === "watch" || bid === "live") { loadLive(bid && bid !== "live" ? bid : ""); return true; }
     if (!bid) return false;
     const b = (st.catalog.bouquets || []).filter(function (x) { return x.id === bid; })[0];
     if (b) { loadBouquet(b, false); return true; }
