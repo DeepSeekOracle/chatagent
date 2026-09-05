@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.9.0";
+  const CAT_VER = "1.10.0";
   const FAV_KEY = "lygo_tv_favs";
   const LAST_KEY = "lygo_tv_last";
   const AGE_KEY = "lygo_tv_18";
@@ -66,8 +66,7 @@
     hlsReady: false,
     skip: 0,
     httpSkipped: 0,
-    hideAdult: true,
-    kidsOnly: false,
+    audience: "all",
     ageOk: false,
     gateCb: null
   };
@@ -110,7 +109,11 @@
     if (bouquetId === "kids") return "kids";
     if (/^(kids|children|children'?s|infantil|ninos|niños)$/.test(g)) return "kids";
     if (/\bkids\b|\bchildren'?s\b|\bpbs kids\b|\bcbeebies\b|\bnick jr\b|\bnickjr\b/.test(hay)) return "kids";
-    return "";
+    return "all";
+  }
+
+  function ratingOf(c) {
+    return (c && c.rating) || "all";
   }
 
   function adultAllowed() {
@@ -138,6 +141,45 @@
     const cb = st.gateCb;
     st.gateCb = null;
     if (cb) cb(!!ok);
+  }
+
+  function paintAudience() {
+    ["all", "kids", "adult"].forEach(function (id) {
+      const el = $("aud-" + id);
+      if (!el) return;
+      const on = st.audience === id;
+      el.className = "aud" + (on ? " on" : "");
+      el.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function setAudience(kind, after) {
+    if (kind === "adult" && !adultAllowed()) {
+      openGate(function (ok) {
+        if (!ok) {
+          st.audience = "all";
+          paintAudience();
+          paintList();
+          setStatus("Staying on All ages. We do not run an XXX catalog.");
+          if (after) after(false);
+          return;
+        }
+        setAdultAllowed(true);
+        st.audience = "adult";
+        paintAudience();
+        paintList();
+        setStatus("18+ shelf — leftover list metadata only, not an XXX catalog.");
+        if (after) after(true);
+      });
+      return;
+    }
+    st.audience = kind === "kids" || kind === "adult" ? kind : "all";
+    paintAudience();
+    paintList();
+    if (st.audience === "kids") setStatus("Kids shelf — metadata hint, not a child lock. Supervise minors.");
+    else if (st.audience === "adult") setStatus("18+ shelf — leftover list metadata only, not an XXX catalog.");
+    else setStatus("All ages — unlabeled public channels.");
+    if (after) after(true);
   }
 
   function kindOfUrl(url) {
@@ -246,8 +288,9 @@
     const q = st.filter.toLowerCase();
     let list = st.channels.filter(function (c) {
       if (!c.https && !EMBED_KINDS[c.kind]) return false;
-      if (st.hideAdult && c.rating === "adult") return false;
-      if (st.kidsOnly && c.rating !== "kids") return false;
+      if (st.audience === "all" && ratingOf(c) !== "all") return false;
+      if (st.audience === "kids" && ratingOf(c) !== "kids") return false;
+      if (st.audience === "adult" && ratingOf(c) !== "adult") return false;
       if (st.group && (c.group || "") !== st.group) return false;
       if (!q) return true;
       const hay = ((c.title || "") + " " + (c.group || "")).toLowerCase();
@@ -393,22 +436,15 @@
     if (i < 0) i = list.length - 1;
     if (i >= list.length) i = 0;
     const ch = list[i];
-    if (ch.rating === "adult" && !adultAllowed()) {
+    if (ratingOf(ch) === "adult" && (st.audience !== "adult" || !adultAllowed())) {
       if (fromSkip) {
-        skipOrStop("Skipped 18+ listing.");
+        skipOrStop("Skipped 18+ listing — not on the All ages shelf.");
         return;
       }
-      openGate(function (ok) {
-        if (!ok) {
-          setStatus("18+ listing not played. Portal only — see disclaimer.", "bad");
-          setIdle(true);
-          return;
-        }
-        setAdultAllowed(true);
-        st.hideAdult = false;
-        if ($("hide18")) $("hide18").checked = false;
-        paintList();
-        playAt(visible().indexOf(ch), false);
+      setAudience("adult", function (ok) {
+        if (!ok) return;
+        const idx = visible().indexOf(ch);
+        if (idx >= 0) playAt(idx, false);
       });
       return;
     }
@@ -544,12 +580,12 @@
     const ul = $("channels");
     ul.innerHTML = "";
     const list = visible();
-    const hiddenAdult = st.channels.filter(function (c) { return c.rating === "adult"; }).length;
-    const kidsN = list.filter(function (c) { return c.rating === "kids"; }).length;
+    const nAll = st.channels.filter(function (c) { return ratingOf(c) === "all"; }).length;
+    const nKids = st.channels.filter(function (c) { return ratingOf(c) === "kids"; }).length;
+    const nAdult = st.channels.filter(function (c) { return ratingOf(c) === "adult"; }).length;
     const extra = st.httpSkipped ? (" · " + st.httpSkipped + " HTTP skipped") : "";
-    const age = st.hideAdult && hiddenAdult ? (" · " + hiddenAdult + "×18+ hidden") : "";
-    const kids = kidsN ? (" · " + kidsN + " Kids") : "";
-    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels") + kids + age + extra;
+    const shelf = st.audience === "kids" ? "Kids shelf" : (st.audience === "adult" ? "18+ shelf" : "All ages");
+    $("count").textContent = list.length + " on " + shelf + " · " + nAll + " all ages · " + nKids + " Kids · " + nAdult + "×18+ held" + extra;
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       if (st.channels[st.i] === ch) li.className = "on";
@@ -611,6 +647,7 @@
     st.i = -1;
     paintTabs();
     paintChips();
+    paintAudience();
     paintList();
     hashSet();
     if (!st.channels.length) {
@@ -638,12 +675,14 @@
         group: x.group || "",
         watch: x.watch || "",
         channel: x.channel || "",
-        rating: ""
+        rating: "all"
       };
     });
     st.i = -1;
+    st.audience = "all";
     paintTabs();
     paintChips();
+    paintAudience();
     paintList();
     remember("live");
     hashSet();
@@ -689,6 +728,9 @@
       const text = new TextDecoder("utf-8").decode(buf);
       st.channels = parseM3U(text, b.url, b.id);
       st.i = -1;
+      if (b.id === "kids") st.audience = "kids";
+      else if (st.audience === "kids" && b.id !== "kids") { /* keep Kids shelf for this list */ }
+      paintAudience();
       paintList();
       const vis = visible();
       if (!vis.length) {
@@ -769,42 +811,10 @@
     st.group = $("grp").value || "";
     paintList();
   });
-  $("kidsonly").addEventListener("click", function () {
-    st.kidsOnly = !st.kidsOnly;
-    $("kidsonly").className = "btn ghost" + (st.kidsOnly ? " on" : "");
-    $("kidsonly").setAttribute("aria-pressed", st.kidsOnly ? "true" : "false");
-    paintList();
-    setStatus(st.kidsOnly
-      ? "Kids filter on — labels are metadata hints, not a child-safe lock."
-      : "Kids filter off.");
-  });
-  $("hide18").addEventListener("change", function () {
-    if ($("hide18").checked) {
-      st.hideAdult = true;
-      paintList();
-      setStatus("18+ listings hidden.");
-      return;
-    }
-    if (adultAllowed()) {
-      st.hideAdult = false;
-      paintList();
-      setStatus("18+ listings shown. Labels can be wrong. Portal only.");
-      return;
-    }
-    $("hide18").checked = true;
-    openGate(function (ok) {
-      if (!ok) {
-        st.hideAdult = true;
-        $("hide18").checked = true;
-        setStatus("18+ listings stay hidden.");
-        return;
-      }
-      setAdultAllowed(true);
-      st.hideAdult = false;
-      $("hide18").checked = false;
-      paintList();
-      setStatus("18+ listings shown. Labels can be wrong. Portal only.");
-    });
+  ["all", "kids", "adult"].forEach(function (id) {
+    const el = $("aud-" + id);
+    if (!el) return;
+    el.addEventListener("click", function () { setAudience(id); });
   });
   $("gate-yes").addEventListener("click", function () { closeGate(true); });
   $("gate-no").addEventListener("click", function () { closeGate(false); });
@@ -871,6 +881,7 @@
       st.catalog = j;
       paintTabs();
       paintChips();
+      paintAudience();
       if (openFromHash()) return;
       let last = null;
       try { last = JSON.parse(localStorage.getItem(LAST_KEY) || "null"); } catch (e) {}

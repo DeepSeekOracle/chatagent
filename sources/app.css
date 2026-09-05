@@ -164,12 +164,17 @@ input[type="search"], input[type="url"] {
 .badge.adult { background: #3b1020; color: #fda4af; border: 1px solid #e11d48; }
 .list li.adult-row { border-left: 3px solid #e11d48; padding-left: .35rem; }
 .list li.kids-row { border-left: 3px solid #059669; padding-left: .35rem; }
-.tog {
-  display: inline-flex; align-items: center; gap: .3rem;
-  font-size: .72rem; color: var(--muted); cursor: pointer;
-  border: 1px solid var(--line); border-radius: 8px; padding: .28rem .5rem;
+.audience {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin: .2rem 0 .15rem; flex: none;
 }
-.tog input { margin: 0; }
+.aud {
+  font-family: var(--font); font-size: .75rem; font-weight: 700;
+  border: 1px solid var(--line); background: #0a101c; color: var(--muted);
+  border-radius: 8px; padding: .32rem .55rem; cursor: pointer;
+}
+.aud.on { border-color: var(--gold); color: var(--gold); background: #1a1408; }
+.aud[data-aud="kids"].on { border-color: #059669; color: #6ee7b7; background: #0b3d2e; }
+.aud[data-aud="adult"].on { border-color: #e11d48; color: #fda4af; background: #3b1020; }
 .btn.on { border-color: var(--gold); color: var(--gold); }
 .gate {
   position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 80;
