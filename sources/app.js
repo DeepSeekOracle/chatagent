@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.10.0";
+  const CAT_VER = "1.11.0";
   const FAV_KEY = "lygo_tv_favs";
   const LAST_KEY = "lygo_tv_last";
   const AGE_KEY = "lygo_tv_18";
@@ -32,12 +32,17 @@
     { id: "saved", label: "Saved" }
   ];
   const FAST_IDS = {
-    mjh_raw: 1, mjh_radio: 1, plex_fast: 1, rw1986: 1,
-    ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1
+    mjh_raw: 1, mjh_radio: 1, plex_fast: 1, plex_all: 1, rw1986: 1,
+    ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1,
+    tubi_fast: 1, distro_fast: 1, vizio_fast: 1, rakuten_uk: 1, lg_us: 1
   };
   const LIST_IDS = {
     worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1,
-    ftv_france: 1, ftv_germany: 1, ftv_italy: 1, ftv_spain: 1
+    ftv_france: 1, ftv_germany: 1, ftv_italy: 1, ftv_spain: 1,
+    pbs_src: 1, bbc_src: 1,
+    ftv_canada: 1, ftv_australia: 1, ftv_ireland: 1, ftv_netherlands: 1,
+    ftv_japan: 1, ftv_india: 1, ftv_mexico: 1, ftv_poland: 1, ftv_sweden: 1,
+    ftv_austria: 1, ftv_portugal: 1, ftv_belgium: 1, ftv_brazil: 1
   };
   const TOPIC_IDS = {
     culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,
@@ -49,7 +54,9 @@
   const LANG_IDS = {
     ara: 1, fas: 1, kur: 1, rus: 1, ukr: 1, zho: 1, spa: 1, por: 1,
     tur: 1, hin: 1, urd: 1, ben: 1, tam: 1, swa: 1, amh: 1, heb: 1,
-    eng: 1, fra: 1, deu: 1, ita: 1, nld: 1, jpn: 1, kor: 1, pol: 1
+    eng: 1, fra: 1, deu: 1, ita: 1, nld: 1, jpn: 1, kor: 1, pol: 1,
+    hun: 1, ron: 1, ell: 1, tha: 1, vie: 1, ind: 1, mal: 1, tel: 1,
+    cat: 1, srp: 1, kaz: 1
   };
 
   const $ = function (id) { return document.getElementById(id); };
