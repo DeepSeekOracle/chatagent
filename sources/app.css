@@ -182,7 +182,11 @@ a { color: var(--cyan); }
   font-size: .82rem; color: var(--ink); margin: .65rem 0 .55rem; cursor: pointer;
 }
 .terms-check input { margin-top: .15rem; flex: none; }
-h1 { font-family: var(--display); font-size: 1.35rem; color: var(--gold); margin: 0 0 .35rem; }
+h1 {
+  font-family: var(--display); font-size: 1.35rem; color: var(--gold);
+  margin: 0 0 .35rem; display: flex; align-items: center; gap: .45rem;
+}
+.emblem { width: 2.1rem; height: 2.1rem; flex: none; border-radius: 8px; }
 .kicker { font-family: var(--mono); font-size: .65rem; letter-spacing: .12em; text-transform: uppercase; color: #e8a54b; margin: 0 0 .35rem; }
 .note { font-size: .8rem; color: var(--muted); line-height: 1.4; flex: none; }
 #q { flex: none; }
