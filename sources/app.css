@@ -67,6 +67,26 @@ a { color: var(--cyan); }
 .now { font-family: var(--display); font-size: 1.25rem; color: var(--gold); margin: 0 0 .2rem; }
 .status { font-family: var(--mono); font-size: .72rem; color: var(--muted); min-height: 1rem; }
 .row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
+.filters { display: flex; gap: .4rem; align-items: center; flex: none; margin: .2rem 0; }
+.filters select {
+  flex: 1; background: #0a101c; color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: .35rem .5rem; font: inherit;
+}
+.spin {
+  position: absolute; inset: 0; margin: auto; width: 2.2rem; height: 2.2rem;
+  border: 3px solid #1e293b; border-top-color: var(--gold); border-radius: 50%;
+  animation: lygo-spin .7s linear infinite; z-index: 3; pointer-events: none;
+}
+.spin[hidden] { display: none; }
+@keyframes lygo-spin { to { transform: rotate(360deg); } }
+.logo {
+  width: 1.7rem; height: 1.7rem; object-fit: contain; background: #000;
+  border-radius: 4px; flex: none;
+}
+.logo.blank { background: #0a101c; border: 1px solid var(--line); }
+.meta { display: flex; flex-direction: column; min-width: 0; }
+.meta .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g { font-family: var(--mono); font-size: .62rem; color: var(--muted); }
 .btn {
   background: var(--gold); color: #111; border: 0; font-weight: 700; padding: .45rem .7rem;
   border-radius: 8px; cursor: pointer; font-size: .78rem; text-decoration: none; display: inline-block;

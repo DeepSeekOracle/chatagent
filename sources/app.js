@@ -3,28 +3,41 @@
   "use strict";
   const G = window.LYGO_SRC_GUARD;
   const HLS_SRC = "https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js";
-  const MAX_PLAYLIST = 2500;
+  const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.6.0";
+  const CAT_VER = "1.7.0";
+  const FAV_KEY = "lygo_tv_favs";
+  const LAST_KEY = "lygo_tv_last";
 
   const TABS = [
     { id: "watch", label: "Watch" },
+    { id: "fast", label: "FAST" },
     { id: "lists", label: "Lists" },
     { id: "topics", label: "Topics" },
     { id: "places", label: "Places" },
-    { id: "langs", label: "Languages" }
+    { id: "langs", label: "Languages" },
+    { id: "saved", label: "Saved" }
   ];
-  const LIST_IDS = { worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1 };
+  const FAST_IDS = {
+    mjh_raw: 1, mjh_radio: 1, plex_fast: 1, rw1986: 1,
+    ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1
+  };
+  const LIST_IDS = {
+    worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1,
+    ftv_france: 1, ftv_germany: 1, ftv_italy: 1, ftv_spain: 1
+  };
   const TOPIC_IDS = {
     culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,
     outdoor: 1, religious: 1, classic: 1, relax: 1, general: 1, science: 1,
     music: 1, sports: 1, weather: 1, animation: 1, comedy: 1, series: 1,
-    cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1, news: 1
+    cooking: 1, travel: 1, lifestyle: 1, family: 1, business: 1, auto: 1,
+    news: 1, kids: 1, movies: 1, entertainment: 1, shop: 1
   };
   const LANG_IDS = {
     ara: 1, fas: 1, kur: 1, rus: 1, ukr: 1, zho: 1, spa: 1, por: 1,
-    tur: 1, hin: 1, urd: 1, ben: 1, tam: 1, swa: 1, amh: 1, heb: 1
+    tur: 1, hin: 1, urd: 1, ben: 1, tam: 1, swa: 1, amh: 1, heb: 1,
+    eng: 1, fra: 1, deu: 1, ita: 1, nld: 1, jpn: 1, kor: 1, pol: 1
   };
 
   const $ = function (id) { return document.getElementById(id); };
@@ -35,15 +48,19 @@
     channels: [],
     i: -1,
     filter: "",
+    group: "",
+    sortAz: false,
     hls: null,
     hlsReady: false,
-    skip: 0
+    skip: 0,
+    httpSkipped: 0
   };
 
   function esc(s) { return G ? G.esc(s) : String(s || ""); }
 
   function groupOf(id) {
     if (id === "live") return "watch";
+    if (FAST_IDS[id]) return "fast";
     if (LIST_IDS[id]) return "lists";
     if (TOPIC_IDS[id]) return "topics";
     if (LANG_IDS[id]) return "langs";
@@ -58,6 +75,11 @@
 
   function setIdle(on) {
     const el = $("idle");
+    if (el) el.hidden = !on;
+  }
+
+  function setSpin(on) {
+    const el = $("spin");
     if (el) el.hidden = !on;
   }
 
@@ -76,6 +98,8 @@
     const out = [];
     let title = "";
     let logo = "";
+    let group = "";
+    let httpSkipped = 0;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
@@ -84,32 +108,102 @@
         title = comma >= 0 ? line.slice(comma + 1).trim() : "Channel";
         const lm = line.match(/tvg-logo="([^"]+)"/i);
         logo = lm ? lm[1] : "";
+        const gm = line.match(/group-title="([^"]+)"/i);
+        group = gm ? gm[1] : "";
         continue;
       }
       if (line.charAt(0) === "#") continue;
       const parsed = G.parseStream(line, baseHref);
       if (!parsed) continue;
+      if (parsed.protocol !== "https:") {
+        httpSkipped += 1;
+        title = "";
+        logo = "";
+        group = "";
+        continue;
+      }
       out.push({
         title: title || parsed.hostname,
         url: parsed.href,
-        https: parsed.protocol === "https:",
+        https: true,
         kind: kindOfUrl(parsed.href),
-        logo: logo
+        logo: logo && logo.indexOf("https://") === 0 ? logo : "",
+        group: group
       });
       title = "";
       logo = "";
+      group = "";
       if (out.length >= MAX_PLAYLIST) break;
     }
+    st.httpSkipped = httpSkipped;
     return out;
+  }
+
+  function loadFavs() {
+    try {
+      const raw = localStorage.getItem(FAV_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveFavs(list) {
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(list.slice(0, 200))); } catch (e) {}
+  }
+
+  function isFav(url) {
+    return loadFavs().some(function (x) { return x.url === url; });
+  }
+
+  function toggleFav(ch) {
+    if (!ch || !ch.url) return;
+    const list = loadFavs();
+    const i = list.findIndex(function (x) { return x.url === ch.url; });
+    if (i >= 0) list.splice(i, 1);
+    else list.unshift({ title: ch.title, url: ch.url, kind: ch.kind, logo: ch.logo || "", group: ch.group || "" });
+    saveFavs(list);
+    paintList();
+    paintFavBtn();
+  }
+
+  function remember(bouquet) {
+    try { localStorage.setItem(LAST_KEY, JSON.stringify({ tab: st.tab, bouquet: bouquet })); } catch (e) {}
+  }
+
+  function hashSet() {
+    const h = st.bouquet ? ("#" + st.tab + "/" + encodeURIComponent(st.bouquet)) : ("#" + st.tab);
+    if (location.hash !== h) history.replaceState(null, "", h);
   }
 
   function visible() {
     const q = st.filter.toLowerCase();
-    return st.channels.filter(function (c) {
-      if (!c.https && c.kind !== "youtube") return false;
+    let list = st.channels.filter(function (c) {
+      if (!c.https && c.kind !== "youtube" && c.kind !== "rumble") return false;
+      if (st.group && (c.group || "") !== st.group) return false;
       if (!q) return true;
-      return (c.title || "").toLowerCase().indexOf(q) !== -1;
+      const hay = ((c.title || "") + " " + (c.group || "")).toLowerCase();
+      return hay.indexOf(q) !== -1;
     });
+    if (st.sortAz) {
+      list = list.slice().sort(function (a, b) {
+        return (a.title || "").localeCompare(b.title || "");
+      });
+    }
+    return list;
+  }
+
+  function groupsInList() {
+    const seen = {};
+    const out = [];
+    st.channels.forEach(function (c) {
+      if (!c.group || seen[c.group]) return;
+      seen[c.group] = 1;
+      out.push(c.group);
+    });
+    out.sort(function (a, b) { return a.localeCompare(b); });
+    return out;
   }
 
   function loadHls(cb) {
@@ -134,6 +228,7 @@
     a.hidden = true;
     yt.hidden = true;
     yt.removeAttribute("src");
+    setSpin(false);
   }
 
   function tryPlay(el) {
@@ -148,6 +243,7 @@
 
   function skipOrStop(why) {
     setStatus(why, "bad");
+    setSpin(false);
     if (st.skip >= SKIP_MAX) {
       setStatus(why + " Click another channel.", "bad");
       setIdle(true);
@@ -161,9 +257,11 @@
     const v = $("vid");
     v.hidden = false;
     setIdle(false);
+    setSpin(true);
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = url;
       tryPlay(v);
+      setSpin(false);
       setStatus("Playing.", "ok");
       return;
     }
@@ -181,6 +279,7 @@
       st.hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
         st.skip = 0;
         setIdle(false);
+        setSpin(false);
         setStatus("Playing.", "ok");
         tryPlay(v);
       });
@@ -206,6 +305,7 @@
     st.i = st.channels.indexOf(ch);
     $("now").textContent = ch.title;
     paintList();
+    paintFavBtn();
     stopMedia();
     setIdle(false);
     if (ch.kind === "youtube" || ch.kind === "rumble") {
@@ -239,6 +339,13 @@
     playAt(idx, fromSkip);
   }
 
+  function retry() {
+    if (st.i < 0 || !st.channels[st.i]) return;
+    const list = visible();
+    const idx = list.indexOf(st.channels[st.i]);
+    if (idx >= 0) playAt(idx, false);
+  }
+
   function paintTabs() {
     const box = $("tabs");
     box.innerHTML = "";
@@ -252,6 +359,7 @@
         st.tab = t.id;
         paintTabs();
         paintChips();
+        if (t.id === "saved") loadSaved();
       });
       box.appendChild(el);
     });
@@ -260,6 +368,16 @@
   function paintChips() {
     const box = $("chips");
     box.innerHTML = "";
+    if (st.tab === "saved") {
+      const n = loadFavs().length;
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip on";
+      chip.textContent = n ? (n + " saved") : "None saved";
+      chip.addEventListener("click", loadSaved);
+      box.appendChild(chip);
+      return;
+    }
     if (st.tab === "watch") {
       if ((st.catalog.live || []).length) {
         const live = document.createElement("button");
@@ -282,32 +400,96 @@
     });
   }
 
+  function paintGroups() {
+    const sel = $("grp");
+    if (!sel) return;
+    const groups = groupsInList();
+    sel.innerHTML = "<option value=\"\">All groups</option>";
+    groups.forEach(function (g) {
+      const o = document.createElement("option");
+      o.value = g;
+      o.textContent = g;
+      if (g === st.group) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.hidden = groups.length < 2;
+  }
+
+  function paintFavBtn() {
+    const btn = $("fav");
+    if (!btn) return;
+    const ch = st.channels[st.i];
+    if (!ch) { btn.textContent = "☆ Save"; return; }
+    btn.textContent = isFav(ch.url) ? "★ Saved" : "☆ Save";
+  }
+
   function paintList() {
     const ul = $("channels");
     ul.innerHTML = "";
     const list = visible();
-    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels");
+    const extra = st.httpSkipped ? (" · " + st.httpSkipped + " HTTP skipped") : "";
+    $("count").textContent = list.length + (list.length === 1 ? " channel" : " channels") + extra;
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       if (st.channels[st.i] === ch) li.className = "on";
-      li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span><span>" + esc(ch.title) + "</span>";
+      const logo = ch.logo
+        ? "<img class=\"logo\" alt=\"\" loading=\"lazy\" src=\"" + esc(ch.logo) + "\">"
+        : "<span class=\"logo blank\"></span>";
+      const star = isFav(ch.url) ? " ★" : "";
+      const grp = ch.group ? "<span class=\"g\">" + esc(ch.group) + "</span>" : "";
+      li.innerHTML = "<span class=\"num\">" + (n + 1) + "</span>" + logo +
+        "<span class=\"meta\"><span class=\"t\">" + esc(ch.title) + star + "</span>" + grp + "</span>";
       li.addEventListener("click", function () {
         playAt(list.indexOf(ch), false);
       });
       ul.appendChild(li);
     });
+    paintGroups();
   }
 
-  function loadLive() {
-    st.bouquet = "live";
-    st.tab = "watch";
-    st.channels = (st.catalog.live || []).map(function (x) {
-      return { title: x.title, url: x.url, https: true, kind: x.kind || kindOfUrl(x.url) };
+  function loadSaved() {
+    st.tab = "saved";
+    st.bouquet = "saved";
+    st.httpSkipped = 0;
+    st.group = "";
+    st.channels = loadFavs().map(function (x) {
+      return {
+        title: x.title,
+        url: x.url,
+        https: true,
+        kind: x.kind || kindOfUrl(x.url),
+        logo: x.logo || "",
+        group: x.group || ""
+      };
     });
     st.i = -1;
     paintTabs();
     paintChips();
     paintList();
+    hashSet();
+    if (!st.channels.length) {
+      setStatus("Star a channel to save it on this device.", "bad");
+      setIdle(true);
+      return;
+    }
+    setStatus("Saved on this device — click a channel.");
+    setIdle(true);
+  }
+
+  function loadLive() {
+    st.bouquet = "live";
+    st.tab = "watch";
+    st.httpSkipped = 0;
+    st.group = "";
+    st.channels = (st.catalog.live || []).map(function (x) {
+      return { title: x.title, url: x.url, https: true, kind: x.kind || kindOfUrl(x.url), logo: "", group: "Rumble" };
+    });
+    st.i = -1;
+    paintTabs();
+    paintChips();
+    paintList();
+    remember("live");
+    hashSet();
     setStatus("Excavationpro LIVE — playing.");
     if (st.channels.length) playAt(0, false);
     fetch("/data/rumble-live.json?t=" + Date.now(), { cache: "no-store", credentials: "omit" })
@@ -327,9 +509,13 @@
     if (!G.allowFetch(b.url)) { setStatus("That list URL is blocked.", "bad"); return; }
     st.bouquet = b.id;
     st.tab = groupOf(b.id);
+    st.group = "";
     paintTabs();
     paintChips();
     setStatus("Loading " + b.title + "…");
+    setSpin(true);
+    remember(b.id);
+    hashSet();
     const ctrl = new AbortController();
     const t = window.setTimeout(function () { ctrl.abort(); }, 20000);
     try {
@@ -345,14 +531,18 @@
       if (!vis.length) {
         setStatus(b.title + " — no HTTPS channels. Try another list.", "bad");
         setIdle(true);
+        setSpin(false);
         return;
       }
-      setStatus(b.title + " — click a channel.");
+      const skip = st.httpSkipped ? (" " + st.httpSkipped + " HTTP skipped.") : "";
+      setStatus(b.title + " — " + vis.length + " HTTPS channels." + skip + " Click a channel.");
       setIdle(true);
+      setSpin(false);
       if (autoplay) playAt(0, false);
     } catch (e) {
       setStatus("Could not load that list. Try another.", "bad");
       setIdle(true);
+      setSpin(false);
     } finally {
       window.clearTimeout(t);
     }
@@ -369,9 +559,52 @@
     }
   }
 
+  function toggleMute() {
+    const v = $("vid");
+    const a = $("aud");
+    const el = !v.hidden ? v : a;
+    el.muted = !el.muted;
+    setStatus(el.muted ? "Muted." : "Unmuted.", "ok");
+  }
+
+  function togglePip() {
+    const v = $("vid");
+    if (!document.pictureInPictureEnabled || v.hidden) {
+      setStatus("Picture-in-picture not available.", "bad");
+      return;
+    }
+    if (document.pictureInPictureElement) {
+      document.exitPictureInPicture().catch(function () {});
+      return;
+    }
+    v.requestPictureInPicture().catch(function () {
+      setStatus("Picture-in-picture failed.", "bad");
+    });
+  }
+
   $("prev").addEventListener("click", function () { next(-1, false); });
   $("next").addEventListener("click", function () { next(1, false); });
   $("fs").addEventListener("click", function () { toggleFs(); });
+  $("stop").addEventListener("click", function () {
+    stopMedia();
+    setIdle(true);
+    setStatus("Stopped.");
+  });
+  $("retry").addEventListener("click", function () { retry(); });
+  $("mute").addEventListener("click", function () { toggleMute(); });
+  $("pip").addEventListener("click", function () { togglePip(); });
+  $("fav").addEventListener("click", function () {
+    if (st.i >= 0 && st.channels[st.i]) toggleFav(st.channels[st.i]);
+  });
+  $("sort").addEventListener("click", function () {
+    st.sortAz = !st.sortAz;
+    $("sort").textContent = st.sortAz ? "A–Z on" : "A–Z";
+    paintList();
+  });
+  $("grp").addEventListener("change", function () {
+    st.group = $("grp").value || "";
+    paintList();
+  });
   $("q").addEventListener("input", function () {
     st.filter = $("q").value || "";
     paintList();
@@ -379,7 +612,7 @@
   $("add").addEventListener("click", function () {
     const href = G.safeHref($("custom").value);
     if (!href) { setStatus("Need a public https:// URL.", "bad"); return; }
-    st.channels.unshift({ title: $("custom").value.split("/").pop() || href, url: href, https: true, kind: kindOfUrl(href) });
+    st.channels.unshift({ title: $("custom").value.split("/").pop() || href, url: href, https: true, kind: kindOfUrl(href), logo: "", group: "Custom" });
     $("custom").value = "";
     paintList();
     playAt(0, false);
@@ -389,12 +622,31 @@
   });
   document.addEventListener("keydown", function (e) {
     const tag = (e.target && e.target.tagName) || "";
-    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     if (e.key === "ArrowLeft") { e.preventDefault(); next(-1, false); }
     if (e.key === "ArrowRight") { e.preventDefault(); next(1, false); }
     if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFs(); }
     if (e.key === "/") { e.preventDefault(); $("q").focus(); }
+    if (e.key === " ") { e.preventDefault(); const v = $("vid"); if (!v.hidden) { if (v.paused) v.play(); else v.pause(); } }
+    if (e.key === "m" || e.key === "M") { e.preventDefault(); toggleMute(); }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); retry(); }
+    if (e.key === "s" || e.key === "S") { e.preventDefault(); stopMedia(); setIdle(true); setStatus("Stopped."); }
+    if (e.key === "p" || e.key === "P") { e.preventDefault(); togglePip(); }
   });
+
+  function openFromHash() {
+    const raw = (location.hash || "").replace(/^#/, "");
+    if (!raw) return false;
+    const parts = raw.split("/");
+    const tab = parts[0];
+    const bid = parts[1] ? decodeURIComponent(parts[1]) : "";
+    if (tab === "saved") { loadSaved(); return true; }
+    if (tab === "watch" || bid === "live") { loadLive(); return true; }
+    if (!bid) return false;
+    const b = (st.catalog.bouquets || []).filter(function (x) { return x.id === bid; })[0];
+    if (b) { loadBouquet(b, false); return true; }
+    return false;
+  }
 
   fetch("catalog.json?v=" + CAT_VER, { credentials: "omit", cache: "no-store" })
     .then(function (r) { return r.json(); })
@@ -402,6 +654,13 @@
       st.catalog = j;
       paintTabs();
       paintChips();
+      if (openFromHash()) return;
+      let last = null;
+      try { last = JSON.parse(localStorage.getItem(LAST_KEY) || "null"); } catch (e) {}
+      if (last && last.bouquet && last.bouquet !== "live" && last.bouquet !== "saved") {
+        const b = (j.bouquets || []).filter(function (x) { return x.id === last.bouquet; })[0];
+        if (b) { loadBouquet(b, false); return; }
+      }
       const id = j.default_bouquet || "live";
       if (id === "live" && (j.live || []).length) {
         loadLive();
