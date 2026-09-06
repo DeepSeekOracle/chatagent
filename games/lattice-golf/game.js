@@ -1091,6 +1091,25 @@
     }
     c.restore();
 
+    if (pts && pts.length > 1) {
+      const lat = (hole.fairW || 30) + 8.4;
+      c.strokeStyle = "#8a8278";
+      c.lineWidth = Math.max(2.2, 2.4 * view.scale);
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const prev = pts[Math.max(0, i - 1)];
+        const next = pts[Math.min(pts.length - 1, i + 1)];
+        const tx = next.x - prev.x, ty = next.y - prev.y;
+        const len = Math.hypot(tx, ty) || 1;
+        const p = toScr({ x: pts[i].x + (-ty / len) * lat, y: pts[i].y + (tx / len) * lat });
+        if (i === 0) c.moveTo(p.x, p.y);
+        else c.lineTo(p.x, p.y);
+      }
+      c.stroke();
+    }
+
     (pts || []).forEach(function (wp, i) {
       if (i === 0 || i === pts.length - 1) return;
       const p = toScr(wp);
@@ -1254,9 +1273,24 @@
         x: G.ball.x + Math.cos(aimA) * reach,
         y: G.ball.y + Math.sin(aimA) * reach,
       });
+      c.strokeStyle = "rgba(94,234,212,.9)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(m.x, m.y, 10, 0, Math.PI * 2);
+      c.stroke();
+      c.beginPath();
+      c.moveTo(m.x - 13, m.y);
+      c.lineTo(m.x + 13, m.y);
+      c.moveTo(m.x, m.y - 13);
+      c.lineTo(m.x, m.y + 13);
+      c.stroke();
       c.fillStyle = "#5eead4";
       c.beginPath();
-      c.arc(m.x, m.y, 5, 0, Math.PI * 2);
+      c.arc(m.x, m.y, 4.2, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = "#fbbf24";
+      c.beginPath();
+      c.arc(m.x, m.y, 1.6, 0, Math.PI * 2);
       c.fill();
       const pred = predictDest();
       if (pred && pred.carry) {

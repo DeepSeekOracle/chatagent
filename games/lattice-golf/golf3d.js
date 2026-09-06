@@ -7,8 +7,8 @@
   var renderer, scene, camera, clock;
   var sun, hemi;
   var holeRoot = null;
-  var ballMesh, ballShadow, markerMesh, flagPole, flagCloth;
-  var aimLine, carryRing, windPip, trailLine;
+  var ballMesh, ballShadow, markerMesh, markerRoot, markerHalo, markerHead, flagPole, flagCloth;
+  var aimLine, carryRing, windPip, carryMark, trailLine;
   var pickPlane;
   var raycaster, pointer;
   var canvasEl = null;
@@ -105,6 +105,12 @@
       var n = ((x * 5) ^ y) % 20;
       return [210 + n, 186 + n * 0.5, 132];
     });
+    tex.path = noiseTex(128, 128, function (x, y) {
+      var n = ((x * 3) ^ (y * 5)) % 12;
+      var stripe = (x % 16 < 2) ? 18 : 0;
+      return [88 + n + stripe, 82 + n + stripe, 74 + n];
+    });
+    tex.path.repeat.set(2, 36);
     tex.cloud = (function () {
       var c = document.createElement("canvas");
       c.width = 256;
@@ -235,6 +241,78 @@
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
+  }
+
+  function perpAt(path, i) {
+    var prev = path[Math.max(0, i - 1)];
+    var next = path[Math.min(path.length - 1, i + 1)];
+    var tx = next.x - prev.x, tz = next.y - prev.y;
+    var len = Math.hypot(tx, tz) || 1;
+    return { x: -tz / len, z: tx / len };
+  }
+
+  function inAnyWater(p, hole) {
+    var w = hole.water || [];
+    for (var i = 0; i < w.length; i++) {
+      var r = w[i];
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return true;
+    }
+    return false;
+  }
+
+  function cartPathPts(hole) {
+    var path = hole.path || [];
+    if (path.length < 2) return [];
+    var lat0 = (hole.fairW || 30) + 8.4;
+    var pts = [];
+    var i, n, lat, p, guard;
+    var n0 = perpAt(path, 0);
+    var bx = path[0].x - (path[1].x - path[0].x) * 0.06;
+    var by = path[0].y - (path[1].y - path[0].y) * 0.06;
+    pts.push({ x: bx + n0.x * lat0, y: by + n0.z * lat0 });
+    for (i = 0; i < path.length; i++) {
+      n = perpAt(path, i);
+      lat = lat0;
+      p = { x: path[i].x + n.x * lat, y: path[i].y + n.z * lat };
+      guard = 0;
+      while (inAnyWater(p, hole) && guard < 8) {
+        lat += 5.5;
+        p = { x: path[i].x + n.x * lat, y: path[i].y + n.z * lat };
+        guard += 1;
+      }
+      pts.push(p);
+    }
+    var last = path[path.length - 1];
+    var nL = perpAt(path, path.length - 1);
+    var gR = Math.max(6, hole.greenR || 12);
+    pts.push({ x: last.x + nL.x * (gR + 6), y: last.y + nL.z * (gR + 6) });
+    pts.push({
+      x: last.x + nL.x * 3.2 - nL.z * 5,
+      y: last.y + nL.z * 3.2 + nL.x * 5
+    });
+    return pts;
+  }
+
+  function addBench(x, z, yaw) {
+    var wood = mat({ color: 0x6b4a28, roughness: 0.9 });
+    var g = new T.Group();
+    var seat = new T.Mesh(new T.BoxGeometry(1.7, 0.1, 0.5), wood);
+    seat.position.y = 0.42;
+    var back = new T.Mesh(new T.BoxGeometry(1.7, 0.62, 0.08), wood);
+    back.position.set(0, 0.78, -0.22);
+    var leg1 = new T.Mesh(new T.BoxGeometry(0.08, 0.42, 0.08), wood);
+    var leg2 = leg1.clone();
+    var leg3 = leg1.clone();
+    var leg4 = leg1.clone();
+    leg1.position.set(-0.7, 0.21, 0.18);
+    leg2.position.set(0.7, 0.21, 0.18);
+    leg3.position.set(-0.7, 0.21, -0.18);
+    leg4.position.set(0.7, 0.21, -0.18);
+    g.add(seat, back, leg1, leg2, leg3, leg4);
+    g.position.set(x, 0.18, z);
+    g.rotation.y = yaw;
+    g.castShadow = true;
+    holeRoot.add(g);
   }
 
   function mat(opts) {
@@ -438,6 +516,34 @@
     fair.receiveShadow = true;
     holeRoot.add(fair);
 
+    var walk = cartPathPts(hole);
+    if (walk.length >= 2) {
+      var curb = new T.Mesh(
+        ribbonGeo(walk, 1.7, 0.19),
+        mat({ color: 0x4a453c, roughness: 1 })
+      );
+      curb.receiveShadow = true;
+      holeRoot.add(curb);
+      var pathMesh = new T.Mesh(
+        ribbonGeo(walk, 1.25, 0.24),
+        mat({
+          map: tex.path,
+          color: 0x9a9084,
+          roughness: 0.86,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: 1
+        })
+      );
+      pathMesh.receiveShadow = true;
+      holeRoot.add(pathMesh);
+      for (var wi = 1; wi < walk.length - 1; wi += 3) {
+        var a = walk[wi - 1], b = walk[Math.min(walk.length - 1, wi + 1)];
+        var yaw = Math.atan2(b.y - a.y, b.x - a.x);
+        addBench(walk[wi].x + Math.cos(yaw + Math.PI / 2) * 2.1, walk[wi].y + Math.sin(yaw + Math.PI / 2) * 2.1, yaw);
+      }
+    }
+
     var gR = Math.max(6, hole.greenR);
     var collar = new T.Mesh(
       new T.RingGeometry(gR * 0.98, gR * 1.38, 48),
@@ -458,12 +564,21 @@
     holeRoot.add(green);
 
     var tee = new T.Mesh(
-      new T.BoxGeometry(8, 0.22, 8),
+      new T.BoxGeometry(7.2, 0.18, 6.2),
       mat({ color: 0x3f8f54, roughness: 0.8 })
     );
     tee.position.set(hole.tee.x, 0.22, hole.tee.y);
     tee.castShadow = true;
     holeRoot.add(tee);
+    var pegMat = mat({ color: 0xf8fafc, roughness: 0.4 });
+    [[-1.1, -1.4], [1.1, -1.4]].forEach(function (xy) {
+      var peg = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.28, 6), pegMat);
+      peg.position.set(hole.tee.x + xy[0], 0.4, hole.tee.y + xy[1]);
+      holeRoot.add(peg);
+    });
+    var teeSign = new T.Mesh(new T.BoxGeometry(0.08, 1.1, 0.7), mat({ color: 0xf4f4f5, roughness: 0.5 }));
+    teeSign.position.set(hole.tee.x - 3.4, 0.75, hole.tee.y);
+    holeRoot.add(teeSign);
 
     waterMeshes = [];
     (hole.water || []).forEach(function (w) {
@@ -706,16 +821,62 @@
     );
     ballShadow.rotation.x = -Math.PI / 2;
     scene.add(ballShadow);
-    markerMesh = new T.Mesh(
-      new T.ConeGeometry(0.42, 1.05, 8),
-      mat({ color: 0x5eead4, emissive: 0x0b3d38, roughness: 0.4 })
+    markerRoot = new T.Group();
+    markerHalo = new T.Mesh(
+      new T.RingGeometry(0.55, 0.82, 28),
+      new T.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.85, side: T.DoubleSide, depthWrite: false })
     );
-    scene.add(markerMesh);
+    markerHalo.rotation.x = -Math.PI / 2;
+    markerHalo.position.y = 0.05;
+    var markerPad = new T.Mesh(
+      new T.CircleGeometry(0.22, 16),
+      new T.MeshBasicMaterial({ color: 0x042f2e, transparent: true, opacity: 0.55, depthWrite: false })
+    );
+    markerPad.rotation.x = -Math.PI / 2;
+    markerPad.position.y = 0.04;
+    var stem = new T.Mesh(
+      new T.CylinderGeometry(0.03, 0.04, 1.45, 8),
+      mat({ color: 0xccfbf1, metalness: 0.45, roughness: 0.28, emissive: 0x134e4a, emissiveIntensity: 0.35 })
+    );
+    stem.position.y = 0.85;
+    markerHead = new T.Mesh(
+      new T.ConeGeometry(0.26, 0.52, 5),
+      mat({ color: 0x5eead4, emissive: 0x115e59, emissiveIntensity: 0.55, roughness: 0.32 })
+    );
+    markerHead.position.y = 1.55;
+    var headCap = new T.Mesh(
+      new T.SphereGeometry(0.08, 8, 6),
+      mat({ color: 0xfbbf24, emissive: 0x854d0e, roughness: 0.3 })
+    );
+    headCap.position.y = 1.84;
+    var beam = new T.Mesh(
+      new T.CylinderGeometry(0.09, 0.09, 2.4, 10),
+      new T.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: 0.12, depthWrite: false })
+    );
+    beam.position.y = 1.2;
+    markerRoot.add(markerHalo, markerPad, stem, markerHead, headCap, beam);
+    markerMesh = markerRoot;
+    scene.add(markerRoot);
     windPip = new T.Mesh(
-      new T.SphereGeometry(0.32, 12, 10),
+      new T.SphereGeometry(0.22, 12, 10),
       mat({ color: 0xc084fc, emissive: 0x4c1d95, roughness: 0.35 })
     );
     scene.add(windPip);
+    carryMark = new T.Group();
+    var cRing = new T.Mesh(
+      new T.RingGeometry(0.38, 0.55, 20),
+      new T.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.8, side: T.DoubleSide, depthWrite: false })
+    );
+    cRing.rotation.x = -Math.PI / 2;
+    cRing.position.y = 0.05;
+    var cPin = new T.Mesh(
+      new T.ConeGeometry(0.16, 0.4, 5),
+      mat({ color: 0xfbbf24, emissive: 0x78350f, roughness: 0.4 })
+    );
+    cPin.position.y = 0.42;
+    carryMark.add(cRing, cPin);
+    carryMark.visible = false;
+    scene.add(carryMark);
     var ringGeo = new T.RingGeometry(0.9, 1.05, 48);
     carryRing = new T.Mesh(ringGeo, new T.MeshBasicMaterial({
       color: 0xfbbf24, transparent: true, opacity: 0.35, side: T.DoubleSide
@@ -765,15 +926,14 @@
       }
     }
     if (s.marker) {
-      markerMesh.visible = true;
-      markerMesh.position.set(s.marker.x, 0.7, s.marker.y);
-      markerMesh.rotation.y += 0.02;
-      var pts = [new T.Vector3(b.x, 0.22, b.y), new T.Vector3(s.marker.x, 0.22, s.marker.y)];
+      markerRoot.visible = true;
+      markerRoot.position.set(s.marker.x, 0, s.marker.y);
+      var pts = [new T.Vector3(b.x, 0.18, b.y), new T.Vector3(s.marker.x, 0.18, s.marker.y)];
       aimLine.geometry.setFromPoints(pts);
       aimLine.computeLineDistances();
       aimLine.visible = true;
     } else {
-      markerMesh.visible = false;
+      markerRoot.visible = false;
       aimLine.visible = false;
     }
     var reach = s.carry || 0;
@@ -782,9 +942,13 @@
       carryRing.position.set(b.x, 0.31, b.y);
       carryRing.scale.set(reach, reach, 1);
     }
+    if (s.pred && s.pred.carry && carryMark) {
+      carryMark.visible = true;
+      carryMark.position.set(s.pred.carry.x, 0, s.pred.carry.y);
+    } else if (carryMark) carryMark.visible = false;
     if (s.pred && s.pred.dest) {
       windPip.visible = true;
-      windPip.position.set(s.pred.dest.x, 0.45, s.pred.dest.y);
+      windPip.position.set(s.pred.dest.x, 0.38, s.pred.dest.y);
       windPip.material.color.setHex(s.pred.blocked ? 0xf87171 : 0xc084fc);
     } else windPip.visible = false;
     var trail = s.trail || [];
@@ -835,6 +999,19 @@
       flagCloth.rotation.y = wave;
       flagCloth.rotation.z = Math.sin(clock.elapsedTime * 3.1) * 0.06;
       flagCloth.position.set(0.44, 0.92, 0);
+    }
+    if (markerRoot && markerRoot.visible) {
+      var bob = Math.sin(clock.elapsedTime * 2.6) * 0.1;
+      if (markerHead) markerHead.position.y = 1.55 + bob;
+      markerRoot.rotation.y += dt * 0.9;
+      if (markerHalo) {
+        var pulse = 0.92 + Math.sin(clock.elapsedTime * 3.2) * 0.12;
+        markerHalo.scale.set(pulse, pulse, 1);
+        markerHalo.material.opacity = 0.55 + Math.sin(clock.elapsedTime * 3.2) * 0.22;
+      }
+    }
+    if (carryMark && carryMark.visible) {
+      carryMark.rotation.y += dt * 1.2;
     }
     if (ballMesh && (ballPhase === "fly" || ballPhase === "bounce" || ballPhase === "roll")) {
       ballMesh.rotateX((ballPhase === "fly" ? 0.2 : 0.58) * (dt / 0.016));
