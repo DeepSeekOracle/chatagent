@@ -82,11 +82,10 @@
     });
     tex.rough.repeat.set(16, 16);
     tex.fair = noiseTex(256, 256, function (x, y, u, v) {
-      var n = ((x * 5 + y * 3) % 8);
-      var band = 0.5 + 0.5 * Math.cos(v * Math.PI * 14);
-      var across = 0.82 + 0.18 * Math.sin(u * Math.PI);
-      var s = Math.round(30 * band * across);
-      return [48 + n + s, 138 + n + s * 1.2, 62 + n * 0.45 + s * 0.45];
+      var n = ((x * 3 + y) % 6);
+      var stripe = Math.sin(v * Math.PI * 8) >= 0 ? 16 : 0;
+      var edge = Math.round(22 * Math.pow(Math.abs(u - 0.5) * 2, 1.6));
+      return [72 + n + stripe - edge, 158 + n + stripe - edge, 78 + n - edge * 0.5];
     });
     tex.fair.repeat.set(1, 1);
     tex.green = noiseTex(128, 128, function (x, y) {
@@ -233,51 +232,63 @@
       empty.setIndex([0, 1, 2]);
       return empty;
     }
-    var thirds = !!opts.thirds;
-    var camber = opts.camber || 0;
-    var uvS = opts.uvScale || 0.04;
-    var pts = densify(path, opts.step || 10);
+    var uvS = opts.uvScale || 0.03;
+    var pts = densify(path, opts.step || 8);
+    var n = pts.length;
+    var perps = [];
+    var i, prev, next, tx, tz, len, px, pz;
+    for (i = 0; i < n; i++) {
+      prev = pts[Math.max(0, i - 1)];
+      next = pts[Math.min(n - 1, i + 1)];
+      tx = next.x - prev.x;
+      tz = next.y - prev.y;
+      len = Math.hypot(tx, tz) || 1;
+      perps.push({ x: -tz / len, z: tx / len });
+    }
+    for (i = 0; i < n; i++) {
+      var a = perps[Math.max(0, i - 1)];
+      var b = perps[i];
+      var c = perps[Math.min(n - 1, i + 1)];
+      px = a.x + b.x + c.x;
+      pz = a.z + b.z + c.z;
+      len = Math.hypot(px, pz) || 1;
+      var dot = Math.max(0.45, (px / len) * b.x + (pz / len) * b.z);
+      var sc = Math.min(1.85, 1 / dot);
+      perps[i] = { x: (px / len) * sc, z: (pz / len) * sc };
+    }
     var pos = [];
     var uv = [];
-    var col = [];
     var idx = [];
     var distAcc = 0;
-    for (var i = 0; i < pts.length; i++) {
-      var prev = pts[Math.max(0, i - 1)];
-      var next = pts[Math.min(pts.length - 1, i + 1)];
-      var tx = next.x - prev.x, tz = next.y - prev.y;
-      var len = Math.hypot(tx, tz) || 1;
-      var px = -tz / len, pz = tx / len;
+    for (i = 0; i < n; i++) {
       if (i > 0) distAcc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
       var vv = distAcc * uvS;
-      if (thirds) {
-        pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
-        pos.push(pts[i].x, y + camber, pts[i].y);
-        pos.push(pts[i].x - px * width, y, pts[i].y - pz * width);
-        uv.push(0, vv, 0.5, vv, 1, vv);
-        col.push(0.62, 0.78, 0.55, 1.0, 1.08, 0.92, 0.62, 0.78, 0.55);
-        if (i > 0) {
-          var b = (i - 1) * 3;
-          idx.push(b, b + 1, b + 3, b + 1, b + 4, b + 3);
-          idx.push(b + 1, b + 2, b + 4, b + 2, b + 5, b + 4);
-        }
-      } else {
-        pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
-        pos.push(pts[i].x - px * width, y, pts[i].y - pz * width);
-        uv.push(0, vv, 1, vv);
-        if (i > 0) {
-          var c = (i - 1) * 2;
-          idx.push(c, c + 1, c + 2, c + 1, c + 3, c + 2);
-        }
+      px = perps[i].x * width;
+      pz = perps[i].z * width;
+      pos.push(pts[i].x + px, y, pts[i].y + pz);
+      pos.push(pts[i].x - px, y, pts[i].y - pz);
+      uv.push(0, vv, 1, vv);
+      if (i > 0) {
+        var q = (i - 1) * 2;
+        idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
       }
     }
     var g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
     g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2));
-    if (thirds) g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
+  }
+
+  function addBand(path, inner, outer, y, material) {
+    var mid = (inner + outer) * 0.5;
+    var half = Math.max(0.2, (outer - inner) * 0.5);
+    var left = new T.Mesh(ribbonGeo(offsetPathPts(path, mid), half, y), material);
+    var right = new T.Mesh(ribbonGeo(offsetPathPts(path, -mid), half, y), material);
+    left.receiveShadow = right.receiveShadow = true;
+    holeRoot.add(left);
+    holeRoot.add(right);
   }
 
   function offsetPathPts(path, lat) {
@@ -299,8 +310,8 @@
     if (!path || path.length < 2) return;
     var lat = (hole.fairW || 30) + 26;
     var lineMat = mat({ color: 0xf3efe6, roughness: 0.42, metalness: 0.08, emissive: 0x2a2818, emissiveIntensity: 0.12 });
-    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, lat), 0.22, 0.14), lineMat));
-    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, -lat), 0.22, 0.14), lineMat));
+    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, lat), 0.28, 0.11), lineMat));
+    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, -lat), 0.28, 0.11), lineMat));
     var stakePts = densify(path, 22);
     var nMax = Math.min(stakePts.length * 2, 180);
     if (nMax < 2) return;
@@ -572,78 +583,40 @@
     scene.add(holeRoot);
 
     var span = 900;
-    var groundGeo = new T.PlaneGeometry(span * 2, span * 2, 36, 36);
+    var groundGeo = new T.PlaneGeometry(span * 2, span * 2, 24, 24);
     var gpos = groundGeo.attributes.position;
     for (var gi = 0; gi < gpos.count; gi++) {
       var gx = gpos.getX(gi), gy = gpos.getY(gi);
-      var bump = Math.sin(gx * 0.012) * 0.22 + Math.cos(gy * 0.01) * 0.18;
+      var bump = Math.sin(gx * 0.01) * 0.06 + Math.cos(gy * 0.008) * 0.05;
       gpos.setZ(gi, bump);
     }
     groundGeo.computeVertexNormals();
     var ground = new T.Mesh(
       groundGeo,
-      mat({ map: tex.grass, color: th.grass, roughness: 0.94, metalness: 0.0 })
+      mat({ map: tex.grass, color: th.grass, roughness: 0.96, metalness: 0.0 })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.45;
+    ground.position.y = -0.7;
     ground.receiveShadow = true;
     holeRoot.add(ground);
 
-    var rough = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 26, 0.04),
-      mat({
-        map: tex.rough,
-        color: 0x163820,
-        roughness: 1,
-        polygonOffset: true,
-        polygonOffsetFactor: 2,
-        polygonOffsetUnits: 1
-      })
-    );
-    rough.receiveShadow = true;
-    holeRoot.add(rough);
-
-    var cut = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 14, 0.1),
-      mat({
-        map: tex.rough,
-        color: 0x2a5c34,
-        roughness: 0.95,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1
-      })
-    );
-    cut.receiveShadow = true;
-    holeRoot.add(cut);
+    var fw = hole.fairW || 30;
+    var roughMat = mat({ map: tex.rough, color: 0x163820, roughness: 1 });
+    var cutMat = mat({ map: tex.rough, color: 0x2f6a3c, roughness: 0.92 });
+    addBand(hole.path, fw + 14, fw + 26, 0.04, roughMat);
+    addBand(hole.path, fw, fw + 14, 0.09, cutMat);
 
     var fair = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW, 0.2, { thirds: true, camber: 0.07, uvScale: 0.012 }),
+      ribbonGeo(hole.path, fw, 0.16, { uvScale: 0.018 }),
       mat({
         map: tex.fair,
         color: th.fair,
-        roughness: 0.58,
-        metalness: 0.04,
-        vertexColors: true,
-        side: T.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -1,
-        polygonOffsetUnits: 1
+        roughness: 0.62,
+        metalness: 0.03
       })
     );
     fair.receiveShadow = true;
     holeRoot.add(fair);
-
-    var fairEdge = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 1.05, 0.215),
-      mat({
-        color: 0xd5f5c8,
-        roughness: 0.5,
-        transparent: true,
-        opacity: 0.22
-      })
-    );
-    holeRoot.add(fairEdge);
 
     addOobMarkers(hole);
 
@@ -1255,7 +1228,7 @@
     if (T.SRGBColorSpace) renderer.outputColorSpace = T.SRGBColorSpace;
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0xc5dff0, 0.00085);
-    camera = new T.PerspectiveCamera(44, 1, 0.5, 5000);
+    camera = new T.PerspectiveCamera(44, 1, 1.2, 2800);
     clock = new T.Clock();
     raycaster = new T.Raycaster();
     pointer = new T.Vector2();
