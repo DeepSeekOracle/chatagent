@@ -147,17 +147,22 @@
     return m;
   }
 
-  function galaxyRadius(gid, R) {
+  function galaxyRadius(gid, half, gMap) {
     gid = String(gid || "");
     if (gid === "GALAXY_SINGULARITY") return 0;
-    if (gid === "GALAXY_PRIMORDIAL_VAULT") return R * 0.22;
-    if (gid.startsWith("GALAXY_CHAMPION_")) return R * 0.34;
-    if (gid === "GALAXY_GUARDIAN_VEIL") return R * 0.28;
-    if (gid === "GALAXY_LATTICE") return R * 0.48;
-    if (gid === "GALAXY_AGENT_GROWTH") return R * 0.42;
-    if (gid === "GALAXY_ETERNAL_HAVEN") return R * 0.38;
-    if (gid === "GALAXY_EXCAVATIONPRO_MUSIC") return R * 0.36;
-    return R * 0.36;
+    if (gid === "GALAXY_PRIMORDIAL_VAULT") return half * 0.2;
+    if (gid === "GALAXY_PURE_DATA_ARCHIVE") return half * 0.34;
+    if (gid === "GALAXY_GUARDIAN_VEIL") return half * 0.38;
+    if (gid === "GALAXY_EXCAVATIONPRO_MUSIC") return half * 0.46;
+    if (gid.startsWith("GALAXY_CHAMPION_")) {
+      const deg = (gMap && gMap.get(gid) && gMap.get(gid).angle_deg) || 0;
+      return half * (Math.round(deg / 24) % 2 ? 0.5 : 0.78);
+    }
+    if (gid === "GALAXY_ETERNAL_HAVEN") return half * 0.7;
+    if (gid === "GALAXY_LATTICE") return half * 0.86;
+    if (gid === "GALAXY_DEADMAN_FAILSAFE") return half * 0.8;
+    if (gid === "GALAXY_AGENT_GROWTH") return half * 0.92;
+    return half * 0.58;
   }
 
   function hash01(s) {
@@ -167,10 +172,6 @@
     return ((h >>> 0) % 10000) / 10000;
   }
 
-  function nebulaeForGalaxy(gid) {
-    return (chartData.cosmos?.nebulae || []).filter((n) => n.galaxy_id === gid);
-  }
-
   function isCoreId(id) {
     return id === "SEAL_000" || id === "GAB_SEAL_000";
   }
@@ -178,49 +179,110 @@
   function isAnchorNode(d) {
     if (!d) return false;
     if (isCoreId(d.id) || parseSealId(d.id).isCore) return true;
-    if (d.kind === "champion") return true;
-    return (d.cosmos || {}).star_role === "champion_anchor";
+    return d.kind === "champion" || (d.cosmos || {}).star_role === "champion_anchor";
   }
 
-  function homeXY(d, CX, CY, R, gMap) {
-    const c = d.cosmos || {};
-    if (isCoreId(d.id) || c.galaxy_id === "GALAXY_SINGULARITY") return { x: CX, y: CY };
-    const gid = String(c.galaxy_id || "");
-    const g = gMap.get(gid);
-    const gAngle = (((g && g.angle_deg) || 0) * Math.PI) / 180;
-    const gR = galaxyRadius(gid, R);
-    const gx = CX + gR * Math.cos(gAngle);
-    const gy = CY + gR * Math.sin(gAngle);
-    if (isAnchorNode(d)) return { x: gx, y: gy };
-    const nebs = nebulaeForGalaxy(gid);
-    const ni = Math.max(0, nebs.findIndex((n) => n.id === c.nebula_id));
-    const nCount = Math.max(nebs.length, 1);
-    const nSpread = (Math.PI * 0.7) / nCount;
-    const nAngle = gAngle + (ni - (nCount - 1) / 2) * nSpread;
-    const role = c.star_role || d.kind || "";
-    const nR = role === "seal" || d.kind === "seal" ? 42 : 58;
-    const j = hash01(d.id);
-    const k = hash01(d.id + ":k");
-    const spread = d.kind === "seal" ? 26 : 38;
-    return {
-      x: gx + nR * Math.cos(nAngle) + (j - 0.5) * spread * 2,
-      y: gy + nR * Math.sin(nAngle) + (k - 0.5) * spread * 2,
-    };
+  function layoutParentId(d, idMap) {
+    if (!d || isCoreId(d.id)) return null;
+    const conns = (d.connections || []).filter((c) => idMap.has(c) && c !== d.id);
+    const champ = conns.find((c) => {
+      const n = idMap.get(c);
+      return n && (n.kind === "champion" || n.kind === "champion_egg");
+    });
+    if (champ) return champ;
+    if (d.kind === "champion" || d.kind === "champion_egg") return idMap.has("SEAL_000") ? "SEAL_000" : null;
+    const gid = String((d.cosmos || {}).galaxy_id || "");
+    if (gid.startsWith("GALAXY_CHAMPION_")) {
+      const cid = "CHAMPION_" + gid.slice("GALAXY_CHAMPION_".length);
+      if (idMap.has(cid) && cid !== d.id) return cid;
+    }
+    if (idMap.has("SEAL_000")) return "SEAL_000";
+    return null;
   }
 
-  function seedHomes(nodes, CX, CY, R, gMap) {
+  function seedOriginLayout(nodes, CX, CY, half, gMap) {
+    const idMap = new Map(nodes.map((n) => [n.id, n]));
     nodes.forEach((d) => {
-      const h = homeXY(d, CX, CY, R, gMap);
-      d.homeX = h.x;
-      d.homeY = h.y;
-      d.x = h.x;
-      d.y = h.y;
+      d.originParent = layoutParentId(d, idMap);
+      d.placed = false;
+    });
+
+    function assign(d, x, y) {
+      d.homeX = x;
+      d.homeY = y;
+      d.x = x;
+      d.y = y;
       d.vx = 0;
       d.vy = 0;
-      if (isAnchorNode(d)) {
-        d.fx = h.x;
-        d.fy = h.y;
-      }
+      d.fx = x;
+      d.fy = y;
+      d.placed = true;
+    }
+
+    function polar(ox, oy, i, n, r0, jit) {
+      const a = -Math.PI / 2 + ((i + 0.5) / Math.max(n, 1)) * Math.PI * 2;
+      const r = r0 + (hash01(String(i) + ":" + r0) - 0.5) * jit;
+      return { x: ox + r * Math.cos(a), y: oy + r * Math.sin(a) };
+    }
+
+    nodes.forEach((d) => {
+      if (d.id === "SEAL_000") assign(d, CX, CY);
+      else if (d.id === "GAB_SEAL_000") assign(d, CX + 26, CY - 12);
+    });
+
+    nodes
+      .filter((d) => d.kind === "champion")
+      .forEach((d) => {
+        const gid = (d.cosmos || {}).galaxy_id || "GALAXY_" + d.id;
+        const g = gMap.get(gid);
+        const ang = (((g && g.angle_deg) || 0) * Math.PI) / 180;
+        const r = galaxyRadius(gid, half, gMap);
+        assign(d, CX + r * Math.cos(ang), CY + r * Math.sin(ang));
+      });
+
+    let guard = 0;
+    while (nodes.some((d) => !d.placed) && guard++ < 24) {
+      const groups = new Map();
+      nodes
+        .filter((d) => !d.placed)
+        .forEach((d) => {
+          const p = d.originParent && idMap.get(d.originParent);
+          const key = p && p.placed ? "P:" + p.id : "G:" + ((d.cosmos || {}).galaxy_id || "NA");
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(d);
+        });
+      groups.forEach((mems, key) => {
+        let ox = CX;
+        let oy = CY;
+        let r0 = 52;
+        if (key.startsWith("P:")) {
+          const p = idMap.get(key.slice(2));
+          ox = p.homeX;
+          oy = p.homeY;
+          r0 = 28 + Math.min(mems.length * 1.6, 52);
+        } else {
+          const gid = key.slice(2);
+          const g = gMap.get(gid);
+          const ang = (((g && g.angle_deg) || 0) * Math.PI) / 180;
+          const r = galaxyRadius(gid, half, gMap);
+          ox = CX + r * Math.cos(ang);
+          oy = CY + r * Math.sin(ang);
+          r0 = 36 + Math.min(mems.length * 1.1, 56);
+        }
+        mems.forEach((d, i) => {
+          const pt = polar(ox, oy, i, mems.length, r0, 12);
+          assign(d, pt.x, pt.y);
+        });
+      });
+    }
+
+    nodes.forEach((d) => {
+      if (d.placed) return;
+      const gid = (d.cosmos || {}).galaxy_id || "";
+      const g = gMap.get(gid);
+      const ang = (((g && g.angle_deg) || hash01(d.id) * 360) * Math.PI) / 180;
+      const r = galaxyRadius(gid, half, gMap) || half * 0.5;
+      assign(d, CX + r * Math.cos(ang), CY + r * Math.sin(ang));
     });
   }
 
@@ -229,17 +291,31 @@
     const b = l.target;
     if (!a || !b) return false;
     const k = String(l.kind || "").toLowerCase();
-    if (k === "canon" || k === "fork" || k === "lineage" || k === "gravity") return true;
-    if (isCoreId(a.id) || isCoreId(b.id)) return true;
-    if (a.kind === "champion" || b.kind === "champion" || a.kind === "champion_egg" || b.kind === "champion_egg") return true;
-    const na = (a.cosmos || {}).nebula_id;
-    const nb = (b.cosmos || {}).nebula_id;
-    if (na && na === nb) return true;
-    const ga = (a.cosmos || {}).galaxy_id;
-    const gb = (b.cosmos || {}).galaxy_id;
-    if (k === "lattice" && ga && ga === gb) return true;
-    if (k === "lattice") return false;
-    return ga && ga === gb;
+    if (k === "fork" || k === "lineage" || k === "gravity") return true;
+    if (a.originParent === b.id || b.originParent === a.id) return true;
+    if (k === "canon" && (isCoreId(a.id) || isCoreId(b.id))) return true;
+    if (k === "canon" && (a.kind === "champion" || b.kind === "champion")) return true;
+    return false;
+  }
+
+  function fitToNodes(nodes, svg, zoomBehavior, W, H) {
+    if (!nodes.length || !svg || !zoomBehavior) return;
+    let minx = Infinity;
+    let miny = Infinity;
+    let maxx = -Infinity;
+    let maxy = -Infinity;
+    nodes.forEach((d) => {
+      if (d.x < minx) minx = d.x;
+      if (d.y < miny) miny = d.y;
+      if (d.x > maxx) maxx = d.x;
+      if (d.y > maxy) maxy = d.y;
+    });
+    const bw = Math.max(maxx - minx, 120);
+    const bh = Math.max(maxy - miny, 120);
+    const k = Math.min(W / (bw + 96), H / (bh + 96), 1.2);
+    const tx = W / 2 - (k * (minx + maxx)) / 2;
+    const ty = H / 2 - (k * (miny + maxy)) / 2;
+    svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
   }
 
   function drawCosmosHalos(gCosmosGroup, nodes, CX, CY, R) {
@@ -258,7 +334,7 @@
       if (!gid || gid === "unknown" || gid === "GALAXY_SINGULARITY") return;
       const g = gMap.get(gid);
       const angle = ((g?.angle_deg || 0) * Math.PI) / 180;
-      const r = galaxyRadius(gid, R);
+      const r = galaxyRadius(gid, R, gMap);
       const cx = CX + r * Math.cos(angle);
       const cy = CY + r * Math.sin(angle);
       const rx = 55 + Math.min(members.length * 2.2, 180);
@@ -435,7 +511,7 @@
     chartH = H;
     const CX = W / 2;
     const CY = H / 2;
-    const R = Math.min(W, H) * 0.46;
+    const R = Math.min(W, H) / 2 - 48;
     const tracksOn = wantTracks();
 
     const svg = d3.select("#starmap").attr("width", W).attr("height", H);
@@ -491,7 +567,7 @@
     const idSet = new Set(nodes.map((n) => n.id));
     const idMap = new Map(nodes.map((n) => [n.id, n]));
     const gMap = galaxyMap();
-    seedHomes(nodes, CX, CY, R, gMap);
+    seedOriginLayout(nodes, CX, CY, R, gMap);
 
     const seen = new Set();
     const raw = [];
@@ -595,13 +671,10 @@
           })
           .on("end", (ev, d) => {
             if (!ev.active) simulation.alphaTarget(0);
-            if (isAnchorNode(d)) {
-              d.fx = d.homeX;
-              d.fy = d.homeY;
-            } else {
-              d.fx = null;
-              d.fy = null;
-            }
+            d.homeX = d.x;
+            d.homeY = d.y;
+            d.fx = d.x;
+            d.fy = d.y;
           })
       );
 
@@ -661,6 +734,13 @@
       .attr("font-weight", (d) => (parseSealId(d.id).isCore ? "700" : "500"))
       .attr("pointer-events", "none")
       .text((d) => (d.kind === "music_track" ? "" : (d.glyph || "✦").split(" ")[0]));
+
+    nodeSel.attr("transform", (d) => `translate(${d.x || 0},${d.y || 0})`);
+    linkSel
+      .attr("x1", (d) => (d.source && d.source.x) || 0)
+      .attr("y1", (d) => (d.source && d.source.y) || 0)
+      .attr("x2", (d) => (d.target && d.target.x) || 0)
+      .attr("y2", (d) => (d.target && d.target.y) || 0);
 
     let haloTick = 0;
     simulation = d3
@@ -728,6 +808,8 @@
         simulation.on("end.navfly", null);
         flyToVisibleCentroid(activeNebula !== "all" ? 2.6 : 1.55);
       });
+    } else {
+      fitToNodes(nodes, svg, zoomBehavior, W, H);
     }
   }
 
