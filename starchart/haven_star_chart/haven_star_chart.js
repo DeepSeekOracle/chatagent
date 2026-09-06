@@ -1277,7 +1277,7 @@
     if (el("loadStatus")) el("loadStatus").textContent = "Loading constellation registry…";
     setPulse("idle", "Loading public C mirror…");
     if (typeof d3 === "undefined") {
-      if (el("loadStatus")) el("loadStatus").textContent = "D3 engine missing — /starchart/vendor/d3.v7.min.js";
+      if (el("loadStatus")) el("loadStatus").textContent = "D3 engine missing — /starchart/lib/d3.v7.min.js";
       setPulse("err", "D3 failed to load");
       return;
     }
