@@ -590,7 +590,7 @@
     holeRoot.add(ground);
 
     var rough = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 38, 0.04),
+      ribbonGeo(hole.path, hole.fairW + 26, 0.04),
       mat({
         map: tex.rough,
         color: 0x163820,
@@ -618,13 +618,14 @@
     holeRoot.add(cut);
 
     var fair = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW, 0.2, { thirds: true, camber: 0.22, uvScale: 0.012 }),
+      ribbonGeo(hole.path, hole.fairW, 0.2, { thirds: true, camber: 0.07, uvScale: 0.012 }),
       mat({
         map: tex.fair,
         color: th.fair,
         roughness: 0.58,
         metalness: 0.04,
         vertexColors: true,
+        side: T.DoubleSide,
         polygonOffset: true,
         polygonOffsetFactor: -1,
         polygonOffsetUnits: 1
@@ -1035,8 +1036,8 @@
     var b = s.ball || { x: 0, y: 0 };
     ballPhase = s.phase || b.phase || "";
     var lift = (b.z || 0) * 0.42;
-    ballMesh.position.set(b.x, BALL_R + lift, b.y);
-    ballShadow.position.set(b.x, 0.30, b.y);
+    ballMesh.position.set(b.x, 0.28 + lift, b.y);
+    ballShadow.position.set(b.x, 0.21, b.y);
     ballShadow.scale.setScalar(1 + lift * 0.03);
     ballShadow.material.opacity = Math.max(0.08, 0.28 - lift * 0.006);
     if (impactRing) {
@@ -1058,7 +1059,7 @@
     if (s.marker && markerRoot) {
       markerRoot.visible = true;
       markerRoot.position.set(s.marker.x, 0, s.marker.y);
-      var pts = [new T.Vector3(b.x, 0.18, b.y), new T.Vector3(s.marker.x, 0.18, s.marker.y)];
+      var pts = [new T.Vector3(b.x, 0.27, b.y), new T.Vector3(s.marker.x, 0.27, s.marker.y)];
       aimLine.geometry.setFromPoints(pts);
       aimLine.computeLineDistances();
       aimLine.visible = true;
@@ -1087,7 +1088,7 @@
     var trail = s.trail || [];
     if (trail.length > 1) {
       var tp = trail.map(function (t) {
-        return new T.Vector3(t.x, BALL_R + (t.z || 0) * 0.42, t.y);
+        return new T.Vector3(t.x, 0.28 + (t.z || 0) * 0.42, t.y);
       });
       trailLine.geometry.setFromPoints(tp);
       trailLine.visible = true;

@@ -580,7 +580,7 @@
       if (inDoglegCut(p, hole)) return { p: p, kind: "trees" };
       const forests = hole.forests || [];
       for (let f = 0; f < forests.length; f++) {
-        if (inRect(p, forests[f]) && distToPath(p, hole.path) > hole.fairW + 6) return { p: p, kind: "trees" };
+        if (inRect(p, forests[f]) && distToPath(p, hole.path || []) > (hole.fairW || 30) + 6) return { p: p, kind: "trees" };
       }
       const trees = hole.trees || [];
       for (let k = 0; k < trees.length; k++) {
@@ -2419,7 +2419,10 @@
       G.power = Math.max(0, Math.min(1, Number(el.value) / 100));
       paintPower();
       if (G.hole) {
-        $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
+        if ($("dockStatus") && G.club) {
+          const md = G.marker && G.ball ? dist(G.ball, G.marker).toFixed(0) : "0";
+          $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + md + " yd";
+        }
         draw();
       }
     });
