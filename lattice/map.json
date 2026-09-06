@@ -35,6 +35,9 @@
     {"id": "haven", "title": "eternalhaven.ca", "url": "https://eternalhaven.ca/", "class": "RESOURCE", "layer": "C", "role": "haven"},
     {"id": "bpm", "title": "BPM Finder", "url": "https://bpmfinder.ca/", "class": "RESOURCE", "layer": "C", "role": "tools"},
     {"id": "hf_resonance", "title": "HF Resonance Engine", "url": "https://huggingface.co/spaces/DeepSeekOracle/LYGO-Resonance-Engine", "class": "RESOURCE", "layer": "C", "role": "demo"},
+    {"id": "hf_star_bot", "title": "HF Star Chart Bot / plant", "url": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot", "class": "RESOURCE", "layer": "C", "role": "online_hub"},
+    {"id": "hf_door", "title": "HF Lattice Door", "url": "https://huggingface.co/spaces/DeepSeekOracle/lygo-lattice-door", "class": "RESOURCE", "layer": "C", "role": "online_door"},
+    {"id": "hf_eggs", "title": "HF network eggs", "url": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/network-eggs.json", "class": "RESOURCE", "layer": "C", "role": "online_eggs"},
     {"id": "grokipedia_source", "title": "Grokipedia source card", "url": "https://deepseekoracle.github.io/lygo-protocol-stack/grokipedia-source.json", "class": "RESOURCE", "layer": "C", "role": "encyclopedia"}
   ]
 }

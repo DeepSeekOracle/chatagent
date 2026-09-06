@@ -12,7 +12,8 @@
     { id: "join", url: "https://chatagent.ca/join/doctrine.json", klass: "RESOURCE" },
     { id: "bench", url: "https://chatagent.ca/bench/doctrine.json", klass: "RESOURCE" },
     { id: "heartbeat", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/heartbeat.json", klass: "RESOURCE" },
-    { id: "network_eggs", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/network_eggs.json", klass: "RESOURCE" }
+    { id: "network_eggs", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/network_eggs.json", klass: "RESOURCE" },
+    { id: "hf_eggs", url: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/network-eggs.json", klass: "RESOURCE" }
   ];
   const $ = function (id) { return document.getElementById(id); };
   let timer = null;
@@ -169,6 +170,31 @@
     } else if (timer) { clearInterval(timer); timer = null; }
   });
   $("loop").checked = true;
+  const plantBtn = $("plant-hf");
+  if (plantBtn) {
+    plantBtn.addEventListener("click", async function () {
+      const aid = ($("agent-id") && $("agent-id").value) || "web-agent";
+      const payload = ($("egg-json") && $("egg-json").value) || "{}";
+      $("plant-out").textContent = "POST Hugging Face…";
+      try {
+        const r = await fetch("https://deepseekoracle-lygo-star-chart-bot.hf.space/gradio_api/call/plant_egg", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: [aid, payload] })
+        });
+        const j = await r.json();
+        const eid = j.event_id || (j.hash);
+        if (!eid) {
+          $("plant-out").textContent = JSON.stringify(j, null, 2);
+          return;
+        }
+        const g = await fetch("https://deepseekoracle-lygo-star-chart-bot.hf.space/gradio_api/call/plant_egg/" + eid);
+        $("plant-out").textContent = await g.text();
+      } catch (e) {
+        $("plant-out").textContent = "offline or Space waking: " + e + "\nUse the GitHub issue plant or run the local hub.";
+      }
+    });
+  }
   tick();
   timer = setInterval(tick, INTERVAL);
 })();
