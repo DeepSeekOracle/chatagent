@@ -621,47 +621,67 @@
   }
 
   function rollFracOf(club) {
-    if (!club || club.putt) return 0;
+    if (!club || club.putt) return 1;
     const mid = (club.min + club.max) / 2;
-    return Math.max(0.01, Math.min(0.14, (mid - 80) / 1300));
+    return Math.max(0.02, Math.min(0.16, (mid - 80) / 1100));
   }
 
-  function lieRollMul(lie) {
-    if (lie === "green") return 1.42;
-    if (lie === "fairway") return 1.0;
-    if (lie === "rough") return 0.22;
-    if (lie === "bunker") return 0.05;
-    if (lie === "trees" || lie === "water") return 0;
-    if (lie === "oob") return 0.32;
-    return 0.7;
+  function rollMu(lie, putt) {
+    if (lie === "green") return putt ? 1.0 : 0.7;
+    if (lie === "fairway") return putt ? 1.85 : 1.05;
+    if (lie === "rough") return putt ? 6.2 : 4.8;
+    if (lie === "bunker") return 11;
+    if (lie === "trees" || lie === "water") return 90;
+    if (lie === "oob") return 2.5;
+    return 1.5;
   }
 
-  function simulateRoll(start, heading, yards, hole, pin) {
+  function pathLenPts(pts) {
+    let n = 0;
+    for (let i = 1; i < pts.length; i++) n += dist(pts[i - 1], pts[i]);
+    return n;
+  }
+
+  function pointOnPath(pts, u) {
+    if (!pts || !pts.length) return { x: 0, y: 0 };
+    if (pts.length === 1 || u <= 0) return { x: pts[0].x, y: pts[0].y };
+    if (u >= 1) return { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y };
+    const total = pathLenPts(pts) || 1;
+    let left = u * total;
+    for (let i = 1; i < pts.length; i++) {
+      const d = dist(pts[i - 1], pts[i]) || 0.0001;
+      if (left <= d) {
+        const t = left / d;
+        return {
+          x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t,
+          y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t
+        };
+      }
+      left -= d;
+    }
+    return { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y };
+  }
+
+  function simulateRoll(start, heading, v0, hole, pin, putt) {
     const path = [{ x: start.x, y: start.y }];
-    if (!hole || yards < 0.35) return { rest: { x: start.x, y: start.y }, path: path, holed: false };
+    if (!hole || v0 < 0.25) return { rest: { x: start.x, y: start.y }, path: path, holed: false };
     let x = start.x, y = start.y;
-    let left = yards;
-    const sample = 1.1;
+    let v = v0;
     let steps = 0;
-    while (left > 0.2 && steps < 420) {
+    while (v > 0.16 && steps < 520) {
       steps += 1;
       const here = { x: x, y: y };
       const lie = lieAt(hole, here);
-      let friction = 1;
-      if (lie === "green") friction = 0.84;
-      else if (lie === "fairway") friction = 1.06;
-      else if (lie === "rough") friction = 2.45;
-      else if (lie === "bunker") friction = 6.8;
-      else if (lie === "trees") break;
-      else if (lie === "water") return { rest: here, path: path, holed: false, water: true };
-      else if (lie === "oob") friction = 1.35;
-      const step = Math.min(sample, left);
-      let nx = x + Math.cos(heading) * step;
-      let ny = y + Math.sin(heading) * step;
+      if (lie === "trees") break;
+      if (lie === "water") return { rest: here, path: path, holed: false, water: true };
+      const mu = rollMu(lie, putt);
+      const ds = Math.min(1.05, v);
+      let nx = x + Math.cos(heading) * ds;
+      let ny = y + Math.sin(heading) * ds;
       if (lie === "green") {
         const dPin = dist({ x: nx, y: ny }, pin);
         if (dPin < hole.greenR * 1.08) {
-          const pull = 0.075 * step * (1 - dPin / Math.max(1, hole.greenR));
+          const pull = 0.07 * ds * (1 - dPin / Math.max(1, hole.greenR));
           const a = ang({ x: nx, y: ny }, pin);
           nx += Math.cos(a) * pull;
           ny += Math.sin(a) * pull;
@@ -679,7 +699,7 @@
       x = nx;
       y = ny;
       path.push({ x: x, y: y });
-      left -= step * friction;
+      v -= mu * ds;
     }
     return { rest: { x: x, y: y }, path: path, holed: false };
   }
@@ -718,26 +738,36 @@
     }
     let dest = { x: carry.x, y: carry.y };
     let rollYd = 0;
+    let rollPath = [carry];
+    let landLie = lieAt(G.hole, carry);
     let holed = !blocked && shotHolesOut(from, carry, pin, G.club.putt, onG);
     if (holed) {
       dest = { x: pin.x, y: pin.y };
       carry = dest;
-    } else if (!G.club.putt && !blocked) {
-      const landLie = lieAt(G.hole, carry);
-      if (landLie !== "water") {
-        rollYd = actual * rollFracOf(G.club) * lieRollMul(landLie);
-        const heading = a2 + windCross * 0.12 / Math.max(10, actual);
-        const sim = simulateRoll(carry, heading, rollYd, G.hole, pin);
-        dest = sim.rest;
-        rollYd = dist(carry, dest);
-        if (sim.holed) {
-          holed = true;
-          dest = { x: pin.x, y: pin.y };
-        }
-      }
+      rollPath = [from, dest];
     } else if (G.club.putt) {
-      holed = shotHolesOut(from, dest, pin, true, onG) || holed;
-      if (holed) dest = { x: pin.x, y: pin.y };
+      const heading = a2;
+      const sim = simulateRoll(from, heading, actual, G.hole, pin, true);
+      dest = sim.rest;
+      rollPath = sim.path;
+      rollYd = dist(from, dest);
+      carry = from;
+      landLie = lie;
+      if (sim.holed) {
+        holed = true;
+        dest = { x: pin.x, y: pin.y };
+      }
+    } else if (!blocked && landLie !== "water") {
+      const v0 = actual * rollFracOf(G.club);
+      const heading = a2 + windCross * 0.12 / Math.max(10, actual);
+      const sim = simulateRoll(carry, heading, v0, G.hole, pin, false);
+      dest = sim.rest;
+      rollPath = sim.path;
+      rollYd = dist(carry, dest);
+      if (sim.holed) {
+        holed = true;
+        dest = { x: pin.x, y: pin.y };
+      }
     }
     return {
       from: from,
@@ -745,6 +775,8 @@
       dest: dest,
       actual: actual,
       roll: rollYd,
+      rollPath: rollPath,
+      landLie: landLie,
       total: dist(from, dest),
       heading: a2,
       blocked: blocked,
@@ -757,7 +789,7 @@
   function predictDest() {
     const m = shotModel(false);
     if (!m) return null;
-    return { dest: m.dest, carry: m.carry, blocked: m.blocked, actual: m.actual, roll: m.roll };
+    return { dest: m.dest, carry: m.carry, blocked: m.blocked, actual: m.actual, roll: m.roll, landLie: m.landLie };
   }
 
   function windLabel() {
@@ -1061,10 +1093,11 @@
       }
       c.stroke();
     }
-    ribbon(hole.fairW + 44, "#14321e");
-    ribbon(hole.fairW + 28, "#1d4d2e");
-    ribbon(hole.fairW, "#2f7a45");
-    ribbon(hole.fairW * 0.4, "rgba(90,190,110,.28)");
+    ribbon(hole.fairW + 46, "#102418");
+    ribbon(hole.fairW + 22, "#1a4a28");
+    ribbon(hole.fairW + 3.2, "#2f6e3c");
+    ribbon(hole.fairW, "#4ec86a");
+    ribbon(hole.fairW * 0.38, "rgba(190,240,170,.22)");
 
     const pts = hole.path || [hole.tee, hole.pin];
     c.save();
@@ -1370,6 +1403,7 @@
         "<p>Caddie: <b>" + rec.name + "</b> · lie " + lie + "</p>" +
         "<p>Club " + intendedCarry().toFixed(0) + " yd" +
         (pred ? " · carry " + pred.actual.toFixed(0) + " yd" : "") +
+        (pred && pred.landLie ? " · land " + pred.landLie : "") +
         (pred && pred.roll > 0.6 ? " · roll " + pred.roll.toFixed(0) + " yd" : "") +
         (pred && pred.blocked ? " · blocked" : "") + "</p>" +
         "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
@@ -1470,8 +1504,8 @@
       } else if (m.blocked === "trees") {
         log("Into the trees. Ball stops. " + dist(from, m.dest).toFixed(0) + " yd · " + now);
       } else {
-        const rollBit = m.roll > 0.8 ? " + " + m.roll.toFixed(0) + " yd roll" : "";
-        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd carry" + rollBit + " · " + now);
+        const rollBit = m.roll > 0.8 ? " + " + m.roll.toFixed(0) + " yd roll" : " · no roll";
+        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd carry" + rollBit + " · " + (m.landLie || now) + " → " + now);
       }
       G.marker = nextAim(G.hole, G.ball);
       autoClub();
@@ -1485,17 +1519,21 @@
     const rest = model.dest;
     const putt = !!(G.club && G.club.putt);
     const blocked = !!model.blocked;
+    const landLie = model.landLie || lieAt(G.hole, carry);
+    const rollPts = (model.rollPath && model.rollPath.length > 1)
+      ? model.rollPath
+      : (putt ? [from, rest] : [carry, rest]);
     const flyLen = dist(from, carry);
-    const rollLen = dist(carry, rest);
+    const rollLen = pathLenPts(rollPts);
     const loft = putt ? 0 : Math.min(46, 8 + flyLen * 0.095);
     const flyMs = putt ? 0 : (560 + flyLen * 5.1);
-    const bounceOn = !putt && !blocked && loft > 6 && rollLen >= 0.4 && lieAt(G.hole, carry) !== "water";
-    const bounceMs = bounceOn ? Math.min(560, 200 + Math.min(rollLen, 40) * 6) : 0;
-    const rollMs = putt
-      ? (480 + dist(from, rest) * 16)
-      : (blocked || lieAt(G.hole, carry) === "water" ? 0 : (260 + rollLen * 22));
+    const canBounce = !putt && !blocked && loft > 6 && (landLie === "fairway" || landLie === "green");
+    const bounceMs = canBounce ? Math.min(480, 160 + Math.min(rollLen, 36) * 5) : (landLie === "rough" && !putt && !blocked ? 90 : 0);
+    const roughSlow = landLie === "rough" || landLie === "bunker";
+    const rollMs = (blocked || landLie === "water")
+      ? 0
+      : (putt ? (480 + rollLen * 16) : (roughSlow ? (140 + rollLen * 12) : (240 + rollLen * 24)));
     const holdMs = model.holed ? 1180 : 920;
-    const bounceAlong = bounceOn ? Math.min(0.38, 0.14 + rollLen * 0.004) : 0;
     const t0 = performance.now();
     G.trail = [];
     if ($("btnShoot")) $("btnShoot").disabled = true;
@@ -1520,21 +1558,23 @@
         phase = "fly";
       } else if (bounceMs && t < flyMs + bounceMs) {
         const u = (t - flyMs) / bounceMs;
-        const hopI = u < 0.58 ? 0 : 1;
-        const hu = hopI === 0 ? u / 0.58 : (u - 0.58) / 0.42;
-        const along = bounceAlong * (hopI === 0 ? 0.55 * hu : 0.55 + 0.45 * hu);
-        x = carry.x + (rest.x - carry.x) * along;
-        y = carry.y + (rest.y - carry.y) * along;
-        z = Math.sin(Math.PI * Math.max(0, Math.min(1, hu))) * loft * (hopI === 0 ? 0.14 : 0.055);
+        const p = pointOnPath(rollPts, u * 0.12);
+        x = p.x;
+        y = p.y;
+        if (canBounce) {
+          const hopI = u < 0.58 ? 0 : 1;
+          const hu = hopI === 0 ? u / 0.58 : (u - 0.58) / 0.42;
+          z = Math.sin(Math.PI * Math.max(0, Math.min(1, hu))) * loft * (hopI === 0 ? 0.12 : 0.045);
+        } else {
+          z = Math.sin(Math.PI * u) * 1.1;
+        }
         phase = "bounce";
       } else if (rollMs && t < flyMs + bounceMs + rollMs) {
         const u = (t - flyMs - bounceMs) / rollMs;
-        const e = 1 - Math.pow(1 - u, 2.55);
-        const start = putt
-          ? from
-          : { x: carry.x + (rest.x - carry.x) * bounceAlong, y: carry.y + (rest.y - carry.y) * bounceAlong };
-        x = start.x + (rest.x - start.x) * e;
-        y = start.y + (rest.y - start.y) * e;
+        const e = 1 - Math.pow(1 - u, roughSlow ? 1.7 : 2.55);
+        const p = pointOnPath(rollPts, e);
+        x = p.x;
+        y = p.y;
         z = 0;
         phase = "roll";
       } else if (t < flyMs + bounceMs + rollMs + holdMs) {

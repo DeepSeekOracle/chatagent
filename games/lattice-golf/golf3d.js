@@ -71,17 +71,26 @@
   function makeTextures() {
     tex.grass = noiseTex(256, 256, function (x, y) {
       var n = ((x * 13 + y * 7) % 17) + ((x * 3) ^ (y * 5)) % 11;
-      return [28 + n, 78 + n * 1.4, 36 + n * 0.6];
+      var clump = ((x >> 3) ^ (y >> 3)) % 9;
+      return [18 + n, 48 + n + clump, 24 + n * 0.5];
     });
-    tex.grass.repeat.set(28, 28);
+    tex.grass.repeat.set(22, 22);
+    tex.rough = noiseTex(256, 256, function (x, y) {
+      var n = ((x * 17) ^ (y * 13)) % 26;
+      var clump = (((x / 7) | 0) ^ ((y / 6) | 0)) % 8 * 5;
+      return [20 + n, 52 + n * 0.7 + clump, 26 + n * 0.35];
+    });
+    tex.rough.repeat.set(16, 16);
     tex.fair = noiseTex(256, 256, function (x, y) {
-      var n = ((x * 9 + y * 4) % 13);
-      return [42 + n, 130 + n, 62 + n * 0.5];
+      var n = ((x * 9 + y * 4) % 9);
+      var stripe = ((y / 12) | 0) % 2 === 0 ? 28 : 0;
+      return [62 + n + stripe, 168 + n + stripe, 78 + n * 0.4];
     });
-    tex.fair.repeat.set(18, 18);
+    tex.fair.repeat.set(10, 28);
     tex.green = noiseTex(128, 128, function (x, y) {
-      var n = (x + y) % 9;
-      return [36 + n, 150 + n, 70];
+      var n = (x + y) % 7;
+      var stripe = ((y / 8) | 0) % 2 === 0 ? 10 : 0;
+      return [48 + n + stripe, 168 + n + stripe, 82];
     });
     tex.sand = noiseTex(128, 128, function (x, y) {
       var n = ((x * 5) ^ y) % 18;
@@ -321,15 +330,15 @@
 
   function themeOf(id) {
     if (id === "coral-lattice") {
-      return { sky: 0x8ec8e8, fog: 0xb8dcee, grass: 0x3a8a62, fair: 0x55c07a, dusk: false, sun: 0xffe6c4, pine: 0x1a7a4a };
+      return { sky: 0x8ec8e8, fog: 0xb8dcee, grass: 0x245c3a, fair: 0x62d878, dusk: false, sun: 0xffe6c4, pine: 0x1a7a4a };
     }
     if (id === "singularity-nine") {
-      return { sky: 0x1c1838, fog: 0x2a2458, grass: 0x16382c, fair: 0x2a6b4c, dusk: true, sun: 0xc4b0ff, pine: 0x163e2c };
+      return { sky: 0x1c1838, fog: 0x2a2458, grass: 0x10241c, fair: 0x3a8a58, dusk: true, sun: 0xc4b0ff, pine: 0x163e2c };
     }
     if (id === "endless") {
-      return { sky: 0x4a6a88, fog: 0x6a8899, grass: 0x245434, fair: 0x3d8a55, dusk: false, sun: 0xffd9a0, pine: 0x1a5530 };
+      return { sky: 0x4a6a88, fog: 0x6a8899, grass: 0x1a3a24, fair: 0x4cbe68, dusk: false, sun: 0xffd9a0, pine: 0x1a5530 };
     }
-    return { sky: 0x7ec4ee, fog: 0xc5dff0, grass: 0x2c6a3c, fair: 0x3ea05a, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32 };
+    return { sky: 0x7ec4ee, fog: 0xc5dff0, grass: 0x1c3e28, fair: 0x58d070, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32 };
   }
 
   function applyOrbit() {
@@ -489,24 +498,39 @@
     holeRoot.add(ground);
 
     var rough = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 34, 0.05),
+      ribbonGeo(hole.path, hole.fairW + 38, 0.04),
       mat({
-        color: 0x1a4528,
-        roughness: 0.97,
+        map: tex.rough,
+        color: 0x163820,
+        roughness: 1,
         polygonOffset: true,
-        polygonOffsetFactor: 1,
+        polygonOffsetFactor: 2,
         polygonOffsetUnits: 1
       })
     );
     rough.receiveShadow = true;
     holeRoot.add(rough);
 
+    var cut = new T.Mesh(
+      ribbonGeo(hole.path, hole.fairW + 14, 0.1),
+      mat({
+        map: tex.rough,
+        color: 0x2a5c34,
+        roughness: 0.95,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      })
+    );
+    cut.receiveShadow = true;
+    holeRoot.add(cut);
+
     var fair = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW, 0.16),
+      ribbonGeo(hole.path, hole.fairW, 0.2),
       mat({
         map: tex.fair,
         color: th.fair,
-        roughness: 0.82,
+        roughness: 0.72,
         metalness: 0.02,
         polygonOffset: true,
         polygonOffsetFactor: -1,
@@ -515,6 +539,17 @@
     );
     fair.receiveShadow = true;
     holeRoot.add(fair);
+
+    var fairEdge = new T.Mesh(
+      ribbonGeo(hole.path, hole.fairW + 1.15, 0.21),
+      mat({
+        color: 0xc8f0b0,
+        roughness: 0.6,
+        transparent: true,
+        opacity: 0.28
+      })
+    );
+    holeRoot.add(fairEdge);
 
     var walk = cartPathPts(hole);
     if (walk.length >= 2) {
