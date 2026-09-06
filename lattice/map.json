@@ -21,6 +21,8 @@
     {"id": "godseye", "title": "God's Eye", "url": "https://chatagent.ca/godseye/", "class": "RESOURCE", "layer": "C", "role": "self_see"},
     {"id": "skynet", "title": "SKYNET", "url": "https://chatagent.ca/skynet/", "class": "RESOURCE", "layer": "C", "role": "sentinel"},
     {"id": "starchart", "title": "Haven Star Chart", "url": "https://chatagent.ca/starchart/", "class": "CANON", "layer": "C", "role": "world_map"},
+    {"id": "starchart_filename", "title": "HavenStarChart.html", "url": "https://chatagent.ca/starchart/HavenStarChart.html", "class": "CANON", "layer": "C", "role": "world_map_filename"},
+    {"id": "starchart_portal", "title": "Haven Star Chart Agent Portal", "url": "https://chatagent.ca/starchart/HavenStarChartPortal.html", "class": "CANON", "layer": "C", "role": "chart_portal"},
     {"id": "starchart_monitor", "title": "Star Chart feed monitor", "url": "https://chatagent.ca/starchart/monitor/", "class": "RESOURCE", "layer": "C", "role": "chart_monitor"},
     {"id": "summon", "title": "Summon app", "url": "https://chatagent.ca/app.html", "class": "RESOURCE", "layer": "C", "role": "champions"},
     {"id": "games", "title": "Games arcade", "url": "https://chatagent.ca/games/", "class": "RESOURCE", "layer": "C", "role": "play"},
