@@ -180,6 +180,32 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .cast b { display: block; font-size: .72rem; margin-top: .28rem; font-family: Syne, sans-serif; }
 .cast span { display: block; font-size: .62rem; color: var(--mute); }
 .cast.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.cast.locked { opacity: .45; cursor: not-allowed; min-height: 10rem; display: flex; flex-direction: column; justify-content: flex-end; }
+.cast-soon { display: block; font: 700 .68rem "IBM Plex Mono", monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--mute); margin: auto 0 .4rem; }
+.garage-chip {
+  display: grid; grid-template-columns: 72px 1fr auto; gap: .65rem; align-items: center;
+  margin: .45rem 0 .75rem; padding: .45rem; border: 1px solid var(--line); border-radius: 12px; background: #102028cc;
+}
+.garage-chip img { width: 72px; height: 96px; object-fit: cover; object-position: 50% 40%; border-radius: 8px; display: block; }
+.garage-chip b { display: block; font-family: Syne, sans-serif; }
+.garage-chip span { display: block; font-size: .72rem; color: var(--mute); }
+.garage-screen { min-height: 100vh; }
+.garage-stage { position: relative; min-height: 100vh; background: #05070c; }
+#garageCanvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.garage-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 40% center; }
+.garage-stage-fade {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent 62%, #070b12 100%);
+}
+.garage-hint {
+  position: absolute; left: 1rem; bottom: 1rem; z-index: 2; margin: 0;
+  font: 500 .72rem "IBM Plex Mono", monospace; color: #94a3b8; text-shadow: 0 1px 8px #000;
+}
+.stat-block { margin-top: .7rem; display: grid; gap: .35rem; }
+.stat-row { display: grid; grid-template-columns: 4.4rem 1fr 2.4rem; gap: .4rem; align-items: center; font-size: .78rem; color: var(--mute); }
+.stat-row b { color: var(--gold); font: 600 .72rem "IBM Plex Mono", monospace; text-align: right; }
+.stat-bar { height: 6px; background: #122; border-radius: 99px; overflow: hidden; }
+.stat-bar i { display: block; height: 100%; background: linear-gradient(90deg, #5eead4, #fbbf24); }
 .sheet {
   width: min(720px, 100%); background: #0c1622; border: 1px solid var(--line);
   border-radius: 16px; padding: 1.2rem 1.25rem;
@@ -211,6 +237,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   .title-art { min-height: 34vh; }
   .title-art-fade { background: linear-gradient(180deg, transparent 35%, #070b12 100%); }
   .title-panel { border-left: 0; border-top: 1px solid var(--line); min-height: auto; }
+  .garage-stage { min-height: 42vh; }
+  .garage-stage-fade { background: linear-gradient(180deg, transparent 40%, #070b12 100%); }
+  .garage-chip { grid-template-columns: 64px 1fr; }
+  .garage-chip .btn { grid-column: 1 / -1; }
   .pilot-plate img { width: 80px; height: 110px; }
   .speedo { font-size: 1.7rem; }
 }

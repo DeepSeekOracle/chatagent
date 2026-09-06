@@ -68,18 +68,17 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </table>
 
   <h2>5. Crafts</h2>
+  <p>One live chassis: <b>Apex Mk I</b> (Lattice GT). Procedural PBR model in <code>carmodel.js</code> — lofted body, clearcoat paint, five-spoke rims, gold wing, cyan DRLs. Garage is a studio turntable; Bay 02 and 03 stay locked until more models land. Old saves on Mira/Reed/Kai map to Apex.</p>
   <table>
-    <tr><th>Pilot</th><th>Role</th></tr>
-    <tr><td>Mira Needle</td><td>High accel, lower grip — drift specialist</td></tr>
-    <tr><td>Reed Hauler</td><td>High grip, lower top — holds the line</td></tr>
-    <tr><td>Kai Pulse</td><td>Mid all-rounder, fattest boost meter</td></tr>
+    <tr><th>Id</th><th>Role</th></tr>
+    <tr><td>apex</td><td>Base chassis. Balanced accel / grip / boost. The game is built around this mesh.</td></tr>
   </table>
 
   <h2>6. Ghost + ledger</h2>
   <p>Each heat records <code>{x,z,h}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
 
   <h2>7. Studio surface</h2>
-  <p>Title screen matches Lattice Golf: full-bleed art, right panel, operator name, craft picker, mode cards, radio, PayPal.me/ExcavationPro + Patreon. 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
+  <p>Title screen matches Lattice Golf: full-bleed Apex still, right panel, operator name, garage chip, mode cards, radio, PayPal.me/ExcavationPro + Patreon. Garage is a live 3D studio (drag to orbit). 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
 
   <h2>8. Options</h2>
   <p>Persistent sheet. Schema is the <code>OPTIONS</code> list in <code>game.js</code>. Each row is <code>toggle</code>, <code>range</code>, or <code>soon</code>. Enhancements add a row; they do not rewrite the menu. Values live under <code>save.options</code> in ledger key <code>lygo-haven-rally-v1</code>. Load merges defaults so old saves pick up new keys.</p>

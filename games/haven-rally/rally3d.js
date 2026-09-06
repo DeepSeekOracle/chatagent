@@ -10,6 +10,8 @@
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1 };
+  var envMap = null;
+  var lastSpeed = 0;
 
   function ok() { return !!(renderer && scene && camera); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -87,6 +89,9 @@
   }
 
   function makeCar(color, ghost) {
+    if (global.HavenCar && HavenCar.build) {
+      return HavenCar.build(T, { paint: color, ghost: ghost, envMap: envMap });
+    }
     var g = new T.Group();
     var body = new T.Mesh(
       new T.BoxGeometry(1.7, 0.42, 3.2),
@@ -96,28 +101,7 @@
       })
     );
     body.position.y = 0.42;
-    body.castShadow = !ghost;
-    var cabin = new T.Mesh(
-      new T.BoxGeometry(1.35, 0.38, 1.2),
-      new T.MeshStandardMaterial({ color: 0x111827, roughness: 0.25, metalness: 0.6, transparent: !!ghost, opacity: ghost ? 0.35 : 1 })
-    );
-    cabin.position.set(0, 0.72, -0.15);
-    var wing = new T.Mesh(
-      new T.BoxGeometry(1.9, 0.08, 0.45),
-      new T.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 })
-    );
-    wing.position.set(0, 0.62, 1.35);
-    g.add(body, cabin, wing);
-    for (var i = 0; i < 4; i++) {
-      var w = new T.Mesh(
-        new T.CylinderGeometry(0.28, 0.28, 0.22, 10),
-        new T.MeshStandardMaterial({ color: 0x111, roughness: 0.8 })
-      );
-      w.rotation.z = Math.PI / 2;
-      w.position.set(i < 2 ? -0.85 : 0.85, 0.28, i % 2 ? 1.05 : -1.05);
-      w.userData.wheel = true;
-      g.add(w);
-    }
+    g.add(body);
     return g;
   }
 
@@ -196,7 +180,7 @@
 
   function ensureActors() {
     if (carMesh) return;
-    carMesh = makeCar(0x5eead4, false);
+    carMesh = makeCar(0x165e66, false);
     scene.add(carMesh);
     ghostMesh = makeCar(0xc084fc, true);
     ghostMesh.visible = false;
@@ -215,8 +199,9 @@
     camera.position.z += (cam.z - camera.position.z) * k;
     camera.lookAt(look.x, look.y, look.z);
     if (carMesh) {
-      carMesh.children.forEach(function (ch) {
-        if (ch.userData.wheel) ch.rotation.x += dt * 14;
+      var spin = Math.abs(lastSpeed) * 0.85;
+      carMesh.traverse(function (ch) {
+        if (ch.userData.spin) ch.rotation.x += dt * (0.4 + spin);
       });
     }
     renderer.render(scene, camera);
@@ -254,6 +239,7 @@
     sun.shadow.mapSize.set(1024, 1024);
     scene.add(sun);
     scene.add(new T.AmbientLight(0x6688aa, 0.25));
+    if (global.HavenCar && HavenCar.bakeEnv) envMap = HavenCar.bakeEnv(T, renderer);
     resize();
     running = true;
     loop();
@@ -279,12 +265,16 @@
       if (!ok() || !s || !s.car) return;
       ensureActors();
       var c = s.car;
-      carMesh.position.set(c.x, 0.14, c.y);
+      carMesh.position.set(c.x, 0.02, c.y);
       carMesh.rotation.y = -c.h - Math.PI / 2;
-      carMesh.rotation.z = -(c.steer || 0) * 0.16;
+      carMesh.rotation.z = -(c.steer || 0) * 0.08;
+      lastSpeed = c.speed || 0;
+      carMesh.traverse(function (ch) {
+        if (ch.userData.steer) ch.rotation.y = (c.steer || 0) * 0.42;
+      });
       if (s.ghost) {
         ghostMesh.visible = true;
-        ghostMesh.position.set(s.ghost.x, 0.08, s.ghost.y);
+        ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
         ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
       } else ghostMesh.visible = false;
       var back = (11 + (c.speed || 0) * 0.04) * (camTune.dist || 1);

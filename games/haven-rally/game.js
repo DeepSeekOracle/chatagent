@@ -3,9 +3,16 @@
   "use strict";
   const SAVE_KEY = "lygo-haven-rally-v1";
   const CRAFTS = [
-    { id: "mira", name: "Mira Needle", tag: "Drift", src: "./assets/p-mira.jpg", acc: 38, vmax: 92, turn: 2.35, grip: 0.72, boost: 1.0, color: "#5eead4" },
-    { id: "reed", name: "Reed Hauler", tag: "Line", src: "./assets/p-reed.jpg", acc: 30, vmax: 84, turn: 1.85, grip: 1.15, boost: 0.85, color: "#fbbf24" },
-    { id: "kai", name: "Kai Pulse", tag: "Boost", src: "./assets/p-kai.jpg", acc: 34, vmax: 88, turn: 2.05, grip: 0.92, boost: 1.35, color: "#c084fc" }
+    {
+      id: "apex", name: "Apex Mk I", tag: "Lattice GT",
+      src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
+      lore: "Base chassis. Pearl teal, gold wing, cyan DRLs. More bays open as the game grows.",
+      acc: 34, vmax: 88, turn: 2.05, grip: 0.95, boost: 1.1, color: "#165e66"
+    }
+  ];
+  const LOCKED_BAYS = [
+    { name: "Bay 02", tag: "Soon" },
+    { name: "Bay 03", tag: "Soon" }
   ];
 
   function mulberry(seed) {
@@ -246,12 +253,13 @@
   }
 
   function defaultSave() {
-    return { name: "", craft: "mira", ghosts: {}, rounds: [], options: defaultOptions() };
+    return { name: "", craft: "apex", ghosts: {}, rounds: [], options: defaultOptions() };
   }
   function loadSave() {
     try {
       const s = Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}"));
       s.options = Object.assign(defaultOptions(), s.options || {});
+      if (!CRAFTS.some(function (c) { return c.id === s.craft; })) s.craft = "apex";
       return s;
     } catch (e) { return defaultSave(); }
   }
@@ -305,6 +313,7 @@
     ov.classList.add("hidden");
     ov.classList.remove("studio");
     G._sheet = "";
+    if (window.HavenCar) HavenCar.closeStudio();
   }
   function showSheet(html, studio, sheetClass) {
     const ov = $("overlay");
@@ -610,15 +619,72 @@
     $("hk").onclick = hideOverlay;
   }
 
+  function statRow(label, val, max) {
+    const pct = Math.round(clamp(val / max, 0, 1) * 100);
+    return "<div class='stat-row'><span>" + label + "</span><div class='stat-bar'><i style='width:" + pct + "%'></i></div><b>" + val + "</b></div>";
+  }
+
+  function garage() {
+    if (window.HavenCar) HavenCar.closeStudio();
+    const c = craftOf(G.save.craft);
+    G.save.craft = c.id;
+    writeSave(G.save);
+    showSheet(
+      "<div class='title-screen garage-screen'>" +
+        "<div class='garage-stage'>" +
+          "<canvas id='garageCanvas'></canvas>" +
+          "<img class='garage-fallback' id='garageFallback' src='" + (c.hero || c.src) + "' alt='" + c.name + "'>" +
+          "<div class='garage-stage-fade'></div>" +
+          "<p class='garage-hint'>Drag to orbit · Apex Mk I is the base chassis</p>" +
+        "</div>" +
+        "<div class='title-panel'>" +
+          "<p class='kicker'>Garage · bay 01 live</p>" +
+          "<h1>" + c.name + "</h1>" +
+          "<p class='title-tag'>" + c.tag + "</p>" +
+          "<p class='lore'>" + c.lore + "</p>" +
+          "<div class='stat-block'>" +
+            statRow("Accel", c.acc, 42) +
+            statRow("Vmax", c.vmax, 100) +
+            statRow("Turn", c.turn, 2.6) +
+            statRow("Grip", c.grip, 1.3) +
+            statRow("Boost", c.boost, 1.5) +
+          "</div>" +
+          "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
+          "<div class='cast-grid garage-bays'>" +
+            "<button type='button' class='cast on' data-cast='" + c.id + "'>" +
+              "<img src='" + c.src + "' alt='" + c.name + "'><b>" + c.name + "</b><span>" + c.tag + "</span></button>" +
+            LOCKED_BAYS.map(function (b) {
+              return "<button type='button' class='cast locked' disabled><span class='cast-soon'>Locked</span><b>" + b.name + "</b><span>" + b.tag + "</span></button>";
+            }).join("") +
+          "</div>" +
+          "<div class='modes'>" +
+            "<button type='button' class='btn gold' data-go='confirmCraft'>Lock in chassis</button>" +
+            "<button type='button' class='btn' data-go='title'>Back</button>" +
+          "</div>" +
+          donateHtml() +
+        "</div></div>",
+      true
+    );
+    G._sheet = "garage";
+    const cv = $("garageCanvas");
+    const fb = $("garageFallback");
+    const paint = parseInt(String(c.color).replace("#", ""), 16);
+    const ok3 = cv && window.THREE && window.HavenCar && HavenCar.openStudio(cv, { paint: paint });
+    if (ok3 && fb) fb.classList.add("hidden");
+    else if (cv) cv.classList.add("hidden");
+  }
+
   function menu() {
     G.mode = "menu";
     G.phase = "idle";
+    if (window.HavenCar) HavenCar.closeStudio();
     $("app").classList.add("hidden");
     $("boot").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
+    const c = craftOf(G.save.craft);
     showSheet(
       "<div class='title-screen'>" +
-        "<div class='title-art'><img src='./assets/menu.jpg' alt='Haven Rally grid'><div class='title-art-fade'></div></div>" +
+        "<div class='title-art'><img src='./assets/apex-hero.jpg' alt='Apex Mk I'><div class='title-art-fade'></div></div>" +
         "<div class='title-panel'>" +
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
@@ -628,15 +694,14 @@
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
-          "<p class='kicker' style='margin-top:.75rem'>Choose craft</p>" +
-          "<div class='cast-grid'>" +
-            CRAFTS.map(function (c) {
-              const on = (G.save.craft || "mira") === c.id ? " on" : "";
-              return "<button type='button' class='cast" + on + "' data-cast='" + c.id + "'>" +
-                "<img src='" + c.src + "' alt='" + c.name + "'><b>" + c.name + "</b><span>" + c.tag + "</span></button>";
-            }).join("") +
+          "<p class='kicker' style='margin-top:.75rem'>Chassis</p>" +
+          "<div class='garage-chip'>" +
+            "<img src='" + c.src + "' alt='" + c.name + "'>" +
+            "<div><b>" + c.name + "</b><span>" + c.tag + " · base model</span></div>" +
+            "<button type='button' class='btn gold' data-go='garage'>Garage</button>" +
           "</div>" +
           "<div class='mode-grid'>" +
+            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Studio turntable. One bay live — more crafts later.</span></button>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
@@ -672,6 +737,8 @@
       if (nm) { G.save.name = nm; writeSave(G.save); }
       const go = b.getAttribute("data-go");
       if (go === "options") { optionsMenu(); return; }
+      if (go === "garage") { garage(); return; }
+      if (go === "confirmCraft" || go === "title") { menu(); return; }
       if (go === "pine") startHeat(PINE);
       if (go === "coral") startHeat(CORAL);
       if (go === "star") startHeat(STAR);
@@ -683,7 +750,7 @@
     if (e.target && e.target.tagName === "INPUT") return;
     if (e.key === "Escape") {
       if (overlayOpen() && G.mode !== "menu") { hideOverlay(); return; }
-      if (overlayOpen() && G._sheet === "options") { menu(); return; }
+      if (overlayOpen() && (G._sheet === "options" || G._sheet === "garage")) { menu(); return; }
       menu();
       return;
     }
@@ -702,6 +769,7 @@
   if ($("btnMenu")) $("btnMenu").onclick = menu;
   window.addEventListener("resize", function () {
     if (use3d && window.Rally3D) Rally3D.resize();
+    if (window.HavenCar) HavenCar.resizeStudio();
   });
 
   $("boot").classList.add("hidden");
