@@ -693,7 +693,7 @@
   const canvas = $("fairway");
   const use3d = !!(window.Golf3D && window.THREE && window.Golf3D.init(canvas));
   const ctx = use3d ? null : canvas.getContext("2d");
-  let view = { scale: 2.2, ox: 20, oy: 40 };
+  let view = { scale: 2.2, ox: 20, oy: 40, user: 1 };
   const IMGS = { pine: new Image(), coral: new Image(), wild: new Image(), water: new Image() };
   IMGS.pine.src = "./assets/bg-pine.jpg";
   IMGS.coral.src = "./assets/bg-coral.jpg";
@@ -758,7 +758,8 @@
     log("Hole " + (G.hi + 1) + (G.hole.name ? " · " + G.hole.name : "") +
       " · par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd" +
       (G.hole.hint ? " — " + G.hole.hint : ""));
-    fitView();
+    view.user = 1;
+    fitView({ reset: true });
     draw();
   }
 
@@ -769,10 +770,11 @@
     paintClubs();
   }
 
-  function fitView() {
+  function fitView(opts) {
+    const reset = !!(opts && opts.reset);
     if (use3d && window.Golf3D && G.hole) {
       Golf3D.resize();
-      Golf3D.fit(G.hole);
+      if (reset) Golf3D.fit(G.hole);
       return;
     }
     const w = canvas.clientWidth || 800;
@@ -794,7 +796,9 @@
     const pad = 28;
     const bw = Math.max(80, maxX - minX + pad * 2);
     const bh = Math.max(80, maxY - minY + pad * 2);
-    view.scale = Math.min(w / bw, h / bh) * 0.94;
+    const user = Math.max(0.45, Math.min(6, view.user || 1));
+    view.user = user;
+    view.scale = Math.min(w / bw, h / bh) * 0.94 * user;
     view.ox = (w - (minX + maxX) * view.scale) / 2;
     view.oy = (h - (minY + maxY) * view.scale) / 2;
   }
@@ -1903,7 +1907,7 @@
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>The hole is a 2.5D course. Click the ground to plant the marker. Gold ring is club carry. Violet pip is the wind landing. Red means trees stop the flight.</li>" +
-      "<li>Z undoes the last shot. M uses a mulligan (replay this hole from the tee). Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
+      "<li>Scroll or +/− zooms the course. Right-drag orbits. Shift-drag or middle-drag pans. R or double-click fits the hole. Z undoes. M is a mulligan. Esc opens the menu.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
     $("hk").onclick = hideOverlay;
@@ -1927,6 +1931,7 @@
 
   canvas.addEventListener("pointerdown", function (e) {
     if (!G.hole) return;
+    if (e.button !== 0 || e.shiftKey || e.altKey) return;
     const r = canvas.getBoundingClientRect();
     if (use3d && window.Golf3D) {
       const w3 = Golf3D.pick(e.clientX, e.clientY);
@@ -2032,7 +2037,49 @@
       const step = e.shiftKey ? 0.05 : 0.01;
       setPower(G.power + (e.key === "ArrowRight" ? step : -step));
     }
+    if (e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      if (use3d && window.Golf3D) Golf3D.zoom(0.84);
+      else { view.user = Math.min(6, (view.user || 1) * 1.16); fitView(); draw(); }
+    }
+    if (e.key === "-" || e.key === "_") {
+      e.preventDefault();
+      if (use3d && window.Golf3D) Golf3D.zoom(1.18);
+      else { view.user = Math.max(0.45, (view.user || 1) / 1.16); fitView(); draw(); }
+    }
+    if (e.key === "r" || e.key === "R") {
+      view.user = 1;
+      fitView({ reset: true });
+      draw();
+    }
   });
+
+  if (!use3d) {
+    canvas.addEventListener("wheel", function (ev) {
+      ev.preventDefault();
+      const f = ev.deltaY < 0 ? 1.14 : 1 / 1.14;
+      view.user = Math.max(0.45, Math.min(6, (view.user || 1) * f));
+      fitView();
+      draw();
+    }, { passive: false });
+  }
+
+  function bindZoomBtns() {
+    if ($("zoomIn")) $("zoomIn").onclick = function () {
+      if (use3d && window.Golf3D) Golf3D.zoom(0.84);
+      else { view.user = Math.min(6, (view.user || 1) * 1.16); fitView(); draw(); }
+    };
+    if ($("zoomOut")) $("zoomOut").onclick = function () {
+      if (use3d && window.Golf3D) Golf3D.zoom(1.18);
+      else { view.user = Math.max(0.45, (view.user || 1) / 1.16); fitView(); draw(); }
+    };
+    if ($("zoomReset")) $("zoomReset").onclick = function () {
+      view.user = 1;
+      fitView({ reset: true });
+      draw();
+    };
+  }
+  bindZoomBtns();
 
   window.addEventListener("resize", function () { if (G.hole) { fitView(); draw(); } });
 
