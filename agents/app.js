@@ -13,7 +13,8 @@
     { id: "bench", url: "https://chatagent.ca/bench/doctrine.json", klass: "RESOURCE" },
     { id: "heartbeat", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/heartbeat.json", klass: "RESOURCE" },
     { id: "network_eggs", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/network_eggs.json", klass: "RESOURCE" },
-    { id: "hf_eggs", url: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/network-eggs.json", klass: "RESOURCE" }
+    { id: "hf_eggs", url: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/network-eggs.json", klass: "RESOURCE" },
+    { id: "protocol_tick", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/protocol_tick.json", klass: "RESOURCE" }
   ];
   const $ = function (id) { return document.getElementById(id); };
   let timer = null;
