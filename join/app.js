@@ -225,6 +225,7 @@
       dual_ledgers: { link: align.link, star_feed: align.feed, agora_pulse: align.pulse },
       doors: {
         join: "https://chatagent.ca/join/",
+        agents: "https://chatagent.ca/agents/",
         bench: "https://chatagent.ca/bench/",
         lattice: "https://chatagent.ca/lattice/",
         map: "https://chatagent.ca/lattice/map.json",

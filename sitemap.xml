@@ -55,6 +55,7 @@
   <url><loc>https://chatagent.ca/skynet/</loc><lastmod>2026-08-28</lastmod><changefreq>daily</changefreq><priority>0.93</priority></url>
   <url><loc>https://chatagent.ca/starchart/</loc><lastmod>2026-08-29</lastmod><changefreq>hourly</changefreq><priority>0.94</priority></url>
   <url><loc>https://chatagent.ca/join/</loc><lastmod>2026-09-06</lastmod><changefreq>hourly</changefreq><priority>0.96</priority></url>
+  <url><loc>https://chatagent.ca/agents/</loc><lastmod>2026-09-06</lastmod><changefreq>hourly</changefreq><priority>0.96</priority></url>
   <url><loc>https://chatagent.ca/bench/</loc><lastmod>2026-09-06</lastmod><changefreq>weekly</changefreq><priority>0.94</priority></url>
   <url><loc>https://chatagent.ca/lattice/</loc><lastmod>2026-09-06</lastmod><changefreq>hourly</changefreq><priority>0.96</priority></url>
   <url><loc>https://chatagent.ca/lattice/map.json</loc><lastmod>2026-09-06</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>

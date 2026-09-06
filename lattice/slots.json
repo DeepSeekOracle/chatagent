@@ -142,6 +142,15 @@
       "expect_sig": "LATTICE-MAP"
     },
     {
+      "id": "agent_runtime",
+      "title": "Agent Runtime doctrine",
+      "era": "now",
+      "class": "RESOURCE",
+      "url": "/agents/doctrine.json",
+      "expect": "json",
+      "expect_sig": "AGENT-RUNTIME"
+    },
+    {
       "id": "join_gate",
       "title": "Join / Verify doctrine",
       "era": "now",
