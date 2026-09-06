@@ -9,6 +9,7 @@
   var carMesh, ghostMesh, sparkGroup;
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
+  var camTune = { dist: 1, height: 1 };
 
   function ok() { return !!(renderer && scene && camera); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -269,6 +270,11 @@
       rebuild(track);
       ensureActors();
     },
+    setCam: function (tune) {
+      if (!tune) return;
+      if (tune.dist != null) camTune.dist = tune.dist;
+      if (tune.height != null) camTune.height = tune.height;
+    },
     setState: function (s) {
       if (!ok() || !s || !s.car) return;
       ensureActors();
@@ -281,10 +287,10 @@
         ghostMesh.position.set(s.ghost.x, 0.08, s.ghost.y);
         ghostMesh.rotation.y = -s.ghost.h + Math.PI / 2;
       } else ghostMesh.visible = false;
-      var back = 11 + (c.speed || 0) * 0.04;
+      var back = (11 + (c.speed || 0) * 0.04) * (camTune.dist || 1);
       cam.x = c.x - Math.cos(c.h) * back;
       cam.z = c.y - Math.sin(c.h) * back;
-      cam.y = 5.4 + (c.speed || 0) * 0.012;
+      cam.y = (5.4 + (c.speed || 0) * 0.012) * (camTune.height || 1);
       look.x = c.x + Math.cos(c.h) * 8;
       look.z = c.y + Math.sin(c.h) * 8;
       look.y = 0.8;

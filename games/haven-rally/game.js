@@ -28,6 +28,119 @@
   }
   function craftOf(id) { return CRAFTS.find(function (c) { return c.id === id; }) || CRAFTS[0]; }
 
+  const OPTIONS = [
+    { key: "ghost", group: "Race", type: "toggle", label: "Show ghost", hint: "Best heat for this circuit + craft rides with you.", def: true },
+    { key: "countdown", group: "Race", type: "toggle", label: "Countdown lights", hint: "3–2–1 before green.", def: true },
+    { key: "invertSteer", group: "Controls", type: "toggle", label: "Invert steer", hint: "Swap A/D and the arrow keys.", def: false },
+    { key: "camDist", group: "Camera", type: "range", label: "Chase distance", min: 0.7, max: 1.7, step: 0.05, def: 1 },
+    { key: "camHeight", group: "Camera", type: "range", label: "Chase height", min: 0.7, max: 1.8, step: 0.05, def: 1 },
+    { key: "showPilot", group: "HUD", type: "toggle", label: "Pilot plate", def: true },
+    { key: "showHint", group: "HUD", type: "toggle", label: "On-track hint", def: true },
+    { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Reserved for smoke, sparks, and shake as those land.", def: false },
+    { key: "assist", group: "Controls", type: "soon", label: "Steering assist", hint: "Coming with the handling pack." },
+    { key: "abs", group: "Controls", type: "soon", label: "Brake assist", hint: "Coming with the handling pack." },
+    { key: "weather", group: "Race", type: "soon", label: "Weather", hint: "Rain and wind as circuits grow." }
+  ];
+
+  function defaultOptions() {
+    const o = {};
+    OPTIONS.forEach(function (s) {
+      if (s.type !== "soon") o[s.key] = s.def;
+    });
+    return o;
+  }
+  function opt(key) {
+    const spec = OPTIONS.find(function (s) { return s.key === key; });
+    const o = (G.save && G.save.options) || {};
+    if (o[key] == null) return spec ? spec.def : false;
+    return o[key];
+  }
+  function setOpt(key, val) {
+    if (!G.save.options) G.save.options = defaultOptions();
+    G.save.options[key] = val;
+    writeSave(G.save);
+    applyOptions();
+  }
+  function applyOptions() {
+    if ($("pilotPlate")) $("pilotPlate").classList.toggle("hidden", !opt("showPilot"));
+    if ($("hint")) $("hint").classList.toggle("hidden", !opt("showHint"));
+    if (window.Rally3D && Rally3D.setCam) {
+      Rally3D.setCam({ dist: Number(opt("camDist")) || 1, height: Number(opt("camHeight")) || 1 });
+    }
+  }
+  function optRowHtml(s) {
+    const hint = s.hint ? "<p class='lore'>" + s.hint + "</p>" : "";
+    const left = "<div><b>" + s.label + "</b>" + hint + "</div>";
+    let right = "";
+    if (s.type === "toggle") {
+      const on = !!opt(s.key);
+      right = "<button type='button' class='opt-toggle" + (on ? " on" : "") + "' data-opt='" + s.key + "'>" +
+        (on ? "On" : "Off") + "</button>";
+    } else if (s.type === "range") {
+      const v = Number(opt(s.key));
+      right = "<label class='opt-range'><span data-opt-val='" + s.key + "'>" + v.toFixed(2) + "</span>" +
+        "<input type='range' data-opt='" + s.key + "' min='" + s.min + "' max='" + s.max +
+        "' step='" + s.step + "' value='" + v + "'></label>";
+    } else {
+      right = "<span class='opt-soon'>Soon</span>";
+    }
+    return "<div class='opt-row'>" + left + right + "</div>";
+  }
+  function optionsMenu() {
+    G._sheet = "options";
+    const groups = [];
+    OPTIONS.forEach(function (s) {
+      if (!groups.length || groups[groups.length - 1].name !== s.group) {
+        groups.push({ name: s.group, rows: [] });
+      }
+      groups[groups.length - 1].rows.push(s);
+    });
+    const body = groups.map(function (g) {
+      return "<p class='opt-group'>" + g.name + "</p>" + g.rows.map(optRowHtml).join("");
+    }).join("");
+    showSheet(
+      "<p class='kicker'>Configuration</p><h2>Options</h2>" +
+      "<p class='lore'>Saved with the local ledger. New settings drop in as extra rows — this sheet is the fill-as-we-go panel.</p>" +
+      body +
+      "<div class='modes'><button type='button' class='btn gold' id='optBack'>Back</button>" +
+      "<button type='button' class='btn' id='optReset'>Reset defaults</button></div>",
+      false,
+      "sheet-opts"
+    );
+    $("optBack").onclick = function () {
+      G._sheet = "";
+      if (G.mode === "menu") menu();
+      else hideOverlay();
+    };
+    $("optReset").onclick = function () {
+      G.save.options = defaultOptions();
+      writeSave(G.save);
+      applyOptions();
+      optionsMenu();
+    };
+    const ov = $("overlay");
+    ov.querySelectorAll("[data-opt]").forEach(function (el) {
+      const key = el.getAttribute("data-opt");
+      const spec = OPTIONS.find(function (s) { return s.key === key; });
+      if (!spec || spec.type === "soon") return;
+      if (spec.type === "toggle") {
+        el.onclick = function () {
+          setOpt(key, !opt(key));
+          const on = !!opt(key);
+          el.classList.toggle("on", on);
+          el.textContent = on ? "On" : "Off";
+        };
+      } else if (spec.type === "range") {
+        el.oninput = function () {
+          const n = Number(el.value);
+          setOpt(key, n);
+          const valEl = ov.querySelector("[data-opt-val='" + key + "']");
+          if (valEl) valEl.textContent = n.toFixed(2);
+        };
+      }
+    });
+  }
+
   function densifyClosed(pts, step) {
     const out = [];
     for (let i = 0; i < pts.length; i++) {
@@ -133,11 +246,14 @@
   }
 
   function defaultSave() {
-    return { name: "", craft: "mira", ghosts: {}, rounds: [] };
+    return { name: "", craft: "mira", ghosts: {}, rounds: [], options: defaultOptions() };
   }
   function loadSave() {
-    try { return Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}")); }
-    catch (e) { return defaultSave(); }
+    try {
+      const s = Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}"));
+      s.options = Object.assign(defaultOptions(), s.options || {});
+      return s;
+    } catch (e) { return defaultSave(); }
   }
   function writeSave(s) {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { /* private */ }
@@ -161,7 +277,8 @@
     rec: [],
     sparks: 0,
     log: [],
-    bestMs: null
+    bestMs: null,
+    _sheet: ""
   };
 
   const $ = function (id) { return document.getElementById(id); };
@@ -187,12 +304,14 @@
     if (!ov) return;
     ov.classList.add("hidden");
     ov.classList.remove("studio");
+    G._sheet = "";
   }
-  function showSheet(html, studio) {
+  function showSheet(html, studio, sheetClass) {
     const ov = $("overlay");
     ov.classList.remove("hidden");
     ov.classList.toggle("studio", !!studio);
-    ov.innerHTML = studio ? html : "<div class='sheet'>" + html + "</div>";
+    ov.innerHTML = studio ? html : "<div class='sheet" + (sheetClass ? " " + sheetClass : "") + "'>" + html + "</div>";
+    G._sheet = sheetClass === "sheet-opts" ? "options" : (studio ? "menu" : "");
   }
   function donateHtml() {
     return "<div class='donate-row'>" +
@@ -217,11 +336,12 @@
     G.gates = [false, false, false];
     G.splits = [];
     G.rec = [];
-    G.phase = "count";
+    G.phase = opt("countdown") ? "count" : "race";
     G.countN = 3;
     G.countT = performance.now();
-    G.t0 = 0;
+    G.t0 = opt("countdown") ? 0 : performance.now();
     G._last = 0;
+    applyOptions();
     const gk = tr.id + "|" + G.craft.id;
     G.ghost = (G.save.ghosts && G.save.ghosts[gk]) || null;
     G.bestMs = G.ghost && G.ghost.ms;
@@ -249,6 +369,7 @@
     let steerIn = 0;
     if (k.KeyA || k.ArrowLeft) steerIn += 1;
     if (k.KeyD || k.ArrowRight) steerIn -= 1;
+    if (opt("invertSteer")) steerIn *= -1;
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
     const boostOn = (k.ShiftLeft || k.ShiftRight) && G.car.boost > 0.04;
     const proj0 = project(G.car, G.track.samples, G.lastS);
@@ -430,7 +551,7 @@
 
   function draw(now) {
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
-    const gh = ghostAt(elapsed);
+    const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
       Rally3D.setState({ car: G.car, ghost: gh, sparks: G.sparks });
       return;
@@ -481,7 +602,8 @@
       "<ol class='lore'><li>W throttle, S brake, A D steer. Shift boosts while the gold bar lasts.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Hit sectors in order, then the start line. Three laps (two on endless).</li>" +
-      "<li>A faster finish writes the ghost for this circuit + craft.</li></ol>" +
+      "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
+      "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
       "<p class='lore'><a href='./whitepaper.html'>Whitepaper</a> is the spec.</p>" +
       "<button class='btn gold' id='hk'>Back to grid</button>"
     );
@@ -519,6 +641,7 @@
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless coil</b><span>Seeded loop. Two laps. Make a ghost.</span></button>" +
+            "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of heats.</span></a>" +
             "<a class='mode-card' href='./whitepaper.html'><b>Whitepaper</b><span>Physics, circuits, out of scope.</span></a>" +
           "</div>" +
@@ -548,6 +671,7 @@
       const nm = ($("nm") && $("nm").value || "").replace(/[<>]/g, "").trim().slice(0, 24);
       if (nm) { G.save.name = nm; writeSave(G.save); }
       const go = b.getAttribute("data-go");
+      if (go === "options") { optionsMenu(); return; }
       if (go === "pine") startHeat(PINE);
       if (go === "coral") startHeat(CORAL);
       if (go === "star") startHeat(STAR);
@@ -559,6 +683,7 @@
     if (e.target && e.target.tagName === "INPUT") return;
     if (e.key === "Escape") {
       if (overlayOpen() && G.mode !== "menu") { hideOverlay(); return; }
+      if (overlayOpen() && G._sheet === "options") { menu(); return; }
       menu();
       return;
     }
@@ -571,6 +696,7 @@
   window.addEventListener("blur", function () { G.keys = {}; });
 
   if ($("btnHelp")) $("btnHelp").onclick = help;
+  if ($("btnOptions")) $("btnOptions").onclick = optionsMenu;
   if ($("btnPaper")) $("btnPaper").onclick = function () { location.href = "./whitepaper.html"; };
   if ($("btnRestart")) $("btnRestart").onclick = function () { if (G.mode === "race") spawnOnGrid(); };
   if ($("btnMenu")) $("btnMenu").onclick = menu;
@@ -580,6 +706,7 @@
 
   $("boot").classList.add("hidden");
   G.craft = craftOf(G.save.craft);
+  applyOptions();
   menu();
   requestAnimationFrame(tick);
 })();

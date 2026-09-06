@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Haven Rally — Whitepaper v1 | chatagent.ca</title>
+<title>Haven Rally — Whitepaper v1.1 | chatagent.ca</title>
 <meta name="description" content="Design canon for Haven Rally: time-trial lattice racer, ghost, local ledger. Implementation follows this page.">
 <link rel="canonical" href="https://chatagent.ca/games/haven-rally/whitepaper.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -29,7 +29,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 <body>
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · design canon</p>
-  <h1>Haven Rally v1</h1>
+  <h1>Haven Rally v1.1</h1>
   <p>Time-trial racer. One craft, one closed circuit, a ghost of your best run. No account. Local ledger. This page is the spec the live client follows.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
@@ -48,8 +48,9 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td><code>A</code> <code>D</code> / ← →</td><td>Steer</td></tr>
     <tr><td><code>Shift</code></td><td>Boost (meter)</td></tr>
     <tr><td><code>R</code></td><td>Restart heat</td></tr>
-    <tr><td><code>Esc</code></td><td>Menu (sheet first if open)</td></tr>
+    <tr><td><code>Esc</code></td><td>Close sheet, then menu</td></tr>
   </table>
+  <p>Dock <b>Options</b> (and the title card) open the configuration sheet. Race clock freezes while any overlay is open.</p>
 
   <h2>3. Physics (math first)</h2>
   <p>World <code>x,z</code> yards. Heading radians. Speed yards/sec. Craft stats: <code>acc</code>, <code>vmax</code>, <code>turn</code>, <code>grip</code>, <code>boost</code>.</p>
@@ -79,7 +80,20 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <h2>7. Studio surface</h2>
   <p>Title screen matches Lattice Golf: full-bleed art, right panel, operator name, craft picker, mode cards, radio, PayPal.me/ExcavationPro + Patreon. 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
 
-  <h2>8. Out of scope v1</h2>
+  <h2>8. Options</h2>
+  <p>Persistent sheet. Schema is the <code>OPTIONS</code> list in <code>game.js</code>. Each row is <code>toggle</code>, <code>range</code>, or <code>soon</code>. Enhancements add a row; they do not rewrite the menu. Values live under <code>save.options</code> in ledger key <code>lygo-haven-rally-v1</code>. Load merges defaults so old saves pick up new keys.</p>
+  <table>
+    <tr><th>Key</th><th>Group</th><th>Now</th></tr>
+    <tr><td><code>ghost</code></td><td>Race</td><td>Show best-heat ghost</td></tr>
+    <tr><td><code>countdown</code></td><td>Race</td><td>3–2–1 lights; off goes green immediately</td></tr>
+    <tr><td><code>invertSteer</code></td><td>Controls</td><td>Swap A/D and arrows</td></tr>
+    <tr><td><code>camDist</code> / <code>camHeight</code></td><td>Camera</td><td>Chase multipliers (2.5D)</td></tr>
+    <tr><td><code>showPilot</code> / <code>showHint</code></td><td>HUD</td><td>Pilot plate and on-track hint</td></tr>
+    <tr><td><code>reduceFx</code></td><td>Graphics</td><td>Stored; used when smoke/sparks/shake land</td></tr>
+    <tr><td>assist / abs / weather</td><td>—</td><td><code>soon</code> placeholders</td></tr>
+  </table>
+
+  <h2>9. Out of scope v1</h2>
   <p>No multiplayer, no pay-to-win, no Palantir, no invented network scores, no Marines unless asked.</p>
 </div>
 </body>

@@ -185,6 +185,23 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   border-radius: 16px; padding: 1.2rem 1.25rem;
 }
 .sheet h2 { font-family: Syne, sans-serif; margin: 0 0 .4rem; }
+.opt-group { margin: .85rem 0 .35rem; font: 700 .72rem Syne, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan); }
+.opt-row {
+  display: grid; grid-template-columns: 1fr auto; gap: .35rem 1rem; align-items: center;
+  padding: .5rem 0; border-bottom: 1px solid var(--line);
+}
+.opt-row .lore { margin: .15rem 0 0; font-size: .75rem; }
+.opt-row input[type="range"] { width: 9rem; accent-color: var(--gold); }
+.opt-toggle {
+  font: 650 .72rem "IBM Plex Mono", monospace; min-width: 3.6rem;
+  background: #102028; color: var(--mute); border: 1px solid var(--line);
+  border-radius: 8px; padding: .32rem .5rem; cursor: pointer;
+}
+.opt-toggle.on { color: var(--gold); border-color: var(--gold); }
+.opt-soon { color: var(--mute); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+.opt-range { display: flex; flex-direction: column; align-items: flex-end; gap: .12rem; }
+.opt-range span { font: 500 .68rem "IBM Plex Mono", monospace; color: var(--gold); }
+.sheet.sheet-opts { width: min(640px, 100%); max-height: min(88vh, 760px); overflow: auto; }
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: .8rem 0; }
 @media (max-width: 900px) {
   .stage { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
