@@ -24,7 +24,7 @@
     { id: "PULSE", title: "PULSE", why: "Allowlisted HTTPS GET of lattice + public resources.", url: "/godseye/" },
     { id: "AETHON", title: "AETHONΔ9", why: "Discourse heuristics on public titles. Not identity.", url: "/skynet/" },
     { id: "YIELD", title: "YIELD", why: "ALIGNED / REVIEW / SHADOW. Human remains publisher.", url: "/skynet/" },
-    { id: "WIRE", title: "WIRE", why: "God's Eye iris + Witness globe + Agora + Star Chart monitor.", url: "/starchart/" }
+    { id: "WIRE", title: "WIRE", why: "God's Eye iris + Witness globe + Agora + Haven Star Chart.", url: "/starchart/" }
   ];
   const state = {
     tick: 0, yield: "ALIGNED", live: 0, miss: 0, queue: [], board: [],

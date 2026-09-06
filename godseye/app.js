@@ -339,16 +339,16 @@
       addNode({
         id: "skynet", title: "LYGO SKYNET · AETHONΔ9", ring: "canon", live: true,
         url: "/skynet/",
-        why: "CANON limb · Sentinel Kernel Yielding Named Ethical Trust. Pulse public GET, score public titles, yield ALIGNED/REVIEW/SHADOW. Star Chart pending is consent-gated on /starchart/."
+        why: "CANON limb · Sentinel Kernel Yielding Named Ethical Trust. Pulse public GET, score public titles, yield ALIGNED/REVIEW/SHADOW. Complete Star Chart at /starchart/; feed monitor at /starchart/monitor/."
       });
     });
     await ping("starchart", URLS.starchart, function (data, ok) {
-      board.push(boardRow("sc", ok, "Star Chart live monitor"));
+      board.push(boardRow("sc", ok, "Haven Star Chart"));
       if (!ok || !data) return;
       addNode({
-        id: "star_monitor", title: "Star Chart live monitor", ring: "canon", live: true,
+        id: "star_chart", title: "Haven Star Chart", ring: "canon", live: true,
         url: "/starchart/",
-        why: "CANON monitor · GET hash-chained feed. HF writes star-monitor.json + consent pending. Steward ingest remains LIVE."
+        why: "CANON · complete D3 cosmology chart (1,300+ nodes). Feed monitor is /starchart/monitor/."
       });
     });
     await ping("starMon", URLS.starMon, function (data, ok) {
@@ -357,7 +357,7 @@
       addNode({
         id: "hf_star_mon",
         title: "HF star-monitor seq " + ((data.latest && data.latest.seq) || "?"),
-        ring: "canon", live: !!data.ok, url: "/starchart/",
+        ring: "canon", live: !!data.ok, url: "/starchart/monitor/",
         why: "CANON monitor snapshot on Hugging Face. Not a forged Pages chain entry."
       });
     });

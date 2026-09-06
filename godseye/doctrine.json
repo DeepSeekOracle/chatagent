@@ -11,7 +11,8 @@
   "pairs_with": {
     "witness": "https://chatagent.ca/witness/",
     "star_chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
-    "star_monitor": "https://chatagent.ca/starchart/",
+    "star_chart": "https://chatagent.ca/starchart/",
+    "star_monitor": "https://chatagent.ca/starchart/monitor/",
     "lattice": "https://chatagent.ca/lattice/",
     "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
     "skillhub": "https://chatagent.ca/lygoskillhub.html#full-lygo",

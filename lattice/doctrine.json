@@ -26,6 +26,7 @@
     "godseye": "https://chatagent.ca/godseye/",
     "skynet": "https://chatagent.ca/skynet/",
     "starchart": "https://chatagent.ca/starchart/",
+    "starchart_monitor": "https://chatagent.ca/starchart/monitor/",
     "agora": "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/",
     "chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
     "hf_bot": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",

@@ -3,11 +3,11 @@
   "use strict";
   const SIG = "Delta9Phi963-STAR-MONITOR-v1.0.0";
   const URLS = {
-    doctrine: "/starchart/doctrine.json",
-    localMon: "/starchart/star-monitor.json",
+    doctrine: "/starchart/monitor/doctrine.json",
+    localMon: "/starchart/monitor/star-monitor.json",
     feed: "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json",
     hfMon: "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/star-monitor.json",
-    chart: "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
+    chart: "https://chatagent.ca/starchart/",
     bot: "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",
     skynet: "/skynet/doctrine.json",
     godseye: "/godseye/doctrine.json"
@@ -260,7 +260,7 @@
       tone: "963 Hz",
       tags: ["STAR_MONITOR", "LATTICE"],
       connections: document.getElementById("q-conn").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean),
-      urls: { chart: URLS.chart, monitor: "https://chatagent.ca/starchart/" }
+      urls: { chart: URLS.chart, monitor: "https://chatagent.ca/starchart/monitor/" }
     };
     return {
       signature: "Δ9Φ963-HAVEN-STAR-SUBMISSION-v1",
