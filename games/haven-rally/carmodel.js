@@ -99,7 +99,7 @@
       y1: lerpNum(a.y1, b.y1, t),
       yr: n("yr", lerpNum(a.y1, b.y1, t)),
       wr: n("wr", lerpNum(a.w, b.w, t) * 0.55),
-      arch: n("arch", 0)
+      well: n("well", 0)
     };
   }
 
@@ -115,30 +115,34 @@
     return out;
   }
 
-  var RING = 12;
+  var RING = 16;
   function ringOf(sl) {
     var w = sl.w, y0 = sl.y0, y1 = sl.y1, z = sl.z;
     var yr = sl.yr != null ? sl.yr : y1;
-    var wr = sl.wr != null ? sl.wr : w * 0.52;
-    var arch = sl.arch || 0;
-    var ySill = y0 + 0.07 + arch;
-    var wSill = w * (arch > 0.05 ? 0.7 : 1);
-    var yw = y1 + (yr - y1) * 0.45;
-    var ww = w * 0.72 + wr * 0.28;
-    return [
-      -w * 0.48, y0 + arch * 0.25, z,
-      -wSill, ySill, z,
-      -w, y0 * 0.35 + y1 * 0.65, z,
-      -w, y1, z,
-      -ww, yw, z,
-      -wr, yr, z,
-      wr, yr, z,
-      ww, yw, z,
-      w, y1, z,
-      w, y0 * 0.35 + y1 * 0.65, z,
-      wSill, ySill, z,
-      w * 0.48, y0 + arch * 0.25, z
+    var wr = sl.wr != null ? sl.wr : w * 0.55;
+    var well = sl.well || 0;
+    var yw = y1 + (yr - y1) * 0.42;
+    var ww = w * 0.76 + wr * 0.24;
+    var ySill = y0 + 0.06 + well * 0.32;
+    var wSill = w * (1 - 0.5 * well);
+    var wFlare = w * (1 + 0.1 * well);
+    var yDoor = y0 * 0.22 + y1 * 0.78;
+    var yArch = ySill + 0.12 + well * 0.28;
+    var wArch = wSill + (wFlare - wSill) * (0.55 + 0.35 * well);
+    var mag = [
+      [w * 0.18, y0],
+      [wSill, ySill],
+      [wArch, yArch],
+      [wFlare, yDoor],
+      [wFlare, y1],
+      [ww, yw],
+      [wr, yr],
+      [Math.max(0.07, wr * 0.3), yr]
     ];
+    var out = [], i;
+    for (i = 0; i < 8; i++) out.push(-mag[i][0], mag[i][1], z);
+    for (i = 7; i >= 0; i--) out.push(mag[i][0], mag[i][1], z);
+    return out;
   }
 
   function loft(T, slices, ringFn, count) {
@@ -175,13 +179,13 @@
 
   function glassRing(sl) {
     var r = ringOf(sl);
-    var inset = 0.035;
-    var pick = [3, 4, 5, 6, 7, 8];
-    var out = [], i, ix, x, y, z;
+    var pick = [4, 5, 6, 7, 8, 9, 10, 11];
+    var out = [], i, ix, x, y, z, inset;
     for (i = 0; i < pick.length; i++) {
       ix = pick[i] * 3;
       x = r[ix]; y = r[ix + 1]; z = r[ix + 2];
-      out.push(x + (x >= 0 ? -inset : inset), y + 0.01, z);
+      inset = 0.045;
+      out.push(x + (x >= 0 ? -inset : inset), y + 0.012, z);
     }
     return out;
   }
@@ -211,10 +215,12 @@
     var hub = new T.Mesh(new T.CylinderGeometry(0.065, 0.065, 0.11, 16), mats.chrome);
     hub.rotation.z = Math.PI / 2;
     spin.add(hub);
-    var si;
+    var si, a, spoke;
     for (si = 0; si < 5; si++) {
-      var spoke = new T.Mesh(new T.BoxGeometry(0.04, 0.26, 0.048), mats.chrome);
-      spoke.rotation.x = (si / 5) * Math.PI * 2;
+      a = (si / 5) * Math.PI * 2;
+      spoke = new T.Mesh(new T.BoxGeometry(0.032, 0.17, 0.038), mats.chrome);
+      spoke.rotation.x = a;
+      spoke.position.set(0, Math.cos(a) * 0.12, Math.sin(a) * 0.12);
       spin.add(spoke);
     }
     var cal = new T.Mesh(new T.BoxGeometry(0.06, 0.1, 0.15), mats.gold);
@@ -235,13 +241,13 @@
       paint: mat(T, {
         color: paintCol, metalness: 0.78, roughness: 0.16, clearcoat: 1,
         clearcoatRoughness: 0.07, sheen: 0.45, sheenColor: new T.Color(0x7eeae0),
-        envMap: envMap, envMapIntensity: 1.3, side: T.DoubleSide
+        envMap: envMap, envMapIntensity: 1.3
       }, ghost),
       dark: mat(T, { color: 0x0b0d12, metalness: 0.4, roughness: 0.45, envMap: envMap }, ghost),
       carbon: mat(T, { color: 0x222, metalness: 0.55, roughness: 0.38, map: carbon, envMap: envMap }, ghost),
       glass: mat(T, {
         color: 0x081018, metalness: 0.12, roughness: 0.035, transparent: true,
-        opacity: ghost ? 0.16 : 0.46, envMap: envMap, envMapIntensity: 1.7, side: T.DoubleSide
+        opacity: ghost ? 0.16 : 0.42, envMap: envMap, envMapIntensity: 1.7
       }, false),
       chrome: mat(T, { color: 0x9aa3ad, metalness: 1, roughness: 0.12, envMap: envMap }, ghost),
       gold: mat(T, { color: 0xfbbf24, metalness: 0.92, roughness: 0.2, envMap: envMap }, ghost),
@@ -261,22 +267,26 @@
 
     var ctrl = [
       { z: -2.18, w: 0.14, y0: 0.18, y1: 0.32 },
-      { z: -2.02, w: 0.46, y0: 0.12, y1: 0.40 },
-      { z: -1.78, w: 0.82, y0: 0.10, y1: 0.47 },
-      { z: -1.48, w: 0.92, y0: 0.11, y1: 0.51 },
-      { z: -1.20, w: 0.94, y0: 0.12, y1: 0.52, arch: 0.34 },
-      { z: -0.92, w: 0.95, y0: 0.12, y1: 0.54 },
-      { z: -0.52, w: 0.96, y0: 0.13, y1: 0.58, yr: 0.88, wr: 0.70 },
-      { z: -0.12, w: 0.95, y0: 0.13, y1: 0.60, yr: 1.08, wr: 0.67 },
-      { z: 0.28, w: 0.95, y0: 0.13, y1: 0.60, yr: 1.12, wr: 0.66 },
-      { z: 0.62, w: 0.94, y0: 0.13, y1: 0.58, yr: 1.06, wr: 0.65 },
-      { z: 0.92, w: 0.93, y0: 0.13, y1: 0.55, yr: 0.82, wr: 0.70 },
-      { z: 1.22, w: 0.92, y0: 0.14, y1: 0.52, yr: 0.56, wr: 0.78, arch: 0.32 },
-      { z: 1.52, w: 0.88, y0: 0.15, y1: 0.50 },
+      { z: -2.02, w: 0.48, y0: 0.12, y1: 0.40 },
+      { z: -1.78, w: 0.84, y0: 0.10, y1: 0.47 },
+      { z: -1.55, w: 0.92, y0: 0.11, y1: 0.51, well: 0.18 },
+      { z: -1.36, w: 0.94, y0: 0.11, y1: 0.52, well: 0.7 },
+      { z: -1.18, w: 0.95, y0: 0.12, y1: 0.52, well: 1 },
+      { z: -1.00, w: 0.95, y0: 0.12, y1: 0.53, well: 0.7 },
+      { z: -0.84, w: 0.95, y0: 0.12, y1: 0.54, well: 0.18 },
+      { z: -0.52, w: 0.96, y0: 0.13, y1: 0.58, yr: 0.86, wr: 0.70 },
+      { z: -0.12, w: 0.95, y0: 0.13, y1: 0.60, yr: 1.08, wr: 0.66 },
+      { z: 0.28, w: 0.95, y0: 0.13, y1: 0.60, yr: 1.12, wr: 0.65 },
+      { z: 0.62, w: 0.94, y0: 0.13, y1: 0.58, yr: 1.04, wr: 0.64 },
+      { z: 0.88, w: 0.93, y0: 0.13, y1: 0.54, yr: 0.78, wr: 0.70, well: 0.15 },
+      { z: 1.08, w: 0.93, y0: 0.14, y1: 0.52, well: 0.7 },
+      { z: 1.22, w: 0.93, y0: 0.14, y1: 0.52, well: 1 },
+      { z: 1.38, w: 0.91, y0: 0.14, y1: 0.51, well: 0.65 },
+      { z: 1.55, w: 0.88, y0: 0.15, y1: 0.50, well: 0.12 },
       { z: 1.82, w: 0.70, y0: 0.18, y1: 0.47 },
-      { z: 2.02, w: 0.38, y0: 0.24, y1: 0.42 }
+      { z: 2.02, w: 0.36, y0: 0.24, y1: 0.42 }
     ];
-    var slices = densify(ctrl, 0.08);
+    var slices = densify(ctrl, 0.055);
     var body = new T.Mesh(loft(T, slices, ringOf, RING), mats.paint);
     body.castShadow = !ghost;
     body.receiveShadow = true;
@@ -284,10 +294,13 @@
 
     var glassCtrl = slices.filter(function (s) { return s.yr != null && s.yr > s.y1 + 0.12; });
     if (glassCtrl.length > 2) {
-      var cabin = new T.Mesh(loft(T, glassCtrl, glassRing, 6), mats.glass);
+      var cabin = new T.Mesh(loft(T, glassCtrl, glassRing, 8), mats.glass);
       cabin.renderOrder = 2;
       g.add(cabin);
     }
+    var interior = new T.Mesh(new T.BoxGeometry(1.02, 0.3, 1.12), mats.dark);
+    interior.position.set(0, 0.76, 0.12);
+    g.add(interior);
 
     var noseCap = new T.Mesh(capGeometry(T, slices[0]), mats.paint);
     var tailCap = new T.Mesh(capGeometry(T, slices[slices.length - 1]), mats.dark);
@@ -300,23 +313,37 @@
     lip.position.set(0, 0.22, -2.18);
     g.add(lip);
 
-    var skirtL = new T.Mesh(new T.BoxGeometry(0.07, 0.09, 2.2), mats.carbon);
+    var skirtL = new T.Mesh(new T.BoxGeometry(0.055, 0.07, 1.12), mats.carbon);
     var skirtR = skirtL.clone();
-    skirtL.position.set(-0.97, 0.155, 0.05);
-    skirtR.position.set(0.97, 0.155, 0.05);
+    skirtL.position.set(-0.98, 0.15, 0.02);
+    skirtR.position.set(0.98, 0.15, 0.02);
     g.add(skirtL, skirtR);
 
-    var ventL = new T.Mesh(new T.BoxGeometry(0.035, 0.3, 0.62), mats.lattice);
+    var ventL = new T.Mesh(new T.BoxGeometry(0.03, 0.26, 0.48), mats.lattice);
     var ventR = ventL.clone();
-    ventL.position.set(-0.98, 0.42, 0.52);
-    ventR.position.set(0.98, 0.42, 0.52);
+    ventL.position.set(-1.0, 0.4, 0.28);
+    ventR.position.set(1.0, 0.4, 0.28);
     g.add(ventL, ventR);
 
-    var stripe = new T.Mesh(new T.BoxGeometry(0.02, 0.018, 3.5), mats.gold);
-    stripe.position.set(0.7, 0.605, 0.02);
-    var stripe2 = stripe.clone();
-    stripe2.position.x = -0.7;
-    g.add(stripe, stripe2);
+    function stripeGeo(left) {
+      var pos = [], idx = [], i, r, pi, x, y, z, sign = left ? -1 : 1;
+      pi = left ? 4 : 11;
+      for (i = 0; i < slices.length; i++) {
+        r = ringOf(slices[i]);
+        x = r[pi * 3]; y = r[pi * 3 + 1]; z = r[pi * 3 + 2];
+        pos.push(x, y + 0.01, z, x + sign * 0.022, y + 0.01, z);
+      }
+      for (i = 0; i < slices.length - 1; i++) {
+        var a = i * 2;
+        idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      }
+      var geo = new T.BufferGeometry();
+      geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return geo;
+    }
+    g.add(new T.Mesh(stripeGeo(true), mats.gold), new T.Mesh(stripeGeo(false), mats.gold));
 
     var wing = new T.Mesh(new T.BoxGeometry(1.88, 0.045, 0.3), mats.gold);
     wing.position.set(0, 1.14, 1.76);
@@ -345,21 +372,26 @@
       g.add(fin);
     }
 
-    function lamp(geo, x, y, z, m, sx, sy, sz) {
-      var mesh = new T.Mesh(geo, m);
-      mesh.position.set(x, y, z);
-      if (sx) mesh.scale.set(sx, sy, sz);
-      g.add(mesh);
-      return mesh;
+    function addDrl(sign) {
+      var bar = new T.Mesh(new T.BoxGeometry(0.5, 0.026, 0.032), mats.light);
+      bar.position.set(0.56 * sign, 0.405, -1.84);
+      bar.rotation.y = -0.22 * sign;
+      bar.rotation.z = -0.06 * sign;
+      g.add(bar);
+      var i, lamp;
+      for (i = 0; i < 3; i++) {
+        lamp = new T.Mesh(new T.SphereGeometry(0.026, 12, 10), mats.light);
+        lamp.position.set((0.42 + i * 0.09) * sign, 0.378, -1.9);
+        g.add(lamp);
+      }
     }
-    var bulb = new T.SphereGeometry(0.09, 18, 14);
-    lamp(bulb, -0.58, 0.39, -1.86, mats.light, 1.85, 0.42, 0.72);
-    lamp(bulb, 0.58, 0.39, -1.86, mats.light, 1.85, 0.42, 0.72);
-    var drl = new T.BoxGeometry(0.42, 0.035, 0.04);
-    lamp(drl, -0.6, 0.445, -1.8, mats.light);
-    lamp(drl, 0.6, 0.445, -1.8, mats.light);
-    lamp(new T.BoxGeometry(0.36, 0.05, 0.04), -0.56, 0.49, 1.9, mats.tail);
-    lamp(new T.BoxGeometry(0.36, 0.05, 0.04), 0.56, 0.49, 1.9, mats.tail);
+    addDrl(-1);
+    addDrl(1);
+    var tailL = new T.Mesh(new T.BoxGeometry(0.38, 0.045, 0.035), mats.tail);
+    var tailR = tailL.clone();
+    tailL.position.set(-0.55, 0.48, 1.92);
+    tailR.position.set(0.55, 0.48, 1.92);
+    g.add(tailL, tailR);
 
     var grill = new T.Mesh(new T.BoxGeometry(0.72, 0.2, 0.07), mats.lattice);
     grill.position.set(0, 0.27, -2.1);
@@ -385,20 +417,11 @@
     badge.position.set(0, 0.44, -2.16);
     g.add(badge);
 
-    var glow = new T.Mesh(
-      new T.PlaneGeometry(1.6, 0.35),
-      new T.MeshBasicMaterial({ color: 0x5eead4, transparent: true, opacity: ghost ? 0.05 : 0.16, depthWrite: false, side: T.DoubleSide })
-    );
-    glow.rotation.x = -Math.PI / 2;
-    glow.position.y = 0.03;
-    glow.userData.fx = true;
-    g.add(glow);
-
-    var wy = 0.34;
-    g.add(makeWheel(T, mats, wy, -0.82, -1.18, true));
-    g.add(makeWheel(T, mats, wy, 0.82, -1.18, true));
-    g.add(makeWheel(T, mats, wy, -0.84, 1.22, false));
-    g.add(makeWheel(T, mats, wy, 0.84, 1.22, false));
+    var wy = 0.33;
+    g.add(makeWheel(T, mats, wy, -0.8, -1.18, true));
+    g.add(makeWheel(T, mats, wy, 0.8, -1.18, true));
+    g.add(makeWheel(T, mats, wy, -0.82, 1.22, false));
+    g.add(makeWheel(T, mats, wy, 0.82, 1.22, false));
     g.userData.apex = true;
     return g;
   }
