@@ -509,23 +509,20 @@
     .star-roster button small { color: var(--muted); grid-column: 1 / -1; }
     .star-roster button.active, .star-roster button:hover { border-color: var(--cyan); background: rgba(0, 240, 255, 0.08); }
     .sky-hud {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 6;
-      width: min(34rem, calc(100% - 9.5rem));
-      pointer-events: none;
+      position: relative;
+      z-index: 1;
+      width: 100%;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      margin: 0 0 0.75rem;
+      padding: 0 0 0.65rem;
+      border-bottom: 1px solid rgba(125, 0, 255, 0.28);
     }
-    .sky-hud > * { pointer-events: auto; }
     .sky-crumb {
-      text-align: center;
+      text-align: left;
       font-size: 0.68rem;
       color: var(--gold);
-      text-shadow: 0 1px 8px #05050c;
       letter-spacing: 0.03em;
     }
     .sky-cycle-row {
@@ -559,7 +556,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .kind-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+    .kind-chips { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 4px; }
     .kind-chips button {
       background: rgba(5, 5, 14, 0.75);
       border: 1px solid rgba(255,255,255,0.12);
@@ -573,10 +570,9 @@
       border-radius: 999px;
     }
     .kind-chips button.active { color: #fff; border-color: var(--cyan); background: rgba(0, 240, 255, 0.16); }
-    .sky-hint { margin: 0; text-align: center; font-size: 0.58rem; color: var(--muted); text-shadow: 0 1px 6px #05050c; }
+    .sky-hint { margin: 0; text-align: left; font-size: 0.58rem; color: var(--muted); }
     .galaxy-halo, .nebula-halo { cursor: pointer; }
     @media (max-width: 900px) {
-      .sky-hud { left: 12px; transform: none; width: calc(100% - 24px); top: auto; bottom: 12px; }
       .controls { bottom: auto; }
     }
     .detail-box {
@@ -1057,6 +1053,9 @@
         <button type="button" id="toggleTracks" title="779 music ISRC stars stay folded until Music Codex or this toggle">♪ Tracks</button>
         <button type="button" id="btnAllSky" title="Reset layers (Esc)">All sky</button>
       </div>
+      <svg id="starmap"></svg>
+    </div>
+    <aside>
       <div class="sky-hud" id="skyHud">
         <div class="sky-crumb" id="skyCrumb">All sky</div>
         <div class="sky-cycle-row" title="Cycle every galaxy">
@@ -1078,9 +1077,6 @@
         <div class="kind-chips" id="kindChips"></div>
         <p class="sky-hint" title="[ ] galaxies · , . constellations · n nebula · Esc all sky">[ ] galaxies · , . constellations · Esc all sky</p>
       </div>
-      <svg id="starmap"></svg>
-    </div>
-    <aside>
       <div class="aside-tabs" role="tablist">
         <button type="button" data-aside="layers" class="active" role="tab">Layers</button>
         <button type="button" data-aside="roster" role="tab">Roster</button>
