@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lattice Golf — plant the marker | chatagent.ca</title>
-<meta name="description" content="Free Lattice Golf in the browser. Pick a club, plant a marker, read the wind pip. Pine Haven, Coral Lattice, Singularity Nine, Haven Open 18, endless, campaign vs AI. Local ledger. No account.">
+<meta name="description" content="Free 2.5D Lattice Golf in the browser. Plant a marker, read the wind, watch the ball fly the fairway. Pine Haven, Coral Lattice, Singularity Nine. No account.">
 <meta name="keywords" content="Lattice Golf, golf game, HTML5 golf, Eternal Haven, Excavationpro, LYGO, browser golf, Pine Haven">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="theme-color" content="#07140c">
@@ -76,7 +76,7 @@
         </div>
         <div class="power-hud-read" id="powerHudRead">75% · 273 yd</div>
       </div>
-      <div class="keys">Click marker · drag power · ← → fine · 1–4 snap · [ ] club · Space shoot</div>
+      <div class="keys">3D course · click ground to plant marker · gold ring = carry · violet = wind · Space shoot</div>
     </div>
     <aside class="rail">
       <div class="panel">
@@ -147,7 +147,9 @@
 </div>
 
 <div id="overlay" class="overlay"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
 <script src="./radio.js"></script>
-<script src="./game.js?v=22"></script>
+<script src="./golf3d.js?v=1"></script>
+<script src="./game.js?v=23"></script>
 </body>
 </html>

@@ -691,7 +691,8 @@
 
   const $ = function (id) { return document.getElementById(id); };
   const canvas = $("fairway");
-  const ctx = canvas.getContext("2d");
+  const use3d = !!(window.Golf3D && window.THREE && window.Golf3D.init(canvas));
+  const ctx = use3d ? null : canvas.getContext("2d");
   let view = { scale: 2.2, ox: 20, oy: 40 };
   const IMGS = { pine: new Image(), coral: new Image(), wild: new Image(), water: new Image() };
   IMGS.pine.src = "./assets/bg-pine.jpg";
@@ -769,6 +770,11 @@
   }
 
   function fitView() {
+    if (use3d && window.Golf3D && G.hole) {
+      Golf3D.resize();
+      Golf3D.fit(G.hole);
+      return;
+    }
     const w = canvas.clientWidth || 800;
     const h = canvas.clientHeight || 480;
     const hole = G.hole;
@@ -801,6 +807,22 @@
   }
 
   function draw() {
+    if (use3d && window.Golf3D && Golf3D.active()) {
+      if (!G.hole) return;
+      Golf3D.setState({
+        hole: G.hole,
+        courseId: G.course && G.course.id,
+        ball: G.flying || G.ball,
+        flying: !!G.flying,
+        marker: G.marker,
+        pred: predictDest(),
+        carry: intendedCarry(),
+        wind: G.wind,
+        trail: G.trail || []
+      });
+      return;
+    }
+    if (!ctx) return;
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     if (canvas.width !== w || canvas.height !== h) {
@@ -1880,7 +1902,7 @@
       "<li>Drag the full power bar (0–100%) inside this club’s range. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%. Wind still moves the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
-      "<li>Gold pip is carry without wind. Violet pip is where wind actually sends it. Red means trees stop the flight.</li>" +
+      "<li>The hole is a 2.5D course. Click the ground to plant the marker. Gold ring is club carry. Violet pip is the wind landing. Red means trees stop the flight.</li>" +
       "<li>Z undoes the last shot. M uses a mulligan (replay this hole from the tee). Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
@@ -1906,7 +1928,13 @@
   canvas.addEventListener("pointerdown", function (e) {
     if (!G.hole) return;
     const r = canvas.getBoundingClientRect();
-    G.marker = toWorld(e.clientX - r.left, e.clientY - r.top);
+    if (use3d && window.Golf3D) {
+      const w3 = Golf3D.pick(e.clientX, e.clientY);
+      if (w3) G.marker = w3;
+      else return;
+    } else {
+      G.marker = toWorld(e.clientX - r.left, e.clientY - r.top);
+    }
     autoClub();
     renderHoleCard();
     draw();
