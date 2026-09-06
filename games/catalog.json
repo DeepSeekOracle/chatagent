@@ -95,6 +95,25 @@
       ]
     },
     {
+      "id": "haven-rally",
+      "slug": "haven-rally",
+      "title": "Haven Rally",
+      "tagline": "Beat the ghost",
+      "blurb": "Time-trial lattice racer. Drift Pine Coil, Coral Coast, Singularity Ring, or an endless seed. Ghost of your best heat. Local ledger. Free HTML5.",
+      "status": "live",
+      "featured": true,
+      "order": 6,
+      "href": "/games/haven-rally/",
+      "cover": "/games/haven-rally/assets/og.jpg",
+      "coverAlt": "Haven Rally dusk circuit",
+      "genre": ["racing", "sports"],
+      "players": "1 vs ghost",
+      "links": [
+        { "label": "Local ledger", "href": "/games/haven-rally/ledger.html" },
+        { "label": "Whitepaper", "href": "/games/haven-rally/whitepaper.html" }
+      ]
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",

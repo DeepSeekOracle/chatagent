@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Haven Rally — beat the ghost | chatagent.ca</title>
+<meta name="description" content="Free HTML5 time-trial racer. Drift a lattice circuit, beat your ghost, post the card to this browser. No account.">
+<meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
+<meta name="theme-color" content="#070b12">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://chatagent.ca/games/haven-rally/">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Eternal Haven">
+<meta property="og:url" content="https://chatagent.ca/games/haven-rally/">
+<meta property="og:title" content="Haven Rally — beat the ghost">
+<meta property="og:description" content="Time-trial lattice racer. Three circuits, endless coil, ghost, local ledger. Free.">
+<meta property="og:image" content="https://chatagent.ca/games/haven-rally/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="Haven Rally — beat the ghost">
+<meta name="twitter:image" content="https://chatagent.ca/games/haven-rally/assets/og.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./game.css?v=1">
+<link rel="stylesheet" href="/games/hub.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: lattice circuits, drift, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/og.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
+</head>
+<body>
+<audio id="radioEl" preload="none"></audio>
+<a class="games-exit" href="/games/">All games</a>
+<div id="boot" class="boot">
+  <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+  <h1>Haven Rally</h1>
+  <p class="boot-msg">Warming the grid…</p>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="top">
+    <a class="brand" href="/">chatagent.ca</a>
+    <a class="games-mini" href="/games/">Games</a>
+    <div class="phase-pill" id="lapPill">LAP 1/3</div>
+    <div class="hud-meta" id="hudMeta"></div>
+    <span class="grow"></span>
+    <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal</a>
+  </header>
+  <div class="stage">
+    <div class="viewport">
+      <canvas id="circuit" tabindex="0" aria-label="Rally circuit"></canvas>
+      <div class="count-flash hidden" id="countFlash">3</div>
+      <div class="pilot-plate" id="pilotPlate">
+        <img id="pilotImg" alt="Pilot" src="./assets/p-mira.jpg">
+        <div class="pilot-meta">
+          <b id="pilotName">Mira Needle</b>
+          <span id="pilotTag">Drift</span>
+        </div>
+      </div>
+      <div class="speedo" id="speedo">0<small>YD/S</small></div>
+      <div class="boost-hud"><div class="boost-fill" id="boostFill"></div></div>
+      <div class="hint" id="hint">W throttle · A D steer · Shift boost · stay on the ribbon</div>
+      <div class="keys">follow-cam · R restart · Esc menu</div>
+    </div>
+    <aside class="rail">
+      <div class="panel">
+        <h3>Heat</h3>
+        <div class="card" id="heatCard">Grid.</div>
+      </div>
+      <div class="panel">
+        <h3>Sectors</h3>
+        <div class="card" id="secCard">—</div>
+      </div>
+      <div class="panel">
+        <h3>Ghost</h3>
+        <div class="card" id="ghostCard">No ghost yet. Finish a heat.</div>
+      </div>
+      <div class="panel">
+        <h3>Log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+  <footer class="dock">
+    <button type="button" class="btn ghost" id="btnHelp">How to play</button>
+    <button type="button" class="btn ghost" id="btnPaper">Whitepaper</button>
+    <button type="button" class="btn ghost" id="btnRestart">Restart</button>
+    <div id="radioDock" class="radio-inline">
+      <button type="button" id="radioPlay">Radio</button>
+      <button type="button" id="radioNext">Next</button>
+      <button type="button" id="radioMute">Mute</button>
+      <span class="radio-title-inline" id="radioTitle">Idle</span>
+    </div>
+    <span class="grow" id="dockStatus">Hold W.</span>
+    <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
+    <button type="button" class="btn" id="btnMenu">Menu</button>
+  </footer>
+</div>
+<div id="overlay" class="overlay"></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+<script src="./radio.js"></script>
+<script src="./rally3d.js?v=1"></script>
+<script src="./game.js?v=1"></script>
+</body>
+</html>
