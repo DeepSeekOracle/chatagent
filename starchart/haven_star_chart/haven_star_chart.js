@@ -1,9 +1,13 @@
 /* Eternal Haven Star Chart — D3 engine (Δ9Φ963) + live lattice pulse v2.5 */
 (function () {
   const DATA_REL = "haven_star_chart/haven_star_chart_data.json";
+  const DATA_ABS = "/starchart/haven_star_chart/haven_star_chart_data.json";
   const META_REL = "haven_star_chart/haven_star_chart_meta.json";
+  const META_ABS = "/starchart/haven_star_chart/haven_star_chart_meta.json";
   const QUEUE_REL = "haven_star_chart/haven_star_chart_queue.json";
+  const QUEUE_ABS = "/starchart/haven_star_chart/haven_star_chart_queue.json";
   const MANIFEST_REL = "public_verify_manifest.json";
+  const MANIFEST_ABS = "/starchart/public_verify_manifest.json";
   const DATA_PAGES =
     "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_data.json";
   const DATA_FALLBACK =
@@ -89,7 +93,7 @@
   }
 
   async function loadData() {
-    const data = await fetchJson([DATA_REL, DATA_PAGES, DATA_FALLBACK]);
+    const data = await fetchJson([DATA_REL, DATA_ABS, DATA_PAGES, DATA_FALLBACK]);
     if (!data) throw new Error("Star chart data unavailable");
     chartData = data;
     lastSha = data.registry_sha256 || "";
@@ -305,14 +309,17 @@
     let maxx = -Infinity;
     let maxy = -Infinity;
     nodes.forEach((d) => {
+      if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return;
       if (d.x < minx) minx = d.x;
       if (d.y < miny) miny = d.y;
       if (d.x > maxx) maxx = d.x;
       if (d.y > maxy) maxy = d.y;
     });
+    if (!Number.isFinite(minx) || !Number.isFinite(miny)) return;
     const bw = Math.max(maxx - minx, 120);
     const bh = Math.max(maxy - miny, 120);
     const k = Math.min(W / (bw + 96), H / (bh + 96), 1.2);
+    if (!Number.isFinite(k) || k <= 0) return;
     const tx = W / 2 - (k * (minx + maxx)) / 2;
     const ty = H / 2 - (k * (miny + maxy)) / 2;
     svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
@@ -511,7 +518,7 @@
     chartH = H;
     const CX = W / 2;
     const CY = H / 2;
-    const R = Math.min(W, H) / 2 - 48;
+    const R = Math.max(140, Math.min(W, H) / 2 - 36);
     const tracksOn = wantTracks();
 
     const svg = d3.select("#starmap").attr("width", W).attr("height", H);
@@ -531,10 +538,12 @@
     merge.append("feMergeNode").attr("in", "blur");
     merge.append("feMergeNode").attr("in", "SourceGraphic");
 
-    zoomBehavior = d3.zoom().scaleExtent([0.08, 12]).on("zoom", (ev) => gRoot.attr("transform", ev.transform));
-    svg.call(zoomBehavior);
     gRoot = svg.append("g");
     gCosmos = gRoot.append("g").attr("class", "cosmos-layer");
+    zoomBehavior = d3.zoom().scaleExtent([0.08, 12]).on("zoom", (ev) => {
+      if (gRoot) gRoot.attr("transform", ev.transform);
+    });
+    svg.call(zoomBehavior);
 
     const stars = d3.range(220).map(() => ({
       x: Math.random() * W,
@@ -594,6 +603,10 @@
               : "canon";
         pushLink(n.id, c, kind);
       });
+      if (n.originParent) {
+        const pk = n.kind === "champion" || String(n.originParent).startsWith("CHAMPION_") ? "fork" : "canon";
+        pushLink(n.id, n.originParent, pk);
+      }
     });
 
     const links = raw
@@ -767,7 +780,7 @@
       .force("home", (alpha) => {
         const k = alpha * 0.42;
         nodes.forEach((d) => {
-          if (d.fx != null) return;
+          if (d.fx != null || d.homeX == null || d.homeY == null) return;
           d.vx += (d.homeX - d.x) * k;
           d.vy += (d.homeY - d.y) * k;
         });
@@ -1256,7 +1269,7 @@
   }
 
   async function pulseOnce() {
-    const meta = await fetchJson([META_REL, META_PAGES, META_FALLBACK]);
+    const meta = await fetchJson([META_REL, META_ABS, META_PAGES, META_FALLBACK]);
     if (!meta) {
       setPulse("stale", "Pulse: meta unreachable — showing last loaded registry");
       return;
@@ -1291,7 +1304,7 @@
           ? Math.round(ageMin) + "m old"
           : Math.round(ageMin / 60) + "h old";
     setPulse("live", `Public C mirror live · ${pending} pending · ${age}`);
-    const man = await fetchJson([MANIFEST_REL]);
+    const man = await fetchJson([MANIFEST_REL, MANIFEST_ABS]);
     if (man && el("layerPulse")) {
       const a = man.layers?.A_classic?.registry_merkle_root || "";
       const b = man.layers?.B_sovereign?.registry_merkle_root || "";
@@ -1319,7 +1332,7 @@
       if (zoomBehavior && svgSel) svgSel.transition().duration(350).call(zoomBehavior.transform, d3.zoomIdentity);
     });
     el("btnResync")?.addEventListener("click", async () => {
-      el("loadStatus").textContent = "Resyncing…";
+      if (el("loadStatus")) el("loadStatus").textContent = "Resyncing…";
       setPulse("idle", "Manual Δ9 resync…");
       try {
         await loadData();
@@ -1330,13 +1343,13 @@
         initChart();
         await pulseOnce();
       } catch (e) {
-        el("loadStatus").textContent = "Resync failed";
+        if (el("loadStatus")) el("loadStatus").textContent = "Resync failed";
         setPulse("err", "Resync failed");
       }
     });
     el("toggleCosmos")?.addEventListener("click", () => {
       showCosmosLayers = !showCosmosLayers;
-      el("toggleCosmos").textContent = showCosmosLayers ? "Hide nebulae" : "Show nebulae";
+      if (el("toggleCosmos")) el("toggleCosmos").textContent = showCosmosLayers ? "Hide nebulae" : "Show nebulae";
       initChart();
     });
     el("toggleTracks")?.addEventListener("click", () => {
@@ -1477,7 +1490,7 @@
         showDetail(core, false);
       }
       startPulse();
-      const q = await fetchJson([QUEUE_REL]);
+      const q = await fetchJson([QUEUE_REL, QUEUE_ABS]);
       if (q) fillQueue(q);
     } catch (e) {
       if (el("loadStatus")) el("loadStatus").textContent = "Sync failed — check data JSON";
