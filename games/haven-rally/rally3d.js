@@ -280,12 +280,12 @@
       ensureActors();
       var c = s.car;
       carMesh.position.set(c.x, 0.14, c.y);
-      carMesh.rotation.y = -c.h + Math.PI / 2;
-      carMesh.rotation.z = (c.steer || 0) * 0.16;
+      carMesh.rotation.y = -c.h - Math.PI / 2;
+      carMesh.rotation.z = -(c.steer || 0) * 0.16;
       if (s.ghost) {
         ghostMesh.visible = true;
         ghostMesh.position.set(s.ghost.x, 0.08, s.ghost.y);
-        ghostMesh.rotation.y = -s.ghost.h + Math.PI / 2;
+        ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
       } else ghostMesh.visible = false;
       var back = (11 + (c.speed || 0) * 0.04) * (camTune.dist || 1);
       cam.x = c.x - Math.cos(c.h) * back;

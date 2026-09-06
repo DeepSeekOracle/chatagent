@@ -367,8 +367,8 @@
     const throttle = (k.KeyW || k.ArrowUp) ? 1 : 0;
     const brake = (k.KeyS || k.ArrowDown) ? 1 : 0;
     let steerIn = 0;
-    if (k.KeyA || k.ArrowLeft) steerIn += 1;
-    if (k.KeyD || k.ArrowRight) steerIn -= 1;
+    if (k.KeyA || k.ArrowLeft) steerIn -= 1;
+    if (k.KeyD || k.ArrowRight) steerIn += 1;
     if (opt("invertSteer")) steerIn *= -1;
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
     const boostOn = (k.ShiftLeft || k.ShiftRight) && G.car.boost > 0.04;
