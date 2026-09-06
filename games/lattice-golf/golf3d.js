@@ -224,6 +224,12 @@
   }
 
   function ribbonGeo(path, width, y) {
+    if (!path || path.length < 2) {
+      var empty = new T.BufferGeometry();
+      empty.setAttribute("position", new T.Float32BufferAttribute([0, y, 0, 1, y, 0, 0, y, 1], 3));
+      empty.setIndex([0, 1, 2]);
+      return empty;
+    }
     var pts = densify(path, 10);
     var pos = [];
     var uv = [];
@@ -960,7 +966,7 @@
         impactRing.visible = false;
       }
     }
-    if (s.marker) {
+    if (s.marker && markerRoot) {
       markerRoot.visible = true;
       markerRoot.position.set(s.marker.x, 0, s.marker.y);
       var pts = [new T.Vector3(b.x, 0.18, b.y), new T.Vector3(s.marker.x, 0.18, s.marker.y)];
@@ -968,8 +974,8 @@
       aimLine.computeLineDistances();
       aimLine.visible = true;
     } else {
-      markerRoot.visible = false;
-      aimLine.visible = false;
+      if (markerRoot) markerRoot.visible = false;
+      if (aimLine) aimLine.visible = false;
     }
     var reach = s.carry || 0;
     carryRing.visible = reach > 2;
@@ -978,8 +984,11 @@
       carryRing.scale.set(reach, reach, 1);
     }
     if (s.pred && s.pred.carry && carryMark) {
-      carryMark.visible = true;
-      carryMark.position.set(s.pred.carry.x, 0, s.pred.carry.y);
+      var cdx = s.pred.carry.x - (s.pred.dest ? s.pred.dest.x : s.pred.carry.x);
+      var cdy = s.pred.carry.y - (s.pred.dest ? s.pred.dest.y : s.pred.carry.y);
+      var showCarry = Math.hypot(cdx, cdy) > 2.5;
+      carryMark.visible = showCarry;
+      if (showCarry) carryMark.position.set(s.pred.carry.x, 0, s.pred.carry.y);
     } else if (carryMark) carryMark.visible = false;
     if (s.pred && s.pred.dest) {
       windPip.visible = true;
@@ -1193,7 +1202,7 @@
     resize: resize,
     setHole: function (hole, cid) {
       if (!ok() || !hole) return;
-      var key = hole.name + "|" + hole.yards + "|" + hole.tee.x + "|" + hole.pin.x;
+      var key = hole.name + "|" + hole.yards + "|" + hole.tee.x + "|" + hole.pin.x + "|" + hole.pin.y + "|" + ((hole.path && hole.path.length) || 0);
       if (key === holeKey && cid === courseId) return;
       holeKey = key;
       rebuild(hole, cid);

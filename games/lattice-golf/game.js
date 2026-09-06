@@ -353,6 +353,7 @@
   }
 
   function worldHole(h) {
+    if (!h) h = { par: 4, path: [{ x: 0, y: 0 }, { x: 350, y: 0 }], bunkers: [], water: [] };
     const origin = { x: 48, y: CENTER };
     const path = (h.path && h.path.length ? h.path : [{ x: 0, y: 0 }, { x: h.yards || 350, y: 0 }]).map(function (p) {
       return { x: origin.x + p.x, y: origin.y + p.y };
@@ -729,8 +730,9 @@
     let jD = 0;
     let jA = 0;
     if (withJitter) {
-      jD = (G.rng() * 2 - 1) * (greenPutt ? 0.006 : 0.03) * want;
-      jA = (G.rng() * 2 - 1) * (Math.PI / 180) * (greenPutt ? 0.35 : 1.5);
+      const r = typeof G.rng === "function" ? G.rng : Math.random;
+      jD = (r() * 2 - 1) * (greenPutt ? 0.006 : 0.03) * want;
+      jA = (r() * 2 - 1) * (Math.PI / 180) * (greenPutt ? 0.35 : 1.5);
     }
     const actual = Math.max(0.25, want + windAlong + jD);
     const a2 = aim + jA + windCross / Math.max(12, actual);
@@ -815,12 +817,15 @@
   }
 
   function lieAt(hole, p) {
+    if (!hole || !p) return "oob";
     if (dist(p, hole.pin) <= hole.greenR) return "green";
-    for (let i = 0; i < hole.water.length; i++) {
-      if (inRect(p, hole.water[i])) return "water";
+    const waters = hole.water || [];
+    for (let i = 0; i < waters.length; i++) {
+      if (inRect(p, waters[i])) return "water";
     }
-    for (let i = 0; i < hole.bunkers.length; i++) {
-      if (dist(p, hole.bunkers[i]) <= hole.bunkers[i].r) return "bunker";
+    const bunks = hole.bunkers || [];
+    for (let i = 0; i < bunks.length; i++) {
+      if (dist(p, bunks[i]) <= bunks[i].r) return "bunker";
     }
     const forests = hole.forests || [];
     for (let i = 0; i < forests.length; i++) {
@@ -891,6 +896,7 @@
     card: [],
     log: [],
     flying: null,
+    shotN: 0,
     trail: [],
     seed: 1,
     rng: Math.random,
@@ -940,28 +946,40 @@
   function log(t) {
     G.log.unshift(t);
     if (G.log.length > 40) G.log.length = 40;
-    $("log").innerHTML = G.log.slice(0, 12).map(function (x) {
+    const el = $("log");
+    if (!el) return;
+    el.innerHTML = G.log.slice(0, 12).map(function (x) {
       return "<div>" + x.replace(/</g, "") + "</div>";
     }).join("");
   }
 
   function rollWind() {
     const spec = (G.course && G.course.wind) || [0, 5];
-    G.wind.mph = spec[0] + G.rng() * (spec[1] - spec[0]);
-    G.wind.ang = G.rng() * Math.PI * 2;
+    const r = typeof G.rng === "function" ? G.rng : Math.random;
+    G.wind.mph = spec[0] + r() * (spec[1] - spec[0]);
+    G.wind.ang = r() * Math.PI * 2;
+  }
+
+  function abortShot() {
+    G.shotN = (G.shotN || 0) + 1;
+    G.flying = null;
+    G.trail = [];
+    if ($("btnShoot")) $("btnShoot").disabled = false;
   }
 
   function setupHole() {
     const src = G.holes[G.hi];
+    if (!src) {
+      log("No hole loaded.");
+      return;
+    }
+    abortShot();
     G.hole = worldHole(src);
     G.ball = { x: G.hole.tee.x, y: G.hole.tee.y };
     G.marker = nextAim(G.hole, G.ball);
     G.strokes = 0;
     G.lastBall = null;
     G.undo = null;
-    G.flying = null;
-    G.trail = [];
-    if ($("btnShoot")) $("btnShoot").disabled = false;
     rollWind();
     autoClub();
     $("holePill").textContent = "HOLE " + (G.hi + 1);
@@ -1000,10 +1018,10 @@
       maxY = Math.max(maxY, y + r);
     }
     (hole.path || []).forEach(function (p) { grow(p.x, p.y, hole.fairW + 36); });
-    hole.bunkers.forEach(function (b) { grow(b.x, b.y, b.r); });
+    (hole.bunkers || []).forEach(function (b) { grow(b.x, b.y, b.r); });
     (hole.rocks || []).forEach(function (rk) { grow(rk.x, rk.y, rk.r); });
     (hole.trees || []).forEach(function (tr) { grow(tr.x, tr.y, (tr.r || 5) * 0.5); });
-    hole.water.forEach(function (wt) { grow(wt.x, wt.y, 0); grow(wt.x + wt.w, wt.y + wt.h, 0); });
+    (hole.water || []).forEach(function (wt) { grow(wt.x, wt.y, 0); grow(wt.x + wt.w, wt.y + wt.h, 0); });
     (hole.forests || []).forEach(function (f) { grow(f.x, f.y, 0); grow(f.x + f.w, f.y + f.h, 0); });
     grow(hole.pin.x, hole.pin.y, hole.greenR + 8);
     const pad = 28;
@@ -1192,7 +1210,7 @@
       c.fill();
     });
 
-    hole.water.forEach(function (wtr) {
+    (hole.water || []).forEach(function (wtr) {
       const p = toScr({ x: wtr.x, y: wtr.y });
       const ww = wtr.w * view.scale, hh = wtr.h * view.scale;
       const tex = IMGS.water;
@@ -1237,7 +1255,7 @@
       c.restore();
     });
 
-    hole.bunkers.forEach(function (bnk) {
+    (hole.bunkers || []).forEach(function (bnk) {
       const p = toScr(bnk);
       const r = bnk.r * view.scale;
       c.fillStyle = "#7a5c28";
@@ -1468,6 +1486,7 @@
   }
 
   function paintClubs() {
+    if (!$("clubs") || !G.club) return;
     $("clubs").innerHTML = CLUBS.map(function (c) {
       return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '">' +
         c.name + "<small>" + (c.putt ? "to marker" : (c.min + "–" + c.max + " yd")) + "</small></button>";
@@ -1475,7 +1494,7 @@
   }
 
   function shoot() {
-    if (G.flying || !G.hole || !G.marker) return;
+    if (G.flying || G.mode === "menu" || !G.hole || !G.marker || !G.club) return;
     const pin = G.hole.pin;
     const onG = lieAt(G.hole, G.ball) === "green";
     if (G.club.putt && !onG && dist(G.ball, pin) > 40) {
@@ -1499,7 +1518,9 @@
     const m = shotModel(true);
     if (!m) return;
     G.strokes += 1;
+    G.flying = { x: from.x, y: from.y, z: 0, phase: G.club.putt ? "roll" : "fly" };
     animateShot(from, m, function () {
+      if (G.mode === "menu" || !G.hole) return;
       G.ball = { x: m.dest.x, y: m.dest.y };
       if (m.holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
         log("Cup. " + G.strokes + " · par " + G.hole.par);
@@ -1545,6 +1566,7 @@
       : (putt ? (480 + rollLen * 16) : (roughSlow ? (140 + rollLen * 12) : (240 + rollLen * 24)));
     const holdMs = model.holed ? 1180 : 920;
     const t0 = performance.now();
+    const shotN = ++G.shotN;
     G.trail = [];
     if ($("btnShoot")) $("btnShoot").disabled = true;
 
@@ -1556,6 +1578,10 @@
     }
 
     function tick(now) {
+      if (shotN !== G.shotN || G.mode === "menu" || !G.hole) {
+        if ($("btnShoot")) $("btnShoot").disabled = false;
+        return;
+      }
       const t = now - t0;
       let x, y, z, phase;
       if (!putt && flyMs > 0 && t < flyMs) {
@@ -1593,6 +1619,7 @@
         z = 0;
         phase = "hold";
       } else {
+        if (shotN !== G.shotN) return;
         G.flying = null;
         G.trail = [];
         if ($("btnShoot")) $("btnShoot").disabled = false;
@@ -2186,9 +2213,7 @@
 
   function menu() {
     G.mode = "menu";
-    G.flying = null;
-    G.trail = [];
-    if ($("btnShoot")) $("btnShoot").disabled = false;
+    abortShot();
     paintEndBtn();
     $("boot").classList.add("hidden");
     $("app").classList.add("hidden");
