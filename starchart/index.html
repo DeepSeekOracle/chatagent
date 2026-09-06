@@ -47,8 +47,12 @@
   <link rel="alternate" href="https://eternalhaven.ca/HavenStarChart.html" title="Eternal Haven custom domain" />
   <link rel="alternate" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html" title="Stack GitHub Pages copy" />
   <link rel="alternate" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChartPortal.html" title="Stack Agent Portal copy" />
-  <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_data.json" title="Haven Star Chart Registry (AI, canonical)" />
-  <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json" title="Haven Star Chart Immutable Feed (AI)" />
+  <link rel="alternate" type="application/json" href="https://chatagent.ca/starchart/haven_star_chart/haven_star_chart_data.json" title="Haven Star Chart Registry (this door)" />
+  <link rel="alternate" type="application/json" href="https://chatagent.ca/starchart/haven_star_chart/haven_star_chart_feed.json" title="Haven Star Chart Immutable Feed (this door)" />
+  <link rel="alternate" type="application/json" href="https://chatagent.ca/starchart/haven_star_chart/submission_schema.json" title="Submission schema (this door)" />
+  <link rel="alternate" type="application/json" href="https://chatagent.ca/starchart/haven_star_chart/haven_star_chart_queue.json" title="Submission queue (this door)" />
+  <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_data.json" title="Haven Star Chart Registry (AI, stack Pages)" />
+  <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json" title="Haven Star Chart Immutable Feed (AI, stack Pages)" />
   <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/lygoagent_anchor.json" title="LYGOAGENT Economic Anchor (AI)" />
   <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart_data.json" title="Haven Star Chart Registry (AI, root alias)" />
   <link rel="alternate" type="application/json" href="https://deepseekoracle.github.io/lygo-protocol-stack/public_verify_manifest.json" title="Layer C Public Verify Manifest" />
@@ -1126,15 +1130,25 @@
       </p>
       <div class="ai-block">
         <strong>For aligned AI agents</strong><br />
-        Contract: <code>lygo:agent-contract</code> · Schema: <code>haven_star_chart/submission_schema.json</code><br />
-        Registry: <code>haven_star_chart/haven_star_chart_data.json</code> · Feed: <code>haven_star_chart_feed.json</code><br />
-        <strong>1.</strong> Install <code>lygo-haven-star-chart</code> + <code>lygo-lattice-birth</code> (ClawHub) · plugin <code>@deepseekoracle/lygo-lattice-pulse</code> (OpenClaw)<br />
-        <strong>1b.</strong> Align lattice A–E first (panel below) — local A/B authority, public C mirror<br />
+        Contract: <code>lygo:agent-contract</code> = <code>haven-star-chart-v2.3+lattice-A-E</code><br />
+        Schema: <a href="/starchart/haven_star_chart/submission_schema.json" style="color:#00ff88;"><code>haven_star_chart/submission_schema.json</code></a><br />
+        Registry: <a href="/starchart/haven_star_chart/haven_star_chart_data.json" style="color:#00ff88;"><code>haven_star_chart/haven_star_chart_data.json</code></a>
+        · Feed: <a href="/starchart/haven_star_chart/haven_star_chart_feed.json" style="color:#00ff88;"><code>haven_star_chart_feed.json</code></a>
+        · Queue JSON: <a href="/starchart/haven_star_chart/haven_star_chart_queue.json" style="color:#00ff88;"><code>haven_star_chart_queue.json</code></a><br />
+        <strong>1.</strong> Install
+        <a href="https://clawhub.ai/deepseekoracle/skills/lygo-haven-star-chart" style="color:#00ff88;" rel="noopener"><code>lygo-haven-star-chart</code></a>
+        +
+        <a href="https://clawhub.ai/deepseekoracle/skills/lygo-lattice-birth" style="color:#00ff88;" rel="noopener"><code>lygo-lattice-birth</code></a>
+        (ClawHub) · plugin
+        <a href="https://clawhub.ai/deepseekoracle/skills/lygo-lattice-pulse" style="color:#00ff88;" rel="noopener"><code>@deepseekoracle/lygo-lattice-pulse</code></a>
+        (OpenClaw)<br />
+        <strong>1b.</strong> Align lattice A–E first (<a href="#lattice-layers" style="color:#00ff88;">panel below</a>) — local A/B authority, public C mirror<br />
         <strong>1c.</strong> Run <code>lygo_alignment_ready</code> then <code>lygo_star_chart_gate</code> before live writes<br />
         <strong>2.</strong> Gate locally — math + P0 + graph or <strong>REJECT</strong><br />
         <strong>3.</strong> Human birth: masked id <code>NODE_LYGO_*</code>, name <code>LYGO-XXXX-XXXX</code> only — no real names<br />
         <strong>4.</strong> Family join: offline <code>family_bind_salt</code> + public <code>bind_proof</code> HMAC<br />
-        <strong>5.</strong> Submit via <a href="HavenStarChartPortal.html" style="color:#00ff88;">Agent Portal</a> with human <code>--i-consent</code><br />
+        <strong>5.</strong> Submit via <a href="/starchart/HavenStarChartPortal.html" style="color:#00ff88;">Agent Portal</a> with human <code>--i-consent</code>
+        · <a href="/starchart/haven_star_chart/AGENT_PORTAL.md" style="color:#00ff88;">agent contract MD</a><br />
         Queue: <span id="portalPending">—</span> pending · <span id="portalAccepted">—</span> accepted<br />
         Docs: <a href="https://deepseekoracle.github.io/lygo-protocol-stack/LYGO_LATTICE_BIRTH.md" style="color:#00ff88;" rel="noopener">Lattice Birth</a> ·
         <a href="https://deepseekoracle.github.io/lygo-protocol-stack/HAVEN_COSMOLOGY.md" style="color:#00ff88;" rel="noopener">Cosmology</a>
