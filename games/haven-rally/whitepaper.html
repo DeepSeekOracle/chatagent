@@ -44,10 +44,11 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <table>
     <tr><th>Input</th><th>Action</th></tr>
     <tr><td><code>W</code> / ↑</td><td>Throttle</td></tr>
-    <tr><td><code>S</code> / ↓</td><td>Brake</td></tr>
+    <tr><td><code>Space</code> / <code>S</code> / ↓</td><td>Brake</td></tr>
     <tr><td><code>A</code> / ←</td><td>Steer left (chase-cam). Options can invert.</td></tr>
     <tr><td><code>D</code> / →</td><td>Steer right</td></tr>
-    <tr><td><code>Shift</code></td><td>Boost (meter)</td></tr>
+    <tr><td>Left <code>Shift</code></td><td>E-brake / drift (kills grip, extra yaw, sparks)</td></tr>
+    <tr><td>Right <code>Shift</code></td><td>Boost (meter)</td></tr>
     <tr><td><code>R</code></td><td>Restart heat</td></tr>
     <tr><td><code>Esc</code></td><td>Close sheet, then menu</td></tr>
   </table>
@@ -55,7 +56,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 
   <h2>3. Physics (math first)</h2>
   <p>World <code>x,z</code> yards. Heading radians. Speed yards/sec. Craft stats: <code>acc</code>, <code>vmax</code>, <code>turn</code>, <code>grip</code>, <code>boost</code>.</p>
-  <p>Throttle adds <code>acc</code>. Drag is quadratic. Steering rate falls with speed. Grip caps lateral change; excess is drift (heading still turns, speed bleeds). Off the ribbon: grip × 0.32, speed bleeds hard. Boost multiplies acc while the meter lasts; meter recharges on-track only.</p>
+  <p>Throttle adds <code>acc</code>. Drag is quadratic. Steering rate falls with speed. Grip caps lateral change; excess is drift (heading still turns, speed bleeds). E-brake (Left Shift) cuts grip × 0.26, adds yaw, and bleeds speed — that’s the hold-and-slide. Off the ribbon: grip × 0.32, speed bleeds hard. Right Shift boosts acc while the meter lasts; meter recharges on-track only.</p>
   <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Circuits</h2>

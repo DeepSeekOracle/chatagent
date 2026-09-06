@@ -374,29 +374,36 @@
     const c = G.craft;
     const k = G.keys;
     const throttle = (k.KeyW || k.ArrowUp) ? 1 : 0;
-    const brake = (k.KeyS || k.ArrowDown) ? 1 : 0;
+    const brake = (k.KeyS || k.ArrowDown || k.Space) ? 1 : 0;
+    const ebrake = !!k.ShiftLeft;
     let steerIn = 0;
     if (k.KeyA || k.ArrowLeft) steerIn -= 1;
     if (k.KeyD || k.ArrowRight) steerIn += 1;
     if (opt("invertSteer")) steerIn *= -1;
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
-    const boostOn = (k.ShiftLeft || k.ShiftRight) && G.car.boost > 0.04;
+    const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
     const proj0 = project(G.car, G.track.samples, G.lastS);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
     else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
-    const grip = c.grip * (on0 ? 1 : 0.32);
+    let grip = c.grip * (on0 ? 1 : 0.32);
+    if (ebrake) grip *= 0.26;
     const vmax = c.vmax * (boostOn ? 1.18 : 1);
-    const acc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * 52 - G.car.speed * 0.55;
+    const acc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * 52 - (ebrake ? 36 : 0) - G.car.speed * 0.55;
     G.car.speed = clamp(G.car.speed + acc * dt, -18, vmax);
     const turn = G.car.steer * c.turn * (0.35 + 0.65 * (1 - Math.abs(G.car.speed) / (vmax + 8)));
-    const want = turn * (Math.abs(G.car.speed) / 18);
-    const limited = clamp(want, -grip * 2.8, grip * 2.8);
+    const want = turn * (Math.abs(G.car.speed) / 18) * (ebrake ? 1.65 : 1);
+    const yawCap = grip * (ebrake ? 4.4 : 2.8);
+    const limited = clamp(want, -yawCap, yawCap);
     G.car.h += limited * dt;
+    if (ebrake && Math.abs(G.car.speed) > 16) {
+      G.car.speed *= (1 - 0.42 * dt);
+      G.sparks = Math.max(G.sparks, 0.85);
+    }
     if (Math.abs(want) > Math.abs(limited) + 0.15 && Math.abs(G.car.speed) > 28) {
       G.car.speed *= (1 - 0.55 * dt);
       G.sparks = 1;
-    } else G.sparks *= 0.9;
+    } else if (!ebrake) G.sparks *= 0.9;
     G.car.x += Math.cos(G.car.h) * G.car.speed * dt;
     G.car.y += Math.sin(G.car.h) * G.car.speed * dt;
     let proj = project(G.car, G.track.samples, G.lastS);
@@ -608,7 +615,7 @@
   function help() {
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
-      "<ol class='lore'><li>W throttle, S brake, A D steer. Shift boosts while the gold bar lasts.</li>" +
+      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Hit sectors in order, then the start line. Three laps (two on endless).</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
@@ -696,7 +703,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Beat the ghost. Hold the line. Boost is a debt.</p>" +
-          "<p class='lore'>W throttle · A D steer · Shift boost · R restart</p>" +
+          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost · R restart</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
