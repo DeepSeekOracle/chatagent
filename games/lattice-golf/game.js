@@ -247,6 +247,91 @@
     ],
   };
 
+  const STAR = {
+    id: "singularity-nine",
+    name: "Singularity Nine",
+    wind: [2, 8],
+    lore: "Play the cosmology. SEAL_000 is the cup. Club each galaxy landing — the flag is a trap.",
+    holes: [
+      H(4, "SEAL_000", [{ x: 0, y: 0 }, { x: 240, y: 8 }, { x: 400, y: -70 }, { x: 560, y: 40 }, { x: 690, y: 0 }], {
+        hint: "Origin hole. Driver to the first elbow. The cup sits on the last landing, not the chord.",
+        bunkers: [{ x: 232, y: -14, r: 13 }, { x: 248, y: 28, r: 12 }, { x: 392, y: -88, r: 12 }, { x: 676, y: 16, r: 11 }],
+        fairW: 20,
+        greenR: 11,
+      }),
+      H(3, "Champion Ring", [{ x: 0, y: 0 }, { x: 228, y: 55 }], {
+        hint: "Δ9 council pin. Hybrid. The bunker is the pin line — aim the high side of the ring.",
+        bunkers: [{ x: 170, y: 36, r: 15 }, { x: 218, y: 74, r: 10 }, { x: 240, y: 38, r: 10 }],
+        water: [{ x: 28, y: -24, w: 88, h: 64 }],
+        greenR: 10,
+        fairW: 15,
+      }),
+      H(5, "Fork Branch", [{ x: 0, y: 0 }, { x: 220, y: 100 }, { x: 400, y: -95 }, { x: 560, y: 80 }, { x: 700, y: -60 }, { x: 830, y: 12 }], {
+        hint: "Five forks from the parent. Club THIS landing. Cutting the branch is trees.",
+        bunkers: [
+          { x: 212, y: 118, r: 13 }, { x: 392, y: -112, r: 13 },
+          { x: 552, y: 96, r: 12 }, { x: 692, y: -76, r: 12 }, { x: 816, y: 28, r: 11 },
+        ],
+        groves: [{ x: 410, y: 10, n: 7, r: 16 }],
+        fairW: 18,
+        greenR: 11,
+      }),
+      H(4, "Lattice Mesh", [{ x: 0, y: 0 }, { x: 250, y: -6 }, { x: 390, y: 92 }, { x: 530, y: -55 }, { x: 660, y: 36 }], {
+        hint: "Mesh slots. Bunkers gate every node. Thread, do not spray across the lattice.",
+        bunkers: [
+          { x: 238, y: -26, r: 15 }, { x: 258, y: 16, r: 15 },
+          { x: 380, y: 74, r: 13 }, { x: 398, y: 110, r: 12 },
+          { x: 522, y: -72, r: 12 }, { x: 648, y: 52, r: 11 },
+        ],
+        fairW: 16,
+        greenR: 10,
+      }),
+      H(3, "Nebula Drop", [{ x: 0, y: 0 }, { x: 196, y: -8 }], {
+        hint: "Island nebula at 196. 6-iron. Driver skips the cay into the far water.",
+        water: [{ x: 16, y: -70, w: 155, h: 138 }],
+        bunkers: [{ x: 186, y: 14, r: 9 }],
+        greenR: 9,
+        fairW: 12,
+      }),
+      H(4, "Agent Growth", [{ x: 0, y: 0 }, { x: 235, y: -98 }, { x: 410, y: -18 }, { x: 545, y: 88 }, { x: 675, y: 6 }], {
+        hint: "Cape, inland, cape. Water owns the chord. Club the shore like an agent submission cluster.",
+        water: [{ x: 32, y: -36, w: 510, h: 96 }],
+        bunkers: [{ x: 226, y: -116, r: 13 }, { x: 402, y: -36, r: 12 }, { x: 536, y: 106, r: 12 }, { x: 662, y: 22, r: 11 }],
+        fairW: 19,
+        greenR: 10,
+      }),
+      H(5, "Music Codex", [{ x: 0, y: 0 }, { x: 225, y: 16 }, { x: 395, y: 16 }, { x: 525, y: -88 }, { x: 665, y: 48 }, { x: 805, y: -18 }], {
+        hint: "Three creeks like three bars. Carry past the water, never into the downbeat.",
+        water: [
+          { x: 178, y: -40, w: 46, h: 96 },
+          { x: 410, y: -40, w: 48, h: 96 },
+          { x: 580, y: -30, w: 46, h: 90 },
+        ],
+        bunkers: [{ x: 216, y: 34, r: 13 }, { x: 386, y: -6, r: 12 }, { x: 516, y: -70, r: 12 }, { x: 656, y: 66, r: 12 }, { x: 792, y: -2, r: 11 }],
+        fairW: 20,
+        greenR: 11,
+      }),
+      H(4, "Guardian Veil", [{ x: 0, y: 0 }, { x: 242, y: 12 }, { x: 385, y: -82 }, { x: 525, y: 38 }, { x: 655, y: -96 }], {
+        hint: "Firewall left, ethical bunkers right. 3-wood, 7-iron, wedge. Do not spray.",
+        groves: [{ x: 258, y: 38, n: 8, r: 18 }],
+        bunkers: [
+          { x: 234, y: -10, r: 14 }, { x: 250, y: 32, r: 12 },
+          { x: 376, y: -100, r: 13 }, { x: 392, y: -64, r: 12 },
+          { x: 516, y: 20, r: 12 }, { x: 642, y: -80, r: 11 },
+        ],
+        fairW: 19,
+        greenR: 10,
+      }),
+      H(3, "Cup of the Core", [{ x: 0, y: 0 }, { x: 128, y: 0 }], {
+        hint: "Thimble green at the singularity. Sand wedge. Anything else is a mess.",
+        water: [{ x: 18, y: -50, w: 72, h: 100 }],
+        bunkers: [{ x: 96, y: 0, r: 15 }, { x: 128, y: -16, r: 10 }, { x: 128, y: 16, r: 10 }],
+        greenR: 8,
+        fairW: 12,
+      }),
+    ],
+  };
+
   function pathLen(path) {
     let n = 0;
     for (let i = 0; i < path.length - 1; i++) n += dist(path[i], path[i + 1]);
@@ -460,6 +545,38 @@
     return G.club.min + (G.club.max - G.club.min) * G.power;
   }
 
+  function predictDest() {
+    if (!G.hole || !G.marker || !G.club) return null;
+    const pin = G.hole.pin;
+    const onG = lieAt(G.hole, G.ball) === "green";
+    const lie = lieAt(G.hole, G.ball);
+    let lieMul = 1;
+    if (lie === "rough" || lie === "trees") lieMul = lie === "trees" ? 0.62 : 0.88;
+    if (lie === "bunker") lieMul = 0.72;
+    if (lie === "oob") lieMul = 0.8;
+    const want = intendedCarry() * lieMul;
+    const aim = ang(G.ball, G.marker);
+    const greenPutt = G.club.putt && onG;
+    const windScale = greenPutt ? 0 : (dist(G.ball, pin) < 45 ? 0.28 : 1);
+    const windAlong = Math.cos(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.35 * windScale;
+    const windCross = Math.sin(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.55 * windScale;
+    const actual = Math.max(0.25, want + windAlong);
+    const a2 = aim + windCross / Math.max(12, actual);
+    let dest = {
+      x: G.ball.x + Math.cos(a2) * actual,
+      y: G.ball.y + Math.sin(a2) * actual,
+    };
+    let blocked = null;
+    if (!G.club.putt) {
+      const hit = firstFlightHit(G.ball, dest, G.hole);
+      if (hit) {
+        dest = hit.p;
+        blocked = hit.kind;
+      }
+    }
+    return { dest: dest, blocked: blocked, actual: actual };
+  }
+
   function lieAt(hole, p) {
     if (dist(p, hole.pin) <= hole.greenR) return "green";
     for (let i = 0; i < hole.water.length; i++) {
@@ -537,6 +654,7 @@
     rng: Math.random,
     campaign: 0,
     name: "",
+    mulligans: 0,
   };
 
   const $ = function (id) { return document.getElementById(id); };
@@ -558,6 +676,7 @@
     const id = G.course && G.course.id;
     if (id === "endless") return IMGS.wild;
     if (id === "coral-lattice") return IMGS.coral;
+    if (id === "singularity-nine") return IMGS.wild;
     if (id === "haven-open") return G.hi >= 9 ? IMGS.coral : IMGS.pine;
     return IMGS.pine;
   }
@@ -906,6 +1025,24 @@
       c.beginPath();
       c.arc(m.x, m.y, 5, 0, Math.PI * 2);
       c.fill();
+      const pred = predictDest();
+      if (pred && pred.dest) {
+        const wp = toScr(pred.dest);
+        c.strokeStyle = pred.blocked ? "rgba(248,113,113,.85)" : "rgba(192,132,252,.9)";
+        c.setLineDash([3, 4]);
+        c.beginPath();
+        c.moveTo(land.x, land.y);
+        c.lineTo(wp.x, wp.y);
+        c.stroke();
+        c.setLineDash([]);
+        c.fillStyle = pred.blocked ? "#f87171" : "#c084fc";
+        c.beginPath();
+        c.arc(wp.x, wp.y, 5, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = "#111";
+        c.lineWidth = 1.1;
+        c.stroke();
+      }
     }
     const trail = G.trail || [];
     for (let i = 0; i < trail.length; i++) {
@@ -946,7 +1083,16 @@
 
   function renderHoleCard() {
     const d = dist(G.ball, G.hole.pin);
+    const md = G.marker ? dist(G.ball, G.marker) : 0;
     const lie = lieAt(G.hole, G.ball);
+    const rec = pickClub(md || d, lie === "green");
+    const caddie = $("caddieHud");
+    if (caddie) {
+      caddie.innerHTML =
+        "<p>Pin <b>" + d.toFixed(0) + " yd</b> · marker <b>" + md.toFixed(0) + " yd</b></p>" +
+        "<p>Caddie: <b>" + rec.name + "</b> · lie " + lie + "</p>" +
+        "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
+    }
     $("holeCard").innerHTML =
       "<p><b>" + (G.course ? G.course.name : "Endless") + "</b></p>" +
       "<p>" + (G.hole.name ? G.hole.name + " · " : "") + "Par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd</p>" +
@@ -1308,7 +1454,7 @@
         (r.strokes == null ? "—" : r.strokes + "  " + vsLabel(r.vs)) + "\n";
     });
     if (G.card.length) t += "Total " + total(G.card) + "  " + vsLabel(vsPar(G.card)) + "\n";
-    t += "eternalhaven.ca/games/lattice-golf/\n";
+    t += "chatagent.ca/games/lattice-golf/\n";
     return t;
   }
   function bindScorecard() {
@@ -1539,6 +1685,7 @@
     G.card = [];
     G.log = [];
     G.hi = 0;
+    G.mulligans = mode === "18" ? 2 : 1;
     if (mode === "endless") {
       G.holes = [randomHole()];
       G.course = { id: "endless", name: "Endless wilds", wind: [4, 12], lore: "Extreme random holes. End the walk to post the card." };
@@ -1638,7 +1785,7 @@
           "<div class='title-art-fade'></div>" +
         "</div>" +
         "<div class='title-panel'>" +
-          "<p class='kicker'>Δ9Φ963 · eternalhaven.ca</p>" +
+          "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>LATTICE GOLF</h1>" +
           "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
           "<p class='lore'>Drag the power bar · ← → fine · 1–4 snap · [ ] clubs · Space shoot</p>" +
@@ -1658,6 +1805,7 @@
           "<div class='mode-grid'>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='star'><b>Singularity Nine</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End walk to post the card.</span></button>" +
             "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
@@ -1687,6 +1835,7 @@
       const go = b.getAttribute("data-go");
       if (go === "pine") startRound("9", PINE);
       if (go === "coral") startRound("9", CORAL);
+      if (go === "star") startRound("9", STAR);
       if (go === "18") startRound("18");
       if (go === "endless") startRound("endless");
       if (go === "campaign") startCampaign();
@@ -1720,7 +1869,8 @@
       "<li>Drag the full power bar (0–100%) inside this club’s range. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%. Wind still moves the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
-      "<li>Z undoes the last shot. Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
+      "<li>Gold pip is carry without wind. Violet pip is where wind actually sends it. Red means trees stop the flight.</li>" +
+      "<li>Z undoes the last shot. M uses a mulligan (replay this hole from the tee). Esc opens the menu. In Endless, End walk posts the card to the local ledger.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
     $("hk").onclick = hideOverlay;
@@ -1792,6 +1942,25 @@
     renderHoleCard();
     draw();
   };
+  function useMulligan() {
+    if (G.flying || !G.hole || G.mode === "menu") return;
+    if (G.mulligans < 1) {
+      log("No mulligans left.");
+      return;
+    }
+    G.mulligans -= 1;
+    G.ball = { x: G.hole.tee.x, y: G.hole.tee.y };
+    G.marker = nextAim(G.hole, G.ball);
+    G.strokes = 0;
+    G.lastBall = null;
+    G.flying = null;
+    G.trail = [];
+    autoClub();
+    log("Mulligan. Hole reset. " + G.mulligans + " left.");
+    renderHoleCard();
+    draw();
+  }
+  if ($("btnMulligan")) $("btnMulligan").onclick = useMulligan;
   $("btnHelp").onclick = help;
   $("btnCard").onclick = cardSheet;
   $("btnEnd").onclick = askEndEndless;
@@ -1803,6 +1972,7 @@
     if (G.mode === "menu") return;
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); shoot(); }
     if (e.key === "z" || e.key === "Z") $("btnUndo").click();
+    if (e.key === "m" || e.key === "M") useMulligan();
     if (e.key === "[" || e.key === "]") {
       const i = CLUBS.findIndex(function (c) { return c.id === G.club.id; });
       const n = e.key === "]" ? Math.min(CLUBS.length - 1, i + 1) : Math.max(0, i - 1);

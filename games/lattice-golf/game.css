@@ -43,6 +43,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 }
 .hud-meta { display: flex; flex-wrap: wrap; gap: .65rem; font-size: .82rem; color: var(--mute); }
 .hud-meta b { color: var(--gold); }
+.caddie b { color: var(--cyan); }
 .grow { flex: 1; }
 .paypal-mini {
   color: #fff; background: #0070ba; text-decoration: none; font-size: .72rem;

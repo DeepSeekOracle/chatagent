@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-01",
+  "updated": "2026-09-06",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -81,7 +81,7 @@
       "slug": "lattice-golf",
       "title": "Lattice Golf",
       "tagline": "Marker, club, wind",
-      "blurb": "Pick a club, plant a marker, choose 25–100% power. Named 9 and 18-hole courses with lore, endless holes, campaign vs AI, local ledger.",
+      "blurb": "Pick a club, plant a marker, read the wind pip. Pine Haven, Coral Lattice, Singularity Nine, endless, campaign vs AI. One mulligan per nine. Local ledger.",
       "status": "live",
       "featured": true,
       "order": 5,
