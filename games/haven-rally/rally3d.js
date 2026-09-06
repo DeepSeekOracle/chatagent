@@ -130,7 +130,7 @@
     var th = themeOf(track.theme);
     scene.background = new T.Color(th.sky);
     scene.fog.color.setHex(th.fog);
-    scene.fog.density = th.dusk ? 0.012 : 0.006;
+    scene.fog.density = th.dusk ? 0.0048 : 0.0035;
     var ground = new T.Mesh(
       new T.PlaneGeometry(900, 900),
       new T.MeshStandardMaterial({ color: th.ground, roughness: 0.96 })
@@ -273,9 +273,9 @@
       if (!ok() || !s || !s.car) return;
       ensureActors();
       var c = s.car;
-      carMesh.position.set(c.x, 0.05, c.y);
+      carMesh.position.set(c.x, 0.14, c.y);
       carMesh.rotation.y = -c.h + Math.PI / 2;
-      carMesh.rotation.z = (c.steer || 0) * -0.18;
+      carMesh.rotation.z = (c.steer || 0) * 0.16;
       if (s.ghost) {
         ghostMesh.visible = true;
         ghostMesh.position.set(s.ghost.x, 0.08, s.ghost.y);

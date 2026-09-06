@@ -46,9 +46,17 @@
     for (let i = 0; i < pts.length; i++) n += dist(pts[i], pts[(i + 1) % pts.length]);
     return n;
   }
-  function project(p, samples) {
-    let best = 1e9, lat = 0, s = 0, hx = 1, hy = 0, acc = 0;
-    let along = 0;
+  function wrapDelta(ds, len) {
+    if (ds > len * 0.5) ds -= len;
+    if (ds < -len * 0.5) ds += len;
+    return ds;
+  }
+  function project(p, samples, lastS) {
+    let best = 1e15, lat = 0, s = 0, hx = 1, hy = 0, acc = 0, total = 0;
+    for (let i = 0; i < samples.length; i++) {
+      const a = samples[i], b = samples[(i + 1) % samples.length];
+      total += dist(a, b);
+    }
     for (let i = 0; i < samples.length; i++) {
       const a = samples[i], b = samples[(i + 1) % samples.length];
       const dx = b.x - a.x, dy = b.y - a.y;
@@ -57,14 +65,16 @@
       t = clamp(t, 0, 1);
       const qx = a.x + dx * t, qy = a.y + dy * t;
       const d = Math.hypot(p.x - qx, p.y - qy);
-      if (d < best) {
-        best = d;
-        const len = Math.sqrt(l2);
+      const len = Math.sqrt(l2);
+      const sHere = acc + t * len;
+      const score = d + (lastS == null ? 0 : 0.12 * Math.abs(wrapDelta(sHere - lastS, total || 1)));
+      if (score < best) {
+        best = score;
         hx = dx / (len || 1); hy = dy / (len || 1);
         lat = (p.x - qx) * (-hy) + (p.y - qy) * hx;
-        s = acc + t * len;
+        s = sHere;
       }
-      acc += Math.sqrt(l2);
+      acc += len;
     }
     return { d: best, lat: lat, s: s, hx: hx, hy: hy, len: acc };
   }
@@ -211,6 +221,7 @@
     G.countN = 3;
     G.countT = performance.now();
     G.t0 = 0;
+    G._last = 0;
     const gk = tr.id + "|" + G.craft.id;
     G.ghost = (G.save.ghosts && G.save.ghosts[gk]) || null;
     G.bestMs = G.ghost && G.ghost.ms;
@@ -236,15 +247,15 @@
     const throttle = (k.KeyW || k.ArrowUp) ? 1 : 0;
     const brake = (k.KeyS || k.ArrowDown) ? 1 : 0;
     let steerIn = 0;
-    if (k.KeyA || k.ArrowLeft) steerIn -= 1;
-    if (k.KeyD || k.ArrowRight) steerIn += 1;
+    if (k.KeyA || k.ArrowLeft) steerIn += 1;
+    if (k.KeyD || k.ArrowRight) steerIn -= 1;
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
     const boostOn = (k.ShiftLeft || k.ShiftRight) && G.car.boost > 0.04;
+    const proj0 = project(G.car, G.track.samples, G.lastS);
+    const on0 = Math.abs(proj0.lat) <= G.track.width;
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
-    else G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
-    const proj = project(G.car, G.track.samples);
-    const on = Math.abs(proj.lat) <= G.track.width;
-    const grip = c.grip * (on ? 1 : 0.32);
+    else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
+    const grip = c.grip * (on0 ? 1 : 0.32);
     const vmax = c.vmax * (boostOn ? 1.18 : 1);
     const acc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * 52 - G.car.speed * 0.55;
     G.car.speed = clamp(G.car.speed + acc * dt, -18, vmax);
@@ -258,7 +269,17 @@
     } else G.sparks *= 0.9;
     G.car.x += Math.cos(G.car.h) * G.car.speed * dt;
     G.car.y += Math.sin(G.car.h) * G.car.speed * dt;
-    if (!on) G.car.speed *= (1 - 1.8 * dt);
+    let proj = project(G.car, G.track.samples, G.lastS);
+    const hw = G.track.width;
+    if (Math.abs(proj.lat) > hw) {
+      const extra = Math.abs(proj.lat) - hw;
+      const dir = proj.lat >= 0 ? 1 : -1;
+      G.car.x -= (-proj.hy) * dir * extra;
+      G.car.y -= proj.hx * dir * extra;
+      G.car.speed *= 0.7;
+      G.car.h += wrapDelta(Math.atan2(proj.hy, proj.hx) - G.car.h, Math.PI * 2) * 0.12;
+      proj = project(G.car, G.track.samples, G.lastS);
+    }
     return proj;
   }
 
@@ -306,7 +327,8 @@
       if (sm[i].t >= t) {
         const a = sm[i - 1], b = sm[i];
         const u = (t - a.t) / Math.max(0.001, b.t - a.t);
-        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, h: a.h + (b.h - a.h) * u };
+        const dh = wrapDelta(b.h - a.h, Math.PI * 2);
+        return { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u, h: a.h + dh * u };
       }
     }
     return sm[sm.length - 1];
@@ -321,6 +343,7 @@
       G.save.ghosts[key] = { ms: ms, samples: G.rec.slice() };
       beat = true;
     }
+    if (!Array.isArray(G.save.rounds)) G.save.rounds = [];
     G.save.rounds.unshift({
       name: (G.save.name || "Operator").slice(0, 24),
       craft: G.craft.name,
@@ -347,6 +370,13 @@
   function tick(now) {
     requestAnimationFrame(tick);
     if (G.mode !== "race" || !G.track) return;
+    if (overlayOpen() && G.phase === "race") {
+      if (G._last) G.t0 += now - G._last;
+      G._last = now;
+      heatHud(now);
+      draw(now);
+      return;
+    }
     if (G.phase === "count") {
       const u = (now - G.countT) / 700;
       const n = 3 - Math.floor(u);
@@ -527,13 +557,13 @@
 
   window.addEventListener("keydown", function (e) {
     if (e.target && e.target.tagName === "INPUT") return;
-    G.keys[e.code] = true;
     if (e.key === "Escape") {
       if (overlayOpen() && G.mode !== "menu") { hideOverlay(); return; }
       menu();
       return;
     }
     if (G.mode === "menu" || overlayOpen()) return;
+    G.keys[e.code] = true;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); spawnOnGrid(); }
     if (e.key === " " || e.key === "Enter") e.preventDefault();
   });
