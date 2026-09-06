@@ -3,8 +3,8 @@
   "use strict";
 
   const SAVE_KEY = "lygo-lattice-golf-v1";
-  const CUP = 3.2;
-  const GIMME = 1.8;
+  const CUP = 1.2;
+  const GIMME = 2.0;
   const CENTER = 140;
   const CLUBS = [
     { id: "dr", name: "Driver", min: 220, max: 290 },
@@ -458,13 +458,13 @@
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
-  function shotHolesOut(from, to, pin, putt) {
-    const len = dist(from, to);
+  function shotHolesOut(from, to, pin, putt, onGreen) {
     if (dist(to, pin) <= CUP) return true;
-    if (dist(from, pin) <= GIMME) return true;
-    const shortGame = putt || len < 52 || dist(from, pin) < 42;
+    if (onGreen && dist(from, pin) <= GIMME) return true;
+    const len = dist(from, to);
+    const shortGame = putt || onGreen || len < 28 || dist(from, pin) < 22;
     if (!shortGame) return false;
-    return distToSeg(pin, from, to) <= CUP * 0.92;
+    return distToSeg(pin, from, to) <= CUP * 0.95;
   }
   function inRect(p, r) {
     return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
@@ -540,41 +540,72 @@
   }
   function intendedCarry() {
     const markD = G.marker ? dist(G.ball, G.marker) : 0;
-    const near = G.hole && (G.club.putt || dist(G.ball, G.hole.pin) < 45);
-    if (near) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
+    const onG = G.hole && lieAt(G.hole, G.ball) === "green";
+    if (G.club.putt || onG) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
     return G.club.min + (G.club.max - G.club.min) * G.power;
   }
 
-  function predictDest() {
+  function lieMulOf(lie) {
+    if (lie === "trees") return 0.62;
+    if (lie === "rough") return 0.88;
+    if (lie === "bunker") return 0.72;
+    if (lie === "oob") return 0.8;
+    return 1;
+  }
+
+  function shotModel(withJitter) {
     if (!G.hole || !G.marker || !G.club) return null;
     const pin = G.hole.pin;
-    const onG = lieAt(G.hole, G.ball) === "green";
-    const lie = lieAt(G.hole, G.ball);
-    let lieMul = 1;
-    if (lie === "rough" || lie === "trees") lieMul = lie === "trees" ? 0.62 : 0.88;
-    if (lie === "bunker") lieMul = 0.72;
-    if (lie === "oob") lieMul = 0.8;
-    const want = intendedCarry() * lieMul;
-    const aim = ang(G.ball, G.marker);
+    const from = { x: G.ball.x, y: G.ball.y };
+    const onG = lieAt(G.hole, from) === "green";
+    const lie = lieAt(G.hole, from);
+    const want = intendedCarry() * lieMulOf(lie);
+    const aim = ang(from, G.marker);
     const greenPutt = G.club.putt && onG;
-    const windScale = greenPutt ? 0 : (dist(G.ball, pin) < 45 ? 0.28 : 1);
+    const windScale = greenPutt ? 0 : (dist(from, pin) < 45 ? 0.28 : 1);
     const windAlong = Math.cos(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.35 * windScale;
     const windCross = Math.sin(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.55 * windScale;
-    const actual = Math.max(0.25, want + windAlong);
-    const a2 = aim + windCross / Math.max(12, actual);
+    let jD = 0;
+    let jA = 0;
+    if (withJitter) {
+      jD = (G.rng() * 2 - 1) * (greenPutt ? 0.006 : 0.03) * want;
+      jA = (G.rng() * 2 - 1) * (Math.PI / 180) * (greenPutt ? 0.35 : 1.5);
+    }
+    const actual = Math.max(0.25, want + windAlong + jD);
+    const a2 = aim + jA + windCross / Math.max(12, actual);
     let dest = {
-      x: G.ball.x + Math.cos(a2) * actual,
-      y: G.ball.y + Math.sin(a2) * actual,
+      x: from.x + Math.cos(a2) * actual,
+      y: from.y + Math.sin(a2) * actual,
     };
     let blocked = null;
     if (!G.club.putt) {
-      const hit = firstFlightHit(G.ball, dest, G.hole);
+      const hit = firstFlightHit(from, dest, G.hole);
       if (hit) {
         dest = hit.p;
         blocked = hit.kind;
       }
     }
-    return { dest: dest, blocked: blocked, actual: actual };
+    const holed = !blocked && shotHolesOut(from, dest, pin, G.club.putt, onG);
+    if (holed) dest = { x: pin.x, y: pin.y };
+    return { from: from, dest: dest, actual: actual, blocked: blocked, holed: holed, lie: lie, onG: onG };
+  }
+
+  function predictDest() {
+    const m = shotModel(false);
+    if (!m) return null;
+    return { dest: m.dest, blocked: m.blocked, actual: m.actual };
+  }
+
+  function windLabel() {
+    if (!G.hole) return G.wind.mph.toFixed(1) + " mph";
+    const aimTo = G.marker || G.hole.pin;
+    const rel = G.wind.ang - ang(G.ball, aimTo);
+    const along = Math.cos(rel);
+    const cross = Math.sin(rel);
+    const dir = Math.abs(along) >= Math.abs(cross)
+      ? (along >= 0 ? "tail" : "into")
+      : (cross >= 0 ? "from left" : "from right");
+    return G.wind.mph.toFixed(1) + " mph · " + dir;
   }
 
   function lieAt(hole, p) {
@@ -600,7 +631,7 @@
   }
 
   function pickClub(d, onGreen) {
-    if (onGreen || d < 35) return CLUBS.find(function (c) { return c.putt; });
+    if (onGreen || d < 14) return CLUBS.find(function (c) { return c.putt; });
     let best = CLUBS[0];
     let bestErr = 1e9;
     for (let i = 0; i < CLUBS.length; i++) {
@@ -641,6 +672,7 @@
     hole: null,
     ball: { x: 0, y: 0 },
     lastBall: null,
+    undo: null,
     marker: null,
     club: CLUBS[0],
     power: 0.75,
@@ -715,6 +747,7 @@
     G.marker = nextAim(G.hole, G.ball);
     G.strokes = 0;
     G.lastBall = null;
+    G.undo = null;
     G.flying = null;
     G.trail = [];
     rollWind();
@@ -1082,15 +1115,20 @@
   }
 
   function renderHoleCard() {
+    if (!G.hole) return;
     const d = dist(G.ball, G.hole.pin);
     const md = G.marker ? dist(G.ball, G.marker) : 0;
     const lie = lieAt(G.hole, G.ball);
     const rec = pickClub(md || d, lie === "green");
+    const pred = predictDest();
     const caddie = $("caddieHud");
     if (caddie) {
       caddie.innerHTML =
         "<p>Pin <b>" + d.toFixed(0) + " yd</b> · marker <b>" + md.toFixed(0) + " yd</b></p>" +
         "<p>Caddie: <b>" + rec.name + "</b> · lie " + lie + "</p>" +
+        "<p>Club " + intendedCarry().toFixed(0) + " yd" +
+        (pred ? " · wind " + pred.actual.toFixed(0) + " yd" : "") +
+        (pred && pred.blocked ? " · blocked" : "") + "</p>" +
         "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
     }
     $("holeCard").innerHTML =
@@ -1099,13 +1137,10 @@
       "<p>To pin <b>" + d.toFixed(1) + " yd</b></p>" +
       "<p>Lie: " + lie + " · strokes " + G.strokes + "</p>" +
       (G.hole.hint ? "<p class='lore'>" + G.hole.hint + "</p>" : "");
-    const wx = Math.cos(G.wind.ang);
-    const wy = Math.sin(G.wind.ang);
-    const dir = Math.abs(wx) > Math.abs(wy) ? (wx > 0 ? "tail" : "head") : (wy > 0 ? "right" : "left");
-    $("windHud").textContent = G.wind.mph.toFixed(1) + " mph · " + dir;
+    $("windHud").textContent = windLabel();
     $("hudMeta").innerHTML =
       "<span>Strokes <b>" + G.strokes + "</b></span>" +
-      "<span>Thru <b>" + G.hi + "/" + G.holes.length + "</b></span>" +
+      "<span>Hole <b>" + (G.hi + 1) + "/" + G.holes.length + "</b></span>" +
       "<span>To pin <b>" + d.toFixed(0) + " yd</b></span>";
     $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
     paintPower();
@@ -1160,6 +1195,11 @@
       log("Putter wants the green.");
       return;
     }
+    G.undo = {
+      ball: { x: G.ball.x, y: G.ball.y },
+      marker: G.marker ? { x: G.marker.x, y: G.marker.y } : null,
+      strokes: G.strokes,
+    };
     G.lastBall = { x: G.ball.x, y: G.ball.y };
     const from = { x: G.ball.x, y: G.ball.y };
     if (onG && dist(from, pin) <= GIMME) {
@@ -1169,41 +1209,12 @@
       holeDone();
       return;
     }
-    const lie = lieAt(G.hole, G.ball);
-    let lieMul = 1;
-    if (lie === "rough" || lie === "trees") lieMul = lie === "trees" ? 0.62 : 0.88;
-    if (lie === "bunker") lieMul = 0.72;
-    if (lie === "oob") lieMul = 0.8;
-    let want = intendedCarry() * lieMul;
-    const aim = ang(G.ball, G.marker);
-    const greenPutt = G.club.putt && onG;
-    const windScale = greenPutt ? 0 : (dist(from, pin) < 45 ? 0.28 : 1);
-    const windAlong = Math.cos(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.35 * windScale;
-    const windCross = Math.sin(G.wind.ang - aim) * G.wind.mph * (want / 100) * 0.55 * windScale;
-    const jD = greenPutt ? 0.006 : 0.03;
-    const jA = greenPutt ? 0.35 : 1.5;
-    const jitterD = (G.rng() * 2 - 1) * jD * want;
-    const jitterA = (G.rng() * 2 - 1) * (Math.PI / 180) * jA;
-    const actual = Math.max(0.25, want + windAlong + jitterD);
-    const a2 = aim + jitterA + windCross / Math.max(12, actual);
-    let dest = {
-      x: G.ball.x + Math.cos(a2) * actual,
-      y: G.ball.y + Math.sin(a2) * actual,
-    };
-    let flightNote = null;
-    if (!G.club.putt) {
-      const hit = firstFlightHit(from, dest, G.hole);
-      if (hit) {
-        dest = hit.p;
-        flightNote = hit.kind;
-      }
-    }
-    const holed = !flightNote && shotHolesOut(from, dest, pin, G.club.putt);
-    if (holed) dest = { x: pin.x, y: pin.y };
+    const m = shotModel(true);
+    if (!m) return;
     G.strokes += 1;
-    animateShot(from, dest, function () {
-      G.ball = dest;
-      if (holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
+    animateShot(from, m.dest, function () {
+      G.ball = m.dest;
+      if (m.holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
         log("Cup. " + G.strokes + " · par " + G.hole.par);
         holeDone();
         return;
@@ -1211,12 +1222,12 @@
       const now = lieAt(G.hole, G.ball);
       if (now === "water" || now === "oob") {
         G.strokes += 1;
-        G.ball = { x: G.lastBall.x, y: G.lastBall.y };
+        G.ball = { x: G.undo.ball.x, y: G.undo.ball.y };
         log((now === "water" ? "Water. Drop +1." : "Out of bounds. Stroke and distance.") + " Now " + G.strokes);
-      } else if (flightNote === "trees") {
-        log("Into the trees. Ball stops. " + dist(from, dest).toFixed(0) + " yd · " + now);
+      } else if (m.blocked === "trees") {
+        log("Into the trees. Ball stops. " + dist(from, m.dest).toFixed(0) + " yd · " + now);
       } else {
-        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + actual.toFixed(1) + " yd · " + now);
+        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd · " + now);
       }
       G.marker = nextAim(G.hole, G.ball);
       autoClub();
@@ -1933,9 +1944,11 @@
 
   $("btnShoot").onclick = shoot;
   $("btnUndo").onclick = function () {
-    if (!G.lastBall || G.flying) return;
-    G.ball = { x: G.lastBall.x, y: G.lastBall.y };
-    G.strokes = Math.max(0, G.strokes - 1);
+    if (!G.undo || G.flying) return;
+    G.ball = { x: G.undo.ball.x, y: G.undo.ball.y };
+    G.marker = G.undo.marker ? { x: G.undo.marker.x, y: G.undo.marker.y } : nextAim(G.hole, G.ball);
+    G.strokes = G.undo.strokes;
+    G.undo = null;
     G.lastBall = null;
     log("Shot undone.");
     autoClub();
@@ -1953,6 +1966,7 @@
     G.marker = nextAim(G.hole, G.ball);
     G.strokes = 0;
     G.lastBall = null;
+    G.undo = null;
     G.flying = null;
     G.trail = [];
     autoClub();
