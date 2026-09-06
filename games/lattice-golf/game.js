@@ -365,37 +365,62 @@
       return { x: origin.x + w.x, y: origin.y + w.y, w: w.w, h: w.h };
     });
     const fairW = h.fairW || 30;
+    const greenR = h.greenR || 16;
     const seed = ((pathLen(path) * 97) ^ (h.par * 13) ^ (path.length * 19)) >>> 0;
     const rng = mulberry(seed);
+    const probe = { path: path, fairW: fairW, water: water, forests: [] };
+    function offPlay(p, pad) {
+      pad = pad || 0;
+      if (dist(p, pin) < greenR + 10 + pad) return false;
+      if (dist(p, tee) < 14 + pad) return false;
+      if (inWater(p, probe)) return false;
+      for (let i = 0; i < bunkers.length; i++) {
+        if (dist(p, bunkers[i]) < bunkers[i].r + 5 + pad) return false;
+      }
+      if (distToPath(p, path) < fairW + 7 + pad) return false;
+      return true;
+    }
     const trees = [];
     for (let i = 0; i < path.length - 1; i++) {
       const a = path[i], b = path[i + 1];
       const seg = dist(a, b);
       const nx = -(b.y - a.y) / (seg || 1);
       const ny = (b.x - a.x) / (seg || 1);
-      const nAlong = Math.max(2, Math.round(seg / 55));
+      const nAlong = Math.max(3, Math.round(seg / 34));
       for (let k = 0; k < nAlong; k++) {
-        const t = (k + 0.35) / nAlong;
-        const side = (k % 2 === 0 ? 1 : -1) * (rng() < 0.22 ? -1 : 1);
-        const lat = fairW + 26 + rng() * 22;
-        trees.push({
-          x: a.x + (b.x - a.x) * t + nx * side * lat,
-          y: a.y + (b.y - a.y) * t + ny * side * lat,
-          r: 4 + rng() * 5.2,
-        });
+        const t = (k + 0.28) / nAlong;
+        for (let row = 0; row < 2; row++) {
+          const side = ((k + row) % 2 === 0 ? 1 : -1) * (rng() < 0.18 ? -1 : 1);
+          const lat = fairW + 14 + row * 16 + rng() * 18;
+          const p = {
+            x: a.x + (b.x - a.x) * t + nx * side * lat,
+            y: a.y + (b.y - a.y) * t + ny * side * lat
+          };
+          if (!offPlay(p, 0)) continue;
+          trees.push({
+            x: p.x,
+            y: p.y,
+            r: 5.5 + rng() * 6.5,
+            kind: rng() < 0.28 ? "round" : "pine",
+            block: row === 1 || rng() < 0.55
+          });
+        }
       }
     }
     (h.groves || []).forEach(function (g) {
       const cx = origin.x + g.x, cy = origin.y + g.y;
-      const n = g.n || 6;
+      const n = g.n || 8;
       for (let i = 0; i < n; i++) {
-        const ang = (Math.PI * 2 * i) / n + rng() * 0.4;
+        const ang0 = (Math.PI * 2 * i) / n + rng() * 0.4;
         const rad = rng() * (g.r || 20);
+        const p = { x: cx + Math.cos(ang0) * rad, y: cy + Math.sin(ang0) * rad };
+        if (inWater(p, probe)) continue;
         trees.push({
-          x: cx + Math.cos(ang) * rad,
-          y: cy + Math.sin(ang) * rad,
-          r: 4.5 + rng() * 4.5,
-          block: true,
+          x: p.x,
+          y: p.y,
+          r: 5.2 + rng() * 5.8,
+          kind: "pine",
+          block: true
         });
       }
     });
@@ -403,26 +428,63 @@
     const forests = forestSpec.map(function (f) {
       return { x: origin.x + f.x, y: origin.y + f.y, w: f.w, h: f.h };
     });
+    probe.forests = forests;
     forests.forEach(function (f) {
-      const n = Math.max(8, Math.round((f.w * f.h) / 95));
+      const n = Math.max(10, Math.round((f.w * f.h) / 70));
       for (let i = 0; i < n; i++) {
-        trees.push({
+        const p = {
           x: f.x + 4 + rng() * Math.max(4, f.w - 8),
-          y: f.y + 4 + rng() * Math.max(4, f.h - 8),
-          r: 4.2 + rng() * 4.8,
-          block: true,
+          y: f.y + 4 + rng() * Math.max(4, f.h - 8)
+        };
+        if (inWater(p, probe) || distToPath(p, path) < fairW + 5) continue;
+        trees.push({
+          x: p.x,
+          y: p.y,
+          r: 5 + rng() * 6.2,
+          kind: rng() < 0.2 ? "round" : "pine",
+          block: true
         });
       }
     });
     const cutProbe = { path: path, fairW: fairW, water: water, forests: forests };
     for (let e = 0; e < path.length - 2; e++) {
       const a = path[e], b = path[e + 1], c = path[e + 2];
-      for (let n = 0; n < 28; n++) {
+      for (let n = 0; n < 40; n++) {
         let u = rng(), v = rng();
         if (u + v > 1) { u = 1 - u; v = 1 - v; }
         const p = { x: a.x + u * (b.x - a.x) + v * (c.x - a.x), y: a.y + u * (b.y - a.y) + v * (c.y - a.y) };
-        if (inDoglegCut(p, cutProbe) && !inWater(p, cutProbe)) {
-          trees.push({ x: p.x, y: p.y, r: 4.4 + rng() * 5, block: true });
+        if (inDoglegCut(p, cutProbe) && !inWater(p, cutProbe) && distToPath(p, path) > fairW + 8) {
+          trees.push({ x: p.x, y: p.y, r: 5.4 + rng() * 6, kind: "pine", block: true });
+        }
+      }
+    }
+    const rocks = [];
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      const seg = dist(a, b);
+      const nx = -(b.y - a.y) / (seg || 1);
+      const ny = (b.x - a.x) / (seg || 1);
+      const nR = Math.max(1, Math.round(seg / 62));
+      for (let k = 0; k < nR; k++) {
+        const t = (k + 0.42) / nR;
+        const side = k % 2 === 0 ? 1 : -1;
+        const lat = fairW + 10 + rng() * 26;
+        const p = {
+          x: a.x + (b.x - a.x) * t + nx * side * lat,
+          y: a.y + (b.y - a.y) * t + ny * side * lat
+        };
+        if (inWater(p, probe) || dist(p, pin) < greenR + 8 || distToPath(p, path) < fairW + 3) continue;
+        const big = rng() < 0.2;
+        rocks.push({ x: p.x, y: p.y, r: big ? 2.6 + rng() * 2.2 : 0.65 + rng() * 1.35, block: big });
+        if (rng() < 0.5) {
+          const patch = 3 + ((rng() * 5) | 0);
+          for (let q = 0; q < patch; q++) {
+            const ang0 = rng() * Math.PI * 2;
+            const rad = 1.1 + rng() * 4.2;
+            const pp = { x: p.x + Math.cos(ang0) * rad, y: p.y + Math.sin(ang0) * rad };
+            if (inWater(pp, probe) || distToPath(pp, path) < fairW + 2) continue;
+            rocks.push({ x: pp.x, y: pp.y, r: 0.4 + rng() * 0.95, block: false });
+          }
         }
       }
     }
@@ -434,11 +496,12 @@
       tee: tee,
       pin: pin,
       path: path,
-      greenR: h.greenR || 16,
+      greenR: greenR,
       bunkers: bunkers,
       water: water,
       forests: forests,
       trees: trees,
+      rocks: rocks,
       fairW: fairW,
     };
   }
@@ -507,7 +570,11 @@
       }
       const trees = hole.trees || [];
       for (let k = 0; k < trees.length; k++) {
-        if (trees[k].block && dist(p, trees[k]) <= trees[k].r * 1.08) return { p: p, kind: "trees" };
+        if (trees[k].block && dist(p, trees[k]) <= trees[k].r * 0.58) return { p: p, kind: "trees" };
+      }
+      const rocks = hole.rocks || [];
+      for (let k = 0; k < rocks.length; k++) {
+        if (rocks[k].block && dist(p, rocks[k]) <= rocks[k].r * 1.05) return { p: p, kind: "trees" };
       }
     }
     return null;
@@ -719,7 +786,11 @@
     }
     const trees = hole.trees || [];
     for (let i = 0; i < trees.length; i++) {
-      if (trees[i].block && dist(p, trees[i]) <= trees[i].r * 0.9) return "trees";
+      if (trees[i].block && dist(p, trees[i]) <= trees[i].r * 0.5) return "trees";
+    }
+    const rocks = hole.rocks || [];
+    for (let i = 0; i < rocks.length; i++) {
+      if (rocks[i].block && dist(p, rocks[i]) <= rocks[i].r * 0.88) return "trees";
     }
     const lat = distToPath(p, hole.path);
     if (lat < hole.fairW) return "fairway";
@@ -888,6 +959,8 @@
     }
     (hole.path || []).forEach(function (p) { grow(p.x, p.y, hole.fairW + 36); });
     hole.bunkers.forEach(function (b) { grow(b.x, b.y, b.r); });
+    (hole.rocks || []).forEach(function (rk) { grow(rk.x, rk.y, rk.r); });
+    (hole.trees || []).forEach(function (tr) { grow(tr.x, tr.y, (tr.r || 5) * 0.5); });
     hole.water.forEach(function (wt) { grow(wt.x, wt.y, 0); grow(wt.x + wt.w, wt.y + wt.h, 0); });
     (hole.forests || []).forEach(function (f) { grow(f.x, f.y, 0); grow(f.x + f.w, f.y + f.h, 0); });
     grow(hole.pin.x, hole.pin.y, hole.greenR + 8);
@@ -1027,9 +1100,18 @@
       c.fill();
     });
 
+    (hole.rocks || []).forEach(function (rk) {
+      const p = toScr(rk);
+      const r = Math.max(3, rk.r * view.scale);
+      c.fillStyle = rk.block ? "#6b6258" : "#8a8074";
+      c.beginPath();
+      c.ellipse(p.x, p.y, r, r * 0.62, 0.2, 0, Math.PI * 2);
+      c.fill();
+    });
+
     (hole.trees || []).forEach(function (tr) {
       const p = toScr(tr);
-      const r = Math.max(6, tr.r * view.scale);
+      const r = Math.max(6, tr.r * view.scale * 0.55);
       c.fillStyle = "rgba(0,0,0,.22)";
       c.beginPath();
       c.ellipse(p.x, p.y + r * 0.4, r * 0.9, r * 0.32, 0, 0, Math.PI * 2);

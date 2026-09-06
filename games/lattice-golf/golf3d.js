@@ -29,6 +29,10 @@
   var windAng = 0;
   var windMph = 0;
   var skyMesh = null;
+  var skyRoot = null;
+  var sunDisc = null;
+  var waterMeshes = [];
+  var BALL_R = 0.16;
 
   var DIST_MIN = 22;
   var DIST_MAX = 720;
@@ -93,6 +97,100 @@
       return [62 + n, 42 + n * 0.5, 24];
     });
     tex.bark.repeat.set(1, 2);
+    tex.rock = noiseTex(128, 128, function (x, y) {
+      var n = ((x * 7) ^ (y * 11)) % 22;
+      return [118 + n, 110 + n * 0.7, 98 + n * 0.4];
+    });
+    tex.dune = noiseTex(128, 128, function (x, y) {
+      var n = ((x * 5) ^ y) % 20;
+      return [210 + n, 186 + n * 0.5, 132];
+    });
+    tex.cloud = (function () {
+      var c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 128;
+      var g = c.getContext("2d");
+      function puff(x, y, r, a) {
+        var grd = g.createRadialGradient(x, y, r * 0.12, x, y, r);
+        grd.addColorStop(0, "rgba(255,255,255," + a + ")");
+        grd.addColorStop(0.55, "rgba(248,252,255," + (a * 0.45) + ")");
+        grd.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = grd;
+        g.beginPath();
+        g.arc(x, y, r, 0, Math.PI * 2);
+        g.fill();
+      }
+      puff(88, 72, 52, 0.88);
+      puff(132, 58, 60, 0.8);
+      puff(176, 76, 46, 0.7);
+      puff(64, 82, 36, 0.55);
+      puff(200, 64, 34, 0.5);
+      var t = new T.CanvasTexture(c);
+      t.needsUpdate = true;
+      return t;
+    })();
+  }
+
+  function rockGeo(seed) {
+    var g = new T.IcosahedronGeometry(1, 1);
+    var pos = g.attributes.position;
+    for (var i = 0; i < pos.count; i++) {
+      var x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      var n = 0.76 + (Math.sin(x * 8.2 + seed) * 0.5 + 0.5) * 0.28 + Math.cos(z * 6.4 + seed * 1.3) * 0.08;
+      pos.setXYZ(i, x * n, y * n * 0.68, z * n);
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+
+  function paintSky(th) {
+    if (!ok()) return;
+    if (skyRoot) {
+      scene.remove(skyRoot);
+      skyRoot.traverse(function (o) {
+        if (o.geometry && o !== skyMesh) o.geometry.dispose();
+      });
+    }
+    skyRoot = new T.Group();
+    scene.add(skyRoot);
+    if (!skyMesh) {
+      skyMesh = new T.Mesh(
+        new T.SphereGeometry(2200, 24, 16),
+        new T.MeshBasicMaterial({ color: th.sky, side: T.BackSide, fog: false })
+      );
+    } else {
+      skyMesh.material.color.setHex(th.sky);
+    }
+    skyRoot.add(skyMesh);
+    sunDisc = new T.Mesh(
+      new T.SphereGeometry(36, 16, 12),
+      new T.MeshBasicMaterial({ color: th.dusk ? 0xe8d6ff : 0xfff3c4, fog: false })
+    );
+    sunDisc.position.set(-420, th.dusk ? 280 : 540, 260);
+    skyRoot.add(sunDisc);
+    var glow = new T.Mesh(
+      new T.SphereGeometry(70, 12, 10),
+      new T.MeshBasicMaterial({ color: th.dusk ? 0xc4b0ff : 0xffe7a0, transparent: true, opacity: 0.22, fog: false, depthWrite: false })
+    );
+    glow.position.copy(sunDisc.position);
+    skyRoot.add(glow);
+    var nCloud = th.dusk ? 4 : 8;
+    var cmat = new T.MeshBasicMaterial({
+      map: tex.cloud,
+      transparent: true,
+      opacity: th.dusk ? 0.28 : 0.72,
+      depthWrite: false,
+      fog: false,
+      side: T.DoubleSide
+    });
+    for (var i = 0; i < nCloud; i++) {
+      var w = 140 + (i % 5) * 28;
+      var cl = new T.Mesh(new T.PlaneGeometry(w, w * 0.48), cmat);
+      cl.position.set(-200 + i * 160, 210 + (i % 3) * 36, -420 + (i % 4) * 180);
+      cl.rotation.y = 0.2 + i * 0.31;
+      cl.userData.drift = 2.2 + (i % 3);
+      skyRoot.add(cl);
+    }
   }
 
   function densify(path, step) {
@@ -153,7 +251,7 @@
     if (id === "endless") {
       return { sky: 0x4a6a88, fog: 0x6a8899, grass: 0x245434, fair: 0x3d8a55, dusk: false, sun: 0xffd9a0, pine: 0x1a5530 };
     }
-    return { sky: 0x6ea8d0, fog: 0x8eb8d4, grass: 0x2c6a3c, fair: 0x3ea05a, dusk: false, sun: 0xffe8c8, pine: 0x1a5c32 };
+    return { sky: 0x7ec4ee, fog: 0xc5dff0, grass: 0x2c6a3c, fair: 0x3ea05a, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32 };
   }
 
   function applyOrbit() {
@@ -277,10 +375,13 @@
     var th = themeOf(courseId);
     scene.background = new T.Color(th.sky);
     scene.fog.color.setHex(th.fog);
-    scene.fog.density = th.dusk ? 0.0024 : 0.00135;
-    if (skyMesh) skyMesh.material.color.setHex(th.sky);
-    if (hemi) hemi.color.setHex(th.dusk ? 0x8899dd : 0xe8f0ff);
-    if (sun) sun.color.setHex(th.sun);
+    scene.fog.density = th.dusk ? 0.0022 : 0.00085;
+    if (hemi) hemi.color.setHex(th.dusk ? 0x8899dd : 0xeef6ff);
+    if (sun) {
+      sun.color.setHex(th.sun);
+      sun.intensity = th.dusk ? 1.05 : 1.55;
+    }
+    paintSky(th);
 
     if (holeRoot) {
       scene.remove(holeRoot);
@@ -364,108 +465,197 @@
     tee.castShadow = true;
     holeRoot.add(tee);
 
+    waterMeshes = [];
     (hole.water || []).forEach(function (w) {
-      var rim = new T.Mesh(
-        new T.PlaneGeometry(w.w + 5, w.h + 5),
-        mat({ color: 0x1a3a28, roughness: 1 })
+      var cx = w.x + w.w / 2, cz = w.y + w.h / 2;
+      var bank = new T.Mesh(
+        new T.BoxGeometry(w.w + 7.5, 1.15, w.h + 7.5),
+        mat({ color: 0x3a4a32, roughness: 1 })
       );
-      rim.rotation.x = -Math.PI / 2;
-      rim.position.set(w.x + w.w / 2, 0.08, w.y + w.h / 2);
-      holeRoot.add(rim);
+      bank.position.set(cx, -0.15, cz);
+      bank.receiveShadow = true;
+      holeRoot.add(bank);
+      var basin = new T.Mesh(
+        new T.PlaneGeometry(w.w + 1.5, w.h + 1.5),
+        mat({ color: 0x0a2a3c, roughness: 1 })
+      );
+      basin.rotation.x = -Math.PI / 2;
+      basin.position.set(cx, -0.95, cz);
+      holeRoot.add(basin);
+      var segsW = Math.max(8, Math.min(28, Math.round(w.w / 8)));
+      var segsH = Math.max(8, Math.min(28, Math.round(w.h / 8)));
+      var wgeo = new T.PlaneGeometry(w.w, w.h, segsW, segsH);
       var m = new T.Mesh(
-        new T.PlaneGeometry(w.w, w.h),
+        wgeo,
         new T.MeshPhysicalMaterial({
-          color: 0x1a6a9a,
-          metalness: 0.12,
-          roughness: 0.16,
+          color: 0x156e9a,
+          metalness: 0.06,
+          roughness: 0.08,
           transparent: true,
-          opacity: 0.86,
+          opacity: 0.78,
+          transmission: 0.38,
+          thickness: 2.8,
           map: tex.water
         })
       );
       m.rotation.x = -Math.PI / 2;
-      m.position.set(w.x + w.w / 2, 0.14, w.y + w.h / 2);
+      m.position.set(cx, 0.04, cz);
       holeRoot.add(m);
+      waterMeshes.push(m);
+      var foam = new T.Mesh(
+        new T.PlaneGeometry(w.w + 2.2, w.h + 2.2),
+        new T.MeshBasicMaterial({ color: 0xd7eef6, transparent: true, opacity: 0.22, depthWrite: false })
+      );
+      foam.rotation.x = -Math.PI / 2;
+      foam.position.set(cx, 0.07, cz);
+      holeRoot.add(foam);
     });
 
-    (hole.bunkers || []).forEach(function (b) {
-      var m = new T.Mesh(
-        new T.CircleGeometry(b.r, 22),
-        mat({ map: tex.sand, color: 0xe7d3a1, roughness: 1, metalness: 0 })
+    var sandMat = mat({ map: tex.sand, color: 0xe8d3a4, roughness: 1, metalness: 0 });
+    var duneMat = mat({ map: tex.dune, color: 0xdcc48a, roughness: 0.98 });
+    (hole.bunkers || []).forEach(function (b, bi) {
+      var floor = new T.Mesh(
+        new T.CircleGeometry(b.r * 0.96, 28),
+        sandMat
       );
-      m.rotation.x = -Math.PI / 2;
-      m.position.set(b.x, 0.18, b.y);
-      m.receiveShadow = true;
-      holeRoot.add(m);
-      var bowl = new T.Mesh(
-        new T.RingGeometry(b.r * 0.72, b.r * 1.06, 22),
-        mat({ color: 0x7a5c28, roughness: 1 })
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(b.x, 0.12, b.y);
+      floor.receiveShadow = true;
+      holeRoot.add(floor);
+      var lip = new T.Mesh(
+        new T.TorusGeometry(b.r * 0.9, Math.max(0.85, b.r * 0.14), 8, 24),
+        duneMat
       );
-      bowl.rotation.x = -Math.PI / 2;
-      bowl.position.set(b.x, 0.22, b.y);
-      holeRoot.add(bowl);
+      lip.rotation.x = Math.PI / 2;
+      lip.position.set(b.x, 0.62, b.y);
+      lip.scale.set(1, 1, 0.55);
+      lip.castShadow = true;
+      holeRoot.add(lip);
+      var mound = new T.Mesh(new T.SphereGeometry(1, 12, 8), duneMat);
+      var ang = (bi * 1.7) % (Math.PI * 2);
+      mound.position.set(b.x + Math.cos(ang) * b.r * 0.95, 0.55, b.y + Math.sin(ang) * b.r * 0.7);
+      mound.scale.set(b.r * 0.62, b.r * 0.22, b.r * 0.48);
+      mound.castShadow = true;
+      mound.receiveShadow = true;
+      holeRoot.add(mound);
+      if (b.r > 10) {
+        var mound2 = mound.clone();
+        mound2.position.set(b.x - Math.cos(ang) * b.r * 0.8, 0.42, b.y - Math.sin(ang) * b.r * 0.55);
+        mound2.scale.set(b.r * 0.45, b.r * 0.16, b.r * 0.38);
+        holeRoot.add(mound2);
+      }
     });
+
+    var rocks = hole.rocks || [];
+    var nRock = Math.min(rocks.length, 160);
+    if (nRock) {
+      var rg = rockGeo(2.2);
+      var rmat = mat({ map: tex.rock, color: 0x8a8276, roughness: 0.92, flatShading: true });
+      var rockMesh = new T.InstancedMesh(rg, rmat, nRock);
+      rockMesh.castShadow = true;
+      rockMesh.receiveShadow = true;
+      var dummyR = new T.Object3D();
+      for (var ri = 0; ri < nRock; ri++) {
+        var rk = rocks[ri];
+        var rs = Math.max(0.4, rk.r || 1);
+        dummyR.position.set(rk.x, rs * 0.42, rk.y);
+        dummyR.rotation.set(ri * 0.4, ri * 0.73, ri * 0.21);
+        dummyR.scale.set(rs, rs * (0.55 + (ri % 4) * 0.08), rs * 0.92);
+        dummyR.updateMatrix();
+        rockMesh.setMatrixAt(ri, dummyR.matrix);
+      }
+      rockMesh.instanceMatrix.needsUpdate = true;
+      holeRoot.add(rockMesh);
+    }
 
     var trees = hole.trees || [];
-    var nTree = Math.min(trees.length, 220);
+    var nTree = Math.min(trees.length, 280);
     if (nTree) {
-      var trunkGeo = new T.CylinderGeometry(0.22, 0.38, 3.2, 6);
-      var lowGeo = new T.ConeGeometry(1.35, 3.6, 7);
-      var topGeo = new T.ConeGeometry(0.92, 2.6, 7);
+      var trunkGeo = new T.CylinderGeometry(0.16, 0.28, 1, 6);
+      var lowGeo = new T.ConeGeometry(1, 1, 7);
+      var topGeo = new T.ConeGeometry(0.72, 0.7, 7);
+      var roundGeo = new T.SphereGeometry(1, 8, 6);
       var trunkMat = mat({ map: tex.bark, color: 0x5a3a22, roughness: 0.96 });
       var lowMat = mat({ color: th.pine, roughness: 0.78, flatShading: true });
       var topMat = mat({ color: 0x24804a, roughness: 0.7, flatShading: true });
+      var roundMat = mat({ color: 0x1f6b3a, roughness: 0.8, flatShading: true });
       var trunks = new T.InstancedMesh(trunkGeo, trunkMat, nTree);
       var lows = new T.InstancedMesh(lowGeo, lowMat, nTree);
       var tops = new T.InstancedMesh(topGeo, topMat, nTree);
-      trunks.castShadow = lows.castShadow = tops.castShadow = true;
-      trunks.receiveShadow = lows.receiveShadow = true;
+      var rounds = new T.InstancedMesh(roundGeo, roundMat, nTree);
+      trunks.castShadow = lows.castShadow = tops.castShadow = rounds.castShadow = true;
       var dummy = new T.Object3D();
       var color = new T.Color();
+      var zero = new T.Matrix4();
+      dummy.scale.set(0.001, 0.001, 0.001);
+      dummy.position.set(0, -50, 0);
+      dummy.updateMatrix();
+      zero.copy(dummy.matrix);
       for (var i = 0; i < nTree; i++) {
         var tr = trees[i];
-        var s = clamp((tr.r || 5) / 10.5, 0.42, 1.15);
-        var lean = ((i % 9) - 4) * 0.018;
-        dummy.rotation.set(lean, i * 0.41, -lean * 0.4);
-        dummy.position.set(tr.x, 1.55 * s, tr.y);
-        dummy.scale.set(s, s * (1.0 + (i % 5) * 0.05), s);
+        var canopy = clamp(tr.r || 5.5, 4, 13);
+        var height = canopy * 2.15;
+        var isRound = tr.kind === "round" || (i % 5 === 0 && tr.kind !== "pine");
+        var lean = ((i % 9) - 4) * 0.012;
+        dummy.rotation.set(lean, i * 0.41, -lean * 0.35);
+        dummy.position.set(tr.x, height * 0.18, tr.y);
+        dummy.scale.set(canopy * 0.12, height * 0.36, canopy * 0.12);
         dummy.updateMatrix();
         trunks.setMatrixAt(i, dummy.matrix);
-        dummy.position.y = 3.55 * s;
-        dummy.scale.set(s * 1.05, s * 1.08, s * 1.05);
-        dummy.updateMatrix();
-        lows.setMatrixAt(i, dummy.matrix);
-        dummy.position.y = 5.55 * s;
-        dummy.scale.set(s * 0.92, s * 0.95, s * 0.92);
-        dummy.updateMatrix();
-        tops.setMatrixAt(i, dummy.matrix);
-        color.setHSL(0.28 + (i % 7) * 0.008, 0.48, 0.22 + (i % 5) * 0.03);
+        color.setHSL(0.29, 0.5, 0.26);
+        rounds.setColorAt(i, color);
         lows.setColorAt(i, color);
-        color.setHSL(0.30 + (i % 5) * 0.01, 0.55, 0.30 + (i % 4) * 0.03);
         tops.setColorAt(i, color);
+        if (isRound) {
+          dummy.position.y = height * 0.58;
+          dummy.scale.set(canopy * 0.48, height * 0.38, canopy * 0.48);
+          dummy.updateMatrix();
+          rounds.setMatrixAt(i, dummy.matrix);
+          lows.setMatrixAt(i, zero);
+          tops.setMatrixAt(i, zero);
+          color.setHSL(0.29 + (i % 5) * 0.01, 0.5, 0.28 + (i % 4) * 0.03);
+          rounds.setColorAt(i, color);
+        } else {
+          dummy.position.y = height * 0.48;
+          dummy.scale.set(canopy * 0.52, height * 0.55, canopy * 0.52);
+          dummy.updateMatrix();
+          lows.setMatrixAt(i, dummy.matrix);
+          dummy.position.y = height * 0.82;
+          dummy.scale.set(canopy * 0.34, height * 0.38, canopy * 0.34);
+          dummy.updateMatrix();
+          tops.setMatrixAt(i, dummy.matrix);
+          rounds.setMatrixAt(i, zero);
+          color.setHSL(0.28 + (i % 7) * 0.008, 0.5, 0.22 + (i % 5) * 0.03);
+          lows.setColorAt(i, color);
+          color.setHSL(0.31, 0.55, 0.30 + (i % 4) * 0.03);
+          tops.setColorAt(i, color);
+        }
       }
       trunks.instanceMatrix.needsUpdate = true;
       lows.instanceMatrix.needsUpdate = true;
       tops.instanceMatrix.needsUpdate = true;
+      rounds.instanceMatrix.needsUpdate = true;
       if (lows.instanceColor) lows.instanceColor.needsUpdate = true;
       if (tops.instanceColor) tops.instanceColor.needsUpdate = true;
+      if (rounds.instanceColor) rounds.instanceColor.needsUpdate = true;
       holeRoot.add(trunks);
       holeRoot.add(lows);
       holeRoot.add(tops);
+      holeRoot.add(rounds);
     }
 
     (hole.path || []).forEach(function (p, i) {
       if (i === 0 || i === hole.path.length - 1) return;
       var pip = new T.Mesh(
-        new T.SphereGeometry(0.85, 10, 8),
+        new T.SphereGeometry(0.28, 8, 6),
         mat({ color: 0xfbbf24, emissive: 0x664400, roughness: 0.4 })
       );
-      pip.position.set(p.x, 1.15, p.y);
+      pip.position.set(p.x, 0.55, p.y);
       holeRoot.add(pip);
     });
 
     var cup = new T.Mesh(
-      new T.CircleGeometry(0.95, 18),
+      new T.CircleGeometry(0.22, 16),
       mat({ color: 0x111111, roughness: 1, metalness: 0.25 })
     );
     cup.rotation.x = -Math.PI / 2;
@@ -473,23 +663,23 @@
     holeRoot.add(cup);
 
     flagPole = new T.Mesh(
-      new T.CylinderGeometry(0.07, 0.09, 6.4, 8),
+      new T.CylinderGeometry(0.035, 0.045, 2.55, 8),
       mat({ color: 0xf4f4f5, metalness: 0.55, roughness: 0.28 })
     );
-    flagPole.position.set(hole.pin.x, 3.52, hole.pin.y);
+    flagPole.position.set(hole.pin.x, 1.5, hole.pin.y);
     flagPole.castShadow = true;
     holeRoot.add(flagPole);
     flagCloth = new T.Mesh(
-      new T.PlaneGeometry(2.4, 1.35),
+      new T.PlaneGeometry(0.85, 0.48),
       mat({ color: 0xef4444, side: T.DoubleSide, roughness: 0.48 })
     );
-    flagCloth.position.set(1.22, 2.35, 0);
+    flagCloth.position.set(0.44, 0.92, 0);
     flagPole.add(flagCloth);
     var finial = new T.Mesh(
-      new T.SphereGeometry(0.16, 8, 6),
+      new T.SphereGeometry(0.06, 8, 6),
       mat({ color: 0xfbbf24, metalness: 0.6, roughness: 0.3 })
     );
-    finial.position.set(0, 3.28, 0);
+    finial.position.set(0, 1.3, 0);
     flagPole.add(finial);
 
     pickPlane = new T.Mesh(
@@ -505,24 +695,24 @@
   function ensureActors() {
     if (ballMesh) return;
     ballMesh = new T.Mesh(
-      new T.SphereGeometry(0.55, 18, 14),
+      new T.SphereGeometry(BALL_R, 18, 14),
       mat({ color: 0xf4f7f2, roughness: 0.32, metalness: 0.05 })
     );
     ballMesh.castShadow = true;
     scene.add(ballMesh);
     ballShadow = new T.Mesh(
-      new T.CircleGeometry(0.85, 12),
+      new T.CircleGeometry(BALL_R * 1.7, 12),
       new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false })
     );
     ballShadow.rotation.x = -Math.PI / 2;
     scene.add(ballShadow);
     markerMesh = new T.Mesh(
-      new T.ConeGeometry(1.15, 2.4, 8),
+      new T.ConeGeometry(0.42, 1.05, 8),
       mat({ color: 0x5eead4, emissive: 0x0b3d38, roughness: 0.4 })
     );
     scene.add(markerMesh);
     windPip = new T.Mesh(
-      new T.SphereGeometry(0.85, 12, 10),
+      new T.SphereGeometry(0.32, 12, 10),
       mat({ color: 0xc084fc, emissive: 0x4c1d95, roughness: 0.35 })
     );
     scene.add(windPip);
@@ -554,9 +744,9 @@
     var b = s.ball || { x: 0, y: 0 };
     ballPhase = s.phase || b.phase || "";
     var lift = (b.z || 0) * 0.42;
-    ballMesh.position.set(b.x, 0.55 + lift, b.y);
-    ballShadow.position.set(b.x, 0.34, b.y);
-    ballShadow.scale.setScalar(1 + lift * 0.035);
+    ballMesh.position.set(b.x, BALL_R + lift, b.y);
+    ballShadow.position.set(b.x, 0.30, b.y);
+    ballShadow.scale.setScalar(1 + lift * 0.03);
     ballShadow.material.opacity = Math.max(0.08, 0.28 - lift * 0.006);
     if (impactRing) {
       if (ballPhase === "bounce") {
@@ -576,9 +766,9 @@
     }
     if (s.marker) {
       markerMesh.visible = true;
-      markerMesh.position.set(s.marker.x, 1.7, s.marker.y);
+      markerMesh.position.set(s.marker.x, 0.7, s.marker.y);
       markerMesh.rotation.y += 0.02;
-      var pts = [new T.Vector3(b.x, 0.45, b.y), new T.Vector3(s.marker.x, 0.45, s.marker.y)];
+      var pts = [new T.Vector3(b.x, 0.22, b.y), new T.Vector3(s.marker.x, 0.22, s.marker.y)];
       aimLine.geometry.setFromPoints(pts);
       aimLine.computeLineDistances();
       aimLine.visible = true;
@@ -589,18 +779,18 @@
     var reach = s.carry || 0;
     carryRing.visible = reach > 2;
     if (reach > 2) {
-      carryRing.position.set(b.x, 0.36, b.y);
+      carryRing.position.set(b.x, 0.31, b.y);
       carryRing.scale.set(reach, reach, 1);
     }
     if (s.pred && s.pred.dest) {
       windPip.visible = true;
-      windPip.position.set(s.pred.dest.x, 1.05, s.pred.dest.y);
+      windPip.position.set(s.pred.dest.x, 0.45, s.pred.dest.y);
       windPip.material.color.setHex(s.pred.blocked ? 0xf87171 : 0xc084fc);
     } else windPip.visible = false;
     var trail = s.trail || [];
     if (trail.length > 1) {
       var tp = trail.map(function (t) {
-        return new T.Vector3(t.x, 0.55 + (t.z || 0) * 0.42, t.y);
+        return new T.Vector3(t.x, BALL_R + (t.z || 0) * 0.42, t.y);
       });
       trailLine.geometry.setFromPoints(tp);
       trailLine.visible = true;
@@ -615,6 +805,28 @@
       tex.water.offset.x += dt * 0.03;
       tex.water.offset.y += dt * 0.018;
     }
+    if (waterMeshes && waterMeshes.length) {
+      var tWave = clock.elapsedTime;
+      for (var wi = 0; wi < waterMeshes.length; wi++) {
+        var geo = waterMeshes[wi].geometry;
+        var pos = geo.attributes.position;
+        if (!pos) continue;
+        for (var pi = 0; pi < pos.count; pi++) {
+          var px = pos.getX(pi), py = pos.getY(pi);
+          pos.setZ(pi, Math.sin(px * 0.18 + tWave * 1.4) * 0.07 + Math.cos(py * 0.16 + tWave * 1.1) * 0.05);
+        }
+        pos.needsUpdate = true;
+      }
+    }
+    if (skyRoot && camera) {
+      skyRoot.children.forEach(function (ch) {
+        if (ch.userData && ch.userData.drift) {
+          ch.position.x += dt * ch.userData.drift;
+          if (ch.position.x > 900) ch.position.x = -900;
+          ch.lookAt(camera.position);
+        }
+      });
+    }
     if (flagPole) {
       flagPole.rotation.y = windAng;
     }
@@ -622,7 +834,7 @@
       var wave = Math.sin(clock.elapsedTime * 2.4 + windMph * 0.2) * 0.22;
       flagCloth.rotation.y = wave;
       flagCloth.rotation.z = Math.sin(clock.elapsedTime * 3.1) * 0.06;
-      flagCloth.position.set(1.22, 2.35, 0);
+      flagCloth.position.set(0.44, 0.92, 0);
     }
     if (ballMesh && (ballPhase === "fly" || ballPhase === "bounce" || ballPhase === "roll")) {
       ballMesh.rotateX((ballPhase === "fly" ? 0.2 : 0.58) * (dt / 0.016));
@@ -727,10 +939,10 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.toneMapping = T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.16;
     if (T.SRGBColorSpace) renderer.outputColorSpace = T.SRGBColorSpace;
     scene = new T.Scene();
-    scene.fog = new T.FogExp2(0x87a8c4, 0.0016);
+    scene.fog = new T.FogExp2(0xc5dff0, 0.00085);
     camera = new T.PerspectiveCamera(44, 1, 0.5, 5000);
     clock = new T.Clock();
     raycaster = new T.Raycaster();
@@ -753,11 +965,7 @@
     scene.add(sun);
     scene.add(new T.AmbientLight(0x6688aa, 0.22));
 
-    skyMesh = new T.Mesh(
-      new T.SphereGeometry(1800, 24, 16),
-      new T.MeshBasicMaterial({ color: 0x7eb4d8, side: T.BackSide, fog: false })
-    );
-    scene.add(skyMesh);
+    paintSky(themeOf("pine-haven"));
 
     bindCanvas();
     resize();
