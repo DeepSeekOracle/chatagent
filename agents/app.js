@@ -11,7 +11,8 @@
     { id: "map", url: "https://chatagent.ca/lattice/map.json", klass: "RESOURCE" },
     { id: "join", url: "https://chatagent.ca/join/doctrine.json", klass: "RESOURCE" },
     { id: "bench", url: "https://chatagent.ca/bench/doctrine.json", klass: "RESOURCE" },
-    { id: "heartbeat", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/heartbeat.json", klass: "RESOURCE" }
+    { id: "heartbeat", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/heartbeat.json", klass: "RESOURCE" },
+    { id: "network_eggs", url: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/network_eggs.json", klass: "RESOURCE" }
   ];
   const $ = function (id) { return document.getElementById(id); };
   let timer = null;
@@ -66,6 +67,9 @@
             out.extra = Object.keys(g).length + " cats";
           } else if (ep.id === "map") {
             out.extra = (data.doors || []).length + " doors";
+          } else if (ep.id === "network_eggs") {
+            out.gen = data.generation || (data.eggs || []).length;
+            out.extra = "gen " + out.gen;
           } else out.extra = "HTTP " + r.status;
         } catch (e) { out.extra = "HTTP " + r.status; }
       }
@@ -89,6 +93,7 @@
     $("yield-box").className = "stat " + y.toLowerCase();
     $("yield").textContent = y;
     $("eggs-n").textContent = report.eggs_count != null ? String(report.eggs_count) : "—";
+    if ($("net-gen")) $("net-gen").textContent = report.network_gen != null ? String(report.network_gen) : "—";
     $("star-n").textContent = report.star_entries != null ? String(report.star_entries) : "—";
     $("tick-n").textContent = String(report.tick);
     $("utc").textContent = report.updated_utc;
@@ -116,6 +121,7 @@
     for (let i = 0; i < SURFACES.length; i++) surfaces.push(await pulseOne(SURFACES[i]));
     const y = yieldOf(surfaces);
     const eggs = surfaces.find(function (s) { return s.id === "eggs"; });
+    const nete = surfaces.find(function (s) { return s.id === "network_eggs"; });
     const star = surfaces.find(function (s) { return s.id === "star_feed"; });
     const agora = surfaces.find(function (s) { return s.id === "agora"; });
     const aid = ($("agent-id").value || "lygo-agent").replace(/[^a-zA-Z0-9_\-.]/g, "-").slice(0, 64);
@@ -128,6 +134,7 @@
       live_star_chart_ingest: false,
       egg_plant: false,
       eggs_count: eggs && eggs.eggs ? eggs.eggs.count : null,
+      network_gen: nete && nete.gen != null ? nete.gen : null,
       star_entries: star && star.feed ? star.feed.entry_count : null,
       star_chain_ok: star && star.feed ? star.feed.chain_valid_checked : null,
       surfaces: surfaces,
