@@ -43,7 +43,7 @@
     { key: "camHeight", group: "Camera", type: "range", label: "Chase height", min: 0.7, max: 1.8, step: 0.05, def: 1 },
     { key: "showPilot", group: "HUD", type: "toggle", label: "Pilot plate", def: true },
     { key: "showHint", group: "HUD", type: "toggle", label: "On-track hint", def: true },
-    { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Reserved for smoke, sparks, and shake as those land.", def: false },
+    { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Hides drift sparks and underglow.", def: false },
     { key: "assist", group: "Controls", type: "soon", label: "Steering assist", hint: "Coming with the handling pack." },
     { key: "abs", group: "Controls", type: "soon", label: "Brake assist", hint: "Coming with the handling pack." },
     { key: "weather", group: "Race", type: "soon", label: "Weather", hint: "Rain and wind as circuits grow." }
@@ -562,7 +562,7 @@
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
-      Rally3D.setState({ car: G.car, ghost: gh, sparks: G.sparks });
+      Rally3D.setState({ car: G.car, ghost: gh, sparks: G.sparks, reduceFx: opt("reduceFx") });
       return;
     }
     if (!ctx || !G.track) return;
@@ -670,8 +670,15 @@
     const fb = $("garageFallback");
     const paint = parseInt(String(c.color).replace("#", ""), 16);
     const ok3 = cv && window.THREE && window.HavenCar && HavenCar.openStudio(cv, { paint: paint });
-    if (ok3 && fb) fb.classList.add("hidden");
-    else if (cv) cv.classList.add("hidden");
+    if (ok3) {
+      requestAnimationFrame(function () {
+        HavenCar.resizeStudio();
+        requestAnimationFrame(function () {
+          HavenCar.resizeStudio();
+          if (fb && HavenCar.studioReady && HavenCar.studioReady()) fb.classList.add("hidden");
+        });
+      });
+    } else if (cv) cv.classList.add("hidden");
   }
 
   function menu() {

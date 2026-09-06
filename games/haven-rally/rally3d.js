@@ -186,6 +186,15 @@
     ghostMesh.visible = false;
     scene.add(ghostMesh);
     sparkGroup = new T.Group();
+    var si, sm;
+    for (si = 0; si < 28; si++) {
+      sm = new T.Mesh(
+        new T.BoxGeometry(0.05, 0.05, 0.05),
+        new T.MeshBasicMaterial({ color: si % 2 ? 0xfbbf24 : 0x5eead4 })
+      );
+      sparkGroup.add(sm);
+    }
+    sparkGroup.visible = false;
     scene.add(sparkGroup);
   }
 
@@ -277,7 +286,28 @@
         ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
         ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
       } else ghostMesh.visible = false;
-      var back = (11 + (c.speed || 0) * 0.04) * (camTune.dist || 1);
+      carMesh.traverse(function (ch) {
+        if (ch.userData.fx) ch.visible = !s.reduceFx;
+      });
+      if (sparkGroup) {
+        var showFx = !s.reduceFx && (s.sparks || 0) > 0.25;
+        sparkGroup.visible = showFx;
+        if (showFx) {
+          sparkGroup.position.set(c.x, 0.2, c.y);
+          sparkGroup.rotation.y = -c.h - Math.PI / 2;
+          var i, ch;
+          for (i = 0; i < sparkGroup.children.length; i++) {
+            ch = sparkGroup.children[i];
+            ch.position.set(
+              (i % 2 ? -0.7 : 0.7) + (i * 0.017 % 0.2),
+              0.08 + (i % 5) * 0.04,
+              0.9 + (i % 7) * 0.08
+            );
+            ch.scale.setScalar(0.4 + (s.sparks || 0) * 0.8);
+          }
+        }
+      }
+      var back = (12.4 + (c.speed || 0) * 0.04) * (camTune.dist || 1);
       cam.x = c.x - Math.cos(c.h) * back;
       cam.z = c.y - Math.sin(c.h) * back;
       cam.y = (5.4 + (c.speed || 0) * 0.012) * (camTune.height || 1);
