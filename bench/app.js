@@ -258,29 +258,44 @@
   }
 
   function showTab(name) {
-    ["card", "hash", "redact"].forEach(function (t) {
+    ["card", "compare", "hash", "redact"].forEach(function (t) {
       $("panel-" + t).classList.toggle("on", t === name);
       $("tab-" + t).classList.toggle("on", t === name);
     });
   }
 
   $("tab-card").addEventListener("click", function () { showTab("card"); });
+  $("tab-compare").addEventListener("click", function () { showTab("compare"); });
   $("tab-hash").addEventListener("click", function () { showTab("hash"); });
   $("tab-redact").addEventListener("click", function () { showTab("redact"); });
 
   $("go-card").addEventListener("click", function () { runCard($("url").value); });
   $("copy-card").addEventListener("click", function () { copy("card-out"); });
-  PRESETS.forEach(function (p) {
+  function addChip(id, url) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "chip";
-    b.textContent = p.id;
+    b.textContent = id;
     b.addEventListener("click", function () {
-      $("url").value = p.url;
-      runCard(p.url);
+      $("url").value = url;
+      runCard(url);
     });
     $("presets").appendChild(b);
-  });
+  }
+  PRESETS.forEach(function (p) { addChip(p.id, p.url); });
+  fetch("/lattice/map.json", { credentials: "omit", cache: "no-store" }).then(function (r) {
+    return r.ok ? r.json() : null;
+  }).then(function (map) {
+    if (!map || !map.doors) return;
+    const have = {};
+    PRESETS.forEach(function (p) { have[p.url] = true; });
+    map.doors.forEach(function (d) {
+      if (!d.url || have[d.url]) return;
+      if (d.class === "CANON") return;
+      have[d.url] = true;
+      addChip(d.id, d.url);
+    });
+  }).catch(function () {});
 
   const drop = $("drop");
   drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("hot"); });
@@ -326,6 +341,28 @@
     $("h-sha").textContent = d.slice(0, 16);
     $("h-bytes").textContent = String(buf.byteLength);
   });
+
+  $("go-compare").addEventListener("click", async function () {
+    $("status").innerHTML = "<span class=\"spin\"></span> Compare…";
+    const a = await fetchCard($("url-a").value, false);
+    const b = await fetchCard($("url-b").value, false);
+    $("a-yield").textContent = a.yield;
+    $("b-yield").textContent = b.yield;
+    $("a-yield-box").className = "stat " + String(a.yield).toLowerCase();
+    $("b-yield-box").className = "stat " + String(b.yield).toLowerCase();
+    $("ab-same").textContent = a.yield === b.yield ? "YES" : "NO";
+    $("compare-out").textContent = JSON.stringify({
+      signature: SIG,
+      command: "compare",
+      utc: utcNow(),
+      a: a,
+      b: b,
+      same_yield: a.yield === b.yield,
+      live_star_chart_write: false
+    }, null, 2);
+    $("status").textContent = "A " + a.yield + " · B " + b.yield;
+  });
+  $("copy-compare").addEventListener("click", function () { copy("compare-out"); });
 
   $("go-redact").addEventListener("click", function () {
     const r = redact($("redact-in").value || "");

@@ -13,7 +13,7 @@
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://chatagent.ca/bench/">
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/bench/app.css?v=1.0.0">
+<link rel="stylesheet" href="/bench/app.css?v=1.0.1">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:title" content="LYGO Bench — site card, hash, redact">
 <meta property="og:description" content="GET a public page into a card. Hash files locally. Redact keys before you paste.">
@@ -46,6 +46,7 @@
   <p class="note" id="status">Ready.</p>
   <div class="tabs">
     <button class="tab on" type="button" id="tab-card">Card</button>
+    <button class="tab" type="button" id="tab-compare">Compare</button>
     <button class="tab" type="button" id="tab-hash">Hash</button>
     <button class="tab" type="button" id="tab-redact">Redact</button>
   </div>
@@ -70,6 +71,24 @@
       <div class="stat"><b id="c-sha">—</b><span>sha256</span></div>
     </div>
     <pre id="card-out">Awaiting GET…</pre>
+  </section>
+
+  <section class="panel" id="panel-compare">
+    <p class="note">Two HTTPS GETs. Yields sit side by side. CORS miss is named SHADOW, not a fake 200.</p>
+    <label for="url-a">URL A</label>
+    <input id="url-a" type="url" value="https://chatagent.ca/join/" autocomplete="off" spellcheck="false">
+    <label for="url-b">URL B</label>
+    <input id="url-b" type="url" value="https://chatagent.ca/lattice/" autocomplete="off" spellcheck="false">
+    <div class="row">
+      <button class="btn" type="button" id="go-compare">Compare</button>
+      <button class="btn ghost" type="button" id="copy-compare">Copy JSON</button>
+    </div>
+    <div class="stats">
+      <div class="stat" id="a-yield-box"><b id="a-yield">—</b><span>A yield</span></div>
+      <div class="stat" id="b-yield-box"><b id="b-yield">—</b><span>B yield</span></div>
+      <div class="stat"><b id="ab-same">—</b><span>same yield</span></div>
+    </div>
+    <pre id="compare-out">Awaiting compare…</pre>
   </section>
 
   <section class="panel" id="panel-hash">
@@ -118,6 +137,6 @@ npx clawhub@latest install deepseekoracle/lygo-context-guard</pre>
     <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a></p>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear();});</script>
-<script src="/bench/app.js?v=1.0.0"></script>
+<script src="/bench/app.js?v=1.0.1"></script>
 </body>
 </html>

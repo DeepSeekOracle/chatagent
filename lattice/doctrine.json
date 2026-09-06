@@ -30,6 +30,10 @@
     "chart": "https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html",
     "hf_bot": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",
     "hf_audit": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/lattice-audit.json",
-    "sources": "https://chatagent.ca/sources/"
+    "sources": "https://chatagent.ca/sources/",
+    "join": "https://chatagent.ca/join/",
+    "bench": "https://chatagent.ca/bench/",
+    "map": "https://chatagent.ca/lattice/map.json",
+    "network": "https://deepseekoracle.github.io/lygo-protocol-stack/network/"
   }
 }
