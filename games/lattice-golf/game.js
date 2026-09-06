@@ -54,6 +54,7 @@
       bunkers: opt.bunkers || [],
       water: opt.water || [],
       groves: opt.groves || [],
+      forests: opt.forests || [],
       greenR: opt.greenR || (par === 3 ? 13 : 16),
       fairW: opt.fairW || (par === 3 ? 24 : par === 5 ? 34 : 30),
       hint: opt.hint || "",
@@ -360,9 +361,17 @@
     const pin = { x: path[path.length - 1].x, y: path[path.length - 1].y };
     const bunkers = (h.bunkers || []).map(function (b) {
       return { x: origin.x + b.x, y: origin.y + b.y, r: b.r };
+    }).filter(function (b) {
+      return dist(b, pin) > (h.greenR || 16) + 3 && dist(b, tee) > 14;
     });
     const water = (h.water || []).map(function (w) {
       return { x: origin.x + w.x, y: origin.y + w.y, w: w.w, h: w.h };
+    }).filter(function (w) {
+      const padT = 12, padG = (h.greenR || 16) + 2;
+      function hits(p, pad) {
+        return p.x >= w.x - pad && p.x <= w.x + w.w + pad && p.y >= w.y - pad && p.y <= w.y + w.h + pad;
+      }
+      return !hits(tee, padT) && !hits(pin, padG);
     });
     const fairW = h.fairW || 30;
     const greenR = h.greenR || 16;
@@ -415,6 +424,7 @@
         const rad = rng() * (g.r || 20);
         const p = { x: cx + Math.cos(ang0) * rad, y: cy + Math.sin(ang0) * rad };
         if (inWater(p, probe)) continue;
+        if (dist(p, pin) < greenR + 10 || distToPath(p, path) < fairW + 5) continue;
         trees.push({
           x: p.x,
           y: p.y,
@@ -1834,180 +1844,239 @@
   }
 
   function randomHole() {
-    const rng = G.rng;
+    const rng = G.rng || Math.random;
     const j = function (n, s) { return n + (rng() * 2 - 1) * s; };
-    const par = [3, 4, 4, 4, 5, 5, 5][(rng() * 7) | 0];
+    function clampN(v, a, b) { return v < a ? a : v > b ? b : v; }
+    function segPerp(path, i) {
+      const prev = path[Math.max(0, i - 1)];
+      const next = path[Math.min(path.length - 1, i + 1)];
+      const tx = next.x - prev.x, ty = next.y - prev.y;
+      const len = Math.hypot(tx, ty) || 1;
+      return { x: -ty / len, y: tx / len };
+    }
+    function cleanPath(src) {
+      const out = [{ x: src[0].x, y: src[0].y }];
+      for (let i = 1; i < src.length; i++) {
+        if (dist(out[out.length - 1], src[i]) >= 40) out.push({ x: src[i].x, y: src[i].y });
+      }
+      if (out.length < 2) out.push({ x: 380, y: 0 });
+      return out;
+    }
+    function scalePath(src, target) {
+      const len = pathLen(src) || 1;
+      const s = target / len;
+      return src.map(function (p, i) {
+        if (i === 0) return { x: 0, y: 0 };
+        return { x: p.x * s, y: p.y * s };
+      });
+    }
+    function circleHitsRect(c, r, w) {
+      const nx = clampN(c.x, w.x, w.x + w.w);
+      const ny = clampN(c.y, w.y, w.y + w.h);
+      return dist(c, { x: nx, y: ny }) < r;
+    }
+    function waterBlocksPlay(w, path, fairW, greenR) {
+      const tee = path[0], pin = path[path.length - 1];
+      if (circleHitsRect(tee, 16, w) || circleHitsRect(pin, greenR + 6, w)) return true;
+      if (path.length <= 2) return false;
+      for (let i = 1; i < path.length - 1; i++) {
+        if (circleHitsRect(path[i], fairW + 5, w)) return true;
+      }
+      return false;
+    }
+    function waterAlongInside(path, i0, i1, depth, fairW) {
+      let minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+      const a = path[i0], b = path[Math.min(path.length - 1, i1)];
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const cut = path[Math.max(i0, Math.min(i1, ((i0 + i1) / 2) | 0))];
+      const inward = { x: mid.x - cut.x, y: mid.y - cut.y };
+      const ilen = Math.hypot(inward.x, inward.y) || 1;
+      const ox = (inward.x / ilen) * (fairW + depth * 0.55 + 6);
+      const oy = (inward.y / ilen) * (fairW + depth * 0.55 + 6);
+      for (let i = i0; i <= i1 && i < path.length; i++) {
+        const px = path[i].x + ox, py = path[i].y + oy;
+        minx = Math.min(minx, px - depth * 0.45);
+        miny = Math.min(miny, py - depth * 0.45);
+        maxx = Math.max(maxx, px + depth * 0.45);
+        maxy = Math.max(maxy, py + depth * 0.45);
+      }
+      if (maxx - minx < 24 || maxy - miny < 18) return null;
+      return { x: minx, y: miny, w: maxx - minx, h: maxy - miny };
+    }
+    function islandWater(path, greenR) {
+      const pin = path[path.length - 1];
+      const gap = Math.max(28, greenR * 2.2);
+      const w = Math.max(40, pin.x - 18 - gap);
+      if (w < 36) return null;
+      return { x: 18, y: -68, w: w, h: 136 };
+    }
+    function guardBunkers(path, fairW, greenR) {
+      const out = [];
+      for (let i = 1; i < path.length; i++) {
+        const pt = path[i];
+        const n = segPerp(path, i);
+        const isGreen = i === path.length - 1;
+        const r = isGreen ? 9 + rng() * 3 : 10 + rng() * 3.5;
+        const lat = (isGreen ? greenR : fairW) + r + 3 + rng() * 4;
+        const side = i % 2 === 0 ? 1 : -1;
+        const b = { x: pt.x + n.x * lat * side, y: pt.y + n.y * lat * side, r: r };
+        if (dist(b, path[0]) < 18) continue;
+        if (dist(b, path[path.length - 1]) < greenR + 3) continue;
+        out.push(b);
+        if (!isGreen && rng() < 0.45) {
+          const b2 = { x: pt.x - n.x * lat * side * 0.85, y: pt.y - n.y * lat * side * 0.85, r: r * 0.85 };
+          if (dist(b2, path[path.length - 1]) >= greenR + 4) out.push(b2);
+        }
+      }
+      return out;
+    }
+
+    const par = [3, 3, 4, 4, 4, 4, 5, 5][(rng() * 8) | 0];
     const pack = par === 3
       ? ["alcatraz", "needle3", "redan", "postage"]
       : par === 4
         ? ["zigzag", "hairpin", "gauntlet", "capeKick", "pretzel"]
         : ["serpent", "archipelago", "spiral", "doubleCape", "maze"];
     const shape = pack[(rng() * pack.length) | 0];
-    let path = [], water = [], bunkers = [], groves = [], hint = "Wild hole.", fairW = 18, greenR = 9;
+    const s = rng() < 0.5 ? 1 : -1;
+    let raw = [{ x: 0, y: 0 }, { x: 400, y: 0 }];
+    let hint = "Wild hole.";
+    let waterMode = "";
+    let creekIs = [];
+    let wantGuards = true;
+    let fairW = par === 3 ? 15 : par === 5 ? 20 : 18;
+    let greenR = par === 3 ? 9 : par === 5 ? 12 : 11;
+    let target = par === 3 ? 155 + rng() * 70 : par === 4 ? 350 + rng() * 100 : 510 + rng() * 100;
+
     if (shape === "alcatraz") {
-      const yds = 220 + rng() * 45;
-      path = [{ x: 0, y: 0 }, { x: yds, y: j(0, 12) }];
-      water = [{ x: 18, y: -70, w: yds * 0.78, h: 140 }];
-      hint = "Alcatraz. Tiny island. One club, no miss.";
-      fairW = 12; greenR = 8;
+      raw = [{ x: 0, y: 0 }, { x: 1, y: j(0, 0.04) }];
+      hint = "Alcatraz. Tiny island. Carry all of it — short is the pond.";
+      waterMode = "island";
+      wantGuards = false;
+      fairW = 13; greenR = 8;
+      target = 165 + rng() * 50;
     } else if (shape === "needle3") {
-      const yds = 230 + rng() * 40;
-      path = [{ x: 0, y: 0 }, { x: yds * 0.55, y: j(50, 20) }, { x: yds, y: j(-20, 16) }];
-      water = [{ x: 24, y: -55, w: yds * 0.7, h: 110 }];
-      hint = "Needle over water, then a kick. Both lines are wet if you're short.";
+      raw = [{ x: 0, y: 0 }, { x: 0.55, y: 0.22 * s }, { x: 1, y: -0.06 * s }];
+      hint = "Needle over water, then a kick. Short of either landing is wet.";
+      waterMode = "island";
       fairW = 14; greenR = 9;
+      target = 175 + rng() * 45;
     } else if (shape === "redan") {
-      const yds = 235 + rng() * 35;
-      const lat = 70 + rng() * 40;
-      path = [{ x: 0, y: 0 }, { x: yds, y: lat }];
-      bunkers = [{ x: yds * 0.74, y: lat * 0.62, r: 16 }, { x: yds * 0.9, y: lat + 22, r: 12 }];
-      hint = "Extreme redan. Long diagonal. The bunker is the pin line.";
+      raw = [{ x: 0, y: 0 }, { x: 1, y: 0.32 * s }];
+      hint = "Redan. Long diagonal. The bunker sits on the pin line — aim the high side.";
+      wantGuards = true;
       fairW = 16; greenR = 10;
+      target = 180 + rng() * 45;
     } else if (shape === "postage") {
-      const yds = 105 + rng() * 22;
-      path = [{ x: 0, y: 0 }, { x: yds, y: 0 }];
-      bunkers = [{ x: yds * 0.68, y: 0, r: 16 }, { x: yds, y: -14, r: 10 }, { x: yds, y: 14, r: 10 }];
-      water = [{ x: 20, y: -48, w: yds * 0.5, h: 96 }];
-      hint = "Postage from hell. Water, then a bunker ring around a thimble green.";
+      raw = [{ x: 0, y: 0 }, { x: 1, y: 0 }];
+      hint = "Postage. Water, then a bunker ring around a thimble green.";
+      waterMode = "island";
+      wantGuards = true;
       fairW = 12; greenR = 7;
+      target = 108 + rng() * 22;
     } else if (shape === "zigzag") {
-      const s = rng() < 0.5 ? 1 : -1;
-      path = [
-        { x: 0, y: 0 },
-        { x: 200, y: 150 * s },
-        { x: 390, y: -145 * s },
-        { x: 560, y: 140 * s },
-        { x: 700, y: -20 * s },
-      ];
+      raw = [{ x: 0, y: 0 }, { x: 0.28, y: 0.22 * s }, { x: 0.55, y: -0.2 * s }, { x: 0.78, y: 0.2 * s }, { x: 1, y: -0.03 * s }];
       hint = "Zigzag four. Four elbows. Every cut is trees. Walk it.";
       fairW = 17;
     } else if (shape === "hairpin") {
-      const s = rng() < 0.5 ? 1 : -1;
-      path = [
-        { x: 0, y: 0 },
-        { x: 280, y: 18 * s },
-        { x: 310, y: 165 * s },
-        { x: 560, y: 155 * s },
-        { x: 620, y: 40 * s },
-      ];
-      water = [{ x: 50, y: s > 0 ? 42 : -142, w: 200, h: 100 }];
+      raw = [{ x: 0, y: 0 }, { x: 0.42, y: 0.03 * s }, { x: 0.48, y: 0.28 * s }, { x: 0.86, y: 0.26 * s }, { x: 1, y: 0.06 * s }];
       hint = "Hairpin. Almost 180°. Inside is dead. Go out, turn, come back.";
+      waterMode = "inside";
       fairW = 16;
     } else if (shape === "gauntlet") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 240, y: -8 },
-        { x: 380, y: 90 },
-        { x: 520, y: -70 },
-        { x: 660, y: 50 },
-      ];
-      path.forEach(function (pt, i) {
-        if (!i) return;
-        bunkers.push({ x: pt.x - 8, y: pt.y - 22, r: 13 });
-        bunkers.push({ x: pt.x + 6, y: pt.y + 22, r: 13 });
-      });
+      raw = [{ x: 0, y: 0 }, { x: 0.32, y: -0.02 }, { x: 0.52, y: 0.14 * s }, { x: 0.74, y: -0.12 * s }, { x: 1, y: 0.08 * s }];
       hint = "Gauntlet. Bunkers gate every landing. The fairway is a slot.";
       fairW = 16;
     } else if (shape === "capeKick") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 230, y: -110 },
-        { x: 420, y: -30 },
-        { x: 560, y: 90 },
-        { x: 680, y: 20 },
-      ];
-      water = [{ x: 30, y: -40, w: 500, h: 100 }];
-      hint = "Cape, kick, cape again. Water owns the chord. Driver never clears it.";
+      raw = [{ x: 0, y: 0 }, { x: 0.32, y: -0.18 * s }, { x: 0.58, y: -0.05 * s }, { x: 0.8, y: 0.14 * s }, { x: 1, y: 0.03 * s }];
+      hint = "Cape, kick, cape again. Water owns the chord. Club the shore.";
+      waterMode = "inside";
       fairW = 18;
     } else if (shape === "pretzel") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 210, y: 120 },
-        { x: 250, y: -80 },
-        { x: 480, y: -100 },
-        { x: 520, y: 90 },
-        { x: 700, y: 10 },
-      ];
-      hint = "Pretzel. The fairway folds over itself. Five turns. No hero line.";
+      raw = [{ x: 0, y: 0 }, { x: 0.28, y: 0.18 * s }, { x: 0.36, y: -0.12 * s }, { x: 0.66, y: -0.15 * s }, { x: 0.74, y: 0.14 * s }, { x: 1, y: 0.02 * s }];
+      hint = "Pretzel. The fairway folds. Five turns. No hero line.";
       fairW = 17;
     } else if (shape === "serpent") {
-      const s = rng() < 0.5 ? 1 : -1;
-      path = [
-        { x: 0, y: 0 },
-        { x: 200, y: 160 * s },
-        { x: 400, y: -165 * s },
-        { x: 580, y: 155 * s },
-        { x: 740, y: -140 * s },
-        { x: 880, y: 30 * s },
-      ];
-      hint = "Serpent five. Six legs. This is a hike.";
+      raw = [{ x: 0, y: 0 }, { x: 0.22, y: 0.2 * s }, { x: 0.44, y: -0.2 * s }, { x: 0.64, y: 0.18 * s }, { x: 0.84, y: -0.16 * s }, { x: 1, y: 0.04 * s }];
+      hint = "Serpent five. Six legs. This is a hike — club each corner.";
       fairW = 18;
     } else if (shape === "archipelago") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 210, y: 20 },
-        { x: 360, y: -90 },
-        { x: 530, y: 80 },
-        { x: 700, y: -30 },
-        { x: 820, y: 40 },
-      ];
-      water = [
-        { x: 160, y: -50, w: 70, h: 110 },
-        { x: 400, y: -40, w: 70, h: 110 },
-        { x: 620, y: -70, w: 64, h: 120 },
-      ];
-      hint = "Archipelago. Three carries on a snaking five. Short is the drink.";
+      raw = [{ x: 0, y: 0 }, { x: 0.24, y: 0.03 }, { x: 0.42, y: -0.12 * s }, { x: 0.62, y: 0.1 * s }, { x: 0.82, y: -0.04 * s }, { x: 1, y: 0.05 * s }];
+      hint = "Archipelago. Creeks between landings. Short is the drink.";
+      creekIs = [1, 2, 3];
       fairW = 17;
     } else if (shape === "spiral") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 220, y: 40 },
-        { x: 360, y: 170 },
-        { x: 280, y: 280 },
-        { x: 480, y: 300 },
-        { x: 640, y: 160 },
-        { x: 760, y: 40 },
-      ];
-      hint = "Spiral. The hole coils. You play around the woods, never through.";
+      raw = [{ x: 0, y: 0 }, { x: 0.28, y: 0.06 }, { x: 0.46, y: 0.22 }, { x: 0.36, y: 0.38 }, { x: 0.62, y: 0.4 }, { x: 0.84, y: 0.2 }, { x: 1, y: 0.05 }];
+      hint = "Spiral. The hole coils. Play around the woods, never through.";
       fairW = 17;
     } else if (shape === "doubleCape") {
-      path = [
-        { x: 0, y: 0 },
-        { x: 210, y: -100 },
-        { x: 400, y: 20 },
-        { x: 580, y: -110 },
-        { x: 760, y: 30 },
-        { x: 860, y: 80 },
-      ];
-      water = [
-        { x: 30, y: -36, w: 340, h: 92 },
-        { x: 420, y: -40, w: 280, h: 92 },
-      ];
+      raw = [{ x: 0, y: 0 }, { x: 0.24, y: -0.14 * s }, { x: 0.46, y: 0.03 * s }, { x: 0.68, y: -0.14 * s }, { x: 0.88, y: 0.04 * s }, { x: 1, y: 0.1 * s }];
       hint = "Double cape. Two bites of water. Neither is driveable.";
+      waterMode = "inside";
       fairW = 18;
     } else {
-      path = [
-        { x: 0, y: 0 },
-        { x: 190, y: 130 },
-        { x: 360, y: 20 },
-        { x: 390, y: -130 },
-        { x: 580, y: -40 },
-        { x: 620, y: 140 },
-        { x: 800, y: 20 },
-      ];
-      water = [{ x: 300, y: -50, w: 80, h: 90 }];
+      raw = [{ x: 0, y: 0 }, { x: 0.22, y: 0.16 * s }, { x: 0.42, y: 0.03 * s }, { x: 0.48, y: -0.16 * s }, { x: 0.7, y: -0.05 * s }, { x: 0.78, y: 0.16 * s }, { x: 1, y: 0.02 * s }];
       hint = "Maze five. Six corners and a creek. The pin is a rumor.";
+      creekIs = [3];
       fairW = 16;
     }
-    path = path.map(function (p) { return { x: j(p.x, 8), y: j(p.y, 10) }; });
-    path[0] = { x: 0, y: 0 };
-    path.forEach(function (pt, i) {
-      if (i === 0) return;
-      const side = (i % 2 ? 1 : -1) * (20 + rng() * 8);
-      bunkers.push({ x: pt.x + j(0, 10), y: pt.y + side, r: 12 + rng() * 4 });
+
+    let path = scalePath(cleanPath(raw), target);
+    path = path.map(function (p, i) {
+      if (i === 0) return { x: 0, y: 0 };
+      return { x: j(p.x, 4), y: j(p.y, 5) };
     });
-    const last = path[path.length - 1];
-    groves.push({ x: last.x - 30, y: last.y + 40, n: 5, r: 16 });
+    path = cleanPath(path);
+    path[0] = { x: 0, y: 0 };
+
+    let bunkers = wantGuards ? guardBunkers(path, fairW, greenR) : [];
+    if (shape === "postage") {
+      const pin = path[path.length - 1];
+      bunkers = [
+        { x: pin.x - greenR - 11, y: pin.y, r: 11 },
+        { x: pin.x, y: pin.y - greenR - 9, r: 8 },
+        { x: pin.x, y: pin.y + greenR + 9, r: 8 }
+      ];
+    } else if (shape === "redan") {
+      const pin = path[path.length - 1];
+      bunkers.push({ x: pin.x * 0.74, y: pin.y * 0.62, r: 14 });
+    }
+
+    let water = [];
+    if (waterMode === "island") {
+      if (path.length <= 2) {
+        const iw = islandWater(path, greenR);
+        if (iw && !waterBlocksPlay(iw, path, fairW, greenR)) water.push(iw);
+      } else {
+        const a = path[0], b = path[1];
+        const span = Math.max(36, dist(a, b) * 0.52);
+        const box = { x: 20, y: -58, w: span, h: 116 };
+        if (!waterBlocksPlay(box, path, fairW, greenR)) water.push(box);
+      }
+    } else if (waterMode === "inside" && path.length >= 3) {
+      const span = shape === "doubleCape" ? [[0, 2], [2, 4]] : [[0, Math.min(3, path.length - 1)]];
+      span.forEach(function (ab) {
+        const box = waterAlongInside(path, ab[0], ab[1], 52, fairW);
+        if (box && !waterBlocksPlay(box, path, fairW, greenR)) water.push(box);
+      });
+    }
+    creekIs.forEach(function (i) {
+      if (i >= path.length - 1) return;
+      const a = path[i], b = path[i + 1];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const n = segPerp(path, i);
+      const box = { x: mx - 22 + n.x * 8, y: my - 36 + n.y * 8, w: 44, h: 72 };
+      if (!waterBlocksPlay(box, path, fairW, greenR)) water.push(box);
+    });
+
+    const pin = path[path.length - 1];
+    const nPin = segPerp(path, path.length - 1);
+    const groves = [{
+      x: pin.x + nPin.x * (greenR + 22),
+      y: pin.y + nPin.y * (greenR + 22),
+      n: 5,
+      r: 14
+    }];
     const forests = path.length >= 3 ? elbowForest(path, fairW) : [];
     return H(par, "Wild " + shape, path, {
       bunkers: bunkers,
@@ -2016,7 +2085,7 @@
       forests: forests,
       hint: hint,
       fairW: fairW,
-      greenR: greenR,
+      greenR: greenR
     });
   }
 
