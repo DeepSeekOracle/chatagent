@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://www.googletagservices.com https://www.google.com https://googleads.g.doubleclick.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://deepseekoracle.github.io https://raw.githubusercontent.com https://huggingface.co https://pagead2.googlesyndication.com; frame-src https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https:; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://www.googletagservices.com https://www.google.com https://www.gstatic.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com; upgrade-insecure-requests">
 
   <!-- Google AdSense (eternalhaven.ca / mirrored pages) -->
   <meta name="google-adsense-account" content="ca-pub-0646320966060599" />
@@ -371,12 +371,13 @@ python tools/build_haven_star_chart.py</pre>
       </p>
     </footer>
   </main>
-  <script src="haven_star_chart/haven_star_chart_feed.js"></script>
+  <script src="/starchart/haven_star_chart/haven_star_chart_feed.js?v=2.5.2"></script>
   <script>
     async function loadQueue() {
       const urls = [
-        'haven_star_chart/haven_star_chart_queue.json',
-        'haven_star_chart/haven_star_chart_meta.json',
+        '/starchart/haven_star_chart/haven_star_chart_queue.json',
+        '/starchart/haven_star_chart/haven_star_chart_meta.json',
+        'https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_queue.json',
         'https://raw.githubusercontent.com/DeepSeekOracle/lygo-protocol-stack/main/docs/haven_star_chart/haven_star_chart_queue.json'
       ];
       for (const u of urls) {
@@ -392,7 +393,7 @@ python tools/build_haven_star_chart.py</pre>
         } catch (e) { /* try next */ }
       }
       try {
-        const r = await fetch('haven_star_chart/haven_star_chart_data.json', { cache: 'no-store' });
+        const r = await fetch('/starchart/haven_star_chart/haven_star_chart_data.json', { cache: 'no-store' });
         if (r.ok) {
           const d = await r.json();
           document.getElementById('qNodes').textContent = d.node_count ?? (d.nodes || []).length;

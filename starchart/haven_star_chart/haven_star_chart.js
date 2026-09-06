@@ -4,8 +4,12 @@
   const META_REL = "haven_star_chart/haven_star_chart_meta.json";
   const QUEUE_REL = "haven_star_chart/haven_star_chart_queue.json";
   const MANIFEST_REL = "public_verify_manifest.json";
+  const DATA_PAGES =
+    "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_data.json";
   const DATA_FALLBACK =
     "https://raw.githubusercontent.com/DeepSeekOracle/lygo-protocol-stack/main/docs/haven_star_chart/haven_star_chart_data.json";
+  const META_PAGES =
+    "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_meta.json";
   const META_FALLBACK =
     "https://raw.githubusercontent.com/DeepSeekOracle/lygo-protocol-stack/main/docs/haven_star_chart/haven_star_chart_meta.json";
   const PULSE_MS = 45000;
@@ -85,7 +89,7 @@
   }
 
   async function loadData() {
-    const data = await fetchJson([DATA_REL, DATA_FALLBACK]);
+    const data = await fetchJson([DATA_REL, DATA_PAGES, DATA_FALLBACK]);
     if (!data) throw new Error("Star chart data unavailable");
     chartData = data;
     lastSha = data.registry_sha256 || "";
@@ -144,6 +148,7 @@
   }
 
   function galaxyRadius(gid, R) {
+    gid = String(gid || "");
     if (gid === "GALAXY_SINGULARITY") return 0;
     if (gid === "GALAXY_PRIMORDIAL_VAULT") return R * 0.22;
     if (gid.startsWith("GALAXY_CHAMPION_")) return R * 0.34;
@@ -322,13 +327,28 @@
   function initChart() {
     const container = el("starmap");
     if (!container || !chartData) return;
+    if (typeof d3 === "undefined") {
+      if (el("loadStatus")) el("loadStatus").textContent = "D3 engine missing";
+      setPulse("err", "D3 failed to load");
+      return;
+    }
     if (simulation) simulation.stop();
     const wrap = el("starmap-wrap");
-    const W = container.clientWidth || wrap?.clientWidth || 900;
-    const H =
+    let W = container.clientWidth || wrap?.clientWidth || 0;
+    let H =
       container.clientHeight ||
       wrap?.clientHeight ||
-      Math.max(520, Math.floor((window.innerHeight || 800) * 0.72));
+      0;
+    if (W < 40 || H < 40) {
+      initChart._tries = (initChart._tries || 0) + 1;
+      if (initChart._tries < 10) {
+        requestAnimationFrame(initChart);
+        return;
+      }
+      W = W || 900;
+      H = H || Math.max(520, Math.floor((window.innerHeight || 800) * 0.72));
+    }
+    initChart._tries = 0;
     chartW = W;
     chartH = H;
     const CX = W / 2;
@@ -398,9 +418,12 @@
 
     const idMap = new Map(nodes.map((n) => [n.id, n]));
     links.forEach((l) => {
-      l.source = idMap.get(l.source);
-      l.target = idMap.get(l.target);
+      l.source = idMap.get(typeof l.source === "string" ? l.source : l.source && l.source.id);
+      l.target = idMap.get(typeof l.target === "string" ? l.target : l.target && l.target.id);
     });
+    for (let i = links.length - 1; i >= 0; i--) {
+      if (!links[i].source || !links[i].target) links.splice(i, 1);
+    }
 
     const core = nodes.find((n) => n.id === "SEAL_000" || n.id === "GAB_SEAL_000");
     if (core) {
@@ -586,11 +609,11 @@
       .alphaMin(0.012)
       .on("tick", () => {
         linkSel
-          .attr("x1", (d) => d.source.x)
-          .attr("y1", (d) => d.source.y)
-          .attr("x2", (d) => d.target.x)
-          .attr("y2", (d) => d.target.y);
-        nodeSel.attr("transform", (d) => `translate(${d.x},${d.y})`);
+          .attr("x1", (d) => (d.source && d.source.x) || 0)
+          .attr("y1", (d) => (d.source && d.source.y) || 0)
+          .attr("x2", (d) => (d.target && d.target.x) || 0)
+          .attr("y2", (d) => (d.target && d.target.y) || 0);
+        nodeSel.attr("transform", (d) => `translate(${d.x || 0},${d.y || 0})`);
         haloTick += 1;
         if (showCosmosLayers && haloTick % 12 === 0) drawCosmosHalos(gCosmos, nodes, CX, CY, R);
       })
@@ -598,10 +621,10 @@
         if (showCosmosLayers) drawCosmosHalos(gCosmos, nodes, CX, CY, R);
       });
 
-    el("statNodes").textContent = `${nodes.length}` + (chartData.node_count && chartData.node_count !== nodes.length ? ` / ${chartData.node_count}` : "");
-    el("statLinks").textContent = String(links.length);
-    el("statSha").textContent = (chartData.registry_sha256 || "").slice(0, 12) + "…";
-    el("statSync").textContent = chartData.generated_utc || "—";
+    if (el("statNodes")) el("statNodes").textContent = `${nodes.length}` + (chartData.node_count && chartData.node_count !== nodes.length ? ` / ${chartData.node_count}` : "");
+    if (el("statLinks")) el("statLinks").textContent = String(links.length);
+    if (el("statSha")) el("statSha").textContent = (chartData.registry_sha256 || "").slice(0, 12) + "…";
+    if (el("statSync")) el("statSync").textContent = chartData.generated_utc || "—";
     const cg = chartData.cosmos?.galaxy_count;
     if (el("statGalaxies") && cg != null) el("statGalaxies").textContent = String(cg);
     if (el("statNebulae") && chartData.cosmos?.nebula_count != null) {
@@ -624,11 +647,11 @@
     if (!d) return;
     selectedNodeId = d.id;
     if (nodeSel) nodeSel.attr("class", (n) => "star-node" + (n.id === selectedNodeId ? " selected" : ""));
-    el("detailTitle").textContent = d.name || d.id;
-    el("detailId").textContent = d.id;
-    el("detailEq").textContent = d.equation || "—";
-    el("detailTone").textContent = d.tone || "—";
-    el("detailTags").textContent = (d.tags || []).join(" · ") || "—";
+    if (el("detailTitle")) el("detailTitle").textContent = d.name || d.id;
+    if (el("detailId")) el("detailId").textContent = d.id;
+    if (el("detailEq")) el("detailEq").textContent = d.equation || "—";
+    if (el("detailTone")) el("detailTone").textContent = d.tone || "—";
+    if (el("detailTags")) el("detailTags").textContent = (d.tags || []).join(" · ") || "—";
     const urls = d.urls || {};
     const live =
       urls.summon ||
@@ -641,7 +664,7 @@
       d.url ||
       "";
     const link = el("detailLink");
-    if (live) {
+    if (live && link) {
       link.href = live;
       if (urls.summon && (d.kind === "champion" || d.kind === "champion_egg")) {
         link.textContent = "Summon at chatagent.ca →";
@@ -653,10 +676,10 @@
         link.textContent = "Open anchor →";
       }
       link.style.display = "inline";
-    } else {
+    } else if (link) {
       link.style.display = "none";
     }
-    el("detailKind").textContent = d.kind || "star";
+    if (el("detailKind")) el("detailKind").textContent = d.kind || "star";
     const c = d.cosmos || {};
     if (el("detailGalaxy")) el("detailGalaxy").textContent = c.galaxy_name || "—";
     if (el("detailNebula")) el("detailNebula").textContent = c.nebula_name || "—";
@@ -1063,7 +1086,7 @@
   }
 
   async function pulseOnce() {
-    const meta = await fetchJson([META_REL, META_FALLBACK]);
+    const meta = await fetchJson([META_REL, META_PAGES, META_FALLBACK]);
     if (!meta) {
       setPulse("stale", "Pulse: meta unreachable — showing last loaded registry");
       return;
@@ -1236,11 +1259,28 @@
       if (window.__hscResize) clearTimeout(window.__hscResize);
       window.__hscResize = setTimeout(() => initChart(), 180);
     });
+    const wrap = el("starmap-wrap");
+    if (wrap && typeof ResizeObserver !== "undefined" && !wrap.__hscRo) {
+      wrap.__hscRo = new ResizeObserver(() => {
+        if (!chartData) return;
+        const w = el("starmap")?.clientWidth || 0;
+        if (w < 40) return;
+        if (Math.abs(w - chartW) < 8) return;
+        if (window.__hscResize) clearTimeout(window.__hscResize);
+        window.__hscResize = setTimeout(() => initChart(), 180);
+      });
+      wrap.__hscRo.observe(wrap);
+    }
   }
 
   async function boot() {
-    el("loadStatus").textContent = "Loading constellation registry…";
+    if (el("loadStatus")) el("loadStatus").textContent = "Loading constellation registry…";
     setPulse("idle", "Loading public C mirror…");
+    if (typeof d3 === "undefined") {
+      if (el("loadStatus")) el("loadStatus").textContent = "D3 engine missing — /starchart/vendor/d3.v7.min.js";
+      setPulse("err", "D3 failed to load");
+      return;
+    }
     try {
       await loadData();
       bindUI();
@@ -1270,7 +1310,7 @@
       const q = await fetchJson([QUEUE_REL]);
       if (q) fillQueue(q);
     } catch (e) {
-      el("loadStatus").textContent = "Sync failed — check data JSON";
+      if (el("loadStatus")) el("loadStatus").textContent = "Sync failed — check data JSON";
       setPulse("err", "Registry fetch failed");
       console.error(e);
     }
