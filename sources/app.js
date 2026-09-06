@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.15.0";
+  const CAT_VER = "1.16.0";
   const BM_KEY = "lygo_tv_bm_ok";
   const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
@@ -47,7 +47,8 @@
     mjh_raw: 1, mjh_radio: 1, plex_fast: 1, plex_all: 1, rw1986: 1,
     ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1, ftv_music: 1,
     tubi_fast: 1, distro_fast: 1, vizio_fast: 1, rakuten_uk: 1, lg_us: 1,
-    xumo_fast: 1
+    xumo_fast: 1, firetv_fast: 1, tcl_fast: 1,
+    src_stirr: 1, src_firetv: 1, src_roku: 1, src_samsung: 1
   };
   const LIST_IDS = {
     worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1,
@@ -58,7 +59,10 @@
     ftv_austria: 1, ftv_portugal: 1, ftv_belgium: 1, ftv_brazil: 1,
     ftv_finland: 1, ftv_norway: 1, ftv_denmark: 1, ftv_greece: 1, ftv_czech: 1,
     ftv_croatia: 1, ftv_hungary: 1, ftv_romania: 1, ftv_turkey: 1,
-    ftv_chile: 1, ftv_argentina: 1, ftv_egypt: 1, ftv_taiwan: 1, ftv_israel: 1
+    ftv_chile: 1, ftv_argentina: 1, ftv_egypt: 1, ftv_taiwan: 1, ftv_israel: 1,
+    ftv_albania: 1, ftv_bosnia: 1, ftv_bulgaria: 1, ftv_china: 1, ftv_cr: 1,
+    ftv_estonia: 1, ftv_georgia: 1, ftv_hk: 1, ftv_iran: 1, ftv_iceland: 1,
+    ftv_slovakia: 1
   };
   const TOPIC_IDS = {
     culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,
@@ -73,7 +77,8 @@
     tur: 1, hin: 1, urd: 1, ben: 1, tam: 1, swa: 1, amh: 1, heb: 1,
     eng: 1, fra: 1, deu: 1, ita: 1, nld: 1, jpn: 1, kor: 1, pol: 1,
     hun: 1, ron: 1, ell: 1, tha: 1, vie: 1, ind: 1, mal: 1, tel: 1,
-    cat: 1, srp: 1, kaz: 1
+    cat: 1, srp: 1, kaz: 1,
+    bul: 1, ces: 1, est: 1, fin: 1, gle: 1, hrv: 1, isl: 1, lav: 1, lit: 1, slk: 1
   };
 
   const $ = function (id) { return document.getElementById(id); };
