@@ -1130,9 +1130,44 @@
     ribbon(hole.fairW + 22, "#1a4a28");
     ribbon(hole.fairW + 3.2, "#2f6e3c");
     ribbon(hole.fairW, "#4ec86a");
-    ribbon(hole.fairW * 0.38, "rgba(190,240,170,.22)");
+    ribbon(hole.fairW * 0.55, "#6edc82");
+    ribbon(hole.fairW * 0.22, "rgba(210,255,190,.28)");
 
     const pts = hole.path || [hole.tee, hole.pin];
+    if (pts.length > 1) {
+      const oobLat = (hole.fairW || 30) + 26;
+      c.save();
+      c.strokeStyle = "rgba(243,239,230,.7)";
+      c.lineWidth = Math.max(1.2, 0.45 * view.scale);
+      c.setLineDash([7, 8]);
+      function oobSide(sign) {
+        c.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const prev = pts[Math.max(0, i - 1)];
+          const next = pts[Math.min(pts.length - 1, i + 1)];
+          const tx = next.x - prev.x, ty = next.y - prev.y;
+          const len = Math.hypot(tx, ty) || 1;
+          const p = toScr({ x: pts[i].x + (-ty / len) * oobLat * sign, y: pts[i].y + (tx / len) * oobLat * sign });
+          if (i === 0) c.moveTo(p.x, p.y);
+          else c.lineTo(p.x, p.y);
+        }
+        c.stroke();
+      }
+      oobSide(1);
+      oobSide(-1);
+      c.setLineDash([]);
+      c.fillStyle = "rgba(247,244,238,.85)";
+      for (let i = 1; i < pts.length - 1; i++) {
+        const prev = pts[i - 1], next = pts[Math.min(pts.length - 1, i + 1)];
+        const tx = next.x - prev.x, ty = next.y - prev.y;
+        const len = Math.hypot(tx, ty) || 1;
+        for (const sign of [1, -1]) {
+          const p = toScr({ x: pts[i].x + (-ty / len) * oobLat * sign, y: pts[i].y + (tx / len) * oobLat * sign });
+          c.fillRect(p.x - 1.5, p.y - 4, 3, 8);
+        }
+      }
+      c.restore();
+    }
     c.save();
     c.globalAlpha = 0.14;
     c.strokeStyle = "#5eead4";

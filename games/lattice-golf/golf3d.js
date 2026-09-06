@@ -81,12 +81,14 @@
       return [20 + n, 52 + n * 0.7 + clump, 26 + n * 0.35];
     });
     tex.rough.repeat.set(16, 16);
-    tex.fair = noiseTex(256, 256, function (x, y) {
-      var n = ((x * 9 + y * 4) % 9);
-      var stripe = ((y / 12) | 0) % 2 === 0 ? 28 : 0;
-      return [62 + n + stripe, 168 + n + stripe, 78 + n * 0.4];
+    tex.fair = noiseTex(256, 256, function (x, y, u, v) {
+      var n = ((x * 5 + y * 3) % 8);
+      var band = 0.5 + 0.5 * Math.cos(v * Math.PI * 14);
+      var across = 0.82 + 0.18 * Math.sin(u * Math.PI);
+      var s = Math.round(30 * band * across);
+      return [48 + n + s, 138 + n + s * 1.2, 62 + n * 0.45 + s * 0.45];
     });
-    tex.fair.repeat.set(10, 28);
+    tex.fair.repeat.set(1, 1);
     tex.green = noiseTex(128, 128, function (x, y) {
       var n = (x + y) % 7;
       var stripe = ((y / 8) | 0) % 2 === 0 ? 10 : 0;
@@ -223,16 +225,21 @@
     return out;
   }
 
-  function ribbonGeo(path, width, y) {
+  function ribbonGeo(path, width, y, opts) {
+    opts = opts || {};
     if (!path || path.length < 2) {
       var empty = new T.BufferGeometry();
       empty.setAttribute("position", new T.Float32BufferAttribute([0, y, 0, 1, y, 0, 0, y, 1], 3));
       empty.setIndex([0, 1, 2]);
       return empty;
     }
-    var pts = densify(path, 10);
+    var thirds = !!opts.thirds;
+    var camber = opts.camber || 0;
+    var uvS = opts.uvScale || 0.04;
+    var pts = densify(path, opts.step || 10);
     var pos = [];
     var uv = [];
+    var col = [];
     var idx = [];
     var distAcc = 0;
     for (var i = 0; i < pts.length; i++) {
@@ -242,20 +249,95 @@
       var len = Math.hypot(tx, tz) || 1;
       var px = -tz / len, pz = tx / len;
       if (i > 0) distAcc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-      pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
-      pos.push(pts[i].x - px * width, y, pts[i].y + pz * width);
-      uv.push(0, distAcc * 0.04, 1, distAcc * 0.04);
-      if (i > 0) {
-        var b = (i - 1) * 2;
-        idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      var vv = distAcc * uvS;
+      if (thirds) {
+        pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
+        pos.push(pts[i].x, y + camber, pts[i].y);
+        pos.push(pts[i].x - px * width, y, pts[i].y - pz * width);
+        uv.push(0, vv, 0.5, vv, 1, vv);
+        col.push(0.62, 0.78, 0.55, 1.0, 1.08, 0.92, 0.62, 0.78, 0.55);
+        if (i > 0) {
+          var b = (i - 1) * 3;
+          idx.push(b, b + 1, b + 3, b + 1, b + 4, b + 3);
+          idx.push(b + 1, b + 2, b + 4, b + 2, b + 5, b + 4);
+        }
+      } else {
+        pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
+        pos.push(pts[i].x - px * width, y, pts[i].y - pz * width);
+        uv.push(0, vv, 1, vv);
+        if (i > 0) {
+          var c = (i - 1) * 2;
+          idx.push(c, c + 1, c + 2, c + 1, c + 3, c + 2);
+        }
       }
     }
     var g = new T.BufferGeometry();
     g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
     g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2));
+    if (thirds) g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
+  }
+
+  function offsetPathPts(path, lat) {
+    var pts = densify(path, 12);
+    var out = [];
+    for (var i = 0; i < pts.length; i++) {
+      var prev = pts[Math.max(0, i - 1)];
+      var next = pts[Math.min(pts.length - 1, i + 1)];
+      var tx = next.x - prev.x, tz = next.y - prev.y;
+      var len = Math.hypot(tx, tz) || 1;
+      var px = -tz / len, pz = tx / len;
+      out.push({ x: pts[i].x + px * lat, y: pts[i].y + pz * lat });
+    }
+    return out;
+  }
+
+  function addOobMarkers(hole) {
+    var path = hole.path;
+    if (!path || path.length < 2) return;
+    var lat = (hole.fairW || 30) + 26;
+    var lineMat = mat({ color: 0xf3efe6, roughness: 0.42, metalness: 0.08, emissive: 0x2a2818, emissiveIntensity: 0.12 });
+    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, lat), 0.22, 0.14), lineMat));
+    holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, -lat), 0.22, 0.14), lineMat));
+    var stakePts = densify(path, 22);
+    var nMax = Math.min(stakePts.length * 2, 180);
+    if (nMax < 2) return;
+    var stakeGeo = new T.CylinderGeometry(0.055, 0.07, 1.12, 5);
+    var stakeMat = mat({ color: 0xf7f4ee, roughness: 0.48, metalness: 0.12 });
+    var stakes = new T.InstancedMesh(stakeGeo, stakeMat, nMax);
+    stakes.castShadow = true;
+    var dummy = new T.Object3D();
+    var k = 0;
+    var pin = hole.pin;
+    var tee = hole.tee;
+    for (var i = 1; i < stakePts.length - 1; i += 2) {
+      var prev = stakePts[i - 1];
+      var next = stakePts[Math.min(stakePts.length - 1, i + 1)];
+      var tx = next.x - prev.x, tz = next.y - prev.y;
+      var len = Math.hypot(tx, tz) || 1;
+      var px = -tz / len, pz = tx / len;
+      for (var s = -1; s <= 1; s += 2) {
+        var x = stakePts[i].x + px * lat * s;
+        var z = stakePts[i].y + pz * lat * s;
+        if (pin && Math.hypot(x - pin.x, z - pin.y) < (hole.greenR || 12) + 10) continue;
+        if (tee && Math.hypot(x - tee.x, z - tee.y) < 16) continue;
+        if (inAnyWater({ x: x, y: z }, hole)) continue;
+        dummy.position.set(x, 0.62, z);
+        dummy.rotation.set(0, i * 0.17, 0.03 * s);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        stakes.setMatrixAt(k, dummy.matrix);
+        k += 1;
+        if (k >= nMax) break;
+      }
+      if (k >= nMax) break;
+    }
+    if (k < 1) return;
+    stakes.count = k;
+    stakes.instanceMatrix.needsUpdate = true;
+    holeRoot.add(stakes);
   }
 
   function perpAt(path, i) {
@@ -536,12 +618,13 @@
     holeRoot.add(cut);
 
     var fair = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW, 0.2),
+      ribbonGeo(hole.path, hole.fairW, 0.2, { thirds: true, camber: 0.22, uvScale: 0.012 }),
       mat({
         map: tex.fair,
         color: th.fair,
-        roughness: 0.72,
-        metalness: 0.02,
+        roughness: 0.58,
+        metalness: 0.04,
+        vertexColors: true,
         polygonOffset: true,
         polygonOffsetFactor: -1,
         polygonOffsetUnits: 1
@@ -551,15 +634,17 @@
     holeRoot.add(fair);
 
     var fairEdge = new T.Mesh(
-      ribbonGeo(hole.path, hole.fairW + 1.15, 0.21),
+      ribbonGeo(hole.path, hole.fairW + 1.05, 0.215),
       mat({
-        color: 0xc8f0b0,
-        roughness: 0.6,
+        color: 0xd5f5c8,
+        roughness: 0.5,
         transparent: true,
-        opacity: 0.28
+        opacity: 0.22
       })
     );
     holeRoot.add(fairEdge);
+
+    addOobMarkers(hole);
 
     var walk = cartPathPts(hole);
     if (walk.length >= 2) {
