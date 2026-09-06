@@ -553,6 +553,70 @@
     return 1;
   }
 
+  function rollFracOf(club) {
+    if (!club || club.putt) return 0;
+    const mid = (club.min + club.max) / 2;
+    return Math.max(0.01, Math.min(0.14, (mid - 80) / 1300));
+  }
+
+  function lieRollMul(lie) {
+    if (lie === "green") return 1.42;
+    if (lie === "fairway") return 1.0;
+    if (lie === "rough") return 0.22;
+    if (lie === "bunker") return 0.05;
+    if (lie === "trees" || lie === "water") return 0;
+    if (lie === "oob") return 0.32;
+    return 0.7;
+  }
+
+  function simulateRoll(start, heading, yards, hole, pin) {
+    const path = [{ x: start.x, y: start.y }];
+    if (!hole || yards < 0.35) return { rest: { x: start.x, y: start.y }, path: path, holed: false };
+    let x = start.x, y = start.y;
+    let left = yards;
+    const sample = 1.1;
+    let steps = 0;
+    while (left > 0.2 && steps < 420) {
+      steps += 1;
+      const here = { x: x, y: y };
+      const lie = lieAt(hole, here);
+      let friction = 1;
+      if (lie === "green") friction = 0.84;
+      else if (lie === "fairway") friction = 1.06;
+      else if (lie === "rough") friction = 2.45;
+      else if (lie === "bunker") friction = 6.8;
+      else if (lie === "trees") break;
+      else if (lie === "water") return { rest: here, path: path, holed: false, water: true };
+      else if (lie === "oob") friction = 1.35;
+      const step = Math.min(sample, left);
+      let nx = x + Math.cos(heading) * step;
+      let ny = y + Math.sin(heading) * step;
+      if (lie === "green") {
+        const dPin = dist({ x: nx, y: ny }, pin);
+        if (dPin < hole.greenR * 1.08) {
+          const pull = 0.075 * step * (1 - dPin / Math.max(1, hole.greenR));
+          const a = ang({ x: nx, y: ny }, pin);
+          nx += Math.cos(a) * pull;
+          ny += Math.sin(a) * pull;
+        }
+      }
+      const nxt = { x: nx, y: ny };
+      if (shotHolesOut(here, nxt, pin, true, lie === "green" || dist(nxt, pin) <= hole.greenR)) {
+        path.push({ x: pin.x, y: pin.y });
+        return { rest: { x: pin.x, y: pin.y }, path: path, holed: true };
+      }
+      if (inWater(nxt, hole)) {
+        path.push(nxt);
+        return { rest: nxt, path: path, holed: false, water: true };
+      }
+      x = nx;
+      y = ny;
+      path.push({ x: x, y: y });
+      left -= step * friction;
+    }
+    return { rest: { x: x, y: y }, path: path, holed: false };
+  }
+
   function shotModel(withJitter) {
     if (!G.hole || !G.marker || !G.club) return null;
     const pin = G.hole.pin;
@@ -573,27 +637,60 @@
     }
     const actual = Math.max(0.25, want + windAlong + jD);
     const a2 = aim + jA + windCross / Math.max(12, actual);
-    let dest = {
+    let carry = {
       x: from.x + Math.cos(a2) * actual,
       y: from.y + Math.sin(a2) * actual,
     };
     let blocked = null;
     if (!G.club.putt) {
-      const hit = firstFlightHit(from, dest, G.hole);
+      const hit = firstFlightHit(from, carry, G.hole);
       if (hit) {
-        dest = hit.p;
+        carry = hit.p;
         blocked = hit.kind;
       }
     }
-    const holed = !blocked && shotHolesOut(from, dest, pin, G.club.putt, onG);
-    if (holed) dest = { x: pin.x, y: pin.y };
-    return { from: from, dest: dest, actual: actual, blocked: blocked, holed: holed, lie: lie, onG: onG };
+    let dest = { x: carry.x, y: carry.y };
+    let rollYd = 0;
+    let holed = !blocked && shotHolesOut(from, carry, pin, G.club.putt, onG);
+    if (holed) {
+      dest = { x: pin.x, y: pin.y };
+      carry = dest;
+    } else if (!G.club.putt && !blocked) {
+      const landLie = lieAt(G.hole, carry);
+      if (landLie !== "water") {
+        rollYd = actual * rollFracOf(G.club) * lieRollMul(landLie);
+        const heading = a2 + windCross * 0.12 / Math.max(10, actual);
+        const sim = simulateRoll(carry, heading, rollYd, G.hole, pin);
+        dest = sim.rest;
+        rollYd = dist(carry, dest);
+        if (sim.holed) {
+          holed = true;
+          dest = { x: pin.x, y: pin.y };
+        }
+      }
+    } else if (G.club.putt) {
+      holed = shotHolesOut(from, dest, pin, true, onG) || holed;
+      if (holed) dest = { x: pin.x, y: pin.y };
+    }
+    return {
+      from: from,
+      carry: carry,
+      dest: dest,
+      actual: actual,
+      roll: rollYd,
+      total: dist(from, dest),
+      heading: a2,
+      blocked: blocked,
+      holed: holed,
+      lie: lie,
+      onG: onG
+    };
   }
 
   function predictDest() {
     const m = shotModel(false);
     if (!m) return null;
-    return { dest: m.dest, blocked: m.blocked, actual: m.actual };
+    return { dest: m.dest, carry: m.carry, blocked: m.blocked, actual: m.actual, roll: m.roll };
   }
 
   function windLabel() {
@@ -751,6 +848,7 @@
     G.undo = null;
     G.flying = null;
     G.trail = [];
+    if ($("btnShoot")) $("btnShoot").disabled = false;
     rollWind();
     autoClub();
     $("holePill").textContent = "HOLE " + (G.hi + 1);
@@ -818,11 +916,12 @@
         courseId: G.course && G.course.id,
         ball: G.flying || G.ball,
         flying: !!G.flying,
-        marker: G.marker,
-        pred: predictDest(),
-        carry: intendedCarry(),
+        marker: G.flying ? null : G.marker,
+        pred: G.flying ? null : predictDest(),
+        carry: G.flying ? 0 : intendedCarry(),
         wind: G.wind,
-        trail: G.trail || []
+        trail: G.trail || [],
+        phase: G.flying && G.flying.phase
       });
       return;
     }
@@ -1073,24 +1172,25 @@
         x: G.ball.x + Math.cos(aimA) * reach,
         y: G.ball.y + Math.sin(aimA) * reach,
       });
-      c.fillStyle = "#fbbf24";
-      c.beginPath();
-      c.arc(land.x, land.y, 4.5, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = "#111";
-      c.lineWidth = 1.2;
-      c.stroke();
       c.fillStyle = "#5eead4";
       c.beginPath();
       c.arc(m.x, m.y, 5, 0, Math.PI * 2);
       c.fill();
       const pred = predictDest();
+      if (pred && pred.carry) {
+        const cp = toScr(pred.carry);
+        c.fillStyle = "#fbbf24";
+        c.beginPath();
+        c.arc(cp.x, cp.y, 4.2, 0, Math.PI * 2);
+        c.fill();
+      }
       if (pred && pred.dest) {
         const wp = toScr(pred.dest);
+        const fromPip = pred.carry ? toScr(pred.carry) : land;
         c.strokeStyle = pred.blocked ? "rgba(248,113,113,.85)" : "rgba(192,132,252,.9)";
         c.setLineDash([3, 4]);
         c.beginPath();
-        c.moveTo(land.x, land.y);
+        c.moveTo(fromPip.x, fromPip.y);
         c.lineTo(wp.x, wp.y);
         c.stroke();
         c.setLineDash([]);
@@ -1153,7 +1253,8 @@
         "<p>Pin <b>" + d.toFixed(0) + " yd</b> · marker <b>" + md.toFixed(0) + " yd</b></p>" +
         "<p>Caddie: <b>" + rec.name + "</b> · lie " + lie + "</p>" +
         "<p>Club " + intendedCarry().toFixed(0) + " yd" +
-        (pred ? " · wind " + pred.actual.toFixed(0) + " yd" : "") +
+        (pred ? " · carry " + pred.actual.toFixed(0) + " yd" : "") +
+        (pred && pred.roll > 0.6 ? " · roll " + pred.roll.toFixed(0) + " yd" : "") +
         (pred && pred.blocked ? " · blocked" : "") + "</p>" +
         "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
     }
@@ -1238,8 +1339,8 @@
     const m = shotModel(true);
     if (!m) return;
     G.strokes += 1;
-    animateShot(from, m.dest, function () {
-      G.ball = m.dest;
+    animateShot(from, m, function () {
+      G.ball = { x: m.dest.x, y: m.dest.y };
       if (m.holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
         log("Cup. " + G.strokes + " · par " + G.hole.par);
         holeDone();
@@ -1253,7 +1354,8 @@
       } else if (m.blocked === "trees") {
         log("Into the trees. Ball stops. " + dist(from, m.dest).toFixed(0) + " yd · " + now);
       } else {
-        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd · " + now);
+        const rollBit = m.roll > 0.8 ? " + " + m.roll.toFixed(0) + " yd roll" : "";
+        log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd carry" + rollBit + " · " + now);
       }
       G.marker = nextAim(G.hole, G.ball);
       autoClub();
@@ -1262,29 +1364,77 @@
     });
   }
 
-  function animateShot(from, to, done) {
-    const len = dist(from, to);
+  function animateShot(from, model, done) {
+    const carry = model.carry || model.dest;
+    const rest = model.dest;
     const putt = !!(G.club && G.club.putt);
-    const loft = putt ? 0.8 : Math.min(42, 7 + len * 0.09);
-    const ms = (putt ? 360 : 520) + len * (putt ? 8.5 : 3.5);
+    const blocked = !!model.blocked;
+    const flyLen = dist(from, carry);
+    const rollLen = dist(carry, rest);
+    const loft = putt ? 0 : Math.min(46, 8 + flyLen * 0.095);
+    const flyMs = putt ? 0 : (560 + flyLen * 5.1);
+    const bounceOn = !putt && !blocked && loft > 6 && rollLen >= 0.4 && lieAt(G.hole, carry) !== "water";
+    const bounceMs = bounceOn ? Math.min(560, 200 + Math.min(rollLen, 40) * 6) : 0;
+    const rollMs = putt
+      ? (480 + dist(from, rest) * 16)
+      : (blocked || lieAt(G.hole, carry) === "water" ? 0 : (260 + rollLen * 22));
+    const holdMs = model.holed ? 1180 : 920;
+    const bounceAlong = bounceOn ? Math.min(0.38, 0.14 + rollLen * 0.004) : 0;
     const t0 = performance.now();
     G.trail = [];
-    function tick(now) {
-      const u = Math.min(1, (now - t0) / ms);
-      const e = putt ? (1 - Math.pow(1 - u, 1.6)) : (1 - Math.pow(1 - u, 2.15));
-      const x = from.x + (to.x - from.x) * e;
-      const y = from.y + (to.y - from.y) * e;
-      const z = Math.sin(Math.PI * u) * loft * (putt ? 0.35 : 1);
-      G.flying = { x: x, y: y, z: z };
+    if ($("btnShoot")) $("btnShoot").disabled = true;
+
+    function pose(x, y, z, phase) {
+      G.flying = { x: x, y: y, z: z, phase: phase };
       G.trail.push({ x: x, y: y, z: z });
-      if (G.trail.length > 22) G.trail.shift();
+      if (G.trail.length > 36) G.trail.shift();
       draw();
-      if (u < 1) requestAnimationFrame(tick);
-      else {
+    }
+
+    function tick(now) {
+      const t = now - t0;
+      let x, y, z, phase;
+      if (!putt && flyMs > 0 && t < flyMs) {
+        const u = t / flyMs;
+        const e = 1 - Math.pow(1 - u, 1.55);
+        x = from.x + (carry.x - from.x) * e;
+        y = from.y + (carry.y - from.y) * e;
+        const apex = Math.pow(u, 0.82);
+        z = Math.sin(Math.PI * apex) * loft;
+        phase = "fly";
+      } else if (bounceMs && t < flyMs + bounceMs) {
+        const u = (t - flyMs) / bounceMs;
+        const hopI = u < 0.58 ? 0 : 1;
+        const hu = hopI === 0 ? u / 0.58 : (u - 0.58) / 0.42;
+        const along = bounceAlong * (hopI === 0 ? 0.55 * hu : 0.55 + 0.45 * hu);
+        x = carry.x + (rest.x - carry.x) * along;
+        y = carry.y + (rest.y - carry.y) * along;
+        z = Math.sin(Math.PI * Math.max(0, Math.min(1, hu))) * loft * (hopI === 0 ? 0.14 : 0.055);
+        phase = "bounce";
+      } else if (rollMs && t < flyMs + bounceMs + rollMs) {
+        const u = (t - flyMs - bounceMs) / rollMs;
+        const e = 1 - Math.pow(1 - u, 2.55);
+        const start = putt
+          ? from
+          : { x: carry.x + (rest.x - carry.x) * bounceAlong, y: carry.y + (rest.y - carry.y) * bounceAlong };
+        x = start.x + (rest.x - start.x) * e;
+        y = start.y + (rest.y - start.y) * e;
+        z = 0;
+        phase = "roll";
+      } else if (t < flyMs + bounceMs + rollMs + holdMs) {
+        x = rest.x;
+        y = rest.y;
+        z = 0;
+        phase = "hold";
+      } else {
         G.flying = null;
         G.trail = [];
+        if ($("btnShoot")) $("btnShoot").disabled = false;
         done();
+        return;
       }
+      pose(x, y, z, phase);
+      requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   }
@@ -1811,6 +1961,9 @@
 
   function menu() {
     G.mode = "menu";
+    G.flying = null;
+    G.trail = [];
+    if ($("btnShoot")) $("btnShoot").disabled = false;
     paintEndBtn();
     $("boot").classList.add("hidden");
     $("app").classList.add("hidden");
@@ -1902,7 +2055,7 @@
     showSheet(
       "<h2>How to play</h2>" +
       "<ol class='lore'><li>Do not click the hole. The first marker sits on the next landing. Pick a club that finishes there — 100% driver often flies the corner into trouble.</li>" +
-      "<li>Gold ring is this power’s carry. Gold pip is the landing. Trees stop a cut. Water you must actually carry.</li>" +
+      "<li>Gold ring is this power’s carry. Gold pip is the air landing. Violet pip is rest after roll. Trees stop a cut. Water you must actually carry.</li>" +
       "<li>Drag the full power bar (0–100%) inside this club’s range. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%. Wind still moves the ball a little.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
@@ -1930,7 +2083,7 @@
   }
 
   canvas.addEventListener("pointerdown", function (e) {
-    if (!G.hole) return;
+    if (!G.hole || G.flying) return;
     if (e.button !== 0 || e.shiftKey || e.altKey) return;
     const r = canvas.getBoundingClientRect();
     if (use3d && window.Golf3D) {
@@ -1983,6 +2136,9 @@
     G.strokes = G.undo.strokes;
     G.undo = null;
     G.lastBall = null;
+    G.flying = null;
+    G.trail = [];
+    if ($("btnShoot")) $("btnShoot").disabled = false;
     log("Shot undone.");
     autoClub();
     renderHoleCard();
@@ -2002,6 +2158,7 @@
     G.undo = null;
     G.flying = null;
     G.trail = [];
+    if ($("btnShoot")) $("btnShoot").disabled = false;
     autoClub();
     log("Mulligan. Hole reset. " + G.mulligans + " left.");
     renderHoleCard();

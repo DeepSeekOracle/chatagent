@@ -22,6 +22,9 @@
   var lastHole = null;
   var following = false;
   var boundInput = false;
+  var camLag = 0.0018;
+  var ballPhase = "";
+  var impactRing = null;
   var tex = {};
   var windAng = 0;
   var windMph = 0;
@@ -206,15 +209,38 @@
   function followShot(ball) {
     if (!ball) return;
     following = true;
+    var phase = ball.phase || ballPhase || "fly";
+    var z = ball.z || 0;
     camGoal.lx = ball.x;
-    camGoal.ly = 1.2 + (ball.z || 0) * 0.35;
     camGoal.lz = ball.y;
-    var hold = clamp(orbit.dist * 0.42, 28, 90);
-    var cp = Math.cos(clamp(orbit.pitch, 0.35, 0.85));
-    var sp = Math.sin(clamp(orbit.pitch, 0.35, 0.85));
-    camGoal.x = ball.x + Math.cos(orbit.yaw) * hold * cp;
-    camGoal.y = 16 + (ball.z || 0) * 0.28 + hold * sp * 0.45;
-    camGoal.z = ball.y + Math.sin(orbit.yaw) * hold * cp;
+    if (phase === "fly") {
+      camLag = 0.00035;
+      var hold = clamp(36 + z * 0.18, 30, 110);
+      camGoal.ly = 1.6 + z * 0.4;
+      camGoal.x = ball.x + Math.cos(orbit.yaw) * hold * 0.82;
+      camGoal.y = 13 + z * 0.48;
+      camGoal.z = ball.y + Math.sin(orbit.yaw) * hold * 0.82;
+    } else if (phase === "bounce") {
+      camLag = 0.012;
+      var side = orbit.yaw + 0.62;
+      camGoal.ly = 0.7;
+      camGoal.x = ball.x + Math.cos(side) * 24;
+      camGoal.y = 8.2;
+      camGoal.z = ball.y + Math.sin(side) * 24;
+    } else if (phase === "roll") {
+      camLag = 0.018;
+      var side = orbit.yaw + 0.48;
+      camGoal.ly = 0.45;
+      camGoal.x = ball.x + Math.cos(side) * 18;
+      camGoal.y = 6.4;
+      camGoal.z = ball.y + Math.sin(side) * 18;
+    } else {
+      camLag = 0.006;
+      camGoal.ly = 0.35;
+      camGoal.x = ball.x + Math.cos(orbit.yaw + 0.28) * 15;
+      camGoal.y = 5.8;
+      camGoal.z = ball.y + Math.sin(orbit.yaw + 0.28) * 15;
+    }
   }
 
   function zoomBy(factor, around) {
@@ -514,16 +540,40 @@
     var tg = new T.BufferGeometry().setFromPoints(new Array(20).fill(0).map(function () { return new T.Vector3(); }));
     trailLine = new T.Line(tg, new T.LineBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.45 }));
     scene.add(trailLine);
+    impactRing = new T.Mesh(
+      new T.RingGeometry(0.6, 1.05, 28),
+      new T.MeshBasicMaterial({ color: 0xf8fafc, transparent: true, opacity: 0.4, side: T.DoubleSide, depthWrite: false })
+    );
+    impactRing.rotation.x = -Math.PI / 2;
+    impactRing.visible = false;
+    scene.add(impactRing);
   }
 
   function updateActors(s) {
     ensureActors();
     var b = s.ball || { x: 0, y: 0 };
+    ballPhase = s.phase || b.phase || "";
     var lift = (b.z || 0) * 0.42;
     ballMesh.position.set(b.x, 0.55 + lift, b.y);
     ballShadow.position.set(b.x, 0.34, b.y);
     ballShadow.scale.setScalar(1 + lift * 0.035);
     ballShadow.material.opacity = Math.max(0.08, 0.28 - lift * 0.006);
+    if (impactRing) {
+      if (ballPhase === "bounce") {
+        var hop = Math.max(0.2, 1 - (b.z || 0) / 8);
+        impactRing.visible = true;
+        impactRing.position.set(b.x, 0.38, b.y);
+        impactRing.scale.set(2.2 * hop, 2.2 * hop, 1);
+        impactRing.material.opacity = 0.18 + hop * 0.22;
+      } else if (ballPhase === "roll") {
+        impactRing.visible = true;
+        impactRing.position.set(b.x, 0.36, b.y);
+        impactRing.scale.set(1.4, 1.4, 1);
+        impactRing.material.opacity = 0.12;
+      } else {
+        impactRing.visible = false;
+      }
+    }
     if (s.marker) {
       markerMesh.visible = true;
       markerMesh.position.set(s.marker.x, 1.7, s.marker.y);
@@ -574,7 +624,10 @@
       flagCloth.rotation.z = Math.sin(clock.elapsedTime * 3.1) * 0.06;
       flagCloth.position.set(1.22, 2.35, 0);
     }
-    var k = 1 - Math.pow(0.0018, dt);
+    if (ballMesh && (ballPhase === "fly" || ballPhase === "bounce" || ballPhase === "roll")) {
+      ballMesh.rotateX((ballPhase === "fly" ? 0.2 : 0.58) * (dt / 0.016));
+    }
+    var k = 1 - Math.pow(camLag || 0.0018, dt);
     cam.x += (camGoal.x - cam.x) * k;
     cam.y += (camGoal.y - cam.y) * k;
     cam.z += (camGoal.z - cam.z) * k;
@@ -734,6 +787,9 @@
       if (s.flying) {
         followShot(s.ball);
       } else {
+        camLag = 0.0018;
+        ballPhase = "";
+        if (impactRing) impactRing.visible = false;
         if (following) {
           following = false;
           if (s.ball) {
