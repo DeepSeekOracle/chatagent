@@ -476,6 +476,10 @@
     }
     paintSky(th);
 
+    waterMeshes = [];
+    flagPole = null;
+    flagCloth = null;
+    pickPlane = null;
     if (holeRoot) {
       scene.remove(holeRoot);
       holeRoot.traverse(function (o) {
@@ -1016,8 +1020,9 @@
     if (waterMeshes && waterMeshes.length) {
       var tWave = clock.elapsedTime;
       for (var wi = 0; wi < waterMeshes.length; wi++) {
+        if (!waterMeshes[wi] || !waterMeshes[wi].geometry) continue;
         var geo = waterMeshes[wi].geometry;
-        var pos = geo.attributes.position;
+        var pos = geo.attributes && geo.attributes.position;
         if (!pos) continue;
         for (var pi = 0; pi < pos.count; pi++) {
           var px = pos.getX(pi), py = pos.getY(pi);
@@ -1202,7 +1207,16 @@
     resize: resize,
     setHole: function (hole, cid) {
       if (!ok() || !hole) return;
-      var key = hole.name + "|" + hole.yards + "|" + hole.tee.x + "|" + hole.pin.x + "|" + hole.pin.y + "|" + ((hole.path && hole.path.length) || 0);
+      var key = [
+        hole.name,
+        hole.yards,
+        hole.pin && hole.pin.x,
+        hole.pin && hole.pin.y,
+        hole.tee && hole.tee.y,
+        (hole.path && hole.path.length) || 0,
+        (hole.water && hole.water.length) || 0,
+        (hole.trees && hole.trees.length) || 0
+      ].join("|");
       if (key === holeKey && cid === courseId) return;
       holeKey = key;
       rebuild(hole, cid);

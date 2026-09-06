@@ -344,8 +344,10 @@
     return best;
   }
   function nextAim(hole, ball) {
-    if (dist(ball, hole.pin) <= hole.greenR + 8) return { x: hole.pin.x, y: hole.pin.y };
-    const path = hole.path;
+    if (!hole || !hole.pin) return { x: 0, y: 0 };
+    if (!ball) return { x: hole.pin.x, y: hole.pin.y };
+    if (dist(ball, hole.pin) <= (hole.greenR || 12) + 8) return { x: hole.pin.x, y: hole.pin.y };
+    const path = hole.path || [];
     for (let i = 1; i < path.length; i++) {
       if (dist(ball, path[i]) > 36) return { x: path[i].x, y: path[i].y };
     }
@@ -541,6 +543,7 @@
     return distToSeg(pin, from, to) <= CUP * 0.95;
   }
   function inRect(p, r) {
+    if (!p || !r || r.w == null || r.h == null) return false;
     return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   }
   function pointInTri(p, a, b, c) {
@@ -617,8 +620,9 @@
     c.closePath();
   }
   function intendedCarry() {
-    const markD = G.marker ? dist(G.ball, G.marker) : 0;
-    const onG = G.hole && lieAt(G.hole, G.ball) === "green";
+    if (!G.club) return 0;
+    const markD = G.marker && G.ball ? dist(G.ball, G.marker) : 0;
+    const onG = G.hole && G.ball && lieAt(G.hole, G.ball) === "green";
     if (G.club.putt || onG) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
     return G.club.min + (G.club.max - G.club.min) * G.power;
   }
@@ -1000,6 +1004,7 @@
   }
 
   function fitView(opts) {
+    if (!G.hole) return;
     const reset = !!(opts && opts.reset);
     if (use3d && window.Golf3D && G.hole) {
       Golf3D.resize();
@@ -1436,18 +1441,24 @@
         (pred && pred.blocked ? " · blocked" : "") + "</p>" +
         "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
     }
-    $("holeCard").innerHTML =
-      "<p><b>" + (G.course ? G.course.name : "Endless") + "</b></p>" +
-      "<p>" + (G.hole.name ? G.hole.name + " · " : "") + "Par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd</p>" +
-      "<p>To pin <b>" + d.toFixed(1) + " yd</b></p>" +
-      "<p>Lie: " + lie + " · strokes " + G.strokes + "</p>" +
-      (G.hole.hint ? "<p class='lore'>" + G.hole.hint + "</p>" : "");
-    $("windHud").textContent = windLabel();
-    $("hudMeta").innerHTML =
-      "<span>Strokes <b>" + G.strokes + "</b></span>" +
-      "<span>Hole <b>" + (G.hi + 1) + "/" + G.holes.length + "</b></span>" +
-      "<span>To pin <b>" + d.toFixed(0) + " yd</b></span>";
-    $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + dist(G.ball, G.marker).toFixed(0) + " yd";
+    if ($("holeCard")) {
+      $("holeCard").innerHTML =
+        "<p><b>" + (G.course ? G.course.name : "Endless") + "</b></p>" +
+        "<p>" + (G.hole.name ? G.hole.name + " · " : "") + "Par " + G.hole.par + " · " + Math.round(G.hole.yards) + " yd</p>" +
+        "<p>To pin <b>" + d.toFixed(1) + " yd</b></p>" +
+        "<p>Lie: " + lie + " · strokes " + G.strokes + "</p>" +
+        (G.hole.hint ? "<p class='lore'>" + G.hole.hint + "</p>" : "");
+    }
+    if ($("windHud")) $("windHud").textContent = windLabel();
+    if ($("hudMeta")) {
+      $("hudMeta").innerHTML =
+        "<span>Strokes <b>" + G.strokes + "</b></span>" +
+        "<span>Hole <b>" + (G.hi + 1) + "/" + G.holes.length + "</b></span>" +
+        "<span>To pin <b>" + d.toFixed(0) + " yd</b></span>";
+    }
+    if ($("dockStatus") && G.club) {
+      $("dockStatus").textContent = G.club.name + " · " + Math.round(G.power * 100) + "% · " + intendedCarry().toFixed(0) + " yd · marker " + md.toFixed(0) + " yd";
+    }
     paintPower();
   }
 
@@ -1461,6 +1472,7 @@
   }
 
   function paintPower() {
+    if (!G.club) return;
     const pct = Math.round(G.power * 100);
     const yd = intendedCarry();
     const putt = !!(G.club && G.club.putt);
@@ -2191,9 +2203,15 @@
     roundOver();
   }
 
+  function overlayOpen() {
+    const ov = $("overlay");
+    return !!(ov && !ov.classList.contains("hidden"));
+  }
   function hideOverlay() {
-    $("overlay").classList.add("hidden");
-    $("overlay").classList.remove("studio");
+    const ov = $("overlay");
+    if (!ov) return;
+    ov.classList.add("hidden");
+    ov.classList.remove("studio");
   }
   function showSheet(html, studio, wide) {
     const ov = $("overlay");
@@ -2422,12 +2440,16 @@
 
   window.addEventListener("keydown", function (e) {
     if (e.target && (e.target.tagName === "INPUT")) return;
-    if (e.key === "Escape") { menu(); return; }
-    if (G.mode === "menu") return;
+    if (e.key === "Escape") {
+      if (overlayOpen() && G.mode !== "menu") { hideOverlay(); return; }
+      menu();
+      return;
+    }
+    if (G.mode === "menu" || overlayOpen()) return;
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); shoot(); }
-    if (e.key === "z" || e.key === "Z") $("btnUndo").click();
+    if (e.key === "z" || e.key === "Z") { if ($("btnUndo")) $("btnUndo").click(); }
     if (e.key === "m" || e.key === "M") useMulligan();
-    if (e.key === "[" || e.key === "]") {
+    if ((e.key === "[" || e.key === "]") && G.club) {
       const i = CLUBS.findIndex(function (c) { return c.id === G.club.id; });
       const n = e.key === "]" ? Math.min(CLUBS.length - 1, i + 1) : Math.max(0, i - 1);
       G.club = CLUBS[n];
