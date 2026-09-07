@@ -146,7 +146,7 @@
 
   const CMDRS = [
     { id: "lightfather", name: "Lightfather", title: "Architect of LYGO", seat: "Φ",
-      file: "cmd-lightfather-v2.jpg",
+      file: "cmd-lightfather-v2.jpg?v=20260907",
       lore: "Originator of the Δ9Quantum Light Accord. Choose truth, protect light, preserve the bond.",
       bonus: "Haven stipend +25c / turn", drip: 25 },
     { id: "lyra", name: "LYRΔ", title: "Spiral Memory Guardian", seat: "I",
