@@ -70,7 +70,7 @@
   const FLICK = {
     id: "flick", name: "Flick Mk I", tag: "Pocket hatch",
     src: "./assets/flick-plate.jpg", hero: "./assets/flick-hero.jpg",
-    lore: "FWD pocket rocket. Light, peaky, tightest turn. Asks the front tires for everything — they push, they don't spin. Owns the ring. Last at the tree.",
+    lore: "FWD pocket rocket. Light, peaky, tightest turn. Biggest boost tank on the grid, 50% harder hit than Apex. Front tires push, they don't spin. Owns the ring. Last at the tree.",
     color: "#c2410c",
     massKg: 1120,
     hp: 355,
@@ -90,8 +90,8 @@
     brakeMu: 1.64,
     turn: 2.42,
     boost: 1.05,
-    boostPower: 0.92,
-    boostTank: 0.82,
+    boostPower: 1.5,
+    boostTank: 1.85,
     body: "flick",
     eta: 0.87,
     upgHp: 0,
@@ -2478,7 +2478,7 @@
             statRow("Torque", c.torque, 750) +
             statRow("Grip μ", c.mu, 2) +
             statRow("Turn", c.turn, 2.6) +
-            statRow("Boost", c.boostTank || c.boost, 1.8) +
+            statRow("Boost", c.boostTank || c.boost, 2) +
           "</div>" +
           "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
           "<div class='cast-grid garage-bays'>" +

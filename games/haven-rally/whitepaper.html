@@ -69,7 +69,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p><b>Gears (launch pack).</b> Shared six-speed <code>[3.28, 2.08, 1.48, 1.16, 0.97, 0.84]</code>. 1–2–3 are the hole-shot: tall enough to stay in, extra drive so they slingshot (1st can light the rears; 2nd/3rd hook). Upshift ~96.5% redline in those three, with a small speed kick on the 1→2 and 2→3. 4th-on is the boat: softer torque, earlier shift (~91.5% redline), speed piles on instead of launching. Clutch open ~0.09–0.14 s on a shift. Downshift when RPM would sit under the torque peak.</p>
   <p><b>Drive.</b> <code>rwd</code> / <code>fwd</code> / <code>awd</code> sets which axle gets torque. Traction <code>μ N_driven</code> with weight shift. If drive force exceeds that, <code>wheelSlip</code> rises: RWD yaws (spin), FWD pushes wide, AWD holds longer. Future HP upgrades without extra μ will spin.</p>
   <p><b>Brake / slide.</b> <code>brakeMu × mass × g × 0.72</code>. E-brake is extra rear μ and a slide. Lateral: <code>vh</code> chases heading at a rate from μ. On-track slip charges boost; Right Shift spends it. Off-track is time-scaled dump, not a per-frame kill.</p>
-  <p><b>Boost.</b> Bar 0…<code>boostTank</code> (Apex 1.00, Boxcut 1.42). Drain is the same rate, so the truck’s bar lasts longer. Hit formula: extra torque <code>0.32 × 1.1 × boostPower</code> while Right Shift is down and fuel remains. Boxcut <code>boostPower = 1.25</code> (25% harder shove than Apex). Endless wrecks add ~0.11 tank. On-road trickle is slow on Endless, faster on circuits.</p>
+  <p><b>Boost.</b> Bar 0…<code>boostTank</code> (Apex 1.00, Sleet 1.15, Boxcut 1.42, Flick 1.85). Drain is the same rate, so Flick’s bar lasts longest. Hit formula: extra torque <code>0.32 × 1.1 × boostPower</code> while Right Shift is down and fuel remains. Boxcut <code>boostPower = 1.25</code> (25% harder than Apex). Flick <code>boostPower = 1.50</code> (50% harder than Apex). Endless wrecks add ~0.11 tank. On-road trickle is slow on Endless, faster on circuits.</p>
   <p>Nearest-segment project onto the densified path gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is four lanes: half-width <code>2 × 4.4 yd</code>, painted dividers, yellow edges. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Courses</h2>
@@ -108,8 +108,8 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td>Final / wheel</td><td>4.05 · r 0.31 m (short)</td><td>3.85 · r 0.33 m</td></tr>
     <tr><td>Aero</td><td>Cd 0.37 · A 1.98 m²</td><td>Cd 0.48 · A 2.22 m²</td></tr>
     <tr><td>Grip / turn</td><td>μ 1.38 · turn 2.42 (best)</td><td>μ 1.50 · turn 2.18</td></tr>
-    <tr><td>Boost tank</td><td>0.82 (smallest)</td><td>1.15</td></tr>
-    <tr><td>Boost hit</td><td>0.92×</td><td>1.08×</td></tr>
+    <tr><td>Boost tank</td><td>1.85 (largest)</td><td>1.15</td></tr>
+    <tr><td>Boost hit</td><td>1.50× (50% over Apex)</td><td>1.08×</td></tr>
     <tr><td>Drive feel</td><td>Slip kills yaw (push). Front burnout marks.</td><td>Both axles share torque. Launch slip rarely lights. Almost no burnout theater.</td></tr>
     <tr><td>Studio</td><td>PBR short hatch, tall cabin, steep tail</td><td>PBR flared coupe, hood/roof scoops, fogs</td></tr>
   </table>
