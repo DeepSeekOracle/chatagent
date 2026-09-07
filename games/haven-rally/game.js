@@ -5,7 +5,7 @@
   const YD = 0.9144;
   const G0 = 9.81;
   const RHO = 1.225;
-  const DEFAULT_GEARS = [4.28, 2.72, 1.78, 1.36, 1.10, 0.89];
+  const DEFAULT_GEARS = [4.28, 2.95, 2.08, 1.36, 1.10, 0.89];
   const COMBO_MPH = 5;
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
@@ -1223,7 +1223,8 @@
     const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
     if (car.gear === 1) Fdrive *= 1.34;
-    else if (car.gear === 2) Fdrive *= 1.22;
+    else if (car.gear === 2) Fdrive *= 1.58;
+    else if (car.gear === 3) Fdrive *= 1.46;
     const axEst = car.speed >= 0 ? 1 : -1;
     const df = driveFrac(c);
     const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
@@ -1232,7 +1233,8 @@
     const surf = inp.onTrack ? 1 : 0.32;
     let Fmax = Math.max(400, c.mu * drivenN * surf);
     if (car.gear === 1) Fmax *= 1.24;
-    else if (car.gear === 2) Fmax *= 1.14;
+    else if (car.gear === 2) Fmax *= 1.36;
+    else if (car.gear === 3) Fmax *= 1.26;
     const want = Math.abs(Fdrive);
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
