@@ -6,7 +6,7 @@
   const MAX_PLAYLIST = 3500;
   const MAX_BYTES = 8000000;
   const SKIP_MAX = 4;
-  const CAT_VER = "1.16.0";
+  const CAT_VER = "1.17.0";
   const BM_KEY = "lygo_tv_bm_ok";
   const PLAYER_URL = "https://chatagent.ca/sources/";
   const TERMS_KEY = "lygo_tv_terms_ok";
@@ -48,7 +48,10 @@
     ftv_usa: 1, ftv_uk: 1, ftv_news: 1, ftv_docs: 1, ftv_music: 1,
     tubi_fast: 1, distro_fast: 1, vizio_fast: 1, rakuten_uk: 1, lg_us: 1,
     xumo_fast: 1, firetv_fast: 1, tcl_fast: 1,
-    src_stirr: 1, src_firetv: 1, src_roku: 1, src_samsung: 1
+    src_stirr: 1, src_firetv: 1, src_roku: 1, src_samsung: 1,
+    cineverse: 1, zeasn: 1, rok_fast: 1, vidaa_fast: 1, whale_fast: 1, tablo_fast: 1,
+    ssung_au: 1, ssung_br: 1, ssung_nz: 1, ssung_sg: 1, ssung_ph: 1, ssung_th: 1,
+    src_ukrak: 1, src_uksams: 1
   };
   const LIST_IDS = {
     worldtv: 1, freetv: 1, all: 1, fanming: 1, brazil_fta: 1,
@@ -62,7 +65,8 @@
     ftv_chile: 1, ftv_argentina: 1, ftv_egypt: 1, ftv_taiwan: 1, ftv_israel: 1,
     ftv_albania: 1, ftv_bosnia: 1, ftv_bulgaria: 1, ftv_china: 1, ftv_cr: 1,
     ftv_estonia: 1, ftv_georgia: 1, ftv_hk: 1, ftv_iran: 1, ftv_iceland: 1,
-    ftv_slovakia: 1
+    ftv_slovakia: 1, ftv_ukraine: 1, ftv_serbia: 1,
+    src_stingray: 1, src_3abn: 1, src_abcnews: 1, src_cbsn: 1
   };
   const TOPIC_IDS = {
     culture: 1, documentary: 1, public: 1, legislative: 1, education: 1,

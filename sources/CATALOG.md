@@ -70,3 +70,9 @@ Removed `adult_pub` / `adult.m3u8` (AdultIPTV.net dump). Adult shelf and Adult S
 **Added** after HTTPS 200 + ≥3 HTTPS + jmp2 < 50%: Fire TV + TCL FAST (apsattv), iptv-org Stirr / Fire TV / Roku US / Samsung US, Free-TV AL/BA/BG/CN/CR/EE/GE/HK/IR/IS/SK, iptv-org regions WW/WER/CEE/MENA/South America/North America/Central America/Central Asia/East Africa/West Africa/West Asia, languages BG/CS/ET/FI/GA/HR/IS/LV/LT/SK.
 
 **Skipped:** jmp2 Nordic languages (da/no/sv), thin Free-TV CY/DO/ID, DailyIPTV scrape packs, Xtream/VOD mega-dumps.
+
+## v1.17 probe (2026-09-07)
+
+**Added** after HTTPS 200 + ≥3 HTTPS + jmp2 < 50%: Cineverse, Zeasn, Roku Channel, VIDAA, Whale TV Plus, Tablo FAST (apsattv); Samsung TV Plus AU/BR/NZ/SG/PH/TH; iptv-org Rakuten UK, Samsung UK, Stingray, 3ABN, ABC News, CBS News; Free-TV Ukraine/Serbia; iptv-org Ecuador, Paraguay, Belarus, Senegal, Cameroon, Côte d'Ivoire.
+
+**Skipped:** BuddyChewChew Pluto/Samsung/Roku (100% jmp2.uk), Nordic country packs (jmp2 majority), iptv-org animation/classic/comedy/series (jmp2 > 50%), Free-TV NZ/ZA/PH/KR/SG/CO/PK/MY/MA 404, thin lists (CGTN, Switzerland, Uruguay, Armenia, Angola, Peru).

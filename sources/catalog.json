@@ -1,10 +1,10 @@
 {
-  "signature": "Delta9Phi963-LYGO-FREE-SOURCES-v1.16.0",
+  "signature": "Delta9Phi963-LYGO-FREE-SOURCES-v1.17.0",
   "name": "LYGO TV",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "class": "RESOURCE",
   "live_star_chart_ingest": false,
-  "updated_utc": "2026-09-06T12:00:00Z",
+  "updated_utc": "2026-09-07T12:00:00Z",
   "disclaimer": "https://chatagent.ca/sources/disclaimer.html",
   "portal_only": true,
   "xxx_catalog": false,
@@ -18,7 +18,7 @@
     "free_public_lists_only": true
   },
   "how_to_add": "Edit DeepSeekOracle/chatagent sources/catalog.json and commit. Follow sources/CATALOG.md.",
-  "note": "Portal only. Not branded XXX. v1.16 last net sweep: Fire TV/TCL FAST, iptv-org Stirr/Fire/Roku/Samsung sources, more Free-TV countries, extra regions and languages. Skipped jmp2 Nordic langs and thin 404s.",
+  "note": "Portal only. Not branded XXX. v1.17 adds Cineverse/Zeasn/Roku/VIDAA/Whale/Tablo FAST, Samsung TV Plus AU/BR/NZ/SG/PH/TH, iptv-org Rakuten UK/Samsung UK/Stingray/3ABN/ABC News/CBS News, Free-TV Ukraine/Serbia, Ecuador/Paraguay/Belarus/Senegal/Cameroon/Côte d'Ivoire. Skipped jmp2 Pluto/Samsung/Roku BuddyChewChew packs, Nordic jmp2 countries, thin 404s.",
   "donate": {
     "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
     "patreon": "https://www.patreon.com/Excavationpro"
@@ -1627,6 +1627,162 @@
       "title": "Slovak",
       "kind": "playlist",
       "url": "https://iptv-org.github.io/iptv/languages/slk.m3u"
+    },
+    {
+      "id": "cineverse",
+      "title": "Cineverse FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/cineverse.m3u"
+    },
+    {
+      "id": "zeasn",
+      "title": "Zeasn FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/zeasn.m3u"
+    },
+    {
+      "id": "rok_fast",
+      "title": "Roku Channel FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/rok.m3u"
+    },
+    {
+      "id": "vidaa_fast",
+      "title": "VIDAA FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/vidaa.m3u"
+    },
+    {
+      "id": "whale_fast",
+      "title": "Whale TV Plus FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/whaletvplus_all.m3u"
+    },
+    {
+      "id": "tablo_fast",
+      "title": "Tablo FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/tablo.m3u"
+    },
+    {
+      "id": "ssung_au",
+      "title": "Samsung TV Plus AU",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungaus.m3u"
+    },
+    {
+      "id": "ssung_br",
+      "title": "Samsung TV Plus Brazil",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungbra.m3u"
+    },
+    {
+      "id": "ssung_nz",
+      "title": "Samsung TV Plus NZ",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungnz.m3u"
+    },
+    {
+      "id": "ssung_sg",
+      "title": "Samsung TV Plus Singapore",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungsg.m3u"
+    },
+    {
+      "id": "ssung_ph",
+      "title": "Samsung TV Plus Philippines",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungph.m3u"
+    },
+    {
+      "id": "ssung_th",
+      "title": "Samsung TV Plus Thailand",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/ssungth.m3u"
+    },
+    {
+      "id": "src_ukrak",
+      "title": "iptv-org Rakuten UK",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/uk_rakuten.m3u"
+    },
+    {
+      "id": "src_uksams",
+      "title": "iptv-org Samsung UK",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/uk_samsung.m3u"
+    },
+    {
+      "id": "src_stingray",
+      "title": "iptv-org Stingray",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/ca_stingray.m3u"
+    },
+    {
+      "id": "src_3abn",
+      "title": "iptv-org 3ABN",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_3abn.m3u"
+    },
+    {
+      "id": "src_abcnews",
+      "title": "iptv-org ABC News",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_abcnews.m3u"
+    },
+    {
+      "id": "src_cbsn",
+      "title": "iptv-org CBS News",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_cbsn.m3u"
+    },
+    {
+      "id": "ftv_ukraine",
+      "title": "Free-TV Ukraine",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_ukraine.m3u8"
+    },
+    {
+      "id": "ftv_serbia",
+      "title": "Free-TV Serbia",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_serbia.m3u8"
+    },
+    {
+      "id": "ec",
+      "title": "Ecuador",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/ec.m3u"
+    },
+    {
+      "id": "py",
+      "title": "Paraguay",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/py.m3u"
+    },
+    {
+      "id": "by",
+      "title": "Belarus",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/by.m3u"
+    },
+    {
+      "id": "sn",
+      "title": "Senegal",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/sn.m3u"
+    },
+    {
+      "id": "cm",
+      "title": "Cameroon",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/cm.m3u"
+    },
+    {
+      "id": "ci",
+      "title": "Côte d'Ivoire",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/ci.m3u"
     }
   ]
 }
