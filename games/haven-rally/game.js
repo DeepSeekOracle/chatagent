@@ -1262,7 +1262,7 @@
   }
 
   function beginTree(now) {
-    const foulAi = Math.random() < 0.008;
+    const foulAi = Math.random() < 0.055;
     return {
       t0: now,
       phase: "ready",
@@ -1270,7 +1270,8 @@
       rt: null,
       launched: false,
       aiFoul: foulAi,
-      aiRt: foulAi ? -(0.012 + Math.random() * 0.04) : (0.016 + Math.random() * 0.034),
+      aiRt: foulAi ? -(0.05 + Math.random() * 0.14) : (0.018 + Math.random() * 0.042),
+      aiLeft: false,
       aiGoAt: 0,
       greenAt: 0,
       playerDone: false,
@@ -1295,6 +1296,8 @@
     G.ai.vh = 0;
     G.ai.skill = 0.9 + Math.random() * 0.1;
     G.ai.name = "Lane 2";
+    G.ai.shiftPlan = dragAiShiftPlan(c);
+    G.ai._over = 0;
     G.lap = 0;
     G.lastS = x0;
     G.gates = [];
@@ -1341,7 +1344,7 @@
       a3: p === "a3" || p === "green" || p === "red",
       green: p === "green",
       redL: !!(st && st.foul),
-      redR: !!(st && st.aiFoul && (p === "green" || p === "red"))
+      redR: !!(st && st.aiFoul && (p === "green" || p === "red" || p === "a3" || st.aiLeft))
     };
   }
 
@@ -1365,14 +1368,47 @@
     });
   }
 
+  function dragAiShiftPlan(c) {
+    const red = (c && c.redline) || 7800;
+    const nG = (c && c.gears && c.gears.length) || 6;
+    const plan = [];
+    let g;
+    for (g = 1; g < nG; g++) {
+      const roll = Math.random();
+      let kind = "ok";
+      let rpmMul = 0.92 + (Math.random() - 0.5) * 0.05;
+      let hold = 0;
+      if (roll < 0.08) {
+        kind = "late";
+        rpmMul = 1.01 + Math.random() * 0.04;
+        hold = 0.12 + Math.random() * 0.22;
+      } else if (roll < 0.2) {
+        kind = "early";
+        rpmMul = 0.74 + Math.random() * 0.09;
+      }
+      plan[g] = { kind: kind, rpm: red * rpmMul, hold: hold };
+    }
+    return plan;
+  }
+
   function stepAi(dt, now) {
     const ai = G.ai;
     if (!ai || !G.craft) return;
     const st = G.tree || {};
-    const go = G.phase === "race" && st.greenAt && now >= (st.aiGoAt || st.greenAt);
     const lane = G.track.lane;
-    if (!go || st.aiDone) {
-      if (!go) ai.speed = 0;
+    const greenGuess = st.greenAt || ((st.t0 || now) + 4600);
+    const leaveAt = greenGuess + (st.aiRt || 0) * 1000;
+    const canGo = (G.phase === "race" || G.phase === "tree") && now >= leaveAt;
+    if (canGo && !st.aiLeft && G.phase === "tree" && (!st.greenAt || now < st.greenAt)) {
+      st.aiFoul = true;
+      st.aiLeft = true;
+      log("Lane 2 red light.");
+    } else if (canGo && !st.aiLeft) {
+      st.aiLeft = true;
+    }
+    const go = canGo && !st.aiDone;
+    if (!go) {
+      if (!st.aiLeft) ai.speed = 0;
       else ai.x += ai.speed * dt;
       ai.h = 0;
       ai.vh = 0;
@@ -1381,10 +1417,23 @@
     }
     const c = G.craft;
     const skill = ai.skill || 1;
-    const launchedAgo = (now - (st.aiGoAt || st.greenAt)) / 1000;
+    const launchedAgo = (now - leaveAt) / 1000;
     const dumpBoost = launchedAgo >= (skill > 0.96 ? 0 : 0.05);
     const boostOn = dumpBoost && ai.boost > 0.04;
     if (boostOn) ai.boost = Math.max(0, ai.boost - dt * 0.42);
+    const nG = (c.gears && c.gears.length) || 6;
+    const plan = (ai.shiftPlan && ai.shiftPlan[ai.gear]) || null;
+    if (plan && ai.gear >= 1 && ai.gear < nG && (ai.shiftT || 0) <= 0) {
+      if ((ai.rpm || 0) >= plan.rpm) {
+        ai._over = (ai._over || 0) + dt;
+        if (ai._over >= (plan.hold || 0)) {
+          manualShift(ai, c, 1);
+          ai._over = 0;
+        }
+      } else {
+        ai._over = 0;
+      }
+    }
     stepPowertrain(c, ai, dt, {
       throttle: 1,
       brake: 0,
@@ -1393,7 +1442,7 @@
       onTrack: true,
       fx: false,
       ignoreCombo: true,
-      manual: false
+      manual: true
     });
     ai.h = 0;
     ai.vh = 0;
@@ -2664,7 +2713,7 @@
       "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
-      "<li>Drag: F at the tree stages both lanes. Lane 2 runs your chassis, shifts on the limiter, and dumps boost. Leave before green is a red-light foul. Beat the tree and the trap.</li>" +
+      "<li>Drag: F at the tree stages both lanes. Lane 2 runs your chassis and dumps boost, but it can red-light or miss a shift (early or late). Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
