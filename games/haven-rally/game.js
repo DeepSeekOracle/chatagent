@@ -7,6 +7,8 @@
   const RHO = 1.225;
   const DEFAULT_GEARS = [3.28, 2.08, 1.48, 1.16, 0.97, 0.84];
   const COMBO_MPH = 5;
+  const BOOST_TQ = 0.78;
+  const BOOST_VMAX = 0.28;
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
@@ -1812,7 +1814,8 @@
         }
       }
     }
-    const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * 1.1 * (c.boostPower || 1) : 1);
+    const bp = c.boostPower || 1;
+    const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + BOOST_TQ * bp : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
     if (car.gear === 1) Fdrive *= 1.55;
     else if (car.gear === 2) Fdrive *= 3.05;
@@ -1826,6 +1829,7 @@
     const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
     const surf = inp.onTrack ? 1 : 0.32;
     let Fmax = Math.max(400, c.mu * drivenN * surf * weatherGrip(c));
+    if (inp.boostOn) Fmax *= 1 + 0.22 * bp;
     if (car.gear === 1) Fmax *= 1.18;
     else if (car.gear === 2) Fmax *= 1.82;
     else if (car.gear === 3) Fmax *= 1.68;
@@ -1845,6 +1849,10 @@
       const v1 = v0 + bonusYd;
       Fdrag *= (v0 * v0) / (v1 * v1);
     }
+    if (inp.boostOn) {
+      const vBoost = 1 + BOOST_VMAX * bp;
+      Fdrag /= (vBoost * vBoost);
+    }
     const Froll = c.crr * c.massKg * G0 * (vAbs < 0.15 ? 0 : (vMs >= 0 ? 1 : -1));
     const Fbrk = inp.brake * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
     const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
@@ -1853,7 +1861,8 @@
     if (bonusYd > 0 && inp.throttle && !inp.ignoreCombo) Fnet += (G.combo || 0) * 190;
     const a = Fnet / c.massKg;
     car.speed += (a / YD) * dt;
-    const vmax = topSpeedYd(c);
+    let vmax = topSpeedYd(c);
+    if (inp.boostOn) vmax *= 1 + BOOST_VMAX * bp;
     if (car.speed > vmax) car.speed = vmax;
     if (inp.brake && !inp.throttle && car.speed < 0 && car.speed > -5) car.speed = 0;
     if (!inp.throttle && Math.abs(car.speed) < 0.35) car.speed = 0;
