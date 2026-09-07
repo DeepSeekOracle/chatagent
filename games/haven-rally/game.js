@@ -12,7 +12,7 @@
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
-    lore: "Base chassis. RWD GT. Slide charges boost. The hole-shot theater the others are measured against.",
+    lore: "Base chassis. RWD GT. Slide charges boost. Endless: twin lattice MG — combo stokes the fire.",
     color: "#165e66",
     massKg: 1380,
     hp: 470,
@@ -35,6 +35,7 @@
     boostPower: 1,
     boostTank: 1,
     body: "apex",
+    gun: { id: "mg", name: "Lattice MG", kind: "mg", color: "#ffe08a", dps: 2.2, rate: 0.052, range: 52, barrels: 2, width: 0.07, spread: 1.05, pierce: 1 },
     eta: 0.88,
     upgHp: 0,
     upgTq: 0
@@ -42,7 +43,7 @@
   const BOXCUT = {
     id: "boxcut", name: "Boxcut Mk I", tag: "Short-box race truck",
     src: "./assets/boxcut-plate.jpg", hero: "./assets/boxcut-hero.jpg",
-    lore: "Haven short-box. C10 short-fleetside stance, original lattice. Heavier, bigger boost tank, 25% harder boost hit, a bit more bite in the corners. Apex still owns the long highway.",
+    lore: "Haven short-box. C10 short-fleetside stance, original lattice. Heavier, bigger boost tank, 25% harder boost hit. Endless: box cannons — slow, fat, mean.",
     color: "#8b1e1e",
     massKg: 1520,
     hp: 405,
@@ -65,6 +66,7 @@
     boostPower: 1.25,
     boostTank: 1.42,
     body: "boxcut",
+    gun: { id: "cannon", name: "Box cannons", kind: "cannon", color: "#ff6b3d", dps: 2.35, rate: 0.11, range: 46, barrels: 2, width: 0.22, spread: 2.1, pierce: 1 },
     eta: 0.86,
     upgHp: 0,
     upgTq: 0
@@ -72,7 +74,7 @@
   const FLICK = {
     id: "flick", name: "Flick Mk I", tag: "Pocket hatch",
     src: "./assets/flick-plate.jpg", hero: "./assets/flick-hero.jpg",
-    lore: "FWD pocket rocket. Light, peaky, tightest turn. Biggest boost tank on the grid, 50% harder hit than Apex. Front tires push, they don't spin. Owns the ring. Last at the tree.",
+    lore: "FWD pocket rocket. Light, peaky, tightest turn. Biggest boost tank, 50% harder hit than Apex. Endless: flick needles — a spray of hot pins.",
     color: "#c2410c",
     massKg: 1120,
     hp: 355,
@@ -95,6 +97,7 @@
     boostPower: 1.5,
     boostTank: 1.85,
     body: "flick",
+    gun: { id: "needle", name: "Flick needles", kind: "needle", color: "#fb923c", dps: 2.08, rate: 0.026, range: 48, barrels: 3, width: 0.04, spread: 0.7, pierce: 1 },
     eta: 0.87,
     upgHp: 0,
     upgTq: 0
@@ -102,7 +105,7 @@
   const SLEET = {
     id: "sleet", name: "Sleet Mk I", tag: "AWD rally coupe",
     src: "./assets/sleet-plate.jpg", hero: "./assets/sleet-hero.jpg",
-    lore: "AWD rally coupe. Hooks out of the hole, almost no burnout. Both axles share the shove. Rain and weather already have a home here. Apex still wins the slide theater.",
+    lore: "AWD rally coupe. Hooks out of the hole, almost no burnout. Rain already has a home here. Endless: sleet rails — twin blue lances that can pierce.",
     color: "#1d4ed8",
     massKg: 1340,
     hp: 438,
@@ -125,6 +128,7 @@
     boostPower: 1.08,
     boostTank: 1.15,
     body: "sleet",
+    gun: { id: "rail", name: "Sleet rails", kind: "rail", color: "#93c5fd", dps: 2.22, rate: 0.084, range: 64, barrels: 2, width: 0.14, spread: 0.12, pierce: 2 },
     eta: 0.89,
     upgHp: 0,
     upgTq: 0
@@ -189,7 +193,21 @@
     c.boostTank = c.boostTank > 0 ? c.boostTank : 1;
     c.boostPower = c.boostPower > 0 ? c.boostPower : 1;
     c.body = c.body || c.id || "apex";
+    c.gun = Object.assign({
+      id: "mg", name: "Lattice MG", kind: "mg", color: "#ffe08a",
+      dps: 2.2, rate: 0.052, range: 52, barrels: 2, width: 0.07, spread: 1.05, pierce: 1
+    }, c.gun || {});
     return c;
+  }
+  function activeGun() {
+    return (G.craft && G.craft.gun) || craftOf(G.save && G.save.craft).gun;
+  }
+  function gunDps() {
+    const n = G.combo || 0;
+    const g = activeGun();
+    const scale = 1 + 0.45 * n + 0.18 * n * n;
+    const bp = (G.craft && G.craft.boostPower) || 1;
+    return (g.dps || 2.2) * scale * (0.88 + 0.12 * bp);
   }
   function craftOf(id) {
     return craftNorm(CRAFTS.find(function (c) { return c.id === id; }) || CRAFTS[0]);
@@ -740,7 +758,9 @@
     G.traffic = [];
     G.gunOn = false;
     G.gunCool = 0;
+    G.gunKind = (G.craft && G.craft.gun && G.craft.gun.kind) || "mg";
     G.tracers = [];
+    G.gunHits = [];
     G.score = 0;
     G.combo = 0;
     G.mult = 0;
@@ -868,43 +888,66 @@
   function stepGuns(dt) {
     G.gunOn = false;
     G.tracers = [];
+    G.gunHits = [];
     const tr = G.track;
     if (!tr || tr.kind !== "ridge" || G.phase !== "race") return;
     if (G.multPulse > 0) G.multPulse = Math.max(0, G.multPulse - dt * 3);
     const boostOn = !!(G.car && G.car.boostOn) || (!!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft);
     if (!boostOn) return;
+    const g = activeGun();
     G.gunOn = true;
+    G.gunKind = g.kind || "mg";
     G.gunCool -= dt;
     const fx = Math.cos(G.car.h), fy = Math.sin(G.car.h);
     const rx = -fy, ry = fx;
-    const ox = G.car.x + fx * 2.3, oy = G.car.y + fy * 2.3;
-    let best = null, bestAlong = 80, i, c, dx, dy, along, perp;
+    const nose = g.kind === "cannon" ? 2.55 : (g.kind === "needle" ? 1.95 : 2.3);
+    const ox = G.car.x + fx * nose, oy = G.car.y + fy * nose;
+    const range = g.range || 52;
+    const cone = g.kind === "cannon" ? 3.4 : (g.kind === "rail" ? 2.15 : 2.5);
+    const hits = [];
+    let i, c, dx, dy, along, perp;
     for (i = 0; i < (G.traffic || []).length; i++) {
       c = G.traffic[i];
       if (!c.alive) continue;
       dx = c.x - ox; dy = c.y - oy;
       along = dx * fx + dy * fy;
       perp = Math.abs(dx * rx + dy * ry);
-      if (along > 2.5 && along < 52 && perp < (c.kind === "tractor" ? 3.2 : 2.5) + along * 0.035 && along < bestAlong) {
-        bestAlong = along;
-        best = c;
+      if (along > 2.2 && along < range && perp < (c.kind === "tractor" ? cone + 0.7 : cone) + along * 0.03) {
+        hits.push({ car: c, along: along, perp: perp });
       }
     }
-    if (best) {
-      best.hp -= 3.4 * dt;
-      if (best.hp <= 0) wreckTraffic(best);
+    hits.sort(function (a, b) { return a.along - b.along; });
+    const pierce = Math.max(1, g.pierce || 1);
+    const dmg = gunDps() * dt;
+    let marked = 0;
+    for (i = 0; i < hits.length && marked < pierce; i++) {
+      c = hits[i].car;
+      c.hp -= dmg;
+      G.gunHits.push({ x: c.x, y: c.y, kind: g.kind, along: hits[i].along });
+      marked += 1;
+      if (c.hp <= 0) wreckTraffic(c);
     }
     if (G.gunCool <= 0) {
-      G.gunCool = 0.055;
-      const side = (G.kills + Math.floor(performance.now() / 55)) % 2 ? 1 : -1;
-      const sx = ox + rx * 0.42 * side;
-      const sy = oy + ry * 0.42 * side;
-      const reach = best ? bestAlong : 38;
-      G.tracers.push({
-        x: sx, y: sy,
-        x2: sx + fx * reach + (best ? 0 : rx * (Math.random() - 0.5) * 1.2),
-        y2: sy + fy * reach + (best ? 0 : ry * (Math.random() - 0.5) * 1.2)
-      });
+      G.gunCool = g.rate || 0.052;
+      const nBar = g.barrels || 2;
+      const reach = hits.length ? hits[0].along : range * 0.72;
+      const spread = g.spread || 1;
+      const col = g.color || "#ffe08a";
+      for (i = 0; i < nBar; i++) {
+        const t = nBar === 1 ? 0 : (i / (nBar - 1)) * 2 - 1;
+        const jitter = (Math.random() - 0.5) * spread * (hits.length ? 0.25 : 1);
+        const lat = rx * (t * 0.42 + jitter * 0.18) ;
+        const sx = ox + lat, sy = oy + ry * (t * 0.42 + jitter * 0.18);
+        const wob = hits.length ? 0 : (Math.random() - 0.5) * spread;
+        G.tracers.push({
+          x: sx, y: sy,
+          x2: sx + fx * reach + rx * wob,
+          y2: sy + fy * reach + ry * wob,
+          kind: g.kind,
+          color: col,
+          width: g.width || 0.07
+        });
+      }
     }
   }
 
@@ -962,6 +1005,8 @@
     traffic: [],
     gunOn: false,
     gunCool: 0,
+    gunKind: "mg",
+    gunHits: [],
     tracers: [],
     score: 0,
     combo: 0,
@@ -1992,11 +2037,16 @@
           $("arcMult").textContent = "x" + (G.combo || 0);
           $("arcMult").classList.toggle("hot", (G.combo || 0) > 0);
           $("arcMult").classList.toggle("guns", !!G.gunOn);
+          $("arcMult").classList.toggle("gun-cannon", !!G.gunOn && G.gunKind === "cannon");
+          $("arcMult").classList.toggle("gun-needle", !!G.gunOn && G.gunKind === "needle");
+          $("arcMult").classList.toggle("gun-rail", !!G.gunOn && G.gunKind === "rail");
         }
         if ($("arcCombo")) {
           const bonus = (G.combo || 0) * COMBO_MPH;
-          const bonusTxt = bonus ? ("+" + Math.round(opt("metric") ? bonus * 1.60934 : bonus) + " " + (opt("metric") ? "km/h" : "MPH")) : "";
-          $("arcCombo").textContent = bonusTxt || (G.gunOn ? "GUNS LIVE" : "HOLD R-SHIFT");
+          const gn = activeGun();
+          const gunTxt = G.gunOn ? ((gn && gn.name) || "GUNS") + " LIVE" : "HOLD R-SHIFT";
+          const bonusTxt = bonus ? ("+" + Math.round(opt("metric") ? bonus * 1.60934 : bonus) + " " + (opt("metric") ? "km/h" : "MPH") + " · " + (G.gunOn ? gunTxt : "guns scale w/ x")) : "";
+          $("arcCombo").textContent = bonusTxt || gunTxt;
         }
         if ($("arcBest")) $("arcBest").textContent = "BEST " + ((G.save.arcade && G.save.arcade.bestScore) || 0);
         if ($("arcKills")) $("arcKills").textContent = (G.kills || 0) + " WRECKS";
@@ -2252,7 +2302,9 @@
         speed: Math.abs((G.car && G.car.speed) || 0),
         radio: radioOn,
         reduceFx: opt("reduceFx"),
-        guns: !!(G.gunOn && G.track && G.track.kind === "ridge")
+        guns: !!(G.gunOn && G.track && G.track.kind === "ridge"),
+        gunKind: G.gunKind || "mg",
+        gunPower: 1 + 0.12 * (G.combo || 0)
       });
     }
     if (G.mode !== "race" || !G.track) return;
@@ -2419,7 +2471,14 @@
       Rally3D.setState({
         car: G.car, ghost: isFieldRace() ? null : gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
-        gun: { on: G.gunOn, tracers: G.tracers || [] },
+        gun: {
+          on: G.gunOn,
+          tracers: G.tracers || [],
+          hits: G.gunHits || [],
+          kind: G.gunKind || ((G.craft && G.craft.gun && G.craft.gun.kind) || "mg"),
+          power: 1 + 0.18 * (G.combo || 0),
+          color: (G.craft && G.craft.gun && G.craft.gun.color) || "#ffe08a"
+        },
         burnout: burnout,
         boostOn: boostOn,
         body: (G.craft && G.craft.body) || "apex",
@@ -2514,9 +2573,9 @@
       });
     }
     if (G.gunOn && G.tracers) {
-      c.strokeStyle = "#fde68a";
-      c.lineWidth = 2;
       G.tracers.forEach(function (tr) {
+        c.strokeStyle = tr.color || "#fde68a";
+        c.lineWidth = tr.kind === "cannon" ? 5 : (tr.kind === "rail" ? 3 : (tr.kind === "needle" ? 1.2 : 2));
         c.beginPath();
         c.moveTo(tr.x * scale, tr.y * scale);
         c.lineTo(tr.x2 * scale, tr.y2 * scale);
@@ -2534,7 +2593,7 @@
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain dumps. Launch is 1–2–3 torque slingshot; 4th-on is the long pull.</li>" +
+      "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
@@ -2575,6 +2634,7 @@
             statRow("Grip μ", c.mu, 2) +
             statRow("Turn", c.turn, 2.6) +
             statRow("Boost", c.boostTank || c.boost, 2) +
+            "<p class='lore' style='margin-top:.35rem'>Endless gun · <b>" + ((c.gun && c.gun.name) || "Lattice MG") + "</b></p>" +
           "</div>" +
           "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
           "<div class='cast-grid garage-bays'>" +

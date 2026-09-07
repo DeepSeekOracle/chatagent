@@ -10,6 +10,8 @@
   var carKind = "", carPaint = null;
   var trafficPool = [];
   var tracerPool = [];
+  var boltPool = [];
+  var hitPool = [];
   var fieldPool = [];
   var p2Mesh = null;
   var splitOn = false;
@@ -963,8 +965,10 @@
       sparkGroup.visible = false;
       scene.add(sparkGroup);
     }
-    attachGuns(carMesh);
-    ensureTracers(12);
+    attachGuns(carMesh, gunStyleFor(body));
+    ensureTracers(16);
+    ensureBolts(10);
+    ensureHits(12);
     ensureSkids();
     ensureSmoke();
   }
@@ -1029,20 +1033,84 @@
     skidMesh.instanceMatrix.needsUpdate = true;
   }
 
-  function attachGuns(root) {
-    if (!root || root.userData.mg) return;
-    var mat = new T.MeshStandardMaterial({ color: 0x1b1f28, metalness: 0.72, roughness: 0.32 });
-    function barrel(x) {
-      var b = new T.Mesh(new T.CylinderGeometry(0.038, 0.046, 0.92, 8), mat);
-      b.rotation.x = Math.PI / 2;
-      b.position.set(x, 0.36, -2.12);
-      root.add(b);
-      var flash = new T.PointLight(0xffe08a, 0, 14, 2);
-      flash.position.set(x, 0.38, -2.58);
-      root.add(flash);
-      return { mesh: b, flash: flash };
+  function gunStyleFor(body) {
+    if (body === "boxcut") return "cannon";
+    if (body === "flick") return "needle";
+    if (body === "sleet") return "rail";
+    return "mg";
+  }
+
+  function attachGuns(root, style) {
+    if (!root) return;
+    style = style || "mg";
+    if (root.userData.mg && root.userData.mgStyle === style) return;
+    if (root.userData.mg) {
+      root.userData.mg.forEach(function (g) {
+        if (g.mesh && g.mesh.parent) g.mesh.parent.remove(g.mesh);
+        if (g.flash && g.flash.parent) g.flash.parent.remove(g.flash);
+      });
     }
-    root.userData.mg = [barrel(-0.44), barrel(0.44)];
+    var mat = new T.MeshStandardMaterial({ color: 0x1b1f28, metalness: 0.72, roughness: 0.32 });
+    var barrels = [];
+    function addBarrel(x, y, z, len, r0, r1, flashHex, flashZ) {
+      var b = new T.Mesh(new T.CylinderGeometry(r0, r1, len, 8), mat);
+      b.rotation.x = Math.PI / 2;
+      b.position.set(x, y, z);
+      root.add(b);
+      var flash = new T.PointLight(flashHex, 0, style === "cannon" ? 18 : 14, 2);
+      flash.position.set(x, y + 0.02, flashZ);
+      root.add(flash);
+      barrels.push({ mesh: b, flash: flash });
+    }
+    if (style === "cannon") {
+      addBarrel(-0.56, 0.42, -2.22, 0.72, 0.07, 0.1, 0xff6b3d, -2.62);
+      addBarrel(0.56, 0.42, -2.22, 0.72, 0.07, 0.1, 0xff6b3d, -2.62);
+    } else if (style === "needle") {
+      addBarrel(-0.38, 0.34, -1.78, 0.7, 0.018, 0.028, 0xfb923c, -2.18);
+      addBarrel(0, 0.36, -1.82, 0.74, 0.016, 0.026, 0xfb923c, -2.22);
+      addBarrel(0.38, 0.34, -1.78, 0.7, 0.018, 0.028, 0xfb923c, -2.18);
+    } else if (style === "rail") {
+      addBarrel(-0.34, 0.38, -2.18, 1.28, 0.022, 0.032, 0x93c5fd, -2.82);
+      addBarrel(0.34, 0.38, -2.18, 1.28, 0.022, 0.032, 0x93c5fd, -2.82);
+    } else {
+      addBarrel(-0.44, 0.36, -2.12, 0.92, 0.038, 0.046, 0xffe08a, -2.58);
+      addBarrel(0.44, 0.36, -2.12, 0.92, 0.038, 0.046, 0xffe08a, -2.58);
+    }
+    root.userData.mg = barrels;
+    root.userData.mgStyle = style;
+  }
+
+  function hexNum(c) {
+    if (typeof c === "number") return c;
+    var s = String(c || "").replace("#", "");
+    var n = parseInt(s, 16);
+    return isFinite(n) ? n : 0xffe08a;
+  }
+
+  function ensureBolts(n) {
+    while (boltPool.length < n) {
+      var mesh = new T.Mesh(
+        new T.BoxGeometry(1, 1, 1),
+        new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.88, depthWrite: false })
+      );
+      mesh.visible = false;
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      boltPool.push(mesh);
+    }
+  }
+
+  function ensureHits(n) {
+    while (hitPool.length < n) {
+      var sp = new T.Mesh(
+        new T.SphereGeometry(0.18, 8, 6),
+        new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, depthWrite: false })
+      );
+      sp.visible = false;
+      sp.frustumCulled = false;
+      scene.add(sp);
+      hitPool.push(sp);
+    }
   }
 
   function makeTrafficCar(color, kind) {
@@ -1120,26 +1188,66 @@
   }
 
   function syncGuns(gun, reduce) {
-    var i, line, tr, pos, mg, on;
+    var i, line, tr, pos, mg, on, kind, col, pwr, bolt, dx, dz, len, hit, sp;
     on = !!(gun && gun.on);
+    kind = (gun && gun.kind) || "mg";
+    col = hexNum(gun && gun.color);
+    pwr = (gun && gun.power) || 1;
     if (carMesh && carMesh.userData.mg) {
       mg = carMesh.userData.mg;
       for (i = 0; i < mg.length; i++) {
-        if (mg[i].flash) mg[i].flash.intensity = on && !reduce ? (1.6 + Math.random() * 2.2) : 0;
+        if (mg[i].flash) {
+          mg[i].flash.color.setHex(col);
+          mg[i].flash.intensity = on && !reduce ? (1.4 + Math.random() * 2.4) * Math.min(2.4, pwr) : 0;
+        }
       }
     }
+    ensureTracers(16);
+    ensureBolts(10);
+    ensureHits(12);
     for (i = 0; i < tracerPool.length; i++) {
       line = tracerPool[i];
       tr = gun && gun.tracers && gun.tracers[i];
-      if (!tr || reduce) {
+      if (!tr || reduce || kind === "cannon") {
         line.visible = false;
         continue;
       }
       pos = line.geometry.attributes.position.array;
-      pos[0] = tr.x; pos[1] = 0.55; pos[2] = tr.y;
-      pos[3] = tr.x2; pos[4] = 0.52; pos[5] = tr.y2;
+      pos[0] = tr.x; pos[1] = kind === "rail" ? 0.62 : 0.55; pos[2] = tr.y;
+      pos[3] = tr.x2; pos[4] = kind === "rail" ? 0.58 : 0.52; pos[5] = tr.y2;
       line.geometry.attributes.position.needsUpdate = true;
+      if (line.material && line.material.color) line.material.color.setHex(hexNum(tr.color || col));
+      line.material.opacity = kind === "needle" ? 0.78 : 0.94;
       line.visible = true;
+    }
+    for (i = 0; i < boltPool.length; i++) {
+      bolt = boltPool[i];
+      tr = gun && gun.tracers && gun.tracers[i];
+      if (!tr || reduce || (kind !== "cannon" && kind !== "rail")) {
+        bolt.visible = false;
+        continue;
+      }
+      dx = tr.x2 - tr.x; dz = tr.y2 - tr.y;
+      len = Math.hypot(dx, dz) || 1;
+      bolt.position.set((tr.x + tr.x2) * 0.5, kind === "rail" ? 0.6 : 0.52, (tr.y + tr.y2) * 0.5);
+      bolt.rotation.y = -Math.atan2(dz, dx);
+      bolt.scale.set(len, kind === "cannon" ? 0.16 * Math.min(1.6, pwr) : 0.07, kind === "cannon" ? 0.16 : 0.07);
+      if (bolt.material && bolt.material.color) bolt.material.color.setHex(hexNum(tr.color || col));
+      bolt.material.opacity = kind === "rail" ? 0.72 : 0.9;
+      bolt.visible = true;
+    }
+    for (i = 0; i < hitPool.length; i++) {
+      sp = hitPool[i];
+      hit = gun && gun.hits && gun.hits[i];
+      if (!hit || reduce) {
+        sp.visible = false;
+        continue;
+      }
+      sp.position.set(hit.x, 0.7 + Math.random() * 0.25, hit.y);
+      sp.scale.setScalar((kind === "cannon" ? 0.55 : 0.32) * (0.7 + Math.random() * 0.6) * Math.min(1.8, pwr));
+      if (sp.material && sp.material.color) sp.material.color.setHex(col);
+      sp.material.opacity = 0.55 + Math.random() * 0.4;
+      sp.visible = true;
     }
   }
 

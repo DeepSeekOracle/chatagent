@@ -220,18 +220,65 @@
 
     ambGain.gain.setTargetAtTime(radio ? 0.012 : (racing ? 0.05 : 0.08), now, 0.25);
 
-    if (s.guns && now - lastGunAt > 0.058) {
-      lastGunAt = now;
-      var burst = ctx.createBufferSource();
-      burst.buffer = noiseBuf;
-      var hp = ctx.createBiquadFilter();
-      hp.type = "bandpass";
-      hp.frequency.value = 2200 + Math.random() * 900;
-      hp.Q.value = 4.5;
-      var gg = ctx.createGain();
-      gg.gain.setValueAtTime(reduce ? 0.04 : 0.13, now);
+    if (s.guns) gunFire(s.gunKind || "mg", s.gunPower || 1, reduce, now);
+  }
+
+  function gunFire(kind, power, reduce, now) {
+    var p = clamp(power || 1, 0.5, 5);
+    var vol = (reduce ? 0.035 : 0.12) * (0.72 + 0.1 * p);
+    var gap = kind === "cannon" ? 0.1 : (kind === "needle" ? 0.022 : (kind === "rail" ? 0.078 : 0.052));
+    if (now - lastGunAt < gap) return;
+    lastGunAt = now;
+    var burst = ctx.createBufferSource();
+    burst.buffer = noiseBuf;
+    var filt = ctx.createBiquadFilter();
+    var gg = ctx.createGain();
+    burst.connect(filt); filt.connect(gg); gg.connect(master);
+    if (kind === "cannon") {
+      filt.type = "lowpass";
+      filt.frequency.value = 420 + Math.random() * 180;
+      filt.Q.value = 0.9;
+      gg.gain.setValueAtTime(vol * 1.35, now);
+      gg.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      var o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(160 + Math.random() * 50, now);
+      o.frequency.exponentialRampToValueAtTime(46, now + 0.11);
+      var og = ctx.createGain();
+      og.gain.setValueAtTime(vol * 0.9, now);
+      og.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      o.connect(og); og.connect(master);
+      o.start(now); o.stop(now + 0.13);
+      burst.start(now); burst.stop(now + 0.12);
+    } else if (kind === "needle") {
+      filt.type = "bandpass";
+      filt.frequency.value = 3800 + Math.random() * 1400;
+      filt.Q.value = 7.5;
+      gg.gain.setValueAtTime(vol * 0.72, now);
+      gg.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+      burst.start(now); burst.stop(now + 0.03);
+    } else if (kind === "rail") {
+      filt.type = "highpass";
+      filt.frequency.value = 900;
+      filt.Q.value = 0.7;
+      gg.gain.setValueAtTime(vol * 0.95, now);
+      gg.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      var r = ctx.createOscillator();
+      r.type = "sawtooth";
+      r.frequency.setValueAtTime(720 + Math.random() * 480, now);
+      r.frequency.exponentialRampToValueAtTime(1800 + Math.random() * 400, now + 0.07);
+      var rg = ctx.createGain();
+      rg.gain.setValueAtTime(vol * 0.45, now);
+      rg.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      r.connect(rg); rg.connect(master);
+      r.start(now); r.stop(now + 0.085);
+      burst.start(now); burst.stop(now + 0.09);
+    } else {
+      filt.type = "bandpass";
+      filt.frequency.value = 2200 + Math.random() * 900;
+      filt.Q.value = 4.5;
+      gg.gain.setValueAtTime(vol, now);
       gg.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
-      burst.connect(hp); hp.connect(gg); gg.connect(master);
       burst.start(now); burst.stop(now + 0.05);
     }
   }
