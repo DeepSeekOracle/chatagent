@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Haven Rally — Whitepaper v1.2 | chatagent.ca</title>
-<meta name="description" content="Design canon for Haven Rally: Apex GT and Boxcut short-box, circuits, endless arcade, drag, ghost, local ledger. The live client follows this page.">
+<title>Haven Rally — Whitepaper v1.3 | chatagent.ca</title>
+<meta name="description" content="Design canon for Haven Rally: four live chassis (Apex, Boxcut, Flick FWD, Sleet AWD), circuits, endless arcade, drag, ghost, local ledger.">
 <link rel="canonical" href="https://chatagent.ca/games/haven-rally/whitepaper.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -30,8 +30,8 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 <body>
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · design canon</p>
-  <h1>Haven Rally v1.2</h1>
-  <p>Arcade racer in this browser. Two live chassis, three circuit highways, an endless start-to-finish run with traffic and guns, and a real drag strip. Ghost of your best heat. Local ledger. No account. This page is the spec the live client follows. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
+  <h1>Haven Rally v1.3</h1>
+  <p>Arcade racer in this browser. Four live chassis, three circuit highways, an endless start-to-finish run with traffic and guns, and a real drag strip. Ghost of your best heat. Local ledger. No account. This page is the spec the live client follows. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="/games/">Arcade</a>
@@ -85,7 +85,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>All courses: four lanes, guardrails, lamps, gantries, arcade dusk dress. Open paths do not wrap finish-to-start. Drag is a linear strip. Sportsman tree: READY (~2.15 s), pre, stage, three ambers at 0.5 s, then green. Foul only on ambers (not during READY). F restages both cars and runs the tree. AI launches on its reaction (rare red-light).</p>
 
   <h2>5. Crafts</h2>
-  <p>Two live chassis. Same powertrain: set HP, torque, mass, drive, μ, gears, <code>boostTank</code>, <code>boostPower</code> — performance follows. Bay 03 locked. Old Mira/Reed/Kai saves map to Apex.</p>
+  <p>Four live chassis. Same powertrain: set HP, torque, mass, drive, μ, gears, <code>boostTank</code>, <code>boostPower</code> — performance follows. Drive is the personality: RWD yaws on slip, FWD pushes, AWD holds. Old Mira/Reed/Kai saves map to Apex.</p>
   <table>
     <tr><th>Stat</th><th>Apex Mk I</th><th>Boxcut Mk I</th></tr>
     <tr><td>Role</td><td>Lattice GT</td><td>Original short-box race truck (C10 short-fleetside stance, Haven lattice — not a licensed Chevy)</td></tr>
@@ -98,7 +98,20 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td>Boost hit</td><td>1.00×</td><td>1.25× on Right Shift</td></tr>
     <tr><td>Studio</td><td>PBR loft GT</td><td>PBR short-box: cab, short bed, hoop, round lamps</td></tr>
   </table>
-  <p><code>upgHp</code> / <code>upgTq</code> add to the engine later; extra power without μ = wheelspin.</p>
+  <table>
+    <tr><th>Stat</th><th>Flick Mk I</th><th>Sleet Mk I</th></tr>
+    <tr><td>Role</td><td>Original FWD pocket hatch. Tightest circuits. Worst at the tree.</td><td>Original AWD rally coupe. Hooks. Rain/weather already has a home.</td></tr>
+    <tr><td>Layout</td><td>FWD · 6-spd · 1120 kg</td><td>AWD (40/60) · 6-spd · 1340 kg</td></tr>
+    <tr><td>Power / torque</td><td>355 hp @ 7100 · 318 lb-ft @ 4800 · redline 7600</td><td>438 hp @ 6400 · 468 lb-ft @ 3800 · redline 7200</td></tr>
+    <tr><td>Final / wheel</td><td>4.05 · r 0.31 m (short)</td><td>3.85 · r 0.33 m</td></tr>
+    <tr><td>Aero</td><td>Cd 0.37 · A 1.98 m²</td><td>Cd 0.48 · A 2.22 m²</td></tr>
+    <tr><td>Grip / turn</td><td>μ 1.38 · turn 2.42 (best)</td><td>μ 1.50 · turn 2.18</td></tr>
+    <tr><td>Boost tank</td><td>0.82 (smallest)</td><td>1.15</td></tr>
+    <tr><td>Boost hit</td><td>0.92×</td><td>1.08×</td></tr>
+    <tr><td>Drive feel</td><td>Slip kills yaw (push). Front burnout marks.</td><td>Both axles share torque. Launch slip rarely lights. Almost no burnout theater.</td></tr>
+    <tr><td>Studio</td><td>PBR short hatch, tall cabin, steep tail</td><td>PBR flared coupe, hood/roof scoops, fogs</td></tr>
+  </table>
+  <p><code>upgHp</code> / <code>upgTq</code> add to the engine later; extra power without μ = wheelspin (RWD), push (FWD), or a late break (AWD).</p>
 
   <h2>6. Endless arcade</h2>
   <p>~24–64 traffic cars on the highway (dense in the first stretch). Ram dumps speed and <b>breaks combo</b>. Guns (Right Shift + fuel) hitscan ~52 yd ahead; wrecks are 100 × combo points. Combo has no cap. Each point adds 5 mph to top speed (aero drag scaled so the extra speed is reachable). Wall or ram: COMBO BREAK, bonus speed gone. Timeouts do not break the chain.</p>
@@ -127,7 +140,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Each heat records <code>{x,y,h,t}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost. Endless also writes <code>save.arcade</code>: <code>bestScore</code>, <code>bestCombo</code>, last 20 wreck-runs. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
 
   <h2>8. Studio + presentation</h2>
-  <p>Title screen matches Lattice Golf: full-bleed still of the selected craft, right panel, operator name, garage chip, mode cards, radio, PayPal.me/ExcavationPro + Patreon. Garage is a live 3D studio (drag to orbit) with two bays. 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
+  <p>Title screen matches Lattice Golf: full-bleed still of the selected craft, right panel, operator name, garage chip, mode cards, radio, PayPal.me/ExcavationPro + Patreon. Garage is a live 3D studio (drag to orbit) with four bays. 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
   <p><b>Cameras</b> (<kbd>C</kbd> or Options): Chase, Close, Hood, Bumper, Cockpit, TV. Chase distance/height sliders scale Chase and TV.</p>
   <p><b>FX.</b> Headlights and brake lamps. First-gear launch lays black burnout marks and spins the rears. Right Shift with fuel: tailpipe flames. Reduce-effects hides sparks, gun tracers, extra lights, and new skids.</p>
   <p>HUD: commercial race cluster bottom-right (tach, gear, mph or km/h). Endless adds score, combo, wrecks, browser best.</p>

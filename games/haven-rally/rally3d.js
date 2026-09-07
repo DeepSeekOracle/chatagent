@@ -14,7 +14,7 @@
   var p2Mesh = null;
   var splitOn = false;
   var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9, t: 0 };
-  var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false };
+  var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false, front: false };
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
@@ -1071,8 +1071,8 @@
       fz = Math.sin(smokeEmit.h);
       rx = -fz;
       rz = fx;
-      back = smokeEmit.truck ? 1.5 : 1.15;
-      half = smokeEmit.truck ? 0.98 : 0.8;
+      back = smokeEmit.truck ? 1.5 : (smokeEmit.front ? -1.02 : 1.15);
+      half = smokeEmit.truck ? 0.98 : (smokeEmit.front ? 0.72 : 0.8);
       if (smokeEmit.on) {
         for (si = 0; si < smokeGroup.children.length && spawned < (smokeEmit.truck ? 4 : 2); si++) {
           puff = smokeGroup.children[si];
@@ -1287,12 +1287,13 @@
       smokeEmit.y = c.y;
       smokeEmit.h = c.h;
       smokeEmit.truck = s.body === "boxcut";
+      smokeEmit.front = s.body === "flick";
       if (s.burnout && !s.reduceFx) {
         var bfx = Math.cos(c.h), bfz = Math.sin(c.h);
         var brx = -bfz, brz = bfx;
-        var back = s.body === "boxcut" ? 1.52 : 1.18;
-        var half = s.body === "boxcut" ? 0.98 : 0.82;
-        var wide = s.body === "boxcut" ? 1.25 : 1;
+        var back = s.body === "boxcut" ? 1.52 : (s.body === "flick" ? -1.02 : (s.body === "sleet" ? 1.22 : 1.18));
+        var half = s.body === "boxcut" ? 0.98 : (s.body === "flick" ? 0.72 : (s.body === "sleet" ? 0.88 : 0.82));
+        var wide = s.body === "boxcut" ? 1.25 : (s.body === "flick" ? 0.85 : (s.body === "sleet" ? 1.08 : 1));
         var dxs = c.x - skidLast.x, dzs = c.y - skidLast.z;
         var nowT = clock ? clock.elapsedTime : 0;
         var moved = dxs * dxs + dzs * dzs > 0.07;

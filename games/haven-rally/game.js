@@ -10,7 +10,7 @@
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
-    lore: "Base chassis. RWD GT. Slide charges boost. Future bays use the same powertrain math.",
+    lore: "Base chassis. RWD GT. Slide charges boost. The hole-shot theater the others are measured against.",
     color: "#165e66",
     massKg: 1380,
     hp: 470,
@@ -67,17 +67,80 @@
     upgHp: 0,
     upgTq: 0
   };
-  const CRAFTS = [Object.assign({}, DEFAULT_CRAFT), Object.assign({}, BOXCUT)];
-  const LOCKED_BAYS = [
-    { name: "Bay 03", tag: "Soon" }
+  const FLICK = {
+    id: "flick", name: "Flick Mk I", tag: "Pocket hatch",
+    src: "./assets/flick-plate.jpg", hero: "./assets/flick-hero.jpg",
+    lore: "FWD pocket rocket. Light, peaky, tightest turn. Asks the front tires for everything — they push, they don't spin. Owns the ring. Last at the tree.",
+    color: "#c2410c",
+    massKg: 1120,
+    hp: 355,
+    torque: 318,
+    idle: 950,
+    redline: 7600,
+    tqRpm: 4800,
+    hpRpm: 7100,
+    gears: [3.58, 2.24, 1.58, 1.22, 0.98, 0.82],
+    finalDrive: 4.05,
+    wheelRadius: 0.31,
+    drive: "fwd",
+    cd: 0.37,
+    area: 1.98,
+    crr: 0.014,
+    mu: 1.38,
+    brakeMu: 1.64,
+    turn: 2.42,
+    boost: 1.05,
+    boostPower: 0.92,
+    boostTank: 0.82,
+    body: "flick",
+    eta: 0.87,
+    upgHp: 0,
+    upgTq: 0
+  };
+  const SLEET = {
+    id: "sleet", name: "Sleet Mk I", tag: "AWD rally coupe",
+    src: "./assets/sleet-plate.jpg", hero: "./assets/sleet-hero.jpg",
+    lore: "AWD rally coupe. Hooks out of the hole, almost no burnout. Both axles share the shove. Rain and weather already have a home here. Apex still wins the slide theater.",
+    color: "#1d4ed8",
+    massKg: 1340,
+    hp: 438,
+    torque: 468,
+    idle: 850,
+    redline: 7200,
+    tqRpm: 3800,
+    hpRpm: 6400,
+    gears: [3.20, 2.02, 1.46, 1.14, 0.94, 0.82],
+    finalDrive: 3.85,
+    wheelRadius: 0.33,
+    drive: "awd",
+    cd: 0.48,
+    area: 2.22,
+    crr: 0.016,
+    mu: 1.50,
+    brakeMu: 1.55,
+    turn: 2.18,
+    boost: 1.18,
+    boostPower: 1.08,
+    boostTank: 1.15,
+    body: "sleet",
+    eta: 0.89,
+    upgHp: 0,
+    upgTq: 0
+  };
+  const CRAFTS = [
+    Object.assign({}, DEFAULT_CRAFT),
+    Object.assign({}, BOXCUT),
+    Object.assign({}, FLICK),
+    Object.assign({}, SLEET)
   ];
+  const LOCKED_BAYS = [];
   const LANE_W = 4.4;
   const TRACK_LANES = 4;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
   const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
   const BOT_ROSTER = [
-    { name: "Reed", skill: 0.88, color: "#1d4ed8", body: "apex" },
-    { name: "Mira", skill: 0.82, color: "#7c3aed", body: "apex" },
+    { name: "Reed", skill: 0.88, color: "#1d4ed8", body: "sleet" },
+    { name: "Mira", skill: 0.82, color: "#c2410c", body: "flick" },
     { name: "Kai", skill: 0.74, color: "#0f766e", body: "boxcut" }
   ];
 
@@ -875,8 +938,8 @@
     const tr = G.track;
     if (tr.kind === "ridge") G.field = "solo";
     const p1craft = craftOf(G.save.craft);
-    const p2id = p1craft.id === "apex" ? "boxcut" : "apex";
-    const p2craft = craftOf(p2id);
+    const p1ix = Math.max(0, CRAFTS.findIndex(function (c) { return c.id === p1craft.id; }));
+    const p2craft = craftOf(CRAFTS[(p1ix + 1) % CRAFTS.length].id);
     const wantSplit = isSplit() && tr.kind !== "ridge";
     const wantBots = (G.field === "bots" || G.field === "splitbots") && tr.kind !== "ridge";
     G.racers = [];
@@ -897,7 +960,7 @@
         const lane = wantSplit ? 2 + i : 1 + i;
         G.racers.push(makeRacer({
           id: "bot" + i, name: bot.name, kind: "bot", slot: 2 + i,
-          craft: craftNorm(Object.assign({}, craftOf(bot.body === "boxcut" ? "boxcut" : "apex"), { color: bot.color, body: bot.body })),
+          craft: craftNorm(Object.assign({}, craftOf(bot.body), { color: bot.color, body: bot.body })),
           lane: lane, stagger: 1 + (i % 2), skill: bot.skill, seed: 40 + i * 17,
           laneBias: (lane - 1.5) * LANE_W * 0.42
         }));
@@ -2108,8 +2171,12 @@
     if (use3d && window.Rally3D && Rally3D.active()) {
       const spdAbs = Math.abs(G.car.speed || 0);
       const thrHeld = !!(G.keys.KeyW || G.keys.ArrowUp || (G.car.thr || 0) > 0.35);
-      const launchBurn = (G.car.gear === 1 || G.car.gear === 2) && thrHeld && spdAbs < 42 &&
-        ((G.car.wheelSlip || 0) > 0.05 || spdAbs < 24);
+      const drive = (G.craft && G.craft.drive) || "rwd";
+      const slip = G.car.wheelSlip || 0;
+      let launchBurn = (G.car.gear === 1 || G.car.gear === 2) && thrHeld && spdAbs < 42 &&
+        (slip > 0.05 || spdAbs < 24);
+      if (drive === "awd") launchBurn = G.car.gear === 1 && thrHeld && slip > 0.18;
+      if (drive === "fwd") launchBurn = launchBurn && (slip > 0.1 || spdAbs < 16);
       const driftBurn = (G.sparks || 0) > 0.28 || (!!G.keys.ShiftLeft && spdAbs > 8);
       const burnout = G.mode === "race" && G.phase !== "done" && G.phase !== "idle" && (launchBurn || driftBurn);
       const boostOn = !!(G.racers[0] && G.racers[0].boostOn) || (!!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft);
@@ -2266,10 +2333,10 @@
           "<canvas id='garageCanvas'></canvas>" +
           "<img class='garage-fallback' id='garageFallback' src='" + (c.hero || c.src) + "' alt='" + c.name + "'>" +
           "<div class='garage-stage-fade'></div>" +
-          "<p class='garage-hint'>Drag to orbit · two bays live</p>" +
+          "<p class='garage-hint'>Drag to orbit · four bays live</p>" +
         "</div>" +
         "<div class='title-panel'>" +
-          "<p class='kicker'>Garage · two bays live</p>" +
+          "<p class='kicker'>Garage · four bays live</p>" +
           "<h1>" + c.name + "</h1>" +
           "<p class='title-tag'>" + c.tag + "</p>" +
           "<p class='lore'>" + c.lore + "</p>" +
@@ -2355,7 +2422,7 @@
             "<button type='button' class='btn gold' data-go='garage'>Garage</button>" +
           "</div>" +
           "<div class='mode-grid'>" +
-            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Studio turntable. Apex GT and Boxcut short-box live.</span></button>" +
+            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Four live bays. Apex, Boxcut, Flick hatch, Sleet AWD.</span></button>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil · " + PINE.laps + " laps</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
