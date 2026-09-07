@@ -1711,8 +1711,11 @@
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
       const spdAbs = Math.abs(G.car.speed || 0);
-      const burnout = G.car.gear === 1 && (G.car.thr || 0) > 0.35 && spdAbs < 34 &&
-        ((G.car.wheelSlip || 0) > 0.08 || spdAbs < 16);
+      const thrHeld = !!(G.keys.KeyW || G.keys.ArrowUp || (G.car.thr || 0) > 0.35);
+      const launchBurn = (G.car.gear === 1 || G.car.gear === 2) && thrHeld && spdAbs < 42 &&
+        ((G.car.wheelSlip || 0) > 0.05 || spdAbs < 24);
+      const driftBurn = (G.sparks || 0) > 0.28 || (!!G.keys.ShiftLeft && spdAbs > 8);
+      const burnout = G.mode === "race" && G.phase !== "done" && G.phase !== "idle" && (launchBurn || driftBurn);
       const boostOn = !!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft;
       Rally3D.setState({
         car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),

@@ -10,8 +10,8 @@
   var carKind = "", carPaint = null;
   var trafficPool = [];
   var tracerPool = [];
-  var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9 };
-  var lastBurnout = false;
+  var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9, t: 0 };
+  var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false };
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
@@ -782,6 +782,23 @@
     ensureTraffic(64);
     ensureTracers(12);
     ensureSkids();
+    ensureSmoke();
+  }
+
+  function ensureSmoke() {
+    if (smokeGroup) return;
+    smokeGroup = new T.Group();
+    scene.add(smokeGroup);
+    var i, p, mat;
+    for (i = 0; i < 36; i++) {
+      mat = new T.MeshBasicMaterial({
+        color: i % 3 ? 0x2a2a2a : 0x6b7280, transparent: true, opacity: 0, depthWrite: false
+      });
+      p = new T.Mesh(new T.SphereGeometry(0.18, 8, 6), mat);
+      p.visible = false;
+      p.userData.life = 0;
+      smokeGroup.add(p);
+    }
   }
 
   function ensureSkids() {
@@ -952,8 +969,51 @@
     if (carMesh) {
       var spin = Math.abs(lastSpeed) * 0.85;
       carMesh.traverse(function (ch) {
-        if (ch.userData.spin) ch.rotation.x += dt * (0.4 + spin) * (lastBurnout ? 7.5 : 1);
+        if (ch.userData.spin) ch.rotation.x += dt * (0.4 + spin) * (lastBurnout ? 8.5 : 1);
       });
+    }
+    if (smokeGroup) {
+      var si, puff, spawned = 0, fx, fz, rx, rz, back, half;
+      fx = Math.cos(smokeEmit.h);
+      fz = Math.sin(smokeEmit.h);
+      rx = -fz;
+      rz = fx;
+      back = smokeEmit.truck ? 1.5 : 1.15;
+      half = smokeEmit.truck ? 0.98 : 0.8;
+      if (smokeEmit.on) {
+        for (si = 0; si < smokeGroup.children.length && spawned < (smokeEmit.truck ? 4 : 2); si++) {
+          puff = smokeGroup.children[si];
+          if (puff.userData.life > 0) continue;
+          puff.userData.life = 0.35 + Math.random() * 0.45;
+          puff.userData.vx = (Math.random() - 0.5) * 1.4 - fx * 1.2;
+          puff.userData.vy = 1.4 + Math.random() * 1.8;
+          puff.userData.vz = (Math.random() - 0.5) * 1.4 - fz * 1.2;
+          puff.position.set(
+            smokeEmit.x - fx * back + rx * half * (spawned % 2 ? 1 : -1),
+            0.22,
+            smokeEmit.y - fz * back + rz * half * (spawned % 2 ? 1 : -1)
+          );
+          puff.scale.setScalar(smokeEmit.truck ? 0.9 : 0.55);
+          puff.material.opacity = 0.45;
+          puff.visible = true;
+          spawned += 1;
+        }
+      }
+      for (si = 0; si < smokeGroup.children.length; si++) {
+        puff = smokeGroup.children[si];
+        if (puff.userData.life <= 0) {
+          puff.visible = false;
+          continue;
+        }
+        puff.userData.life -= dt;
+        puff.position.x += puff.userData.vx * dt;
+        puff.position.y += puff.userData.vy * dt;
+        puff.position.z += puff.userData.vz * dt;
+        puff.userData.vy += dt * 0.8;
+        puff.scale.multiplyScalar(1 + dt * 1.6);
+        puff.material.opacity = Math.max(0, puff.userData.life * 0.7);
+        if (puff.userData.life <= 0) puff.visible = false;
+      }
     }
     renderer.render(scene, camera);
   }
@@ -1087,15 +1147,27 @@
           HavenCar.setLights(aiMesh, { head: true, brake: false, reduceFx: s.reduceFx });
         }
       }
+      smokeEmit.on = !!s.burnout && !s.reduceFx;
+      smokeEmit.x = c.x;
+      smokeEmit.y = c.y;
+      smokeEmit.h = c.h;
+      smokeEmit.truck = s.body === "boxcut";
       if (s.burnout && !s.reduceFx) {
         var bfx = Math.cos(c.h), bfz = Math.sin(c.h);
         var brx = -bfz, brz = bfx;
+        var back = s.body === "boxcut" ? 1.52 : 1.18;
+        var half = s.body === "boxcut" ? 0.98 : 0.82;
+        var wide = s.body === "boxcut" ? 1.25 : 1;
         var dxs = c.x - skidLast.x, dzs = c.y - skidLast.z;
-        if (dxs * dxs + dzs * dzs > 0.11) {
-          dropSkid(c.x - bfx * 1.18 + brx * 0.82, c.y - bfz * 1.18 + brz * 0.82, c.h, 0.85 + Math.random() * 0.35);
-          dropSkid(c.x - bfx * 1.18 - brx * 0.82, c.y - bfz * 1.18 - brz * 0.82, c.h, 0.85 + Math.random() * 0.35);
+        var nowT = clock ? clock.elapsedTime : 0;
+        var moved = dxs * dxs + dzs * dzs > 0.07;
+        var idleHold = Math.abs(c.speed || 0) < 3 && (nowT - skidLast.t) > 0.045;
+        if (moved || idleHold) {
+          dropSkid(c.x - bfx * back + brx * half, c.y - bfz * back + brz * half, c.h, wide * (0.9 + Math.random() * 0.4));
+          dropSkid(c.x - bfx * back - brx * half, c.y - bfz * back - brz * half, c.h, wide * (0.9 + Math.random() * 0.4));
           skidLast.x = c.x;
           skidLast.z = c.y;
+          skidLast.t = nowT;
         }
       }
       if (carMesh) {
