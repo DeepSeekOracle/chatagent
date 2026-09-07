@@ -30,6 +30,7 @@
     brakeMu: 1.58,
     turn: 2.05,
     boost: 1.1,
+    boostPower: 1,
     boostTank: 1,
     body: "apex",
     eta: 0.88,
@@ -39,7 +40,7 @@
   const BOXCUT = {
     id: "boxcut", name: "Boxcut Mk I", tag: "Short-box race truck",
     src: "./assets/boxcut-plate.jpg", hero: "./assets/boxcut-hero.jpg",
-    lore: "Haven short-box. C10 short-fleetside stance, original lattice. Heavier, more boost tank, a bit more bite in the corners. Top end gives Apex the highway.",
+    lore: "Haven short-box. C10 short-fleetside stance, original lattice. Heavier, bigger boost tank, 25% harder boost hit, a bit more bite in the corners. Apex still owns the long highway.",
     color: "#8b1e1e",
     massKg: 1520,
     hp: 405,
@@ -59,6 +60,7 @@
     brakeMu: 1.52,
     turn: 2.22,
     boost: 1.28,
+    boostPower: 1.25,
     boostTank: 1.42,
     body: "boxcut",
     eta: 0.86,
@@ -114,6 +116,7 @@
     c.torque = (c.torque || 0) + (c.upgTq || 0);
     c.drive = c.drive === "fwd" || c.drive === "awd" ? c.drive : "rwd";
     c.boostTank = c.boostTank > 0 ? c.boostTank : 1;
+    c.boostPower = c.boostPower > 0 ? c.boostPower : 1;
     c.body = c.body || c.id || "apex";
     return c;
   }
@@ -1257,7 +1260,7 @@
         }
       }
     }
-    const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
+    const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * 1.1 * (c.boostPower || 1) : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
     if (car.gear === 1) Fdrive *= 1.55;
     else if (car.gear === 2) Fdrive *= 3.05;
