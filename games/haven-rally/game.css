@@ -14,7 +14,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .hidden { display: none !important; }
 .boot {
   height: 100%; display: grid; place-content: center; text-align: center; gap: .45rem;
-  background: radial-gradient(ellipse at 50% 28%, #1a3d48 0%, #070b12 70%);
+  background: radial-gradient(ellipse at 50% 18%, #ff6b4a 0%, #3a2060 42%, #070b12 78%);
 }
 .boot h1, .brand { font-family: Syne, sans-serif; }
 .boot h1 { font-size: clamp(2rem, 6vw, 3.2rem); margin: 0; letter-spacing: .04em; }
@@ -80,8 +80,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .boost-fill { height: 100%; width: 40%; background: linear-gradient(90deg, #5eead4, #fbbf24); }
 .count-flash {
   position: absolute; inset: 0; display: grid; place-items: center;
-  font: 800 5rem Syne, sans-serif; color: var(--gold); pointer-events: none;
-  text-shadow: 0 0 40px #5eead466; letter-spacing: .08em;
+  font: 800 5rem Syne, sans-serif; color: #fff4e6; pointer-events: none;
+  text-shadow: 0 0 28px #ff4d6d, 0 0 60px #fbbf24aa; letter-spacing: .12em;
 }
 .keys {
   position: absolute; right: 10px; top: 10px; font-size: .68rem; color: #64748b;
@@ -228,7 +228,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   pointer-events: none;
 }
 .title-panel {
-  background: linear-gradient(180deg, #0c1622, #070b12);
+  background: linear-gradient(180deg, #2a1830, #070b12);
   border-left: 1px solid var(--line);
   padding: clamp(1.1rem, 3vw, 2rem);
   overflow: auto;

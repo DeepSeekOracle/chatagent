@@ -271,17 +271,17 @@
 
   const PINE = makeTrack({
     id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 3,
-    lore: "Parkland esses. Hold Reed or slide Mira.",
+    lore: "Golden-hour parkland. Three lanes, chain the esses, slide to fill boost.",
     ctrl: loopFromPolar(10, 92, 22, mulberry(19), 0.2)
   });
   const CORAL = makeTrack({
     id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 3,
-    lore: "Long straights. Boost on the coast, don't overcook the hairpin.",
+    lore: "Sunset coast highway. Long straights, then don't overcook the hairpin.",
     ctrl: loopFromPolar(8, 110, 28, mulberry(41), 0.6)
   });
   const STAR = makeTrack({
     id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 3,
-    lore: "Night and tight. Kai's boost is a trap if you miss the apex.",
+    lore: "Night city ring. Neon walls. Boost on the slide, don't miss the apex.",
     ctrl: loopFromPolar(12, 78, 16, mulberry(73), 1.1)
   });
   const DRAG_EIGHTH = makeDragTrack({
@@ -297,7 +297,7 @@
     lore: "Classic quarter-mile. 1320 ft. Full sportsman tree vs AI."
   });
 
-  const RIDGE_NAMES = ["Seaside 765", "Harborline", "Ridge City Run", "Sunset Drive", "Coast Highway", "Neon Bypass"];
+  const RUN_NAMES = ["Gold Hour Coast", "Lattice Bypass", "Neon Harbor", "Coral Overpass", "Apex Line", "Haven Run"];
 
   function ridgeCtrl(seed) {
     const rng = mulberry(seed >>> 0);
@@ -348,12 +348,12 @@
     const pts = ridgeCtrl(seed);
     const samples = densifyPath(pts, 5, false);
     const len = pathLen(samples, false);
-    const name = RIDGE_NAMES[seed % RIDGE_NAMES.length];
+    const name = RUN_NAMES[seed % RUN_NAMES.length];
     return {
       id: "ridge-" + seed.toString(16),
       name: name,
       theme: "endless",
-      lore: "Ridge-style start-to-finish. Long highway, esses, hairpins. One run.",
+      lore: "One long start-to-finish highway. Straights, esses, hairpins, a tunnel. Slide to charge boost.",
       width: TRACK_HALF,
       laneW: LANE_W,
       lanes: TRACK_LANES,
@@ -804,6 +804,7 @@
     if (slipAbs > 0.16 && spd > 12) {
       G.sparks = clamp(slipAbs * 1.5, 0, 1);
       if (ebrake) G.car.speed *= (1 - 0.12 * dt);
+      if (on0 && !boostOn) G.car.boost = Math.min(1, G.car.boost + dt * 0.42 * c.boost * clamp(slipAbs, 0, 0.8));
     } else G.sparks *= 0.88;
     G.car.x += Math.cos(G.car.vh) * G.car.speed * dt;
     G.car.y += Math.sin(G.car.vh) * G.car.speed * dt;
@@ -1208,7 +1209,8 @@
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Circuits: hit sectors, then the start line. Three laps. Endless ridge is one long start-to-finish run — checkpoints, then FINISH.</li>" +
+      "<li>Circuits: three laps, sectors, then the line. Endless run is one long start-to-finish highway — checkpoints, then FINISH.</li>" +
+      "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
       "<p class='lore'><a href='./whitepaper.html'>Whitepaper</a> is the spec.</p>" +
@@ -1294,7 +1296,7 @@
         "<div class='title-panel'>" +
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
-          "<p class='title-tag'>Beat the ghost. Hold the line. Boost is a debt.</p>" +
+          "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
           "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost · R restart</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
@@ -1311,7 +1313,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless ridge</b><span>Ridge Racer-style start-to-finish. New long highway every run.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New start-to-finish highway every time. Checkpoints, tunnel, FINISH.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +

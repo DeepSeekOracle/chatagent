@@ -38,7 +38,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </div>
 
   <h2>1. Loop</h2>
-  <p>Countdown 3–2–1–GO. Circuits: three laps. Pass sector gates, then the start line. Endless ridge is one Ridge Racer-style start-to-finish run (about 2 miles of highway: straights, esses, hairpins, a tunnel, FINISH gantry). Beat the ghost. Post the card to this browser.</p>
+  <p>Countdown 3–2–1–GO. Circuits: three laps. Pass sector gates, then the start line. Endless run is one start-to-finish highway (about 2 miles: straights, esses, hairpins, a tunnel, FINISH gantry). Holding a slide charges boost. Beat the ghost. Post the card to this browser.</p>
 
   <h2>2. Controls</h2>
   <table>
@@ -57,7 +57,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 
   <h2>3. Physics (math first)</h2>
   <p>World <code>x,z</code> yards. Heading radians. Speed yards/sec. Craft stats: <code>acc</code>, <code>vmax</code>, <code>turn</code>, <code>grip</code>, <code>boost</code>.</p>
-  <p>Throttle adds <code>acc</code>. Brake force is <code>acc × (1.45 + 0.9 grip)</code> so the chassis stats set stopping distance. Steer input is smoothed; yaw authority scales with <code>turn</code> and falls with speed. Velocity heading <code>vh</code> chases nose heading at a rate from <code>grip</code> — the car points one way and slides another. Left Shift (e-brake) drops lateral grip, adds yaw in the steer direction, and lets you hold a slide; counter-steer (steer against the slip) catches it. Off the ribbon: grip × 0.3. Right Shift boosts acc while the meter lasts; meter recharges on-track only.</p>
+  <p>Throttle adds <code>acc</code>. Brake force is <code>acc × (1.45 + 0.9 grip)</code> so the chassis stats set stopping distance. Steer input is smoothed; yaw authority scales with <code>turn</code> and falls with speed. Velocity heading <code>vh</code> chases nose heading at a rate from <code>grip</code> — the car points one way and slides another. Left Shift (e-brake) drops lateral grip, adds yaw in the steer direction, and lets you hold a slide; counter-steer (steer against the slip) catches it. Slip on-track charges the boost meter. Right Shift spends it. Off the ribbon: grip × 0.3.</p>
   <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is three lanes: half-width <code>1.5 × 4.4 yd</code>, painted dividers at ±½ lane. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Circuits</h2>
@@ -66,7 +66,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td>pine-coil</td><td>Parkland dusk, medium width, flowing esses</td></tr>
     <tr><td>coral-coast</td><td>Wide coastal, long straights, wind-tinted sky</td></tr>
     <tr><td>singularity-ring</td><td>Night, tight, high contrast</td></tr>
-    <tr><td>ridge-*</td><td>Endless ridge. Seeded point-to-point, ~3800+ yd, 3 checkpoints, one run.</td></tr>
+    <tr><td>ridge-*</td><td>Endless run. Seeded point-to-point, ~3800+ yd, 3 checkpoints, one run.</td></tr>
     <tr><td>drag-eighth</td><td>1/8 mile — 660 ft (220 yd). AI in lane 2.</td></tr>
     <tr><td>drag-1000</td><td>1000 ft (NHRA Top Fuel trap length).</td></tr>
     <tr><td>drag-quarter</td><td>1/4 mile — 1320 ft (440 yd).</td></tr>

@@ -97,11 +97,159 @@
   }
 
   function themeOf(id) {
-    if (id === "coral-coast") return { sky: 0x7ec4ee, fog: 0xb8dcee, ground: 0x2a6a4a, road: 0x3a3a42, dusk: false };
-    if (id === "singularity-ring") return { sky: 0x140c28, fog: 0x241848, ground: 0x12101c, road: 0x2a2440, dusk: true };
-    if (id === "endless") return { sky: 0x6a86b4, fog: 0x8aa6c4, ground: 0x2a3a2c, road: 0x3a3c44, dusk: true };
-    if (id === "drag-strip") return { sky: 0x151c28, fog: 0x243044, ground: 0x1a2018, road: 0x2c2e32, dusk: true };
-    return { sky: 0x6ea8d0, fog: 0x8eb8d4, ground: 0x1c4a2c, road: 0x2e3238, dusk: false };
+    if (id === "coral-coast") return {
+      sky: 0xff7a58, fog: 0xffb898, ground: 0x1c5a48, road: 0x3a3c44, dusk: true,
+      sun: 0xffc090, hemi: 0xffd4b8, gnd: 0x1a4a40, sea: true, city: false
+    };
+    if (id === "singularity-ring") return {
+      sky: 0x1a1238, fog: 0x3a2468, ground: 0x12101c, road: 0x2a2440, dusk: true,
+      sun: 0xff88aa, hemi: 0xc9a0ff, gnd: 0x1a1028, sea: false, city: true
+    };
+    if (id === "endless") return {
+      sky: 0xff8a62, fog: 0xffc4a8, ground: 0x245040, road: 0x3a3c44, dusk: true,
+      sun: 0xffb070, hemi: 0xffe0c8, gnd: 0x1c4034, sea: true, city: true
+    };
+    if (id === "drag-strip") return {
+      sky: 0x141028, fog: 0x2a2048, ground: 0x1a2018, road: 0x2c2e32, dusk: true,
+      sun: 0xffa0c0, hemi: 0xd8b0ff, gnd: 0x1a1820, sea: false, city: false
+    };
+    return {
+      sky: 0xf4a06a, fog: 0xffc8a0, ground: 0x2a4a30, road: 0x2e3238, dusk: true,
+      sun: 0xffc090, hemi: 0xffe8d0, gnd: 0x2a3a28, sea: false, city: false
+    };
+  }
+
+  function applyTheme(th) {
+    scene.background = new T.Color(th.sky);
+    if (scene.fog) scene.fog.color.setHex(th.fog);
+    if (hemi) {
+      hemi.color.setHex(th.hemi || 0xffd8c0);
+      hemi.groundColor.setHex(th.gnd || 0x2a3a28);
+      hemi.intensity = 0.78;
+    }
+    if (sun) {
+      sun.color.setHex(th.sun || 0xffb080);
+      sun.intensity = th.dusk ? 1.18 : 1.4;
+      sun.position.set(-55, 38, 28);
+    }
+    if (renderer) renderer.toneMappingExposure = 1.24;
+  }
+
+  function boardTex(label, bg) {
+    var c = document.createElement("canvas");
+    c.width = 256; c.height = 128;
+    var g = c.getContext("2d");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 256, 128);
+    g.fillStyle = "#0b1220";
+    g.fillRect(8, 8, 240, 112);
+    g.fillStyle = bg;
+    g.fillRect(14, 14, 228, 100);
+    g.fillStyle = "#fff8e8";
+    g.font = "800 36px sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(label, 128, 64);
+    var t = new T.CanvasTexture(c);
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function dressCourse(track, closed) {
+    var nPalm = Math.min(closed ? 42 : 88, Math.max(12, (track.pts.length / 3) | 0));
+    var palmT = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.2, 5.4, 5), new T.MeshStandardMaterial({ color: 0x6b4423 }), nPalm);
+    var palmC = new T.InstancedMesh(new T.ConeGeometry(1.8, 1.6, 6), new T.MeshStandardMaterial({ color: 0x1f7a3a, flatShading: true }), nPalm);
+    var dummy = new T.Object3D();
+    var i, p, q, tx, tz, len, side, x, z, step;
+    step = Math.max(1, (track.pts.length / nPalm) | 0);
+    for (i = 0; i < nPalm; i++) {
+      p = track.pts[Math.min(track.pts.length - 2, i * step)];
+      q = track.pts[Math.min(track.pts.length - 1, i * step + 1)];
+      tx = q.x - p.x; tz = q.y - p.y;
+      len = Math.hypot(tx, tz) || 1;
+      side = i % 2 ? 1 : -1;
+      x = p.x + (-tz / len) * (track.width + 9 + (i % 4)) * side;
+      z = p.y + (tx / len) * (track.width + 9 + (i % 4)) * side;
+      dummy.position.set(x, 2.7, z);
+      dummy.scale.set(1, 1 + (i % 3) * 0.12, 1);
+      dummy.updateMatrix();
+      palmT.setMatrixAt(i, dummy.matrix);
+      dummy.position.y = 5.6;
+      dummy.scale.set(1.1, 1, 1.1);
+      dummy.updateMatrix();
+      palmC.setMatrixAt(i, dummy.matrix);
+    }
+    palmT.instanceMatrix.needsUpdate = true;
+    palmC.instanceMatrix.needsUpdate = true;
+    trackRoot.add(palmT);
+    trackRoot.add(palmC);
+    var labels = ["HAVEN", "APEX", "LATTICE", "Δ9", "GOLD HOUR", "COAST"];
+    var cols = [0xff4d6d, 0xfbbf24, 0x5eead4, 0xff7a3c, 0xc084fc, 0x38bdf8];
+    var nb = Math.min(10, Math.max(4, (track.pts.length / 40) | 0));
+    var bi, lab, board, pole;
+    step = Math.max(8, (track.pts.length / nb) | 0);
+    for (bi = 0; bi < nb; bi++) {
+      p = track.pts[Math.min(track.pts.length - 2, bi * step + 5)];
+      q = track.pts[Math.min(track.pts.length - 1, bi * step + 6)];
+      tx = q.x - p.x; tz = q.y - p.y;
+      len = Math.hypot(tx, tz) || 1;
+      side = bi % 2 ? 1 : -1;
+      x = p.x + (-tz / len) * (track.width + 11) * side;
+      z = p.y + (tx / len) * (track.width + 11) * side;
+      lab = labels[bi % labels.length];
+      board = new T.Mesh(
+        new T.PlaneGeometry(8.5, 4.2),
+        new T.MeshStandardMaterial({ map: boardTex(lab, "#" + cols[bi % cols.length].toString(16).padStart(6, "0")), roughness: 0.45 })
+      );
+      board.position.set(x, 6.2, z);
+      board.lookAt(p.x, 6.2, p.y);
+      pole = new T.Mesh(new T.CylinderGeometry(0.12, 0.14, 6.2, 5), new T.MeshStandardMaterial({ color: 0x334 }));
+      pole.position.set(x, 3.1, z);
+      trackRoot.add(board, pole);
+    }
+    var th = themeOf(track.theme);
+    if (th.sea) {
+      var water = new T.Mesh(
+        new T.CircleGeometry(320, 40),
+        new T.MeshStandardMaterial({ color: 0x157a9a, metalness: 0.55, roughness: 0.18, envMap: envMap, envMapIntensity: 0.8 })
+      );
+      water.rotation.x = -Math.PI / 2;
+      water.position.set(track.pts[0].x + 220, -0.28, track.pts[0].y + 160);
+      trackRoot.add(water);
+    }
+    if (th.city) {
+      var bmat = [
+        new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }),
+        new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, emissive: 0x221133, emissiveIntensity: 0.35 })
+      ];
+      var bn = Math.min(28, (track.pts.length / 12) | 0);
+      for (bi = 0; bi < bn; bi++) {
+        p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(6, (track.pts.length / bn) | 0))];
+        q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(6, (track.pts.length / bn) | 0) + 1)];
+        tx = q.x - p.x; tz = q.y - p.y;
+        len = Math.hypot(tx, tz) || 1;
+        x = p.x + (-tz / len) * (track.width + 16 + (bi % 5));
+        z = p.y + (tx / len) * (track.width + 16 + (bi % 5));
+        var ht = 8 + (bi % 7) * 2.4;
+        var blk = new T.Mesh(new T.BoxGeometry(5 + (bi % 3), ht, 5 + (bi % 2)), bmat[bi % 2]);
+        blk.position.set(x, ht * 0.5, z);
+        trackRoot.add(blk);
+      }
+    }
+    var start = track.pts[0], n1 = track.pts[1];
+    var ang = Math.atan2(n1.y - start.y, n1.x - start.x);
+    var gx = -Math.sin(ang), gz = Math.cos(ang);
+    var pL = new T.Mesh(new T.BoxGeometry(0.4, 6.4, 0.4), new T.MeshStandardMaterial({ color: 0x111827 }));
+    var pR = pL.clone();
+    pL.position.set(start.x + gx * (track.width + 0.6), 3.2, start.y + gz * (track.width + 0.6));
+    pR.position.set(start.x - gx * (track.width + 0.6), 3.2, start.y - gz * (track.width + 0.6));
+    var ban = new T.Mesh(
+      new T.BoxGeometry(track.width * 2.3, 1.0, 0.18),
+      new T.MeshStandardMaterial({ color: 0xff4d6d, emissive: 0x881133, emissiveIntensity: 0.5 })
+    );
+    ban.position.set(start.x, 6.5, start.y);
+    ban.rotation.y = -ang;
+    trackRoot.add(pL, pR, ban);
   }
 
   function bulbMesh(T, r, col) {
@@ -116,8 +264,7 @@
   function buildDrag(track) {
     var T = global.THREE;
     var th = themeOf(track.theme);
-    scene.background = new T.Color(th.sky);
-    scene.fog.color.setHex(th.fog);
+    applyTheme(th);
     scene.fog.density = 0.0016;
     var total = track.pts[track.pts.length - 1].x;
     var startX = track.startX;
@@ -271,9 +418,8 @@
     }
     var closed = track.closed !== false;
     var th = themeOf(track.theme);
-    scene.background = new T.Color(th.sky);
-    scene.fog.color.setHex(th.fog);
-    scene.fog.density = closed ? (th.dusk ? 0.0048 : 0.0035) : 0.0018;
+    applyTheme(th);
+    scene.fog.density = closed ? (th.dusk ? 0.0038 : 0.0028) : 0.0016;
     var minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9, bi;
     for (bi = 0; bi < track.pts.length; bi++) {
       if (track.pts[bi].x < minx) minx = track.pts[bi].x;
@@ -387,6 +533,7 @@
     crown.instanceMatrix.needsUpdate = true;
     trackRoot.add(trunk);
     trackRoot.add(crown);
+    dressCourse(track, closed);
   }
 
   function ensureActors() {
