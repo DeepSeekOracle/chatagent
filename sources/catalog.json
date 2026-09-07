@@ -1,10 +1,10 @@
 {
-  "signature": "Delta9Phi963-LYGO-FREE-SOURCES-v1.17.0",
+  "signature": "Delta9Phi963-LYGO-FREE-SOURCES-v1.18.0",
   "name": "LYGO TV",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "class": "RESOURCE",
   "live_star_chart_ingest": false,
-  "updated_utc": "2026-09-07T12:00:00Z",
+  "updated_utc": "2026-09-07T18:00:00Z",
   "disclaimer": "https://chatagent.ca/sources/disclaimer.html",
   "portal_only": true,
   "xxx_catalog": false,
@@ -18,7 +18,7 @@
     "free_public_lists_only": true
   },
   "how_to_add": "Edit DeepSeekOracle/chatagent sources/catalog.json and commit. Follow sources/CATALOG.md.",
-  "note": "Portal only. Not branded XXX. v1.17 adds Cineverse/Zeasn/Roku/VIDAA/Whale/Tablo FAST, Samsung TV Plus AU/BR/NZ/SG/PH/TH, iptv-org Rakuten UK/Samsung UK/Stingray/3ABN/ABC News/CBS News, Free-TV Ukraine/Serbia, Ecuador/Paraguay/Belarus/Senegal/Cameroon/Côte d'Ivoire. Skipped jmp2 Pluto/Samsung/Roku BuddyChewChew packs, Nordic jmp2 countries, thin 404s.",
+  "note": "Portal only. Not branded XXX. v1.18 GitHub scan: iptv-org Tubi/Plex/Cineverse/Klowd/SoFAST/30A/US-local/Rakuten DE-ES-FI/Samsung AU-IT/BFM, GitHub Xumo, Plex UK/CA/AU, Local Now, more Free-TV countries, Central America and Caribbean places. Skipped DailyIPTV scrapes, jmp2 packs, thin 404s.",
   "donate": {
     "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
     "patreon": "https://www.patreon.com/Excavationpro"
@@ -1783,6 +1783,234 @@
       "title": "Côte d'Ivoire",
       "kind": "playlist",
       "url": "https://iptv-org.github.io/iptv/countries/ci.m3u"
+    },
+    {
+      "id": "src_cineverse",
+      "title": "iptv-org Cineverse US",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_cineversetv.m3u"
+    },
+    {
+      "id": "src_plex",
+      "title": "iptv-org Plex US",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_plex.m3u"
+    },
+    {
+      "id": "src_tubi",
+      "title": "iptv-org Tubi US",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_tubi.m3u"
+    },
+    {
+      "id": "src_klowd",
+      "title": "iptv-org KlowdTV",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_klowdtv.m3u"
+    },
+    {
+      "id": "src_sofast",
+      "title": "iptv-org SoFAST",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_sofast.m3u"
+    },
+    {
+      "id": "src_30a",
+      "title": "iptv-org 30A TV",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_30a.m3u"
+    },
+    {
+      "id": "src_local",
+      "title": "iptv-org US local",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/us_local.m3u"
+    },
+    {
+      "id": "src_derak",
+      "title": "iptv-org Rakuten DE",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/de_rakuten.m3u"
+    },
+    {
+      "id": "src_esrak",
+      "title": "iptv-org Rakuten ES",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/es_rakuten.m3u"
+    },
+    {
+      "id": "src_firak",
+      "title": "iptv-org Rakuten FI",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/fi_rakuten.m3u"
+    },
+    {
+      "id": "src_ausams",
+      "title": "iptv-org Samsung AU",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/au_samsung.m3u"
+    },
+    {
+      "id": "src_itsams",
+      "title": "iptv-org Samsung IT",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/it_samsung.m3u"
+    },
+    {
+      "id": "src_bfm",
+      "title": "iptv-org BFM France",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/sources/fr_bfm.m3u"
+    },
+    {
+      "id": "xumo_gh",
+      "title": "Xumo FAST (GitHub)",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/BuddyChewChew/xumo-playlist-generator/main/playlists/xumo_playlist.m3u"
+    },
+    {
+      "id": "plex_gb",
+      "title": "Plex FAST (UK)",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/BuddyChewChew/plex/main/playlists/plex_gb.m3u"
+    },
+    {
+      "id": "plex_ca",
+      "title": "Plex FAST (Canada)",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/BuddyChewChew/plex/main/playlists/plex_ca.m3u"
+    },
+    {
+      "id": "plex_au",
+      "title": "Plex FAST (Australia)",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/BuddyChewChew/plex/main/playlists/plex_au.m3u"
+    },
+    {
+      "id": "localnow",
+      "title": "Local Now FAST",
+      "kind": "playlist",
+      "url": "https://www.apsattv.com/localnow.m3u"
+    },
+    {
+      "id": "ftv_az",
+      "title": "Free-TV Azerbaijan",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_azerbaijan.m3u8"
+    },
+    {
+      "id": "ftv_by",
+      "title": "Free-TV Belarus",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_belarus.m3u8"
+    },
+    {
+      "id": "ftv_iq",
+      "title": "Free-TV Iraq",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_iraq.m3u8"
+    },
+    {
+      "id": "ftv_kr",
+      "title": "Free-TV Korea",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_korea.m3u8"
+    },
+    {
+      "id": "ftv_lb",
+      "title": "Free-TV Lebanon",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_lebanon.m3u8"
+    },
+    {
+      "id": "ftv_mn",
+      "title": "Free-TV Mongolia",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_mongolia.m3u8"
+    },
+    {
+      "id": "ftv_ng",
+      "title": "Free-TV Nigeria",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_nigeria.m3u8"
+    },
+    {
+      "id": "ftv_mk",
+      "title": "Free-TV North Macedonia",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_north_macedonia.m3u8"
+    },
+    {
+      "id": "ftv_qa",
+      "title": "Free-TV Qatar",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_qatar.m3u8"
+    },
+    {
+      "id": "ftv_ru",
+      "title": "Free-TV Russia",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_russia.m3u8"
+    },
+    {
+      "id": "ftv_ve",
+      "title": "Free-TV Venezuela",
+      "kind": "playlist",
+      "url": "https://raw.githubusercontent.com/Free-TV/IPTV/master/playlists/playlist_venezuela.m3u8"
+    },
+    {
+      "id": "do",
+      "title": "Dominican Republic",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/do.m3u"
+    },
+    {
+      "id": "pa",
+      "title": "Panama",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/pa.m3u"
+    },
+    {
+      "id": "gt",
+      "title": "Guatemala",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/gt.m3u"
+    },
+    {
+      "id": "hn",
+      "title": "Honduras",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/hn.m3u"
+    },
+    {
+      "id": "ni",
+      "title": "Nicaragua",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/ni.m3u"
+    },
+    {
+      "id": "sv",
+      "title": "El Salvador",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/sv.m3u"
+    },
+    {
+      "id": "cr",
+      "title": "Costa Rica",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/cr.m3u"
+    },
+    {
+      "id": "tt",
+      "title": "Trinidad and Tobago",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/tt.m3u"
+    },
+    {
+      "id": "jm",
+      "title": "Jamaica",
+      "kind": "playlist",
+      "url": "https://iptv-org.github.io/iptv/countries/jm.m3u"
     }
   ]
 }

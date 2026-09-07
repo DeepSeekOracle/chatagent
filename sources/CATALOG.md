@@ -76,3 +76,9 @@ Removed `adult_pub` / `adult.m3u8` (AdultIPTV.net dump). Adult shelf and Adult S
 **Added** after HTTPS 200 + ≥3 HTTPS + jmp2 < 50%: Cineverse, Zeasn, Roku Channel, VIDAA, Whale TV Plus, Tablo FAST (apsattv); Samsung TV Plus AU/BR/NZ/SG/PH/TH; iptv-org Rakuten UK, Samsung UK, Stingray, 3ABN, ABC News, CBS News; Free-TV Ukraine/Serbia; iptv-org Ecuador, Paraguay, Belarus, Senegal, Cameroon, Côte d'Ivoire.
 
 **Skipped:** BuddyChewChew Pluto/Samsung/Roku (100% jmp2.uk), Nordic country packs (jmp2 majority), iptv-org animation/classic/comedy/series (jmp2 > 50%), Free-TV NZ/ZA/PH/KR/SG/CO/PK/MY/MA 404, thin lists (CGTN, Switzerland, Uruguay, Armenia, Angola, Peru).
+
+## v1.18 GitHub scan (2026-09-07)
+
+**Added** after HTTPS 200 + ≥3 HTTPS + jmp2 < 50%: iptv-org sources Cineverse/Plex/Tubi/KlowdTV/SoFAST/30A/US-local/Rakuten DE-ES-FI/Samsung AU-IT/BFM; BuddyChewChew Xumo GitHub generator (0 jmp2); Plex UK/CA/AU from BuddyChewChew/plex; Local Now; Free-TV Azerbaijan/Belarus/Iraq/Korea/Lebanon/Mongolia/Nigeria/North Macedonia/Qatar/Russia/Venezuela; iptv-org Dominican Republic, Panama, Guatemala, Honduras, Nicaragua, El Salvador, Costa Rica, Trinidad, Jamaica.
+
+**Skipped:** DailyIPTV scrape packs, thin Free-TV (Andorra/Chad/Faroe/Greenland/Kosovo/Monaco/San Marino/Slovenia), jmp2 Nordic, 1–2 channel Samsung slices.
