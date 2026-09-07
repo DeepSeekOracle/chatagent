@@ -340,7 +340,7 @@ input[type="search"]:focus, input[type="url"]:focus {
   content: "";
   position: absolute;
   inset: 0;
-  background: url(/sources/emblem.svg) center 40%/5.4rem no-repeat;
+  background: url(/sources/emblem.svg?v=20260907) center 40%/5.4rem no-repeat;
   opacity: .2;
 }
 .idle[hidden] { display: none; }
