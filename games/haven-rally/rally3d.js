@@ -26,6 +26,7 @@
   var camTuneB = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
   var lastView = -1;
   var lastViewB = -1;
+  var needSnap = true;
   var envMap = null;
   var lastSpeed = 0;
   var lastReduce = false;
@@ -1303,8 +1304,30 @@
     }
   }
 
+  function snapChase(camObj, camState, lookState, tune) {
+    if (!camObj || !camState) return;
+    camObj.position.set(camState.x, camState.y, camState.z);
+    if (tune && tune.fov) {
+      camObj.fov = tune.fov;
+      camObj.updateProjectionMatrix();
+    }
+    if (lookState) camObj.lookAt(lookState.x, lookState.y, lookState.z);
+  }
+
+  function chaseFar(camObj, camState) {
+    if (!camObj || !camState) return true;
+    var dx = camObj.position.x - camState.x;
+    var dy = camObj.position.y - camState.y;
+    var dz = camObj.position.z - camState.z;
+    return dx * dx + dy * dy + dz * dz > 6400;
+  }
+
   function lerpCam(camObj, camState, lookState, tune, dt) {
     if (!camObj) return;
+    if (chaseFar(camObj, camState)) {
+      snapChase(camObj, camState, lookState, tune);
+      return;
+    }
     var k = 1 - Math.pow(tune.lag || 0.0004, dt);
     camObj.position.x += (camState.x - camObj.position.x) * k;
     camObj.position.y += (camState.y - camObj.position.y) * k;
@@ -1524,13 +1547,21 @@
       rebuild(track);
       ensureActors();
       resetSkids();
+      needSnap = true;
+      lastView = -1;
+      lastViewB = -1;
     },
     setCam: function (tune) {
       if (!tune) return;
       if (tune.dist != null) camTune.dist = camTuneB.dist = tune.dist;
       if (tune.height != null) camTune.height = camTuneB.height = tune.height;
-      if (tune.view != null) camTune.view = Math.max(0, Math.min(5, tune.view | 0));
+      if (tune.view != null) {
+        var v = Math.max(0, Math.min(5, tune.view | 0));
+        if (v !== (camTune.view | 0)) needSnap = true;
+        camTune.view = v;
+      }
       if (tune.view2 != null) camTuneB.view = Math.max(0, Math.min(5, tune.view2 | 0));
+      if (tune.snap) needSnap = true;
     },
     setWeather: function (id, reduce) {
       wxId = Math.max(0, Math.min(4, id | 0));
@@ -1541,6 +1572,7 @@
       splitOn = !!on;
       lastView = -1;
       lastViewB = -1;
+      needSnap = true;
       resize();
     },
     setTree: function (st) {
@@ -1685,17 +1717,15 @@
         poseChase(camB, lookB, camTuneB, s.p2);
       }
       if (carMesh) carMesh.visible = true;
-      if ((camTune.view | 0) !== lastView) {
+      var doSnap = !!(needSnap || s.snap || chaseFar(camera, cam) || (camTune.view | 0) !== lastView);
+      if (doSnap) {
         lastView = camTune.view | 0;
-        camera.position.set(cam.x, cam.y, cam.z);
-        camera.fov = camTune.fov;
-        camera.updateProjectionMatrix();
+        snapChase(camera, cam, look, camTune);
+        needSnap = false;
       }
-      if (splitOn && camera2 && s.p2 && (camTuneB.view | 0) !== lastViewB) {
+      if (splitOn && camera2 && s.p2 && (doSnap || chaseFar(camera2, camB) || (camTuneB.view | 0) !== lastViewB)) {
         lastViewB = camTuneB.view | 0;
-        camera2.position.set(camB.x, camB.y, camB.z);
-        camera2.fov = camTuneB.fov;
-        camera2.updateProjectionMatrix();
+        snapChase(camera2, camB, lookB, camTuneB);
       }
     }
   };

@@ -1240,6 +1240,11 @@
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
+    if (use3d && window.Rally3D) {
+      if (Rally3D.resize) Rally3D.resize();
+      if (Rally3D.setCam) Rally3D.setCam({ snap: true });
+    }
+    draw(performance.now());
   }
 
   function startHeat(track) {
@@ -1397,6 +1402,10 @@
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
+    if (use3d && window.Rally3D) {
+      if (Rally3D.resize) Rally3D.resize();
+      if (Rally3D.setCam) Rally3D.setCam({ snap: true });
+    }
     if (runTree) {
       G.phase = "tree";
       G.tree = beginTree(performance.now());
