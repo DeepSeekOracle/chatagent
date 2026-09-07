@@ -699,16 +699,16 @@
         if (s > 900 && nTractor < 4 && roll < 0.055) {
           kind = "tractor";
           nTractor += 1;
-          spec = { speed: 6.5 + rng() * 3.2, hp: 12, hitR: 4.4, ptsMul: 4, boostMul: 4, color: 0x65a30d };
+          spec = { speed: 6.5 + rng() * 3.2, hp: 12, hitW: 1.22, hitL: 2.35, ptsMul: 4, boostMul: 4, color: 0x65a30d };
         } else if (roll < 0.2) {
           kind = "hauler";
-          spec = { speed: 11 + rng() * 10, hp: 3.2, hitR: 3.9, ptsMul: 1.5, boostMul: 1.2, color: cols[i % cols.length] };
+          spec = { speed: 11 + rng() * 10, hp: 3.2, hitW: 1.12, hitL: 2.55, ptsMul: 1.5, boostMul: 1.2, color: cols[i % cols.length] };
         } else if (roll < 0.42) {
           kind = "van";
-          spec = { speed: 13 + rng() * 14, hp: 1.8, hitR: 3.55, ptsMul: 1.2, boostMul: 1, color: cols[(i + 3) % cols.length] };
+          spec = { speed: 13 + rng() * 14, hp: 1.8, hitW: 1.02, hitL: 2.2, ptsMul: 1.2, boostMul: 1, color: cols[(i + 3) % cols.length] };
         } else {
           kind = "sedan";
-          spec = { speed: 15 + rng() * 22, hp: 1, hitR: 3.35, ptsMul: 1, boostMul: 1, color: cols[i % cols.length] };
+          spec = { speed: 15 + rng() * 22, hp: 1, hitW: 0.92, hitL: 2.05, ptsMul: 1, boostMul: 1, color: cols[i % cols.length] };
         }
         cars.push({
           id: i,
@@ -718,7 +718,8 @@
           speed: spec.speed,
           hp: spec.hp,
           maxHp: spec.hp,
-          hitR: spec.hitR,
+          hitW: spec.hitW,
+          hitL: spec.hitL,
           ptsMul: spec.ptsMul,
           boostMul: spec.boostMul,
           alive: true,
@@ -757,6 +758,14 @@
     el.textContent = text;
     host.appendChild(el);
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "vo" ? 1400 : 780);
+  }
+  const PLAYER_HIT_W = 0.86;
+  const PLAYER_HIT_L = 1.92;
+  function trafficCrash(c, dx, dy) {
+    const fx = Math.cos(c.h || 0), fy = Math.sin(c.h || 0);
+    const along = Math.abs(dx * fx + dy * fy);
+    const perp = Math.abs(dx * -fy + dy * fx);
+    return along < (c.hitL || 2.05) + PLAYER_HIT_L && perp < (c.hitW || 0.92) + PLAYER_HIT_W;
   }
   function wreckTraffic(car) {
     if (!car || !car.alive) return;
@@ -800,7 +809,7 @@
     if (!tr || tr.kind !== "ridge" || !G.traffic) return;
     const cars = G.traffic;
     const px = G.car.x, py = G.car.y;
-    let i, c, pose, dx, dy, d;
+    let i, c, pose, dx, dy;
     for (i = 0; i < cars.length; i++) {
       c = cars[i];
       if (c.alive) {
@@ -809,9 +818,8 @@
         pose = poseAtS(tr, c.s, laneLat(c.lane));
         c.x = pose.x; c.y = pose.y; c.h = pose.h;
         dx = c.x - px; dy = c.y - py;
-        d = Math.hypot(dx, dy);
         c.hitT = Math.max(0, (c.hitT || 0) - dt);
-        if (d < (c.hitR || 3.35) && G.phase === "race" && c.hitT <= 0) {
+        if (trafficCrash(c, dx, dy) && G.phase === "race" && c.hitT <= 0) {
           G.car.speed *= 0.62;
           G.car.x -= Math.cos(G.car.vh) * 0.55;
           G.car.y -= Math.sin(G.car.vh) * 0.55;
@@ -1670,9 +1678,9 @@
         const a = list[i].car, b = list[j].car;
         const dx = b.x - a.x, dy = b.y - a.y;
         const d = Math.hypot(dx, dy);
-        if (d >= 2.35 || d < 0.05) continue;
+        if (d >= 1.88 || d < 0.05) continue;
         const nx = dx / d, ny = dy / d;
-        const push = (2.35 - d) * 0.5;
+        const push = (1.88 - d) * 0.5;
         a.x -= nx * push; a.y -= ny * push;
         b.x += nx * push; b.y += ny * push;
         a.speed *= 0.9; b.speed *= 0.9;
