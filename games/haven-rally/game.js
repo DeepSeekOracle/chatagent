@@ -190,9 +190,9 @@
   const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
   const WX_NAMES = ["Clear", "Dusk", "Overcast", "Rain", "Storm"];
   const BOT_ROSTER = [
-    { name: "Reed", skill: 0.88, color: "#1d4ed8", body: "sleet" },
-    { name: "Mira", skill: 0.82, color: "#c2410c", body: "flick" },
-    { name: "Kai", skill: 0.74, color: "#0f766e", body: "boxcut" }
+    { name: "Reed", skill: 0.98, color: "#1d4ed8", body: "sleet", driver: "reed" },
+    { name: "Mira", skill: 0.96, color: "#c2410c", body: "flick", driver: "mira" },
+    { name: "Kai", skill: 0.94, color: "#0f766e", body: "apex", driver: "kai" }
   ];
 
   function mulberry(seed) {
@@ -1181,11 +1181,13 @@
       for (let i = 0; i < nBot; i++) {
         const bot = BOT_ROSTER[i];
         const lane = wantSplit ? 2 + i : 1 + i;
+        const botCraft = liveCraft(bot.body, bot.driver);
+        botCraft.color = bot.color;
         G.racers.push(makeRacer({
           id: "bot" + i, name: bot.name, kind: "bot", slot: 2 + i,
-          craft: craftNorm(Object.assign({}, craftOf(bot.body), { color: bot.color, body: bot.body })),
+          craft: botCraft,
           lane: lane, stagger: 1 + (i % 2), skill: bot.skill, seed: 40 + i * 17,
-          laneBias: (lane - 1.5) * LANE_W * 0.42
+          laneBias: (i % 2 ? 0.55 : -0.4)
         }));
       }
     }
@@ -1270,8 +1272,8 @@
       "<div class='mode-grid'>" +
         "<button type='button' class='mode-card' data-field='solo'><b>Solo · ghost</b><span>Time trial. Beat your ghost for this chassis.</span></button>" +
         "<button type='button' class='mode-card' data-field='split'><b>2P Split</b><span>Left P1 WASD. Right P2 arrows or a gamepad.</span></button>" +
-        "<button type='button' class='mode-card' data-field='bots'><b>vs AI</b><span>You plus Reed, Mira, and Kai. Same cars, racing line.</span></button>" +
-        "<button type='button' class='mode-card' data-field='splitbots'><b>2P + AI</b><span>Split screen with two bots filling the grid.</span></button>" +
+        "<button type='button' class='mode-card' data-field='bots'><b>vs AI</b><span>Reed, Mira, and Kai on stacked chassis. They brake for the ribbon and dump boost on the straight.</span></button>" +
+        "<button type='button' class='mode-card' data-field='splitbots'><b>2P + AI</b><span>Split screen with two of those bots filling the grid.</span></button>" +
       "</div>" +
       "<p class='lore'>Pad: left stick steer, RT throttle, LT brake, A throttle, B / LB e-brake, RB / Y boost. One pad rides with P2; two pads are P1 then P2.</p>" +
       "<div class='modes'><button type='button' class='btn' data-go='title'>Back</button></div>"
@@ -1804,34 +1806,115 @@
     }
     return { x: samples[0].x, y: samples[0].y, hx: 1, hy: 0 };
   }
+  function headingAtS(samples, sWant, closed) {
+    const p = pointAtS(samples, sWant, closed);
+    return Math.atan2(p.hy, p.hx);
+  }
+  function kappaWindow(samples, s0, closed, horizon) {
+    let maxAbs = 0, signed = 0, distTo = horizon, d, k, h0, h1, span;
+    span = 18;
+    for (d = 6; d <= horizon; d += 8) {
+      h0 = headingAtS(samples, s0 + d, closed);
+      h1 = headingAtS(samples, s0 + d + span, closed);
+      k = wrapDelta(h1 - h0, Math.PI * 2) / span;
+      if (Math.abs(k) > maxAbs) {
+        maxAbs = Math.abs(k);
+        signed = k;
+        distTo = d;
+      }
+    }
+    return { k: maxAbs, signed: signed, distTo: distTo };
+  }
+  function botCornerSpeed(c, kappa, pace) {
+    const k = Math.max(kappa, 0.00035);
+    const rYd = 1 / k;
+    const grip = (c.mu || 1.32) * weatherGrip(c) * 0.82;
+    const vMs = Math.sqrt(Math.max(4, grip * G0 * rYd * YD));
+    return clamp((vMs / YD) * pace, 11, topSpeedYd(c) * 1.02);
+  }
+  function botAhead(racer) {
+    const list = G.racers || [];
+    const mine = raceAlong(racer);
+    let best = null, gap = 40, i, o, g;
+    for (i = 0; i < list.length; i++) {
+      o = list[i];
+      if (o === racer || o.done) continue;
+      g = raceAlong(o) - mine;
+      if (g > 0.8 && g < gap) {
+        gap = g;
+        best = o;
+      }
+    }
+    return best ? { racer: best, gap: gap } : null;
+  }
   function botInput(racer) {
     const tr = G.track;
     const car = racer.car;
-    const proj = project(car, tr.samples, racer.lastS, tr.closed !== false);
-    const look = 16 + Math.abs(car.speed) * 0.42 * racer.skill;
-    const tgt = pointAtS(tr.samples, proj.s + look, tr.closed !== false);
+    const c = racer.craft || craftOf("apex");
+    const closed = tr.closed !== false;
+    const proj = project(car, tr.samples, racer.lastS, closed);
+    const sk = clamp(racer.skill || 0.9, 0.55, 1.12);
+    const pace = 0.86 + 0.12 * sk;
+    const spd = Math.abs(car.speed);
+    const hw = tr.width || TRACK_HALF;
+    const look = 14 + spd * (0.48 + 0.22 * sk);
+    const horizon = 28 + spd * 1.15;
+    const win = kappaWindow(tr.samples, proj.s, closed, horizon);
+    const vTgt = botCornerSpeed(c, win.k, pace);
+    const apex = clamp(win.signed * 22, -1, 1);
+    let targetLat = -apex * hw * (0.22 + 0.38 * sk);
+    if (win.distTo < 18 + spd * 0.2) targetLat = apex * hw * (0.28 + 0.34 * sk);
+    else if (win.distTo > 40 + spd * 0.35) targetLat *= 0.35;
+    targetLat += (racer.laneBias || 0);
+    const block = botAhead(racer);
+    if (block && block.gap < 16) {
+      const their = project(block.racer.car, tr.samples, block.racer.lastS, closed);
+      if (Math.abs(their.lat - targetLat) < 2.4) {
+        const roomL = hw - proj.lat;
+        const roomR = hw + proj.lat;
+        targetLat += (roomL > roomR ? 1 : -1) * LANE_W * 0.92;
+      }
+    }
+    targetLat = clamp(targetLat, -hw * 0.72, hw * 0.72);
+    const off = Math.abs(proj.lat) > hw * 0.92;
+    if (off) targetLat = 0;
+    const tgt = pointAtS(tr.samples, proj.s + look, closed);
     const nx = -tgt.hy, ny = tgt.hx;
-    const aimX = tgt.x + nx * racer.laneBias;
-    const aimY = tgt.y + ny * racer.laneBias;
+    const aimX = tgt.x + nx * targetLat;
+    const aimY = tgt.y + ny * targetLat;
     const desired = Math.atan2(aimY - car.y, aimX - car.x);
     let err = wrapDelta(desired - car.h, Math.PI * 2);
-    err += (proj.lat - racer.laneBias) * 0.035;
-    err += (racer.rng() - 0.5) * (1 - racer.skill) * 0.28;
-    const corner = Math.abs(err);
-    const spd = Math.abs(car.speed);
-    let throttle = 0.78 + 0.22 * racer.skill;
+    err += (proj.lat - targetLat) * (0.05 + 0.04 * sk);
+    err += (racer.rng() - 0.5) * (1 - sk) * 0.07;
+    const decel = Math.max(8, (c.brakeMu || 1.5) * G0 * 0.64 / YD);
+    let throttle = 1;
     let brake = 0;
-    if (corner > 0.62 && spd > 22) { throttle = 0.22; brake = 0.55; }
-    else if (corner > 0.38 && spd > 34) { throttle = 0.55; brake = 0.18; }
-    else if (corner > 0.22 && spd > 48) { throttle = 0.82; }
-    const boost = corner < 0.12 && spd > 32 && car.boost > 0.18 && racer.skill > 0.78;
-    const ebrake = corner > 0.9 && spd > 24;
+    if (spd > vTgt + 0.6) {
+      const distNeed = (spd * spd - vTgt * vTgt) / (2 * decel);
+      if (win.distTo < distNeed + 7 + spd * 0.1) {
+        brake = clamp((spd - vTgt) / 14, 0.22, 1);
+        throttle = 0;
+      } else if (spd > vTgt + 6) {
+        throttle = 0.35;
+      }
+    } else if (spd > vTgt - 1.2 && win.k > 0.012) {
+      throttle = 0.72 + 0.22 * sk;
+    }
+    if (off) {
+      throttle = Math.min(throttle, 0.4);
+      brake = Math.max(brake, 0.2);
+    }
+    const straight = win.k < 0.008 || win.distTo > 36 + spd * 0.25;
+    const aligned = Math.abs(err) < 0.11;
+    const boost = !brake && !off && aligned && (car.boost || 0) > 0.1 &&
+      (straight && spd > 18 || (win.signed && win.distTo > 22 && spd > 24 && spd < vTgt + 4));
+    const ebrake = !off && Math.abs(err) > 0.82 && spd > 26 && win.k > 0.02;
     return {
       throttle: throttle,
       brake: brake,
       ebrake: ebrake,
       boost: boost,
-      steerIn: clamp(err * (1.4 + racer.skill), -1, 1)
+      steerIn: clamp(err * (1.85 + 1.15 * sk), -1, 1)
     };
   }
   function blankCar(pose, tank) {
@@ -2818,7 +2901,7 @@
       "<p class='kicker'>Controls</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
       "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
-      "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
+      "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai on stacked chassis), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes. Lane 2 rolls a random live chassis (Apex, Boxcut, Flick, Sleet) with that car’s boost and drive bonuses. It can red-light or miss a shift.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
