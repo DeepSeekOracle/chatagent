@@ -775,7 +775,7 @@
     const tr = G.track;
     if (!tr || tr.kind !== "ridge" || G.phase !== "race") return;
     if (G.multPulse > 0) G.multPulse = Math.max(0, G.multPulse - dt * 3);
-    const boostOn = !!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft;
+    const boostOn = !!(G.car && G.car.boostOn) || (!!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft);
     if (!boostOn) return;
     G.gunOn = true;
     G.gunCool -= dt;
@@ -1217,8 +1217,8 @@
     }
     const tr = G.track;
     const st = G.tree || { phase: "off" };
-    const k = G.keys;
-    const throttle = !!(k.KeyW || k.ArrowUp);
+    const inp = humanInput(0);
+    const throttle = inp.throttle > 0.35;
     if (overlayOpen() && (G.phase === "race" || G.phase === "tree")) {
       if (G._last && G.phase === "race" && G.t0) G.t0 += now - G._last;
       G._last = now;
@@ -1257,7 +1257,8 @@
     G._last = now;
     const locked = G.phase === "tree" && !st.foul;
     if (G.phase === "drag_idle" || G.phase === "race" || (G.phase === "tree" && st.foul)) {
-      stepCar(dt);
+      const proj = stepCar(dt);
+      if (proj) G.lastS = proj.s;
     } else if (locked) {
       G.car.speed = 0;
       G.car.x = tr.startX;
@@ -1450,7 +1451,7 @@
   function makeRacer(spec) {
     const craft = craftNorm(spec.craft);
     const pose = poseOnGrid(spec.lane, spec.stagger || 0);
-    return {
+    const r = {
       id: spec.id,
       name: spec.name,
       kind: spec.kind,
@@ -1471,6 +1472,10 @@
       rng: mulberry(spec.seed || 7),
       sparks: 0
     };
+    if (G.track && G.track.samples) {
+      r.lastS = project(r.car, G.track.samples, null, G.track.closed !== false).s;
+    }
+    return r;
   }
   function raceAlong(r) {
     return (r.lap || 0) * ((G.track && G.track.len) || 1) + (r.lastS || 0);
@@ -1583,6 +1588,7 @@
     }
     racer.boostOn = boostOn;
     racer.ebrake = ebrake;
+    car.boostOn = boostOn;
     return proj;
   }
   function stepCar(dt) {
@@ -1591,6 +1597,7 @@
       const proj = stepVehicle(dt, r, humanInput(0));
       G.car = r.car;
       G.craft = r.craft;
+      r.lastS = proj.s;
       return proj;
     }
     const racer = {
@@ -1598,6 +1605,7 @@
     };
     const proj = stepVehicle(dt, racer, humanInput(0));
     G.sparks = racer.sparks;
+    G.lastS = proj.s;
     return proj;
   }
   function syncP1() {
@@ -1834,7 +1842,10 @@
       if ($("speedo")) {
         $("speedo").innerHTML = Math.round(speedVal(G.car.speed)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
       }
-      if ($("boostFill")) $("boostFill").style.width = Math.round(G.car.boost * 100) + "%";
+      if ($("boostFill")) {
+        const tank = (G.craft && G.craft.boostTank) || 1;
+        $("boostFill").style.width = Math.round(clamp((G.car.boost || 0) / tank, 0, 1) * 100) + "%";
+      }
       if ($("heatCard")) {
         $("heatCard").innerHTML = "<p><b>" + G.track.name + "</b></p><p>" +
           (G.phase === "drag_idle" ? "Roll to the tree · press F" : (G.tree && G.tree.phase === "ready") ? "READY · wait for the tree" : G.phase === "tree" ? "Tree · hold" : G.phase) +
@@ -1870,7 +1881,10 @@
         "<span>Best <b>" + fmt(G.bestMs) + "</b></span>";
     }
     if ($("speedo")) $("speedo").innerHTML = Math.round(Math.abs(G.car.speed)) + "<small>YD/S</small>";
-    if ($("boostFill")) $("boostFill").style.width = Math.round(G.car.boost * 100) + "%";
+    if ($("boostFill")) {
+      const tank = (G.craft && G.craft.boostTank) || 1;
+      $("boostFill").style.width = Math.round(clamp((G.car.boost || 0) / tank, 0, 1) * 100) + "%";
+    }
     if ($("heatCard")) {
       $("heatCard").innerHTML = "<p><b>" + G.track.name + "</b></p><p>" + G.craft.name + " · " +
         (G.phase === "count" ? "countdown" : G.phase) + "</p><p>Lap time <b>" + fmt(elapsed) + "</b></p>";
@@ -1944,6 +1958,7 @@
   }
 
   function finishHeat(ms) {
+    if (G.phase === "done") return;
     G.phase = "done";
     const key = G.track.id + "|" + G.craft.id;
     let beat = false;
@@ -2026,11 +2041,11 @@
         : 0;
       HavenSfx.tick({
         racing: G.mode === "race" && G.phase !== "done" && G.phase !== "idle",
-        rpm: G.car.rpm,
-        gear: G.car.gear,
-        thr: G.car.thr,
-        slip: Math.max(G.car.wheelSlip || 0, G.sparks || 0, slipLat > 0.14 ? slipLat : 0),
-        speed: Math.abs(G.car.speed || 0),
+        rpm: G.car && G.car.rpm,
+        gear: G.car && G.car.gear,
+        thr: G.car && G.car.thr,
+        slip: Math.max((G.car && G.car.wheelSlip) || 0, G.sparks || 0, slipLat > 0.14 ? slipLat : 0),
+        speed: Math.abs((G.car && G.car.speed) || 0),
         radio: radioOn,
         reduceFx: opt("reduceFx"),
         guns: !!(G.gunOn && G.track && G.track.kind === "ridge")
@@ -2113,7 +2128,11 @@
       const humans = G.racers.filter(function (r) { return r.kind === "human"; });
       const humansDone = humans.every(function (r) { return r.done; });
       const waitUp = G._firstFinish && now - G._firstFinish > 18000;
-      if (humansDone || waitUp) finishHeat(humans[0] && humans[0].finishMs != null ? humans[0].finishMs : elapsed);
+      if (humansDone || waitUp) {
+        const winner = standings()[0];
+        const p1 = humans[0];
+        finishHeat((p1 && p1.finishMs != null) ? p1.finishMs : (winner && winner.finishMs != null ? winner.finishMs : elapsed));
+      }
     } else {
       proj = stepCar(dt);
     }
@@ -2170,16 +2189,18 @@
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
       const spdAbs = Math.abs(G.car.speed || 0);
-      const thrHeld = !!(G.keys.KeyW || G.keys.ArrowUp || (G.car.thr || 0) > 0.35);
+      const p1r = G.racers && G.racers[0];
+      const thrHeld = !!(G.car.thr > 0.35);
       const drive = (G.craft && G.craft.drive) || "rwd";
       const slip = G.car.wheelSlip || 0;
       let launchBurn = (G.car.gear === 1 || G.car.gear === 2) && thrHeld && spdAbs < 42 &&
         (slip > 0.05 || spdAbs < 24);
       if (drive === "awd") launchBurn = G.car.gear === 1 && thrHeld && slip > 0.18;
       if (drive === "fwd") launchBurn = launchBurn && (slip > 0.1 || spdAbs < 16);
-      const driftBurn = (G.sparks || 0) > 0.28 || (!!G.keys.ShiftLeft && spdAbs > 8);
+      const ebrakeOn = !!(p1r && p1r.ebrake) || !!G.keys.ShiftLeft;
+      const driftBurn = (G.sparks || 0) > 0.28 || (ebrakeOn && spdAbs > 8);
       const burnout = G.mode === "race" && G.phase !== "done" && G.phase !== "idle" && (launchBurn || driftBurn);
-      const boostOn = !!(G.racers[0] && G.racers[0].boostOn) || (!!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft);
+      const boostOn = !!(G.car && G.car.boostOn) || (!!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft);
       const field = (G.racers || []).slice(1).map(function (r) {
         return {
           car: r.car,
@@ -2189,7 +2210,8 @@
           boostOn: !!r.boostOn
         };
       });
-      const p2 = G.racers && G.racers[1] && G.racers[1].kind === "human" ? G.racers[1].car : null;
+      const p2r = (G.racers || []).find(function (r) { return r.kind === "human" && r.slot === 1; });
+      const p2 = p2r ? p2r.car : null;
       Rally3D.setState({
         car: G.car, ghost: isFieldRace() ? null : gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,

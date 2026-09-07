@@ -756,17 +756,21 @@
     if (carMesh && (carKind !== body || carPaint !== paint)) {
       disposeObj(carMesh);
       carMesh = null;
+      if (ghostMesh) {
+        disposeObj(ghostMesh);
+        ghostMesh = null;
+      }
     }
     if (!carMesh) {
       carMesh = makeCar(paint, false, body);
       carKind = body;
       carPaint = paint;
       scene.add(carMesh);
-      if (!ghostMesh) {
-        ghostMesh = makeCar(0xc084fc, true, body);
-        ghostMesh.visible = false;
-        scene.add(ghostMesh);
-      }
+    }
+    if (!ghostMesh) {
+      ghostMesh = makeCar(0xc084fc, true, body);
+      ghostMesh.visible = false;
+      scene.add(ghostMesh);
     }
     if (!aiMesh) {
       aiMesh = makeCar(0xb45309, false);
@@ -1108,21 +1112,21 @@
         if (puff.userData.life <= 0) puff.visible = false;
       }
     }
-    var el = renderer.domElement;
-    var rw = el.width, rh = el.height;
+    var cw = (canvasEl && canvasEl.clientWidth) || 800;
+    var ch = (canvasEl && canvasEl.clientHeight) || 480;
     if (splitOn && camera2) {
       renderer.setScissorTest(true);
-      renderer.setViewport(0, 0, rw * 0.5, rh);
-      renderer.setScissor(0, 0, rw * 0.5, rh);
-      camera.aspect = (rw * 0.5) / Math.max(1, rh);
+      renderer.setViewport(0, 0, cw * 0.5, ch);
+      renderer.setScissor(0, 0, cw * 0.5, ch);
+      camera.aspect = (cw * 0.5) / Math.max(1, ch);
       camera.updateProjectionMatrix();
       lerpCam(camera, cam, look, camTune, dt);
       hideCockpit(carMesh, (camTune.view | 0) === 4);
       hideCockpit(p2Mesh, false);
       renderer.render(scene, camera);
-      renderer.setViewport(rw * 0.5, 0, rw * 0.5, rh);
-      renderer.setScissor(rw * 0.5, 0, rw * 0.5, rh);
-      camera2.aspect = (rw * 0.5) / Math.max(1, rh);
+      renderer.setViewport(cw * 0.5, 0, cw * 0.5, ch);
+      renderer.setScissor(cw * 0.5, 0, cw * 0.5, ch);
+      camera2.aspect = (cw * 0.5) / Math.max(1, ch);
       camera2.updateProjectionMatrix();
       lerpCam(camera2, camB, lookB, camTuneB, dt);
       hideCockpit(carMesh, false);
@@ -1131,7 +1135,7 @@
       renderer.setScissorTest(false);
     } else {
       renderer.setScissorTest(false);
-      renderer.setViewport(0, 0, rw, rh);
+      renderer.setViewport(0, 0, cw, ch);
       renderer.render(scene, camera);
     }
   }
@@ -1236,11 +1240,13 @@
       lastSpeed = c.speed || 0;
       lastBurnout = !!s.burnout;
       lastReduce = !!s.reduceFx;
-      if (s.ghost) {
-        ghostMesh.visible = true;
-        ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
-        ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
-      } else ghostMesh.visible = false;
+      if (ghostMesh) {
+        if (s.ghost) {
+          ghostMesh.visible = true;
+          ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
+          ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
+        } else ghostMesh.visible = false;
+      }
       if (aiMesh) {
         if (s.ai) {
           aiMesh.visible = true;
@@ -1252,6 +1258,7 @@
       var fi, fcar, fmesh, field = s.field || [];
       for (fi = 0; fi < field.length; fi++) {
         fcar = field[fi];
+        if (!fcar || !fcar.car) continue;
         fmesh = ensureFieldSlot(fi, fcar.body || "apex", fcar.paint != null ? fcar.paint : 0x334155);
         snapMesh(fmesh, fcar.car);
         if (fcar.slot === 1) p2Mesh = fmesh;
