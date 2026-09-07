@@ -284,6 +284,11 @@
       disc: mat(T, { color: 0x6b7280, metalness: 0.85, roughness: 0.28, envMap: envMap }, ghost),
       lattice: mat(T, { color: 0x1f2937, metalness: 0.5, roughness: 0.4, map: lat, envMap: envMap }, ghost),
       liner: mat(T, { color: 0x1a1512, metalness: 0.08, roughness: 0.92 }, ghost),
+      amber: new T.MeshStandardMaterial({
+        color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: ghost ? 0.2 : 1.4,
+        roughness: 0.3, transparent: ghost, opacity: ghost ? 0.3 : 1
+      }),
+      wood: mat(T, { color: 0x5c4033, metalness: 0.08, roughness: 0.78, envMap: envMap }, ghost),
       light: new T.MeshStandardMaterial({
         color: 0xdffcff, emissive: 0x5eead4, emissiveIntensity: ghost ? 0.4 : 3.6,
         roughness: 0.12, metalness: 0.15, transparent: ghost, opacity: ghost ? 0.3 : 1
@@ -305,169 +310,225 @@
     var envMap = opts.envMap || null;
     var g = new T.Group();
     var mats = paintMats(T, paintCol, envMap, ghost);
+    function box(w, h, d, x, y, z, m, rx, ry) {
+      var mesh = new T.Mesh(new T.BoxGeometry(w, h, d), m || mats.paint);
+      mesh.position.set(x, y, z);
+      if (rx) mesh.rotation.x = rx;
+      if (ry) mesh.rotation.y = ry;
+      if (!ghost) mesh.castShadow = true;
+      g.add(mesh);
+      return mesh;
+    }
+    function cyl(rt, rb, h, x, y, z, m, rx, rz) {
+      var mesh = new T.Mesh(new T.CylinderGeometry(rt, rb, h, 14), m);
+      mesh.position.set(x, y, z);
+      if (rx) mesh.rotation.x = rx;
+      if (rz) mesh.rotation.z = rz;
+      g.add(mesh);
+      return mesh;
+    }
 
     var ctrl = [
-      { z: -2.48, w: 0.22, y0: 0.22, y1: 0.38 },
-      { z: -2.32, w: 0.72, y0: 0.16, y1: 0.52 },
-      { z: -2.12, w: 1.02, y0: 0.14, y1: 0.62 },
-      { z: -1.92, w: 1.08, y0: 0.14, y1: 0.68, well: 0.15 },
-      { z: -1.58, w: 1.10, y0: 0.15, y1: 0.70, well: 0.85 },
-      { z: -1.32, w: 1.10, y0: 0.15, y1: 0.72, well: 1 },
-      { z: -1.08, w: 1.08, y0: 0.16, y1: 0.74, well: 0.55 },
-      { z: -0.82, w: 1.04, y0: 0.16, y1: 0.78, yr: 1.08, wr: 0.78 },
-      { z: -0.42, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.36, wr: 0.72 },
-      { z: 0.02, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.40, wr: 0.70 },
-      { z: 0.42, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.36, wr: 0.70 },
-      { z: 0.68, w: 1.04, y0: 0.16, y1: 0.78, yr: 1.18, wr: 0.74 },
-      { z: 0.88, w: 1.06, y0: 0.17, y1: 0.62 },
-      { z: 1.12, w: 1.08, y0: 0.17, y1: 0.60, well: 0.2 },
-      { z: 1.38, w: 1.12, y0: 0.17, y1: 0.60, well: 0.85 },
-      { z: 1.58, w: 1.14, y0: 0.18, y1: 0.60, well: 1 },
-      { z: 1.82, w: 1.12, y0: 0.18, y1: 0.60, well: 0.7 },
-      { z: 2.08, w: 1.06, y0: 0.18, y1: 0.62, well: 0.12 },
-      { z: 2.32, w: 1.00, y0: 0.20, y1: 0.64 },
-      { z: 2.48, w: 0.92, y0: 0.22, y1: 0.62 }
+      { z: -2.52, w: 0.18, y0: 0.24, y1: 0.36 },
+      { z: -2.38, w: 0.78, y0: 0.16, y1: 0.54 },
+      { z: -2.18, w: 1.04, y0: 0.14, y1: 0.64 },
+      { z: -1.98, w: 1.10, y0: 0.14, y1: 0.70 },
+      { z: -1.72, w: 1.12, y0: 0.15, y1: 0.72, well: 0.35 },
+      { z: -1.42, w: 1.13, y0: 0.15, y1: 0.74, well: 1 },
+      { z: -1.18, w: 1.12, y0: 0.15, y1: 0.75, well: 0.7 },
+      { z: -0.92, w: 1.06, y0: 0.16, y1: 0.78, well: 0.12, yr: 0.98, wr: 0.82 },
+      { z: -0.62, w: 1.04, y0: 0.16, y1: 0.82, yr: 1.22, wr: 0.74 },
+      { z: -0.28, w: 1.03, y0: 0.16, y1: 0.84, yr: 1.42, wr: 0.70 },
+      { z: 0.08, w: 1.03, y0: 0.16, y1: 0.84, yr: 1.44, wr: 0.69 },
+      { z: 0.42, w: 1.03, y0: 0.16, y1: 0.84, yr: 1.40, wr: 0.70 },
+      { z: 0.62, w: 1.04, y0: 0.16, y1: 0.82, yr: 1.16, wr: 0.76 },
+      { z: 0.78, w: 1.05, y0: 0.17, y1: 0.70 },
+      { z: 0.92, w: 1.08, y0: 0.17, y1: 0.58 },
+      { z: 1.18, w: 1.10, y0: 0.17, y1: 0.58, well: 0.25 },
+      { z: 1.42, w: 1.14, y0: 0.18, y1: 0.58, well: 0.9 },
+      { z: 1.62, w: 1.16, y0: 0.18, y1: 0.58, well: 1 },
+      { z: 1.86, w: 1.14, y0: 0.18, y1: 0.59, well: 0.55 },
+      { z: 2.12, w: 1.08, y0: 0.19, y1: 0.62, well: 0.1 },
+      { z: 2.36, w: 1.02, y0: 0.20, y1: 0.64 },
+      { z: 2.52, w: 0.94, y0: 0.22, y1: 0.62 }
     ];
-    var slices = densify(ctrl, 0.05);
+    var slices = densify(ctrl, 0.042);
     var body = new T.Mesh(loft(T, slices, ringOf, RING), mats.paint);
     body.castShadow = !ghost;
     body.receiveShadow = true;
     g.add(body);
 
-    var glassCtrl = slices.filter(function (s) { return s.yr != null && s.yr > s.y1 + 0.18; });
+    var glassCtrl = slices.filter(function (s) { return s.yr != null && s.yr > s.y1 + 0.16; });
     if (glassCtrl.length > 2) {
       var cabin = new T.Mesh(loft(T, glassCtrl, glassRing, 8), mats.glass);
       cabin.renderOrder = 2;
       g.add(cabin);
     }
-    var rearWin = new T.Mesh(new T.PlaneGeometry(1.05, 0.42), mats.glass);
-    rearWin.position.set(0, 1.12, 0.72);
-    g.add(rearWin);
+    box(1.12, 0.44, 0.04, 0, 1.14, 0.70, mats.glass);
+    box(0.04, 0.38, 0.9, -0.98, 1.10, -0.08, mats.glass);
+    box(0.04, 0.38, 0.9, 0.98, 1.10, -0.08, mats.glass);
+    box(0.03, 0.36, 0.04, -0.72, 1.08, -0.58, mats.chrome);
+    box(0.03, 0.36, 0.04, 0.72, 1.08, -0.58, mats.chrome);
 
-    var noseCap = new T.Mesh(capGeometry(T, slices[0]), mats.chrome);
-    g.add(noseCap);
+    var interior = box(1.12, 0.28, 1.05, 0, 0.78, -0.02, mats.dark);
+    interior.castShadow = false;
+    box(0.52, 0.22, 0.42, -0.28, 0.72, 0.12, mats.dark);
+    box(0.52, 0.22, 0.42, 0.28, 0.72, 0.12, mats.dark);
+    var wheel = new T.Mesh(new T.TorusGeometry(0.12, 0.018, 8, 18), mats.dark);
+    wheel.position.set(-0.32, 0.92, -0.42);
+    wheel.rotation.x = 0.35;
+    g.add(wheel);
+    box(0.46, 0.08, 0.36, 0, 0.86, -0.48, mats.dark);
 
-    var bumper = new T.Mesh(new T.BoxGeometry(2.12, 0.13, 0.22), mats.chrome);
-    bumper.position.set(0, 0.28, -2.42);
-    g.add(bumper);
-    var ovL = new T.Mesh(new T.BoxGeometry(0.08, 0.22, 0.16), mats.chrome);
-    var ovR = ovL.clone();
-    ovL.position.set(-0.78, 0.34, -2.48);
-    ovR.position.set(0.78, 0.34, -2.48);
-    g.add(ovL, ovR);
+    g.add(new T.Mesh(capGeometry(T, slices[0]), mats.chrome));
 
-    var splitter = new T.Mesh(new T.BoxGeometry(2.05, 0.04, 0.38), mats.carbon);
-    splitter.position.set(0, 0.14, -2.28);
-    g.add(splitter);
+    box(2.18, 0.14, 0.24, 0, 0.27, -2.46, mats.chrome);
+    box(0.16, 0.08, 0.28, -1.02, 0.27, -2.52, mats.chrome);
+    box(0.16, 0.08, 0.28, 1.02, 0.27, -2.52, mats.chrome);
+    box(0.07, 0.26, 0.14, -0.82, 0.36, -2.54, mats.chrome);
+    box(0.07, 0.26, 0.14, 0.82, 0.36, -2.54, mats.chrome);
+    box(0.22, 0.04, 0.08, 0, 0.36, -2.56, mats.dark);
+    box(2.08, 0.045, 0.42, 0, 0.13, -2.30, mats.carbon);
+    box(0.22, 0.08, 0.28, -1.08, 0.18, -2.18, mats.carbon);
+    box(0.22, 0.08, 0.28, 1.08, 0.18, -2.18, mats.carbon);
 
-    var grill = new T.Mesh(new T.BoxGeometry(0.92, 0.36, 0.08), mats.lattice);
-    grill.position.set(0, 0.50, -2.26);
-    g.add(grill);
-    var bar = new T.Mesh(new T.BoxGeometry(0.98, 0.03, 0.04), mats.chrome);
-    bar.position.set(0, 0.50, -2.30);
-    g.add(bar);
+    box(1.08, 0.42, 0.06, 0, 0.52, -2.24, mats.dark);
+    box(0.96, 0.34, 0.07, 0, 0.52, -2.28, mats.lattice);
+    box(1.02, 0.025, 0.04, 0, 0.62, -2.31, mats.chrome);
+    box(1.02, 0.025, 0.04, 0, 0.42, -2.31, mats.chrome);
+    box(0.025, 0.36, 0.04, -0.50, 0.52, -2.31, mats.chrome);
+    box(0.025, 0.36, 0.04, 0.50, 0.52, -2.31, mats.chrome);
 
-    function lamp(x, y, z, r) {
-      var m = new T.Mesh(new T.SphereGeometry(r, 16, 12), mats.head);
-      m.position.set(x, y, z);
-      m.scale.set(1.05, 1.05, 0.55);
-      m.userData.head = true;
-      g.add(m);
+    function headlamp(sign) {
+      var bucket = cyl(0.13, 0.13, 0.08, 0.68 * sign, 0.52, -2.30, mats.chrome, Math.PI / 2, 0);
+      bucket.rotation.y = 0.08 * sign;
+      var ring = cyl(0.125, 0.118, 0.03, 0.68 * sign, 0.52, -2.35, mats.chrome, Math.PI / 2, 0);
+      var lens = new T.Mesh(new T.SphereGeometry(0.11, 18, 14), mats.head);
+      lens.position.set(0.68 * sign, 0.52, -2.36);
+      lens.scale.set(1.05, 1.05, 0.48);
+      lens.userData.head = true;
+      g.add(lens);
+      var park = new T.Mesh(new T.BoxGeometry(0.12, 0.07, 0.05), mats.amber);
+      park.position.set(0.92 * sign, 0.40, -2.28);
+      g.add(park);
     }
-    lamp(-0.62, 0.50, -2.32, 0.11);
-    lamp(0.62, 0.50, -2.32, 0.11);
-    lamp(-0.78, 0.42, -2.30, 0.045);
-    lamp(0.78, 0.42, -2.30, 0.045);
+    headlamp(-1);
+    headlamp(1);
 
-    var bulge = new T.Mesh(new T.BoxGeometry(0.62, 0.07, 1.05), mats.paint);
-    bulge.position.set(0, 0.80, -1.22);
-    g.add(bulge);
+    box(0.72, 0.055, 1.18, 0, 0.82, -1.28, mats.paint);
+    box(0.28, 0.04, 0.85, -0.38, 0.81, -1.28, mats.dark);
+    box(0.28, 0.04, 0.85, 0.38, 0.81, -1.28, mats.dark);
+    box(1.85, 0.03, 0.16, 0, 0.76, -0.78, mats.dark);
+    box(0.02, 0.015, 0.28, -0.22, 0.79, -0.88, mats.dark, 0.45, 0);
+    box(0.02, 0.015, 0.32, 0.18, 0.79, -0.90, mats.dark, 0.5, 0);
+    box(0.04, 0.05, 0.04, -0.55, 0.84, -1.72, mats.chrome);
+    box(0.04, 0.05, 0.04, 0.55, 0.84, -1.72, mats.chrome);
 
-    var bed = new T.Mesh(new T.BoxGeometry(1.88, 0.05, 1.52), mats.liner);
-    bed.position.set(0, 0.44, 1.58);
-    g.add(bed);
-    var gate = new T.Mesh(new T.BoxGeometry(1.92, 0.52, 0.08), mats.paint);
-    gate.position.set(0, 0.66, 2.40);
-    g.add(gate);
-    var gateBar = new T.Mesh(new T.BoxGeometry(1.4, 0.06, 0.04), mats.gold);
-    gateBar.position.set(0, 0.66, 2.45);
-    g.add(gateBar);
-    var railL = new T.Mesh(new T.BoxGeometry(0.05, 0.08, 1.5), mats.chrome);
-    var railR = railL.clone();
-    railL.position.set(-0.94, 0.72, 1.58);
-    railR.position.set(0.94, 0.72, 1.58);
-    g.add(railL, railR);
+    box(2.08, 0.035, 0.04, 0, 0.86, 0.62, mats.chrome);
+    box(0.04, 0.08, 1.55, -1.04, 0.88, -0.05, mats.chrome);
+    box(0.04, 0.08, 1.55, 1.04, 0.88, -0.05, mats.chrome);
+    box(0.10, 0.04, 0.18, -1.08, 0.72, -0.22, mats.chrome);
+    box(0.10, 0.04, 0.18, 1.08, 0.72, -0.22, mats.chrome);
 
-    var hoop = new T.Mesh(new T.TorusGeometry(0.82, 0.035, 8, 20, Math.PI), mats.chrome);
+    box(2.08, 0.55, 0.08, 0, 0.78, 0.80, mats.paint);
+    box(0.08, 0.42, 0.08, -0.55, 1.12, 0.78, mats.dark);
+    box(0.08, 0.42, 0.08, 0.55, 1.12, 0.78, mats.dark);
+
+    box(1.92, 0.045, 1.58, 0, 0.445, 1.62, mats.wood);
+    var rib, ri;
+    for (ri = 0; ri < 8; ri++) {
+      rib = box(1.82, 0.02, 0.04, 0, 0.475, 0.95 + ri * 0.18, mats.dark);
+      rib.castShadow = false;
+    }
+    box(1.96, 0.54, 0.07, 0, 0.68, 2.42, mats.paint);
+    box(1.55, 0.05, 0.04, 0, 0.82, 2.47, mats.gold);
+    box(1.55, 0.05, 0.04, 0, 0.54, 2.47, mats.gold);
+    box(0.22, 0.06, 0.05, 0, 0.68, 2.48, mats.chrome);
+    box(0.06, 0.09, 1.52, -0.96, 0.74, 1.62, mats.chrome);
+    box(0.06, 0.09, 1.52, 0.96, 0.74, 1.62, mats.chrome);
+    box(0.07, 0.12, 0.09, -0.96, 0.78, 1.05, mats.dark);
+    box(0.07, 0.12, 0.09, 0.96, 0.78, 1.05, mats.dark);
+    box(0.07, 0.12, 0.09, -0.96, 0.78, 2.15, mats.dark);
+    box(0.07, 0.12, 0.09, 0.96, 0.78, 2.15, mats.dark);
+    box(0.09, 0.16, 0.09, -1.02, 0.62, 0.88, mats.chrome);
+    box(0.16, 0.04, 0.22, 1.08, 0.58, 0.55, mats.dark);
+
+    var flareL = cyl(0.42, 0.42, 0.16, -1.10, 0.42, 1.58, mats.paint, 0, Math.PI / 2);
+    flareL.scale.set(1, 0.72, 1);
+    var flareR = cyl(0.42, 0.42, 0.16, 1.10, 0.42, 1.58, mats.paint, 0, Math.PI / 2);
+    flareR.scale.set(1, 0.72, 1);
+    var fFlareL = cyl(0.38, 0.38, 0.14, -1.08, 0.40, -1.32, mats.paint, 0, Math.PI / 2);
+    fFlareL.scale.set(1, 0.7, 1);
+    var fFlareR = cyl(0.38, 0.38, 0.14, 1.08, 0.40, -1.32, mats.paint, 0, Math.PI / 2);
+    fFlareR.scale.set(1, 0.7, 1);
+
+    var hoop = new T.Mesh(new T.TorusGeometry(0.84, 0.032, 10, 24, Math.PI), mats.chrome);
     hoop.rotation.z = Math.PI / 2;
-    hoop.position.set(0, 1.05, 0.92);
+    hoop.position.set(0, 1.08, 0.98);
     g.add(hoop);
-    var hoopPostL = new T.Mesh(new T.CylinderGeometry(0.032, 0.032, 0.7, 8), mats.chrome);
-    var hoopPostR = hoopPostL.clone();
-    hoopPostL.position.set(-0.82, 0.85, 0.92);
-    hoopPostR.position.set(0.82, 0.85, 0.92);
-    g.add(hoopPostL, hoopPostR);
-    var lightBar = new T.Mesh(new T.BoxGeometry(1.55, 0.06, 0.08), mats.dark);
-    lightBar.position.set(0, 1.82, 0.92);
-    g.add(lightBar);
+    var hoop2 = new T.Mesh(new T.TorusGeometry(0.78, 0.026, 8, 20, Math.PI), mats.chrome);
+    hoop2.rotation.z = Math.PI / 2;
+    hoop2.position.set(0, 1.02, 1.22);
+    g.add(hoop2);
+    cyl(0.03, 0.03, 0.78, -0.84, 0.88, 0.98, mats.chrome, 0, 0);
+    cyl(0.03, 0.03, 0.78, 0.84, 0.88, 0.98, mats.chrome, 0, 0);
+    cyl(0.026, 0.026, 0.7, -0.78, 0.84, 1.22, mats.chrome, 0, 0);
+    cyl(0.026, 0.026, 0.7, 0.78, 0.84, 1.22, mats.chrome, 0, 0);
+    box(1.62, 0.04, 0.04, 0, 1.48, 1.10, mats.chrome);
+    box(1.62, 0.07, 0.1, 0, 1.88, 0.98, mats.dark);
     var li, pod;
     for (li = -2; li <= 2; li++) {
-      pod = new T.Mesh(new T.BoxGeometry(0.16, 0.08, 0.1), mats.head);
-      pod.position.set(li * 0.28, 1.82, 0.86);
+      pod = box(0.18, 0.09, 0.11, li * 0.30, 1.88, 0.92, mats.head);
       pod.userData.head = true;
-      g.add(pod);
     }
+    box(0.55, 0.28, 0.42, 0, 0.62, 1.35, mats.dark);
 
-    function tail(sign) {
-      var t = new T.Mesh(new T.BoxGeometry(0.12, 0.38, 0.06), mats.tail);
-      t.position.set(0.88 * sign, 0.62, 2.44);
-      t.userData.brake = true;
-      g.add(t);
+    function tailStack(sign) {
+      var bezel = box(0.16, 0.46, 0.08, 0.90 * sign, 0.64, 2.46, mats.chrome);
+      var upper = box(0.12, 0.16, 0.05, 0.90 * sign, 0.76, 2.50, mats.tail);
+      upper.userData.brake = true;
+      var mid = box(0.12, 0.1, 0.05, 0.90 * sign, 0.64, 2.50, mats.amber);
+      var lower = box(0.12, 0.12, 0.05, 0.90 * sign, 0.52, 2.50, mats.tail);
+      lower.userData.brake = true;
     }
-    tail(-1);
-    tail(1);
+    tailStack(-1);
+    tailStack(1);
 
-    var rearBump = new T.Mesh(new T.BoxGeometry(1.95, 0.1, 0.16), mats.chrome);
-    rearBump.position.set(0, 0.26, 2.50);
-    g.add(rearBump);
+    box(2.02, 0.11, 0.18, 0, 0.25, 2.54, mats.chrome);
+    box(0.7, 0.03, 0.14, 0, 0.32, 2.56, mats.dark);
 
-    var stripeL = new T.Mesh(new T.BoxGeometry(0.04, 0.035, 3.6), mats.gold);
-    var stripeR = stripeL.clone();
-    stripeL.position.set(-1.06, 0.70, 0.05);
-    stripeR.position.set(1.06, 0.70, 0.05);
-    g.add(stripeL, stripeR);
+    box(0.045, 0.04, 3.85, -1.08, 0.71, 0.02, mats.gold);
+    box(0.045, 0.04, 3.85, 1.08, 0.71, 0.02, mats.gold);
+    box(0.24, 0.035, 1.28, -1.14, 0.21, -0.12, mats.chrome);
+    box(0.24, 0.035, 1.28, 1.14, 0.21, -0.12, mats.chrome);
+    box(0.05, 0.12, 1.2, -1.06, 0.18, -0.15, mats.carbon);
+    box(0.05, 0.12, 1.2, 1.06, 0.18, -0.15, mats.carbon);
 
-    var stepL = new T.Mesh(new T.BoxGeometry(0.22, 0.04, 1.15), mats.chrome);
-    var stepR = stepL.clone();
-    stepL.position.set(-1.12, 0.22, -0.15);
-    stepR.position.set(1.12, 0.22, -0.15);
-    g.add(stepL, stepR);
+    box(0.24, 0.035, 0.035, -1.08, 0.94, -0.52, mats.dark);
+    box(0.17, 0.1, 0.035, -1.24, 0.94, -0.52, mats.chrome);
+    box(0.24, 0.035, 0.035, 1.08, 0.94, -0.52, mats.dark);
+    box(0.17, 0.1, 0.035, 1.24, 0.94, -0.52, mats.chrome);
+    cyl(0.012, 0.012, 0.85, 1.02, 1.28, 0.05, mats.chrome, 0.18, 0);
 
-    var mArm = new T.Mesh(new T.BoxGeometry(0.22, 0.035, 0.035), mats.dark);
-    mArm.position.set(-1.05, 0.92, -0.55);
-    var mGlass = new T.Mesh(new T.BoxGeometry(0.16, 0.1, 0.03), mats.chrome);
-    mGlass.position.set(-1.20, 0.92, -0.55);
-    g.add(mArm, mGlass);
-    var mArmR = mArm.clone(); mArmR.position.x *= -1;
-    var mGlassR = mGlass.clone(); mGlassR.position.x *= -1;
-    g.add(mArmR, mGlassR);
+    cyl(0.048, 0.048, 0.22, -0.36, 0.22, 2.56, mats.chrome, Math.PI / 2, 0);
+    cyl(0.048, 0.048, 0.22, 0.36, 0.22, 2.56, mats.chrome, Math.PI / 2, 0);
+    cyl(0.055, 0.05, 0.05, -0.36, 0.22, 2.66, mats.chrome, Math.PI / 2, 0);
+    cyl(0.055, 0.05, 0.05, 0.36, 0.22, 2.66, mats.chrome, Math.PI / 2, 0);
+    addBoostFlamesAt(g, T, ghost, 0.22, 2.56, 0.36);
 
-    var exhaustL = new T.Mesh(new T.CylinderGeometry(0.045, 0.045, 0.16, 12), mats.chrome);
-    exhaustL.rotation.x = Math.PI / 2;
-    exhaustL.position.set(-0.34, 0.22, 2.52);
-    var exhaustR = exhaustL.clone();
-    exhaustR.position.x = 0.34;
-    g.add(exhaustL, exhaustR);
-    addBoostFlamesAt(g, T, ghost, 0.22, 2.52, 0.34);
-
-    var badge = new T.Mesh(new T.CircleGeometry(0.07, 18), mats.gold);
-    badge.position.set(0, 0.62, -2.34);
+    var badge = new T.Mesh(new T.CircleGeometry(0.075, 20), mats.gold);
+    badge.position.set(0, 0.64, -2.32);
     g.add(badge);
+    box(0.22, 0.04, 0.02, 0, 0.55, -2.32, mats.gold);
 
-    g.add(makeWheel(T, mats, 0.38, -0.92, -1.32, true, 0.36));
-    g.add(makeWheel(T, mats, 0.38, 0.92, -1.32, true, 0.36));
-    g.add(makeWheel(T, mats, 0.41, -0.96, 1.55, false, 0.39));
-    g.add(makeWheel(T, mats, 0.41, 0.96, 1.55, false, 0.39));
+    box(0.14, 0.06, 0.18, -0.95, 0.22, -2.38, mats.dark);
+    box(1.6, 0.08, 0.08, 0, 0.20, 0.2, mats.dark);
+    box(1.5, 0.08, 0.08, 0, 0.20, 1.7, mats.dark);
+
+    g.add(makeWheel(T, mats, 0.38, -0.94, -1.32, true, 0.36));
+    g.add(makeWheel(T, mats, 0.38, 0.94, -1.32, true, 0.36));
+    g.add(makeWheel(T, mats, 0.42, -0.98, 1.58, false, 0.40));
+    g.add(makeWheel(T, mats, 0.42, 0.98, 1.58, false, 0.40));
     g.userData.body = "boxcut";
     return g;
   }
