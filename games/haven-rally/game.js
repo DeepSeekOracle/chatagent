@@ -138,6 +138,7 @@
   const TRACK_LANES = 4;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
   const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
+  const WX_NAMES = ["Clear", "Dusk", "Overcast", "Rain", "Storm"];
   const BOT_ROSTER = [
     { name: "Reed", skill: 0.88, color: "#1d4ed8", body: "sleet" },
     { name: "Mira", skill: 0.82, color: "#c2410c", body: "flick" },
@@ -231,10 +232,10 @@
     { key: "showPilot", group: "HUD", type: "toggle", label: "Pilot plate", def: true },
     { key: "showHint", group: "HUD", type: "toggle", label: "On-track hint", def: true },
     { key: "metric", group: "HUD", type: "toggle", label: "Speed in km/h", hint: "Off: mph (US). On: km/h (Canada).", def: false },
-    { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Hides drift sparks and underglow.", def: false },
+    { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Hides drift sparks, rain streaks, and underglow.", def: false },
+    { key: "weather", group: "Race", type: "range", label: "Weather", hint: "Clear, Dusk, Overcast, Rain, Storm. Wet cuts grip; AWD keeps more of it.", min: 0, max: 4, step: 1, def: 1 },
     { key: "assist", group: "Controls", type: "soon", label: "Steering assist", hint: "Coming with the handling pack." },
-    { key: "abs", group: "Controls", type: "soon", label: "Brake assist", hint: "Coming with the handling pack." },
-    { key: "weather", group: "Race", type: "soon", label: "Weather", hint: "Rain and wind as circuits grow." }
+    { key: "abs", group: "Controls", type: "soon", label: "Brake assist", hint: "Coming with the handling pack." }
   ];
 
   function defaultOptions() {
@@ -269,6 +270,16 @@
       });
     }
     if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
+    if (window.Rally3D && Rally3D.setWeather) {
+      Rally3D.setWeather(Math.round(Number(opt("weather")) || 0), opt("reduceFx"));
+    }
+  }
+  function weatherGrip(c) {
+    const w = Math.round(Number(opt("weather")) || 1);
+    if (w < 3) return 1;
+    const wet = w >= 4 ? 0.68 : 0.82;
+    if (c && c.drive === "awd") return wet + (1 - wet) * 0.55;
+    return wet;
   }
   function optRowHtml(s) {
     const hint = s.hint ? "<p class='lore'>" + s.hint + "</p>" : "";
@@ -280,7 +291,9 @@
         (on ? "On" : "Off") + "</button>";
     } else if (s.type === "range") {
       const v = Number(opt(s.key));
-      const shown = s.key === "camView" ? (CAM_NAMES[Math.round(v)] || String(v)) : v.toFixed(2);
+      const shown = s.key === "camView" ? (CAM_NAMES[Math.round(v)] || String(v))
+        : s.key === "weather" ? (WX_NAMES[Math.round(v)] || String(v))
+        : v.toFixed(2);
       right = "<label class='opt-range'><span data-opt-val='" + s.key + "'>" + shown + "</span>" +
         "<input type='range' data-opt='" + s.key + "' min='" + s.min + "' max='" + s.max +
         "' step='" + s.step + "' value='" + v + "'></label>";
@@ -338,7 +351,11 @@
           const n = Number(el.value);
           setOpt(key, n);
           const valEl = ov.querySelector("[data-opt-val='" + key + "']");
-          if (valEl) valEl.textContent = spec.key === "camView" ? (CAM_NAMES[Math.round(n)] || String(n)) : n.toFixed(2);
+          if (valEl) {
+            valEl.textContent = spec.key === "camView" ? (CAM_NAMES[Math.round(n)] || String(n))
+              : spec.key === "weather" ? (WX_NAMES[Math.round(n)] || String(n))
+              : n.toFixed(2);
+          }
         };
       }
     });
@@ -1660,7 +1677,7 @@
     if (wslip > 0.28 && c.drive === "fwd") yaw *= (1 - 0.5 * wslip);
     yaw = clamp(yaw, -2.05, 2.05);
     car.h += yaw * dt;
-    let latGrip = (c.mu * 0.74) * (on0 ? 1 : 0.3);
+    let latGrip = (c.mu * 0.74) * (on0 ? 1 : 0.3) * weatherGrip(c);
     if (ebrake && spd > 10) latGrip *= 0.16;
     else latGrip *= 0.82 + 0.18 * (1 - spd01);
     const slip = wrapDelta(car.h - car.vh, Math.PI * 2);
@@ -1783,7 +1800,7 @@
     const frontLoad = 1 - rearLoad;
     const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
     const surf = inp.onTrack ? 1 : 0.32;
-    let Fmax = Math.max(400, c.mu * drivenN * surf);
+    let Fmax = Math.max(400, c.mu * drivenN * surf * weatherGrip(c));
     if (car.gear === 1) Fmax *= 1.18;
     else if (car.gear === 2) Fmax *= 1.82;
     else if (car.gear === 3) Fmax *= 1.68;
@@ -2436,6 +2453,7 @@
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
+      "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain dumps. Launch is 1–2–3 torque slingshot; 4th-on is the long pull.</li>" +

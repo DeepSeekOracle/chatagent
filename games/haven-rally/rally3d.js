@@ -26,6 +26,7 @@
   var envMap = null;
   var lastSpeed = 0;
   var lastReduce = false;
+  var skyMesh = null, rainMesh = null, wxId = 1, lastTh = null, roadMat = null, groundMat = null, ambLite = null;
 
   function ok() { return !!(renderer && scene && camera); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -162,20 +163,99 @@
     };
   }
 
+  function mixHex(a, b, t) {
+    var ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    var br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    var r = (ar + (br - ar) * t) | 0, g = (ag + (bg - ag) * t) | 0, bl = (ab + (bb - ab) * t) | 0;
+    return (r << 16) | (g << 8) | bl;
+  }
+  function wxSpec(id) {
+    id = id | 0;
+    if (id <= 0) return { fog: 0.00055, sun: 1.55, hemi: 0.95, rain: 0, wet: 0, expo: 1.34, gray: 0, sunH: 72, storm: 0 };
+    if (id === 1) return { fog: 0.0019, sun: 1.18, hemi: 0.78, rain: 0, wet: 0, expo: 1.22, gray: 0, sunH: 38, storm: 0 };
+    if (id === 2) return { fog: 0.0027, sun: 0.42, hemi: 0.58, rain: 0, wet: 0.2, expo: 1.02, gray: 0.48, sunH: 48, storm: 0 };
+    if (id === 3) return { fog: 0.0035, sun: 0.3, hemi: 0.5, rain: 0.72, wet: 0.72, expo: 0.96, gray: 0.52, sunH: 42, storm: 0 };
+    return { fog: 0.0048, sun: 0.16, hemi: 0.4, rain: 1, wet: 1, expo: 0.86, gray: 0.64, sunH: 28, storm: 1 };
+  }
+  function skyCanvas(top, mid, bot) {
+    var c = document.createElement("canvas");
+    c.width = 8; c.height = 256;
+    var g = c.getContext("2d");
+    var grd = g.createLinearGradient(0, 0, 0, 256);
+    function hx(n) { return "#" + (n | 0).toString(16).padStart(6, "0"); }
+    grd.addColorStop(0, hx(top));
+    grd.addColorStop(0.42, hx(mid));
+    grd.addColorStop(1, hx(bot));
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 8, 256);
+    var t = new T.CanvasTexture(c);
+    t.needsUpdate = true;
+    return t;
+  }
+  function ensureSky() {
+    if (skyMesh || !T) return;
+    skyMesh = new T.Mesh(
+      new T.SphereGeometry(9000, 24, 16),
+      new T.MeshBasicMaterial({ side: T.BackSide, depthWrite: false, fog: false })
+    );
+    skyMesh.frustumCulled = false;
+    scene.add(skyMesh);
+  }
+  function ensureRain() {
+    if (rainMesh || !T) return;
+    var n = 900, i, geo = new T.BufferGeometry(), pos = new Float32Array(n * 3);
+    for (i = 0; i < n; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 90;
+      pos[i * 3 + 1] = Math.random() * 40;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 90;
+    }
+    geo.setAttribute("position", new T.BufferAttribute(pos, 3));
+    rainMesh = new T.Points(geo, new T.PointsMaterial({
+      color: 0xc5d4e8, size: 0.22, transparent: true, opacity: 0.55, depthWrite: false
+    }));
+    rainMesh.frustumCulled = false;
+    rainMesh.visible = false;
+    scene.add(rainMesh);
+  }
   function applyTheme(th) {
-    scene.background = new T.Color(th.sky);
-    if (scene.fog) scene.fog.color.setHex(th.fog);
+    lastTh = th;
+    var wx = wxSpec(wxId);
+    var sky = mixHex(th.sky, 0x5c6570, wx.gray);
+    var fogC = mixHex(th.fog, 0x6a7380, wx.gray * 0.85);
+    var gnd = mixHex(th.ground, 0x2a3034, wx.gray * 0.35);
+    ensureSky();
+    if (skyMesh) {
+      if (skyMesh.material.map) skyMesh.material.map.dispose();
+      skyMesh.material.map = skyCanvas(mixHex(sky, 0x1a2040, 0.25), sky, fogC);
+      skyMesh.material.needsUpdate = true;
+    }
+    scene.background = new T.Color(fogC);
+    if (scene.fog) {
+      scene.fog.color.setHex(fogC);
+      scene.fog.density = wx.fog;
+    }
     if (hemi) {
-      hemi.color.setHex(th.hemi || 0xffd8c0);
-      hemi.groundColor.setHex(th.gnd || 0x2a3a28);
-      hemi.intensity = 0.78;
+      hemi.color.setHex(mixHex(th.hemi || 0xffd8c0, 0xa8b4c0, wx.gray));
+      hemi.groundColor.setHex(mixHex(th.gnd || 0x2a3a28, 0x1a2024, wx.gray * 0.4));
+      hemi.intensity = wx.hemi;
     }
     if (sun) {
-      sun.color.setHex(th.sun || 0xffb080);
-      sun.intensity = th.dusk ? 1.18 : 1.4;
-      sun.position.set(-55, 38, 28);
+      sun.color.setHex(mixHex(th.sun || 0xffb080, 0xc8d0d8, wx.gray));
+      sun.intensity = wx.sun;
+      sun.position.set(-55, wx.sunH, 28);
     }
-    if (renderer) renderer.toneMappingExposure = 1.24;
+    if (ambLite) ambLite.intensity = 0.18 + wx.gray * 0.12;
+    if (renderer) renderer.toneMappingExposure = wx.expo;
+    if (roadMat) {
+      roadMat.metalness = 0.08 + wx.wet * 0.42;
+      roadMat.roughness = 0.7 - wx.wet * 0.34;
+      roadMat.color.setHex(mixHex(th.road, 0x1a1e24, wx.wet * 0.45));
+    }
+    if (groundMat) groundMat.color.setHex(gnd);
+    if (rainMesh) {
+      rainMesh.visible = wx.rain > 0.05 && !lastReduce;
+      rainMesh.material.opacity = 0.28 + wx.rain * 0.4;
+    }
   }
 
   function boardTex(label, bg) {
@@ -362,35 +442,87 @@
     }
 
     if (th.sea) {
-      var wmat = new T.MeshStandardMaterial({ color: 0x157a9a, metalness: 0.55, roughness: 0.18, envMap: envMap, envMapIntensity: 0.8 });
-      var wi, wp, wq, water;
-      var wn = closed ? 3 : 6;
+      var wmat = new T.MeshStandardMaterial({
+        color: 0x0e7490, metalness: 0.62, roughness: 0.14, envMap: envMap, envMapIntensity: 1.05
+      });
+      var sandM = new T.MeshStandardMaterial({ color: 0xc4a574, roughness: 0.92 });
+      var wi, wp, wq, water, sand;
+      var wn = closed ? 5 : 8;
       for (wi = 0; wi < wn; wi++) {
         wp = track.pts[Math.min(track.pts.length - 2, ((wi + 0.18) / wn * track.pts.length) | 0)];
         wq = track.pts[Math.min(track.pts.length - 1, (((wi + 0.18) / wn * track.pts.length) | 0) + 1)];
-        s = sideAt(wp, wq, 110);
-        water = new T.Mesh(new T.CircleGeometry(closed ? 280 : 240, 36), wmat);
+        s = sideAt(wp, wq, 120);
+        sand = new T.Mesh(new T.CircleGeometry(closed ? 220 : 190, 28), sandM);
+        sand.rotation.x = -Math.PI / 2;
+        sand.position.set(s.x * 0.55 + wp.x * 0.45, -0.22, s.z * 0.55 + wp.y * 0.45);
+        water = new T.Mesh(new T.CircleGeometry(closed ? 340 : 280, 40), wmat);
         water.rotation.x = -Math.PI / 2;
-        water.position.set(s.x, -0.28, s.z);
-        trackRoot.add(water);
+        water.position.set(s.x, -0.32, s.z);
+        trackRoot.add(sand, water);
       }
     }
     if (th.city) {
       var bmat = [
         new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }),
-        new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.42, emissive: 0x4c1d95, emissiveIntensity: 0.42 }),
-        new T.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.48, emissive: 0xff4d6d, emissiveIntensity: 0.22 })
+        new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.42, emissive: 0x4c1d95, emissiveIntensity: 0.28 }),
+        new T.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.48, emissive: 0xff4d6d, emissiveIntensity: 0.16 }),
+        new T.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.46, emissive: 0x155e75, emissiveIntensity: 0.2 })
       ];
-      var bn = Math.min(closed ? 48 : 72, Math.max(16, (track.pts.length / 8) | 0));
+      var winM = new T.MeshStandardMaterial({
+        color: 0xfde68a, emissive: 0xfbbf24, emissiveIntensity: th.dusk ? 0.85 : 0.25, roughness: 0.3
+      });
+      var roofM = new T.MeshStandardMaterial({ color: 0x111827, roughness: 0.7 });
+      var bn = Math.min(closed ? 86 : 110, Math.max(24, (track.pts.length / 5) | 0));
+      var ht, blk, roof, win, ww, wd, layers, li, yb;
       for (bi = 0; bi < bn; bi++) {
-        p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(4, (track.pts.length / bn) | 0))];
-        q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(4, (track.pts.length / bn) | 0) + 1)];
+        p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(3, (track.pts.length / bn) | 0))];
+        q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(3, (track.pts.length / bn) | 0) + 1)];
         side = bi % 2 ? 1 : -1;
-        s = sideAt(p, q, (track.width + 26 + (bi % 7)) * side);
-        var ht = 10 + (bi % 9) * 3.1;
-        var blk = new T.Mesh(new T.BoxGeometry(6 + (bi % 4), ht, 6 + (bi % 3)), bmat[bi % 3]);
+        s = sideAt(p, q, (track.width + 22 + (bi % 11) * 2.4) * side);
+        ww = 5.2 + (bi % 5) * 1.4;
+        wd = 4.8 + (bi % 4) * 1.2;
+        ht = 9 + (bi % 11) * 2.8 + (bi % 3) * 4;
+        blk = new T.Mesh(new T.BoxGeometry(ww, ht, wd), bmat[bi % 4]);
         blk.position.set(s.x, ht * 0.5, s.z);
+        blk.rotation.y = -s.ang + (bi % 2 ? 0.08 : -0.05);
+        blk.castShadow = true;
         trackRoot.add(blk);
+        roof = new T.Mesh(new T.BoxGeometry(ww * 1.08, 0.35, wd * 1.08), roofM);
+        roof.position.set(s.x, ht + 0.15, s.z);
+        roof.rotation.y = blk.rotation.y;
+        trackRoot.add(roof);
+        layers = 2 + (bi % 3);
+        for (li = 0; li < layers; li++) {
+          yb = 2.2 + li * Math.max(2.4, ht / (layers + 1));
+          if (yb > ht - 1.2) break;
+          win = new T.Mesh(new T.BoxGeometry(ww * 0.72, 0.22, 0.08), winM);
+          win.position.set(s.x + Math.cos(-s.ang) * (wd * 0.52), yb, s.z + Math.sin(-s.ang) * (wd * 0.52));
+          win.rotation.y = blk.rotation.y;
+          trackRoot.add(win);
+        }
+        if (bi % 5 === 0) {
+          var cap = new T.Mesh(new T.BoxGeometry(ww * 0.45, 2.4 + (bi % 4), wd * 0.45), bmat[(bi + 1) % 4]);
+          cap.position.set(s.x, ht + 1.4, s.z);
+          trackRoot.add(cap);
+        }
+      }
+    }
+
+    if (th.park) {
+      var lodgeM = new T.MeshStandardMaterial({ color: 0x7c4a2e, roughness: 0.82 });
+      var lodgeR = new T.MeshStandardMaterial({ color: 0x4a2c18, roughness: 0.78 });
+      var lj, lodge, lroof;
+      for (lj = 0; lj < 10; lj++) {
+        p = track.pts[Math.min(track.pts.length - 2, ((lj + 0.4) / 10 * track.pts.length) | 0)];
+        q = track.pts[Math.min(track.pts.length - 1, (((lj + 0.4) / 10 * track.pts.length) | 0) + 1)];
+        s = sideAt(p, q, (track.width + 18 + (lj % 3) * 3) * (lj % 2 ? 1 : -1));
+        lodge = new T.Mesh(new T.BoxGeometry(6.5, 3.2, 4.4), lodgeM);
+        lodge.position.set(s.x, 1.6, s.z);
+        lodge.rotation.y = -s.ang;
+        lroof = new T.Mesh(new T.ConeGeometry(4.4, 2.2, 4), lodgeR);
+        lroof.position.set(s.x, 4.2, s.z);
+        lroof.rotation.y = -s.ang + Math.PI / 4;
+        trackRoot.add(lodge, lroof);
       }
     }
 
@@ -439,6 +571,8 @@
     strip.position.set(total * 0.5, 0.02, 0);
     strip.receiveShadow = true;
     trackRoot.add(strip);
+    roadMat = strip.material;
+    applyTheme(th);
     var laneMat = new T.MeshStandardMaterial({ color: 0x32343a, roughness: 0.7 });
     var li, laneMesh, halfL = (nL - 1) * 0.5;
     for (li = 0; li < nL; li++) {
@@ -609,24 +743,48 @@
       if (track.pts[bi].y < minz) minz = track.pts[bi].y;
       if (track.pts[bi].y > maxz) maxz = track.pts[bi].y;
     }
-    var span = Math.max(900, Math.max(maxx - minx, maxz - minz) + 480);
-    var ground = new T.Mesh(
-      new T.PlaneGeometry(span, span),
-      new T.MeshStandardMaterial({ color: th.ground, roughness: 0.96 })
-    );
+    var span = Math.max(1400, Math.max(maxx - minx, maxz - minz) + 720);
+    var cx = (minx + maxx) * 0.5, cz = (minz + maxz) * 0.5;
+    var land = noiseTex(128, 128, function (x, y) {
+      var n = ((x * 13 + y * 7) % 17) / 17;
+      var g0 = (th.ground >> 16) & 255, g1 = (th.ground >> 8) & 255, g2 = th.ground & 255;
+      return [g0 * (0.72 + n * 0.4), g1 * (0.75 + n * 0.35), g2 * (0.7 + n * 0.4)];
+    });
+    land.repeat.set(span / 80, span / 80);
+    groundMat = new T.MeshStandardMaterial({ color: th.ground, roughness: 0.96, map: land });
+    var ground = new T.Mesh(new T.PlaneGeometry(span, span), groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set((minx + maxx) * 0.5, -0.4, (minz + maxz) * 0.5);
+    ground.position.set(cx, -0.42, cz);
     ground.receiveShadow = true;
     trackRoot.add(ground);
+    var nHill = th.park ? 28 : 36;
+    var hillM = new T.InstancedMesh(
+      new T.ConeGeometry(18, 22, 5),
+      new T.MeshStandardMaterial({ color: mixHex(th.gnd || th.ground, 0x1a2818, 0.2), roughness: 0.95, flatShading: true }),
+      nHill
+    );
+    hillM.receiveShadow = true;
+    var hd = new T.Object3D(), hi, ha;
+    for (hi = 0; hi < nHill; hi++) {
+      ha = (hi / nHill) * Math.PI * 2 + (hi % 5) * 0.17;
+      hd.position.set(cx + Math.cos(ha) * (span * 0.38 + (hi % 7) * 12), 4 + (hi % 6) * 2.2, cz + Math.sin(ha) * (span * 0.38 + (hi % 4) * 10));
+      hd.scale.set(1.4 + (hi % 5) * 0.55, 0.8 + (hi % 4) * 0.45, 1.4 + (hi % 3) * 0.4);
+      hd.rotation.y = ha;
+      hd.updateMatrix();
+      hillM.setMatrixAt(hi, hd.matrix);
+    }
+    hillM.instanceMatrix.needsUpdate = true;
+    trackRoot.add(hillM);
     var shoulder = new T.Mesh(
       ribbon(track.pts, track.width + 6.2, 0.02, closed),
       new T.MeshStandardMaterial({ color: 0x3a4a32, roughness: 1 })
     );
     shoulder.receiveShadow = true;
     trackRoot.add(shoulder);
+    roadMat = new T.MeshStandardMaterial({ color: th.road, roughness: 0.68, metalness: 0.1 });
     var road = new T.Mesh(
       ribbon(track.pts, track.width, 0.08, closed),
-      new T.MeshStandardMaterial({ color: th.road, roughness: 0.68, metalness: 0.1 })
+      roadMat
     );
     road.receiveShadow = true;
     trackRoot.add(road);
@@ -711,9 +869,11 @@
       trackRoot.add(wL, wR, roof);
     }
     var dummy = new T.Object3D();
-    var nTree = Math.min(closed ? 140 : 240, Math.max(32, (track.pts.length / 5) | 0));
-    var trunk = new T.InstancedMesh(new T.CylinderGeometry(0.18, 0.28, 2.4, 5), new T.MeshStandardMaterial({ color: 0x4a331c }), nTree);
-    var crown = new T.InstancedMesh(new T.ConeGeometry(1.4, 3.2, 6), new T.MeshStandardMaterial({ color: 0x1a5c32, flatShading: true }), nTree);
+    var nTree = Math.min(closed ? 220 : 320, Math.max(48, (track.pts.length / 3.5) | 0));
+    var trunk = new T.InstancedMesh(new T.CylinderGeometry(0.16, 0.26, 2.6, 5), new T.MeshStandardMaterial({ color: 0x4a331c }), nTree);
+    var crown = new T.InstancedMesh(new T.ConeGeometry(1.55, 3.4, 6), new T.MeshStandardMaterial({ color: 0x1a5c32, flatShading: true }), nTree);
+    var crown2 = new T.InstancedMesh(new T.ConeGeometry(1.15, 2.4, 6), new T.MeshStandardMaterial({ color: 0x166534, flatShading: true }), nTree);
+    var bush = new T.InstancedMesh(new T.SphereGeometry(0.85, 5, 4), new T.MeshStandardMaterial({ color: 0x14532d, flatShading: true }), nTree);
     trunk.castShadow = crown.castShadow = true;
     for (var i = 0; i < nTree; i++) {
       var p = track.pts[Math.min(track.pts.length - 2, i * Math.max(1, (track.pts.length / nTree) | 0))];
@@ -721,21 +881,34 @@
       var tx = q.x - p.x, tz = q.y - p.y;
       var len = Math.hypot(tx, tz) || 1;
       var side = i % 2 ? 1 : -1;
-      var x = p.x + (-tz / len) * (track.width + 14 + (i % 5)) * side;
-      var z = p.y + (tx / len) * (track.width + 14 + (i % 5)) * side;
-      dummy.position.set(x, 1.2, z);
-      dummy.scale.set(1, 1 + (i % 4) * 0.08, 1);
+      var distT = track.width + 12 + (i % 9) * 2.4;
+      var x = p.x + (-tz / len) * distT * side;
+      var z = p.y + (tx / len) * distT * side;
+      var sc = 0.85 + (i % 5) * 0.12;
+      dummy.position.set(x, 1.25 * sc, z);
+      dummy.scale.set(sc, sc * (1 + (i % 4) * 0.1), sc);
+      dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
       trunk.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 3.4;
+      dummy.position.y = 3.55 * sc;
       dummy.updateMatrix();
       crown.setMatrixAt(i, dummy.matrix);
+      dummy.position.y = 5.1 * sc;
+      dummy.scale.set(sc * 0.85, sc, sc * 0.85);
+      dummy.updateMatrix();
+      crown2.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(x + side * 2.2, 0.55, z + (i % 3) - 1);
+      dummy.scale.set(1.1 + (i % 3) * 0.2, 0.7, 1.1);
+      dummy.updateMatrix();
+      bush.setMatrixAt(i, dummy.matrix);
     }
     trunk.instanceMatrix.needsUpdate = true;
     crown.instanceMatrix.needsUpdate = true;
-    trackRoot.add(trunk);
-    trackRoot.add(crown);
+    crown2.instanceMatrix.needsUpdate = true;
+    bush.instanceMatrix.needsUpdate = true;
+    trackRoot.add(trunk, crown, crown2, bush);
     dressCourse(track, closed);
+    applyTheme(th);
   }
 
   function disposeObj(o) {
@@ -1112,6 +1285,25 @@
         if (puff.userData.life <= 0) puff.visible = false;
       }
     }
+    if (rainMesh && rainMesh.visible && camera) {
+      var rp = rainMesh.geometry.attributes.position.array;
+      var rcx = camera.position.x, rcy = camera.position.y, rcz = camera.position.z;
+      var fall = (wxId >= 4 ? 48 : 30) * dt;
+      var ri;
+      for (ri = 0; ri < rp.length; ri += 3) {
+        rp[ri + 1] -= fall;
+        if (rp[ri + 1] < rcy - 10) {
+          rp[ri] = rcx + (Math.random() - 0.5) * 88;
+          rp[ri + 1] = rcy + 10 + Math.random() * 26;
+          rp[ri + 2] = rcz + (Math.random() - 0.5) * 88;
+        }
+      }
+      rainMesh.geometry.attributes.position.needsUpdate = true;
+    }
+    if (wxId >= 4 && sun) {
+      if (Math.random() < 0.014) sun.intensity = 2.6;
+      else sun.intensity += (0.16 - sun.intensity) * 0.12;
+    }
     var cw = (canvasEl && canvasEl.clientWidth) || 800;
     var ch = (canvasEl && canvasEl.clientHeight) || 480;
     if (splitOn && camera2) {
@@ -1185,7 +1377,10 @@
     sun.shadow.camera.far = 280;
     scene.add(sun);
     scene.add(sun.target);
-    scene.add(new T.AmbientLight(0x6688aa, 0.25));
+    ambLite = new T.AmbientLight(0x6688aa, 0.25);
+    scene.add(ambLite);
+    ensureSky();
+    ensureRain();
     if (global.HavenCar && HavenCar.bakeEnv) envMap = HavenCar.bakeEnv(T, renderer);
     resize();
     running = true;
@@ -1210,6 +1405,11 @@
       if (tune.height != null) camTune.height = camTuneB.height = tune.height;
       if (tune.view != null) camTune.view = Math.max(0, Math.min(5, tune.view | 0));
       if (tune.view2 != null) camTuneB.view = Math.max(0, Math.min(5, tune.view2 | 0));
+    },
+    setWeather: function (id, reduce) {
+      wxId = Math.max(0, Math.min(4, id | 0));
+      lastReduce = !!reduce;
+      applyTheme(lastTh || themeOf("pine-coil"));
     },
     setSplit: function (on) {
       splitOn = !!on;
