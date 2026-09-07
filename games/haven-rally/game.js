@@ -39,7 +39,7 @@
     { name: "Bay 03", tag: "Soon" }
   ];
   const LANE_W = 4.4;
-  const TRACK_LANES = 3;
+  const TRACK_LANES = 4;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
   const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
 
@@ -289,8 +289,8 @@
   }
 
   function makeTrack(spec) {
-    const pts = spec.ctrl.slice();
-    const samples = densifyPath(pts, 5, true);
+    const pts = chaikin(spec.ctrl.slice(), 2);
+    const samples = densifyPath(pts, 6, true);
     const len = pathLen(samples, true);
     return {
       id: spec.id,
@@ -327,7 +327,7 @@
       width: TRACK_HALF,
       laneW: LANE_W,
       lanes: TRACK_LANES,
-      lane: LANE_W,
+      lane: LANE_W * 0.5,
       laps: 1,
       pts: pts,
       samples: samples,
@@ -341,30 +341,31 @@
       sectors: []
     };
   }
-  function loopFromPolar(n, radius, jitter, rng, spin) {
+  function loopFromPolar(n, radius, jitter, rng, spin, squash) {
     const pts = [];
+    const sq = squash == null ? 0.7 : squash;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + (spin || 0);
       const r = radius + Math.sin(a * 2.2) * jitter * 0.45 + (rng() * 2 - 1) * jitter;
-      pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * 0.78 });
+      pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * sq });
     }
     return pts;
   }
 
   const PINE = makeTrack({
     id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 3,
-    lore: "Golden-hour parkland. Three lanes, chain the esses, slide to fill boost.",
-    ctrl: loopFromPolar(10, 92, 22, mulberry(19), 0.2)
+    lore: "Golden-hour parkland highway. Four lanes, chain the esses, slide to fill boost.",
+    ctrl: loopFromPolar(14, 280, 78, mulberry(19), 0.2, 0.72)
   });
   const CORAL = makeTrack({
     id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 3,
-    lore: "Sunset coast highway. Long straights, then don't overcook the hairpin.",
-    ctrl: loopFromPolar(8, 110, 28, mulberry(41), 0.6)
+    lore: "Sunset coast highway. Four lanes, long straights, then don't overcook the hairpin.",
+    ctrl: loopFromPolar(12, 360, 110, mulberry(41), 0.6, 0.52)
   });
   const STAR = makeTrack({
     id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 3,
-    lore: "Night city ring. Neon walls. Boost on the slide, don't miss the apex.",
-    ctrl: loopFromPolar(12, 78, 16, mulberry(73), 1.1)
+    lore: "Night city ring. Four lanes of neon. Boost on the slide, don't miss the apex.",
+    ctrl: loopFromPolar(16, 250, 52, mulberry(73), 1.1, 0.74)
   });
   const DRAG_EIGHTH = makeDragTrack({
     id: "drag-eighth", name: "Drag · 1/8 mile", feet: 660, yards: 220,
@@ -446,7 +447,7 @@
       id: "ridge-" + seed.toString(16),
       name: name,
       theme: "endless",
-      lore: "One long start-to-finish highway — ~16 miles of straights, esses, a hairpin, a tunnel. Slide to charge boost.",
+      lore: "One long start-to-finish four-lane highway — ~16 miles of straights, esses, a hairpin, a tunnel. Slide to charge boost.",
       width: TRACK_HALF,
       laneW: LANE_W,
       lanes: TRACK_LANES,
@@ -564,7 +565,13 @@
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
-    G.car = { x: a.x, y: a.y, h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
+    const tlen = dist(a, b) || 1;
+    const lat0 = -LANE_W * 0.5;
+    G.car = {
+      x: a.x + (-(b.y - a.y) / tlen) * lat0,
+      y: a.y + ((b.x - a.x) / tlen) * lat0,
+      h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
+    };
     G.ai = null;
     G.lap = 0;
     G.lastS = 0;
@@ -1347,6 +1354,29 @@
     c.strokeStyle = "#fbbf24";
     c.lineWidth = 2;
     c.stroke();
+    const nLn = G.track.lanes || TRACK_LANES;
+    const lw = G.track.laneW || LANE_W;
+    const nDiv = nLn - 1;
+    let di, dlat, prevP, nextP, tx, tz, ln, px, pz;
+    c.strokeStyle = "#e2e8f0";
+    c.lineWidth = 1.4;
+    for (di = 0; di < nDiv; di++) {
+      dlat = (di - (nDiv - 1) / 2) * lw;
+      c.beginPath();
+      G.track.pts.forEach(function (p, i) {
+        prevP = G.track.pts[(i - 1 + G.track.pts.length) % G.track.pts.length];
+        nextP = G.track.pts[(i + 1) % G.track.pts.length];
+        if (G.track.closed === false && i === 0) prevP = p;
+        if (G.track.closed === false && i === G.track.pts.length - 1) nextP = p;
+        tx = nextP.x - prevP.x; tz = nextP.y - prevP.y;
+        ln = Math.hypot(tx, tz) || 1;
+        px = -tz / ln; pz = tx / ln;
+        const x = (p.x + px * dlat) * scale, y = (p.y + pz * dlat) * scale;
+        if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+      });
+      if (G.track.closed !== false) c.closePath();
+      c.stroke();
+    }
     if (gh) {
       c.fillStyle = "rgba(192,132,252,.7)";
       c.beginPath();
@@ -1371,7 +1401,7 @@
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts. C cycles camera (Chase, Close, Hood, Bumper, Cockpit, TV).</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
-      "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
+      "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Circuits: three laps, sectors, then the line. Endless run is one long start-to-finish highway — checkpoints, then FINISH.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
@@ -1478,7 +1508,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New ~16-mile start-to-finish highway. Checkpoints, tunnel, FINISH.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New ~16-mile four-lane start-to-finish highway. Checkpoints, tunnel, FINISH.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +

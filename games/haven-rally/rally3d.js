@@ -129,7 +129,7 @@
   function themeOf(id) {
     if (id === "coral-coast") return {
       sky: 0xff7a58, fog: 0xffb898, ground: 0x1c5a48, road: 0x3a3c44, dusk: true,
-      sun: 0xffc090, hemi: 0xffd4b8, gnd: 0x1a4a40, sea: true, city: false
+      sun: 0xffc090, hemi: 0xffd4b8, gnd: 0x1a4a40, sea: true, city: true
     };
     if (id === "singularity-ring") return {
       sky: 0x1a1238, fog: 0x3a2468, ground: 0x12101c, road: 0x2a2440, dusk: true,
@@ -145,7 +145,7 @@
     };
     return {
       sky: 0xf4a06a, fog: 0xffc8a0, ground: 0x2a4a30, road: 0x2e3238, dusk: true,
-      sun: 0xffc090, hemi: 0xffe8d0, gnd: 0x2a3a28, sea: false, city: false
+      sun: 0xffc090, hemi: 0xffe8d0, gnd: 0x2a3a28, sea: false, city: false, park: true
     };
   }
 
@@ -185,27 +185,71 @@
     return t;
   }
 
+  function sideAt(p, q, dist) {
+    var tx = q.x - p.x, tz = q.y - p.y;
+    var len = Math.hypot(tx, tz) || 1;
+    return {
+      x: p.x + (-tz / len) * dist,
+      z: p.y + (tx / len) * dist,
+      ang: Math.atan2(tz, tx),
+      px: -tz / len,
+      pz: tx / len
+    };
+  }
+
+  function addGantry(p, q, width, col) {
+    var s = sideAt(p, q, 0);
+    var postM = new T.MeshStandardMaterial({ color: 0x111827 });
+    var pL = new T.Mesh(new T.BoxGeometry(0.4, 7.4, 0.4), postM);
+    var pR = pL.clone();
+    pL.position.set(p.x + s.px * (width + 0.75), 3.7, p.y + s.pz * (width + 0.75));
+    pR.position.set(p.x - s.px * (width + 0.75), 3.7, p.y - s.pz * (width + 0.75));
+    var ban = new T.Mesh(
+      new T.BoxGeometry(width * 2.45, 1.2, 0.22),
+      new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.55 })
+    );
+    ban.position.set(p.x, 7.35, p.y);
+    ban.rotation.y = -s.ang;
+    trackRoot.add(pL, pR, ban);
+  }
+
+  function paintLanes(track, closed) {
+    var n = track.lanes || 4;
+    var laneW = track.laneW || (track.width * 2 / n);
+    var dash = new T.MeshStandardMaterial({
+      color: 0xf1f5f9, roughness: 0.5, emissive: 0x94a3b8, emissiveIntensity: 0.16
+    });
+    var edge = new T.MeshStandardMaterial({
+      color: 0xfbbf24, roughness: 0.42, emissive: 0x996600, emissiveIntensity: 0.28
+    });
+    var nDiv = n - 1, k, lat;
+    for (k = 0; k < nDiv; k++) {
+      lat = (k - (nDiv - 1) / 2) * laneW;
+      trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, lat, closed), 0.075, 0.112, closed), dash));
+    }
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, track.width - 0.14, closed), 0.11, 0.118, closed), edge));
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, -(track.width - 0.14), closed), 0.11, 0.118, closed), edge));
+  }
+
   function dressCourse(track, closed) {
-    var nPalm = Math.min(closed ? 42 : 140, Math.max(12, (track.pts.length / 4) | 0));
-    var palmT = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.2, 5.4, 5), new T.MeshStandardMaterial({ color: 0x6b4423 }), nPalm);
-    var palmC = new T.InstancedMesh(new T.ConeGeometry(1.8, 1.6, 6), new T.MeshStandardMaterial({ color: 0x1f7a3a, flatShading: true }), nPalm);
     var dummy = new T.Object3D();
-    var i, p, q, tx, tz, len, side, x, z, step;
+    var i, p, q, s, side, x, z, step, th;
+    th = themeOf(track.theme);
+    var nPalm = Math.min(closed ? 64 : 160, Math.max(16, (track.pts.length / 3) | 0));
+    var palmT = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.2, 5.8, 5), new T.MeshStandardMaterial({ color: 0x6b4423 }), nPalm);
+    var palmC = new T.InstancedMesh(new T.ConeGeometry(1.9, 1.7, 6), new T.MeshStandardMaterial({ color: 0x1f7a3a, flatShading: true }), nPalm);
     step = Math.max(1, (track.pts.length / nPalm) | 0);
     for (i = 0; i < nPalm; i++) {
       p = track.pts[Math.min(track.pts.length - 2, i * step)];
       q = track.pts[Math.min(track.pts.length - 1, i * step + 1)];
-      tx = q.x - p.x; tz = q.y - p.y;
-      len = Math.hypot(tx, tz) || 1;
       side = i % 2 ? 1 : -1;
-      x = p.x + (-tz / len) * (track.width + 12 + (i % 4)) * side;
-      z = p.y + (tx / len) * (track.width + 12 + (i % 4)) * side;
-      dummy.position.set(x, 2.7, z);
-      dummy.scale.set(1, 1 + (i % 3) * 0.12, 1);
+      s = sideAt(p, q, (track.width + 13 + (i % 5)) * side);
+      dummy.position.set(s.x, 2.9, s.z);
+      dummy.scale.set(1, 1 + (i % 3) * 0.14, 1);
       dummy.updateMatrix();
       palmT.setMatrixAt(i, dummy.matrix);
-      dummy.position.y = 5.6;
-      dummy.scale.set(1.1, 1, 1.1);
+      dummy.position.y = 5.9;
+      dummy.scale.set(1.15, 1, 1.15);
       dummy.updateMatrix();
       palmC.setMatrixAt(i, dummy.matrix);
     }
@@ -213,79 +257,123 @@
     palmC.instanceMatrix.needsUpdate = true;
     trackRoot.add(palmT);
     trackRoot.add(palmC);
+
+    var nRail = Math.min(closed ? 160 : 280, Math.max(40, track.pts.length));
+    var railM = new T.MeshStandardMaterial({ color: 0xc5cdd6, metalness: 0.62, roughness: 0.32 });
+    var posts = new T.InstancedMesh(new T.BoxGeometry(0.12, 0.9, 0.12), railM, nRail * 2);
+    var rails = new T.InstancedMesh(new T.BoxGeometry(0.08, 0.12, 2.4), railM, nRail * 2);
+    step = Math.max(1, (track.pts.length / nRail) | 0);
+    var ri, rs;
+    for (i = 0; i < nRail; i++) {
+      p = track.pts[Math.min(track.pts.length - 2, i * step)];
+      q = track.pts[Math.min(track.pts.length - 1, i * step + 1)];
+      for (ri = 0; ri < 2; ri++) {
+        rs = sideAt(p, q, (track.width + 1.15) * (ri ? 1 : -1));
+        dummy.position.set(rs.x, 0.45, rs.z);
+        dummy.rotation.set(0, -rs.ang, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        posts.setMatrixAt(i * 2 + ri, dummy.matrix);
+        dummy.position.y = 0.78;
+        dummy.scale.set(1, 1, 1.15);
+        dummy.updateMatrix();
+        rails.setMatrixAt(i * 2 + ri, dummy.matrix);
+      }
+    }
+    posts.instanceMatrix.needsUpdate = true;
+    rails.instanceMatrix.needsUpdate = true;
+    trackRoot.add(posts, rails);
+
+    var nLamp = Math.min(closed ? 36 : 70, Math.max(10, (track.pts.length / 8) | 0));
+    var lampPole = new T.InstancedMesh(new T.CylinderGeometry(0.08, 0.1, 8.4, 5), new T.MeshStandardMaterial({ color: 0x334 }), nLamp);
+    var lampHead = new T.InstancedMesh(new T.BoxGeometry(0.9, 0.14, 0.35), new T.MeshStandardMaterial({
+      color: 0xfff3c4, emissive: 0xffc878, emissiveIntensity: 1.6
+    }), nLamp);
+    step = Math.max(1, (track.pts.length / nLamp) | 0);
+    for (i = 0; i < nLamp; i++) {
+      p = track.pts[Math.min(track.pts.length - 2, i * step)];
+      q = track.pts[Math.min(track.pts.length - 1, i * step + 1)];
+      side = i % 2 ? 1 : -1;
+      s = sideAt(p, q, (track.width + 3.2) * side);
+      dummy.position.set(s.x, 4.2, s.z);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      lampPole.setMatrixAt(i, dummy.matrix);
+      dummy.position.set(s.x - s.px * 0.55 * side, 8.35, s.z - s.pz * 0.55 * side);
+      dummy.updateMatrix();
+      lampHead.setMatrixAt(i, dummy.matrix);
+    }
+    lampPole.instanceMatrix.needsUpdate = true;
+    lampHead.instanceMatrix.needsUpdate = true;
+    trackRoot.add(lampPole, lampHead);
+
     var labels = ["HAVEN", "APEX", "LATTICE", "Δ9", "GOLD HOUR", "COAST"];
     var cols = [0xff4d6d, 0xfbbf24, 0x5eead4, 0xff7a3c, 0xc084fc, 0x38bdf8];
-    var nb = Math.min(10, Math.max(4, (track.pts.length / 40) | 0));
+    var nb = Math.min(closed ? 14 : 22, Math.max(6, (track.pts.length / 28) | 0));
     var bi, lab, board, pole;
-    step = Math.max(8, (track.pts.length / nb) | 0);
+    step = Math.max(4, (track.pts.length / nb) | 0);
     for (bi = 0; bi < nb; bi++) {
-      p = track.pts[Math.min(track.pts.length - 2, bi * step + 5)];
-      q = track.pts[Math.min(track.pts.length - 1, bi * step + 6)];
-      tx = q.x - p.x; tz = q.y - p.y;
-      len = Math.hypot(tx, tz) || 1;
+      p = track.pts[Math.min(track.pts.length - 2, bi * step + 3)];
+      q = track.pts[Math.min(track.pts.length - 1, bi * step + 4)];
       side = bi % 2 ? 1 : -1;
-      x = p.x + (-tz / len) * (track.width + 14) * side;
-      z = p.y + (tx / len) * (track.width + 14) * side;
+      s = sideAt(p, q, (track.width + 16) * side);
       lab = labels[bi % labels.length];
       board = new T.Mesh(
-        new T.PlaneGeometry(8.5, 4.2),
-        new T.MeshStandardMaterial({ map: boardTex(lab, "#" + cols[bi % cols.length].toString(16).padStart(6, "0")), roughness: 0.45 })
+        new T.PlaneGeometry(10.5, 5.1),
+        new T.MeshStandardMaterial({
+          map: boardTex(lab, "#" + cols[bi % cols.length].toString(16).padStart(6, "0")),
+          roughness: 0.42, emissive: cols[bi % cols.length], emissiveIntensity: 0.18
+        })
       );
-      board.position.set(x, 6.2, z);
-      board.lookAt(p.x, 6.2, p.y);
-      pole = new T.Mesh(new T.CylinderGeometry(0.12, 0.14, 6.2, 5), new T.MeshStandardMaterial({ color: 0x334 }));
-      pole.position.set(x, 3.1, z);
+      board.position.set(s.x, 6.6, s.z);
+      board.lookAt(p.x, 6.6, p.y);
+      pole = new T.Mesh(new T.CylinderGeometry(0.13, 0.15, 6.6, 5), new T.MeshStandardMaterial({ color: 0x334 }));
+      pole.position.set(s.x, 3.3, s.z);
       trackRoot.add(board, pole);
     }
-    var th = themeOf(track.theme);
+
     if (th.sea) {
       var wmat = new T.MeshStandardMaterial({ color: 0x157a9a, metalness: 0.55, roughness: 0.18, envMap: envMap, envMapIntensity: 0.8 });
-      var wi, wp, wq, wtx, wtz, wlen, water;
-      var wn = closed ? 1 : 5;
+      var wi, wp, wq, water;
+      var wn = closed ? 3 : 6;
       for (wi = 0; wi < wn; wi++) {
-        wp = track.pts[Math.min(track.pts.length - 2, ((wi + 0.15) / wn * track.pts.length) | 0)];
-        wq = track.pts[Math.min(track.pts.length - 1, (((wi + 0.15) / wn * track.pts.length) | 0) + 1)];
-        wtx = wq.x - wp.x; wtz = wq.y - wp.y;
-        wlen = Math.hypot(wtx, wtz) || 1;
-        water = new T.Mesh(new T.CircleGeometry(closed ? 320 : 220, 36), wmat);
+        wp = track.pts[Math.min(track.pts.length - 2, ((wi + 0.18) / wn * track.pts.length) | 0)];
+        wq = track.pts[Math.min(track.pts.length - 1, (((wi + 0.18) / wn * track.pts.length) | 0) + 1)];
+        s = sideAt(wp, wq, 110);
+        water = new T.Mesh(new T.CircleGeometry(closed ? 280 : 240, 36), wmat);
         water.rotation.x = -Math.PI / 2;
-        water.position.set(wp.x + (-wtz / wlen) * 90, -0.28, wp.y + (wtx / wlen) * 90);
+        water.position.set(s.x, -0.28, s.z);
         trackRoot.add(water);
       }
     }
     if (th.city) {
       var bmat = [
         new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }),
-        new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, emissive: 0x221133, emissiveIntensity: 0.35 })
+        new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.42, emissive: 0x4c1d95, emissiveIntensity: 0.42 }),
+        new T.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.48, emissive: 0xff4d6d, emissiveIntensity: 0.22 })
       ];
-      var bn = Math.min(closed ? 28 : 48, Math.max(8, (track.pts.length / 14) | 0));
+      var bn = Math.min(closed ? 48 : 72, Math.max(16, (track.pts.length / 8) | 0));
       for (bi = 0; bi < bn; bi++) {
-        p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(6, (track.pts.length / bn) | 0))];
-        q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(6, (track.pts.length / bn) | 0) + 1)];
-        tx = q.x - p.x; tz = q.y - p.y;
-        len = Math.hypot(tx, tz) || 1;
-        x = p.x + (-tz / len) * (track.width + 24 + (bi % 5));
-        z = p.y + (tx / len) * (track.width + 24 + (bi % 5));
-        var ht = 8 + (bi % 7) * 2.4;
-        var blk = new T.Mesh(new T.BoxGeometry(5 + (bi % 3), ht, 5 + (bi % 2)), bmat[bi % 2]);
-        blk.position.set(x, ht * 0.5, z);
+        p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(4, (track.pts.length / bn) | 0))];
+        q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(4, (track.pts.length / bn) | 0) + 1)];
+        side = bi % 2 ? 1 : -1;
+        s = sideAt(p, q, (track.width + 26 + (bi % 7)) * side);
+        var ht = 10 + (bi % 9) * 3.1;
+        var blk = new T.Mesh(new T.BoxGeometry(6 + (bi % 4), ht, 6 + (bi % 3)), bmat[bi % 3]);
+        blk.position.set(s.x, ht * 0.5, s.z);
         trackRoot.add(blk);
       }
     }
-    var start = track.pts[0], n1 = track.pts[1];
-    var ang = Math.atan2(n1.y - start.y, n1.x - start.x);
-    var gx = -Math.sin(ang), gz = Math.cos(ang);
-    var pL = new T.Mesh(new T.BoxGeometry(0.4, 6.4, 0.4), new T.MeshStandardMaterial({ color: 0x111827 }));
-    var pR = pL.clone();
-    pL.position.set(start.x + gx * (track.width + 0.6), 3.2, start.y + gz * (track.width + 0.6));
-    pR.position.set(start.x - gx * (track.width + 0.6), 3.2, start.y - gz * (track.width + 0.6));
-    var ban = new T.Mesh(
-      new T.BoxGeometry(track.width * 2.3, 1.0, 0.18),
-      new T.MeshStandardMaterial({ color: 0xff4d6d, emissive: 0x881133, emissiveIntensity: 0.5 })
-    );
-    ban.position.set(start.x, 6.5, start.y);
-    ban.rotation.y = -ang;
-    trackRoot.add(pL, pR, ban);
+
+    addGantry(track.pts[0], track.pts[1], track.width, 0xff4d6d);
+    var secs = track.sectors || [0.28, 0.55, 0.82];
+    var gCols = [0x5eead4, 0xfbbf24, 0xc084fc];
+    var gi, gidx;
+    for (gi = 0; gi < secs.length; gi++) {
+      gidx = Math.min(track.pts.length - 2, Math.max(2, (secs[gi] * (track.pts.length - 1)) | 0));
+      addGantry(track.pts[gidx], track.pts[gidx + 1], track.width, gCols[gi % gCols.length]);
+    }
   }
 
   function bulbMesh(T, r, col) {
@@ -314,7 +402,8 @@
     ground.receiveShadow = true;
     trackRoot.add(ground);
     var laneW = track.laneW || 4.4;
-    var half = track.width || laneW * 1.5;
+    var nL = track.lanes || 4;
+    var half = track.width || laneW * nL * 0.5;
     var strip = new T.Mesh(
       new T.BoxGeometry(total + 8, 0.14, half * 2 + 4),
       new T.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.78, metalness: 0.08 })
@@ -323,10 +412,10 @@
     strip.receiveShadow = true;
     trackRoot.add(strip);
     var laneMat = new T.MeshStandardMaterial({ color: 0x32343a, roughness: 0.7 });
-    var li, laneMesh;
-    for (li = -1; li <= 1; li++) {
+    var li, laneMesh, halfL = (nL - 1) * 0.5;
+    for (li = 0; li < nL; li++) {
       laneMesh = new T.Mesh(new T.BoxGeometry(total + 6, 0.02, laneW - 0.25), laneMat);
-      laneMesh.position.set(total * 0.5, 0.1, li * laneW);
+      laneMesh.position.set(total * 0.5, 0.1, (li - halfL) * laneW);
       trackRoot.add(laneMesh);
     }
     function stripe(x, w, z, col) {
@@ -336,8 +425,9 @@
     }
     var d;
     for (d = 8; d < total; d += 8) {
-      stripe(d, 2.2, -laneW * 0.5, 0xf8fafc);
-      stripe(d, 2.2, laneW * 0.5, 0xf8fafc);
+      stripe(d, 2.2, -laneW, 0xf8fafc);
+      stripe(d, 2.2, 0, 0xfbbf24);
+      stripe(d, 2.2, laneW, 0xf8fafc);
     }
     var startLine = new T.Mesh(
       new T.BoxGeometry(0.45, 0.06, half * 2 + 0.4),
@@ -369,13 +459,13 @@
     var nFlood = 0;
     for (i = 0; i < total; i += 52) {
       pole = new T.Mesh(new T.CylinderGeometry(0.12, 0.16, 11, 6), new T.MeshStandardMaterial({ color: 0x334 }));
-      pole.position.set(i + 10, 5.5, -11);
+      pole.position.set(i + 10, 5.5, -(half + 6.5));
       lamp = new T.Mesh(new T.BoxGeometry(1.6, 0.2, 0.6), new T.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffe08a, emissiveIntensity: 1.4 }));
-      lamp.position.set(i + 10, 11.1, -10.2);
+      lamp.position.set(i + 10, 11.1, -(half + 5.6));
       trackRoot.add(pole, lamp);
       if (nFlood < 7) {
         var light = new T.PointLight(0xffe8c0, 1.05, 52, 2);
-        light.position.set(i + 10, 10.5, -8);
+        light.position.set(i + 10, 10.5, -(half + 4));
         trackRoot.add(light);
         nFlood += 1;
       }
@@ -472,7 +562,7 @@
     var closed = track.closed !== false;
     var th = themeOf(track.theme);
     applyTheme(th);
-    scene.fog.density = closed ? (th.dusk ? 0.0038 : 0.0028) : 0.00105;
+    scene.fog.density = closed ? (th.dusk ? 0.0022 : 0.0016) : 0.00105;
     var minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9, bi;
     for (bi = 0; bi < track.pts.length; bi++) {
       if (track.pts[bi].x < minx) minx = track.pts[bi].x;
@@ -490,24 +580,18 @@
     ground.receiveShadow = true;
     trackRoot.add(ground);
     var shoulder = new T.Mesh(
-      ribbon(track.pts, track.width + 4.5, 0.02, closed),
+      ribbon(track.pts, track.width + 6.2, 0.02, closed),
       new T.MeshStandardMaterial({ color: 0x3a4a32, roughness: 1 })
     );
     shoulder.receiveShadow = true;
     trackRoot.add(shoulder);
     var road = new T.Mesh(
       ribbon(track.pts, track.width, 0.08, closed),
-      new T.MeshStandardMaterial({ color: th.road, roughness: 0.72, metalness: 0.08 })
+      new T.MeshStandardMaterial({ color: th.road, roughness: 0.68, metalness: 0.1 })
     );
     road.receiveShadow = true;
     trackRoot.add(road);
-    var laneW = track.laneW || (track.width * 2 / 3);
-    var paint = new T.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.55, emissive: 0x334155, emissiveIntensity: 0.12 });
-    var edge = new T.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.45, emissive: 0x664400, emissiveIntensity: 0.2 });
-    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, laneW * 0.5, closed), 0.07, 0.11, closed), paint));
-    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, -laneW * 0.5, closed), 0.07, 0.11, closed), paint));
-    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, track.width - 0.12, closed), 0.09, 0.115, closed), edge));
-    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, -(track.width - 0.12), closed), 0.09, 0.115, closed), edge));
+    paintLanes(track, closed);
     var start = track.pts[0];
     var n1 = track.pts[1];
     var ang = Math.atan2(n1.y - start.y, n1.x - start.x);
@@ -541,6 +625,8 @@
       banner.position.set(end.x, 7.1, end.y);
       banner.rotation.y = -fang;
       trackRoot.add(postL, postR, banner);
+    }
+    if (track.pts.length > 8) {
       var wantTun = 88;
       var t0 = (track.pts.length * 0.34) | 0;
       var t1 = Math.min(track.pts.length - 2, t0 + 8);
@@ -586,7 +672,7 @@
       trackRoot.add(wL, wR, roof);
     }
     var dummy = new T.Object3D();
-    var nTree = Math.min(closed ? 90 : 220, Math.max(24, (track.pts.length / 6) | 0));
+    var nTree = Math.min(closed ? 140 : 240, Math.max(32, (track.pts.length / 5) | 0));
     var trunk = new T.InstancedMesh(new T.CylinderGeometry(0.18, 0.28, 2.4, 5), new T.MeshStandardMaterial({ color: 0x4a331c }), nTree);
     var crown = new T.InstancedMesh(new T.ConeGeometry(1.4, 3.2, 6), new T.MeshStandardMaterial({ color: 0x1a5c32, flatShading: true }), nTree);
     trunk.castShadow = crown.castShadow = true;
@@ -596,8 +682,8 @@
       var tx = q.x - p.x, tz = q.y - p.y;
       var len = Math.hypot(tx, tz) || 1;
       var side = i % 2 ? 1 : -1;
-      var x = p.x + (-tz / len) * (track.width + 11 + (i % 5)) * side;
-      var z = p.y + (tx / len) * (track.width + 11 + (i % 5)) * side;
+      var x = p.x + (-tz / len) * (track.width + 14 + (i % 5)) * side;
+      var z = p.y + (tx / len) * (track.width + 14 + (i % 5)) * side;
       dummy.position.set(x, 1.2, z);
       dummy.scale.set(1, 1 + (i % 4) * 0.08, 1);
       dummy.updateMatrix();

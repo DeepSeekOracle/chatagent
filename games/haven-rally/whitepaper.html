@@ -62,14 +62,14 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p><b>Gears.</b> RPM locked to road speed × ratio except during a 0.12 s shift (clutch open). Auto upshift ~93% redline, downshift when RPM would sit under the torque peak.</p>
   <p><b>Drive.</b> <code>rwd</code> / <code>fwd</code> / <code>awd</code> sets which axle gets torque. Traction <code>μ N_driven</code> with weight shift. If drive force exceeds that, <code>wheelSlip</code> rises: RWD yaws (spin), FWD pushes wide, AWD holds longer. Future HP upgrades without extra μ will spin.</p>
   <p><b>Brake.</b> <code>brakeMu × mass × g × 0.72</code>. E-brake is extra rear μ and a slide. Lateral: <code>vh</code> chases heading at a rate from μ. On-track slip charges boost; Right Shift spends it.</p>
-  <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is three lanes: half-width <code>1.5 × 4.4 yd</code>, painted dividers at ±½ lane. Sectors fire when <code>s</code> crosses their fraction.</p>
+  <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is four lanes: half-width <code>2 × 4.4 yd</code>, painted dividers between lanes, yellow edges. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Circuits</h2>
   <table>
     <tr><th>Id</th><th>Feel</th></tr>
-    <tr><td>pine-coil</td><td>Parkland dusk, medium width, flowing esses</td></tr>
-    <tr><td>coral-coast</td><td>Wide coastal, long straights, wind-tinted sky</td></tr>
-    <tr><td>singularity-ring</td><td>Night, tight, high contrast</td></tr>
+    <tr><td>pine-coil</td><td>Parkland dusk highway, four lanes, flowing esses</td></tr>
+    <tr><td>coral-coast</td><td>Four-lane coastal, long straights, wind-tinted sky</td></tr>
+    <tr><td>singularity-ring</td><td>Night city ring, four lanes, neon walls</td></tr>
     <tr><td>ridge-*</td><td>Endless run. Seeded point-to-point, ~28,000 yd (~16 mi), 3 checkpoints, one run.</td></tr>
     <tr><td>drag-eighth</td><td>1/8 mile — 660 ft (220 yd). AI in lane 2.</td></tr>
     <tr><td>drag-1000</td><td>1000 ft (NHRA Top Fuel trap length).</td></tr>
