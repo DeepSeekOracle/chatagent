@@ -681,30 +681,51 @@
   function spawnTraffic(track) {
     const rng = mulberry((track.seed || 1) ^ 0x91c3e);
     const cars = [];
-    const cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314];
+    const cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314, 0x0e7490, 0x854d0e];
     let s = 28 + rng() * 12;
     let i = 0;
+    let nTractor = 0;
     while (s < track.len - 90 && i < 64) {
       const pack = rng() < 0.28 ? 2 : 1;
-      let p, lane, pose, along;
+      let p, lane, pose, along, roll, kind, spec;
       for (p = 0; p < pack && i < 64; p++) {
         lane = (rng() * TRACK_LANES) | 0;
         if (i < 2) lane = i === 0 ? 2 : 0;
         along = s + p * (8 + rng() * 6);
         pose = poseAtS(track, along, laneLat(lane));
+        roll = rng();
+        if (s > 900 && nTractor < 4 && roll < 0.055) {
+          kind = "tractor";
+          nTractor += 1;
+          spec = { speed: 6.5 + rng() * 3.2, hp: 12, hitR: 4.4, ptsMul: 4, boostMul: 4, color: 0x65a30d };
+        } else if (roll < 0.2) {
+          kind = "hauler";
+          spec = { speed: 11 + rng() * 10, hp: 3.2, hitR: 3.9, ptsMul: 1.5, boostMul: 1.2, color: cols[i % cols.length] };
+        } else if (roll < 0.42) {
+          kind = "van";
+          spec = { speed: 13 + rng() * 14, hp: 1.8, hitR: 3.55, ptsMul: 1.2, boostMul: 1, color: cols[(i + 3) % cols.length] };
+        } else {
+          kind = "sedan";
+          spec = { speed: 15 + rng() * 22, hp: 1, hitR: 3.35, ptsMul: 1, boostMul: 1, color: cols[i % cols.length] };
+        }
         cars.push({
           id: i,
+          kind: kind,
           s: along,
           lane: lane,
-          speed: 14 + rng() * 22,
-          hp: 1,
+          speed: spec.speed,
+          hp: spec.hp,
+          maxHp: spec.hp,
+          hitR: spec.hitR,
+          ptsMul: spec.ptsMul,
+          boostMul: spec.boostMul,
           alive: true,
           wreck: 0,
           hitT: 0,
           x: pose.x,
           y: pose.y,
           h: pose.h,
-          color: cols[i % cols.length]
+          color: spec.color
         });
         i += 1;
       }
@@ -744,11 +765,14 @@
     G.combo += 1;
     G.mult = G.combo;
     if (G.combo > G.bestCombo) G.bestCombo = G.combo;
-    const pts = 100 * G.mult;
+    const mul = car.ptsMul || 1;
+    const bmul = car.boostMul || 1;
+    const pts = Math.round(100 * G.mult * mul);
     G.score += pts;
-    G.car.boost = Math.min((G.craft && G.craft.boostTank) || 1, (G.car.boost || 0) + 0.11);
+    G.car.boost = Math.min((G.craft && G.craft.boostTank) || 1, (G.car.boost || 0) + 0.11 * bmul);
     G.multPulse = 1;
     arcadePop("+" + pts, "pts");
+    if (car.kind === "tractor") arcadePop("TRACTOR  x4", "mult");
     arcadePop("x" + G.combo + "  +" + (G.combo * COMBO_MPH) + " MPH", "mult");
     const call = comboCallout(G.combo, G.kills);
     if (call) {
@@ -785,7 +809,7 @@
         dx = c.x - px; dy = c.y - py;
         d = Math.hypot(dx, dy);
         c.hitT = Math.max(0, (c.hitT || 0) - dt);
-        if (d < 3.35 && G.phase === "race" && c.hitT <= 0) {
+        if (d < (c.hitR || 3.35) && G.phase === "race" && c.hitT <= 0) {
           G.car.speed *= 0.62;
           G.car.x -= Math.cos(G.car.vh) * 0.55;
           G.car.y -= Math.sin(G.car.vh) * 0.55;
@@ -851,7 +875,7 @@
       dx = c.x - ox; dy = c.y - oy;
       along = dx * fx + dy * fy;
       perp = Math.abs(dx * rx + dy * ry);
-      if (along > 2.5 && along < 52 && perp < 2.5 + along * 0.035 && along < bestAlong) {
+      if (along > 2.5 && along < 52 && perp < (c.kind === "tractor" ? 3.2 : 2.5) + along * 0.035 && along < bestAlong) {
         bestAlong = along;
         best = c;
       }
@@ -1054,7 +1078,8 @@
     resetArcade();
     if (tr.kind === "ridge") {
       G.traffic = spawnTraffic(tr);
-      log("Traffic · " + G.traffic.length + " cars on the highway");
+      const nTr = G.traffic.filter(function (c) { return c.kind === "tractor"; }).length;
+      log("Traffic · " + G.traffic.length + " · " + nTr + " tractor" + (nTr === 1 ? "" : "s"));
     }
     if ($("arcadeHud")) $("arcadeHud").classList.toggle("hidden", tr.kind !== "ridge");
     G.phase = opt("countdown") ? "count" : "race";

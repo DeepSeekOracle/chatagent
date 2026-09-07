@@ -632,6 +632,11 @@
     badge.position.set(0, 0.46, -1.92);
     g.add(badge);
     addBoostFlamesAt(g, T, ghost, 0.20, 1.82, 0.26);
+    box(0.32, 0.1, 0.02, 0, 0.36, 1.80, mats.gold);
+    var fant = new T.Mesh(new T.CylinderGeometry(0.01, 0.01, 0.55, 6), mats.chrome);
+    fant.position.set(-0.22, 1.42, 0.12);
+    fant.rotation.z = -0.12;
+    g.add(fant);
     var wy = 0.30;
     g.add(makeWheel(T, mats, wy, -0.78, -1.08, true, 0.32));
     g.add(makeWheel(T, mats, wy, 0.78, -1.08, true, 0.32));
@@ -764,6 +769,9 @@
     badge.position.set(0, 0.44, -2.16);
     g.add(badge);
     addBoostFlamesAt(g, T, ghost, 0.22, 2.06, 0.32);
+    box(0.08, 0.28, 0.22, -0.98, 0.28, 1.62, mats.dark);
+    box(0.08, 0.28, 0.22, 0.98, 0.28, 1.62, mats.dark);
+    box(0.34, 0.1, 0.02, 0, 0.34, 2.08, mats.gold);
     g.add(makeWheel(T, mats, 0.34, -0.90, -1.18, true, 0.34));
     g.add(makeWheel(T, mats, 0.34, 0.90, -1.18, true, 0.34));
     g.add(makeWheel(T, mats, 0.36, -0.94, 1.42, false, 0.36));
@@ -1039,6 +1047,13 @@
     var badge = new T.Mesh(new T.CircleGeometry(0.065, 18), mats.gold);
     badge.position.set(0, 0.44, -2.16);
     g.add(badge);
+    var plate = new T.Mesh(new T.BoxGeometry(0.38, 0.12, 0.02), mats.gold);
+    plate.position.set(0, 0.32, 2.04);
+    g.add(plate);
+    var ant = new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.72, 6), mats.chrome);
+    ant.position.set(0.42, 1.22, 0.55);
+    ant.rotation.z = 0.18;
+    g.add(ant);
 
     var wy = 0.33;
     g.add(makeWheel(T, mats, wy, -0.8, -1.18, true));
@@ -1046,6 +1061,99 @@
     g.add(makeWheel(T, mats, wy, -0.82, 1.22, false));
     g.add(makeWheel(T, mats, wy, 0.82, 1.22, false));
     g.userData.apex = true;
+    g.userData.body = "apex";
+    return g;
+  }
+
+  function trafficWheel(T, mats, y, x, z, rad) {
+    return makeWheel(T, mats, y, x, z, false, rad || 0.32);
+  }
+
+  function buildTraffic(T, opts) {
+    opts = opts || {};
+    var kind = opts.kind || "sedan";
+    var paintCol = opts.paint != null ? opts.paint : 0x334155;
+    var g = new T.Group();
+    var mats = paintMats(T, paintCol, opts.envMap || null, false);
+    function box(w, h, d, x, y, z, m) {
+      var mesh = new T.Mesh(new T.BoxGeometry(w, h, d), m || mats.paint);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      g.add(mesh);
+      return mesh;
+    }
+    function cyl(rt, rb, h, x, y, z, m, rx, rz) {
+      var mesh = new T.Mesh(new T.CylinderGeometry(rt, rb, h, 10), m);
+      mesh.position.set(x, y, z);
+      if (rx) mesh.rotation.x = rx;
+      if (rz) mesh.rotation.z = rz;
+      g.add(mesh);
+      return mesh;
+    }
+    if (kind === "tractor") {
+      box(1.15, 0.55, 1.7, 0, 0.72, -0.15, mats.paint);
+      box(1.05, 0.72, 1.05, 0, 1.28, 0.22, mats.dark);
+      box(0.95, 0.08, 0.95, 0, 1.68, 0.22, mats.gold);
+      cyl(0.04, 0.04, 1.15, 0.42, 1.55, 0.55, mats.chrome, 0, 0);
+      cyl(0.055, 0.04, 0.12, 0.42, 2.12, 0.55, mats.dark, 0, 0);
+      var hoop = new T.Mesh(new T.TorusGeometry(0.62, 0.035, 8, 16, Math.PI), mats.chrome);
+      hoop.rotation.z = Math.PI / 2;
+      hoop.position.set(0, 1.55, 0.22);
+      g.add(hoop);
+      box(0.55, 0.22, 0.7, 0, 0.62, -1.05, mats.paint);
+      box(0.9, 0.1, 0.08, 0, 0.58, -1.38, mats.head);
+      box(0.28, 0.12, 0.06, -0.42, 0.7, 0.95, mats.tail);
+      box(0.28, 0.12, 0.06, 0.42, 0.7, 0.95, mats.tail);
+      g.add(trafficWheel(T, mats, 0.38, -0.62, -0.95, 0.28));
+      g.add(trafficWheel(T, mats, 0.38, 0.62, -0.95, 0.28));
+      g.add(trafficWheel(T, mats, 0.62, -0.78, 0.72, 0.52));
+      g.add(trafficWheel(T, mats, 0.62, 0.78, 0.72, 0.52));
+      g.userData.kind = "tractor";
+      g.userData.lockedPaint = true;
+      return g;
+    }
+    if (kind === "hauler") {
+      box(1.7, 0.7, 1.55, 0, 0.72, -1.35, mats.paint);
+      box(1.45, 0.55, 1.05, 0, 1.28, -1.42, mats.dark);
+      box(1.85, 1.55, 2.85, 0, 1.22, 0.85, mats.lattice);
+      box(1.85, 0.08, 2.85, 0, 2.02, 0.85, mats.dark);
+      box(1.15, 0.1, 0.08, 0, 0.55, -2.12, mats.head);
+      box(0.35, 0.14, 0.06, -0.62, 0.58, 2.24, mats.tail);
+      box(0.35, 0.14, 0.06, 0.62, 0.58, 2.24, mats.tail);
+      g.add(trafficWheel(T, mats, 0.38, -0.78, -1.35, 0.34));
+      g.add(trafficWheel(T, mats, 0.38, 0.78, -1.35, 0.34));
+      g.add(trafficWheel(T, mats, 0.4, -0.82, 0.55, 0.36));
+      g.add(trafficWheel(T, mats, 0.4, 0.82, 0.55, 0.36));
+      g.add(trafficWheel(T, mats, 0.4, -0.82, 1.55, 0.36));
+      g.add(trafficWheel(T, mats, 0.4, 0.82, 1.55, 0.36));
+      g.userData.kind = "hauler";
+      return g;
+    }
+    if (kind === "van") {
+      box(1.55, 0.55, 3.4, 0, 0.62, 0.05, mats.paint);
+      box(1.48, 0.95, 2.55, 0, 1.28, 0.28, mats.paint);
+      box(1.35, 0.55, 1.05, 0, 1.22, -1.15, mats.dark);
+      box(1.1, 0.08, 0.07, 0, 0.5, -1.68, mats.head);
+      box(0.4, 0.16, 0.06, -0.5, 0.58, 1.74, mats.tail);
+      box(0.4, 0.16, 0.06, 0.5, 0.58, 1.74, mats.tail);
+      g.add(trafficWheel(T, mats, 0.34, -0.7, -1.05, 0.32));
+      g.add(trafficWheel(T, mats, 0.34, 0.7, -1.05, 0.32));
+      g.add(trafficWheel(T, mats, 0.34, -0.72, 1.15, 0.32));
+      g.add(trafficWheel(T, mats, 0.34, 0.72, 1.15, 0.32));
+      g.userData.kind = "van";
+      return g;
+    }
+    box(1.72, 0.48, 3.2, 0, 0.52, 0, mats.paint);
+    box(1.35, 0.38, 1.35, 0, 0.88, -0.15, mats.dark);
+    box(1.55, 0.22, 0.95, 0, 0.58, 1.05, mats.paint);
+    box(1.15, 0.08, 0.06, 0, 0.42, -1.58, mats.head);
+    box(0.38, 0.12, 0.05, -0.52, 0.48, 1.58, mats.tail);
+    box(0.38, 0.12, 0.05, 0.52, 0.48, 1.58, mats.tail);
+    g.add(trafficWheel(T, mats, 0.32, -0.72, -1.05, 0.3));
+    g.add(trafficWheel(T, mats, 0.32, 0.72, -1.05, 0.3));
+    g.add(trafficWheel(T, mats, 0.32, -0.74, 1.12, 0.3));
+    g.add(trafficWheel(T, mats, 0.32, 0.74, 1.12, 0.3));
+    g.userData.kind = "sedan";
     return g;
   }
 
@@ -1223,6 +1331,7 @@
   global.HavenCar = {
     bakeEnv: bakeEnv,
     build: build,
+    buildTraffic: buildTraffic,
     setLights: setLights,
     openStudio: openStudio,
     closeStudio: closeStudio,

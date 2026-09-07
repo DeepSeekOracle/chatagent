@@ -964,7 +964,6 @@
       scene.add(sparkGroup);
     }
     attachGuns(carMesh);
-    ensureTraffic(64);
     ensureTracers(12);
     ensureSkids();
     ensureSmoke();
@@ -1046,7 +1045,10 @@
     root.userData.mg = [barrel(-0.44), barrel(0.44)];
   }
 
-  function makeTrafficCar(color) {
+  function makeTrafficCar(color, kind) {
+    if (global.HavenCar && HavenCar.buildTraffic) {
+      return HavenCar.buildTraffic(T, { paint: color, kind: kind || "sedan", envMap: envMap });
+    }
     var g = new T.Group();
     var body = new T.Mesh(
       new T.BoxGeometry(1.85, 0.52, 3.35),
@@ -1054,30 +1056,30 @@
     );
     body.position.y = 0.46;
     g.add(body);
-    var cabin = new T.Mesh(
-      new T.BoxGeometry(1.35, 0.3, 1.25),
-      new T.MeshStandardMaterial({ color: 0x0b1220, roughness: 0.22, metalness: 0.4 })
-    );
-    cabin.position.set(0, 0.7, -0.08);
-    g.add(cabin);
-    var lamp = new T.Mesh(
-      new T.BoxGeometry(1.2, 0.08, 0.06),
-      new T.MeshStandardMaterial({ color: 0xfff1c4, emissive: 0xffe08a, emissiveIntensity: 1.4 })
-    );
-    lamp.position.set(0, 0.38, -1.54);
-    g.add(lamp);
+    g.userData.kind = kind || "sedan";
     return g;
   }
 
-  function ensureTraffic(n) {
-    while (trafficPool.length < n) {
-      var cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314];
-      var m = makeTrafficCar(cols[trafficPool.length % cols.length]);
-      m.visible = false;
-      m.frustumCulled = false;
-      m.scale.setScalar(1.15);
-      scene.add(m);
-      trafficPool.push(m);
+  function ensureTraffic(list) {
+    var n = (list && list.length) || 0;
+    var i, t, m, kind, col;
+    while (trafficPool.length < n) trafficPool.push(null);
+    for (i = 0; i < n; i++) {
+      t = list[i];
+      kind = (t && t.kind) || "sedan";
+      col = (t && t.color) || 0x334155;
+      m = trafficPool[i];
+      if (m && m.userData.kind !== kind) {
+        disposeObj(m);
+        m = null;
+      }
+      if (!m) {
+        m = makeTrafficCar(col, kind);
+        m.visible = false;
+        m.frustumCulled = false;
+        scene.add(m);
+        trafficPool[i] = m;
+      }
     }
   }
 
@@ -1094,23 +1096,26 @@
   }
 
   function syncTraffic(list) {
-    var i, m, t;
+    ensureTraffic(list);
+    var i, m, t, sc;
     for (i = 0; i < trafficPool.length; i++) {
       m = trafficPool[i];
+      if (!m) continue;
       t = list && list[i];
       if (!t || (!t.alive && !(t.wreck > 0.02))) {
         m.visible = false;
         continue;
       }
       m.visible = true;
-      if (t.color && m.children[0] && m.children[0].material && m.children[0].material.color) {
+      if (t.color && !m.userData.lockedPaint && m.children[0] && m.children[0].material && m.children[0].material.color) {
         m.children[0].material.color.setHex(t.color);
         if (m.children[0].material.emissive) m.children[0].material.emissive.setHex(t.color);
       }
-      m.position.set(t.x, t.alive ? 0.02 : 0.02 + (1 - t.wreck) * 0.4, t.y);
+      sc = t.kind === "tractor" ? 1.22 : t.kind === "hauler" ? 1.12 : t.kind === "van" ? 1.08 : 1;
+      m.position.set(t.x, t.alive ? 0.02 : 0.02 + (1 - t.wreck) * 0.45, t.y);
       m.rotation.y = -t.h - Math.PI / 2;
       m.rotation.z = t.alive ? 0 : (1 - t.wreck) * 0.8;
-      m.scale.setScalar(t.alive ? 1 : 0.55 + t.wreck * 0.45);
+      m.scale.setScalar(t.alive ? sc : sc * (0.55 + t.wreck * 0.45));
     }
   }
 
