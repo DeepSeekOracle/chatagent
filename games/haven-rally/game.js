@@ -5,7 +5,7 @@
   const YD = 0.9144;
   const G0 = 9.81;
   const RHO = 1.225;
-  const DEFAULT_GEARS = [4.28, 2.95, 2.08, 1.36, 1.10, 0.89];
+  const DEFAULT_GEARS = [3.28, 2.08, 1.48, 1.16, 0.97, 0.84];
   const COMBO_MPH = 5;
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
@@ -1205,13 +1205,17 @@
     const ratio = clutch === 0 ? 0 : (car.gear < 0 ? -gears[0] * 0.82 : gears[gIdx]) * c.finalDrive;
     let rpm = c.idle;
     if (ratio !== 0) rpm = (vAbs / c.wheelRadius) * Math.abs(ratio) * 60 / (Math.PI * 2);
-    if (vAbs < 3.2 && inp.throttle && clutch) rpm = Math.max(rpm, c.idle + inp.throttle * (c.tqRpm - c.idle) * 0.96);
-    rpm = rpm + car.wheelSlip * (c.redline - rpm) * 0.85;
+    if (vAbs < 7.5 && car.gear === 1 && inp.throttle && clutch) {
+      rpm = Math.max(rpm, c.idle + inp.throttle * (c.tqRpm - c.idle) * 1.02);
+    }
+    rpm = rpm + car.wheelSlip * (c.redline - rpm) * (car.gear <= 1 ? 0.92 : 0.55);
     rpm = clamp(rpm, c.idle * 0.7, c.redline + 200);
     if (car.shiftT <= 0 && car.gear > 0) {
-      if (rpm > c.redline * 0.93 && car.gear < nG) {
+      const shiftRpm = car.gear <= 3 ? c.redline * 0.965 : c.redline * 0.915;
+      if (rpm > shiftRpm && car.gear < nG) {
         car.gear += 1;
-        car.shiftT = 0.12;
+        car.shiftT = car.gear <= 3 ? 0.09 : 0.14;
+        if (car.gear === 2 || car.gear === 3) car.speed += 2.4;
       } else if (rpm < Math.max(c.idle + 900, c.tqRpm * 0.48) && car.gear > 1 && inp.throttle < 0.55) {
         const low = roadRpm(c, car.speed, car.gear - 2);
         if (low < c.redline * 0.88) {
@@ -1222,9 +1226,11 @@
     }
     const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
-    if (car.gear === 1) Fdrive *= 1.34;
-    else if (car.gear === 2) Fdrive *= 1.58;
-    else if (car.gear === 3) Fdrive *= 1.46;
+    if (car.gear === 1) Fdrive *= 1.55;
+    else if (car.gear === 2) Fdrive *= 3.05;
+    else if (car.gear === 3) Fdrive *= 2.72;
+    else if (car.gear === 4) Fdrive *= 0.9;
+    else if (car.gear >= 5) Fdrive *= 0.84;
     const axEst = car.speed >= 0 ? 1 : -1;
     const df = driveFrac(c);
     const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
@@ -1232,9 +1238,10 @@
     const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
     const surf = inp.onTrack ? 1 : 0.32;
     let Fmax = Math.max(400, c.mu * drivenN * surf);
-    if (car.gear === 1) Fmax *= 1.24;
-    else if (car.gear === 2) Fmax *= 1.36;
-    else if (car.gear === 3) Fmax *= 1.26;
+    if (car.gear === 1) Fmax *= 1.18;
+    else if (car.gear === 2) Fmax *= 1.82;
+    else if (car.gear === 3) Fmax *= 1.68;
+    else if (car.gear >= 4) Fmax *= 1.08;
     const want = Math.abs(Fdrive);
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
@@ -1750,7 +1757,7 @@
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain (and the bonus speed) dumps. 1st and 2nd pull harder off the line.</li>" +
+      "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain dumps. Launch is 1–2–3 torque slingshot; 4th-on is the long pull.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
