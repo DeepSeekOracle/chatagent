@@ -6,7 +6,7 @@
   var renderer, scene, camera, clock;
   var sun, hemi, canvasEl, running = false;
   var trackRoot = null;
-  var carMesh, ghostMesh, sparkGroup;
+  var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1 };
@@ -85,7 +85,142 @@
     if (id === "coral-coast") return { sky: 0x7ec4ee, fog: 0xb8dcee, ground: 0x2a6a4a, road: 0x3a3a42, dusk: false };
     if (id === "singularity-ring") return { sky: 0x140c28, fog: 0x241848, ground: 0x12101c, road: 0x2a2440, dusk: true };
     if (id === "endless") return { sky: 0x4a6080, fog: 0x6a8098, ground: 0x243428, road: 0x33383e, dusk: false };
+    if (id === "drag-strip") return { sky: 0x151c28, fog: 0x243044, ground: 0x1a2018, road: 0x2c2e32, dusk: true };
     return { sky: 0x6ea8d0, fog: 0x8eb8d4, ground: 0x1c4a2c, road: 0x2e3238, dusk: false };
+  }
+
+  function bulbMesh(T, r, col) {
+    var m = new T.Mesh(
+      new T.SphereGeometry(r, 12, 10),
+      new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.08, roughness: 0.35 })
+    );
+    m.userData.base = col;
+    return m;
+  }
+
+  function buildDrag(track) {
+    var T = global.THREE;
+    var th = themeOf(track.theme);
+    scene.background = new T.Color(th.sky);
+    scene.fog.color.setHex(th.fog);
+    scene.fog.density = 0.0016;
+    var total = track.pts[track.pts.length - 1].x;
+    var startX = track.startX;
+    var finishX = track.finishX;
+    var ground = new T.Mesh(
+      new T.PlaneGeometry(Math.max(2400, total + 200), 900),
+      new T.MeshStandardMaterial({ color: th.ground, roughness: 0.96 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(total * 0.5, -0.4, 0);
+    ground.receiveShadow = true;
+    trackRoot.add(ground);
+    var strip = new T.Mesh(
+      new T.BoxGeometry(total + 8, 0.14, 18),
+      new T.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.78, metalness: 0.08 })
+    );
+    strip.position.set(total * 0.5, 0.02, 0);
+    strip.receiveShadow = true;
+    trackRoot.add(strip);
+    var laneL = new T.Mesh(
+      new T.BoxGeometry(total + 6, 0.02, 6.4),
+      new T.MeshStandardMaterial({ color: 0x32343a, roughness: 0.7 })
+    );
+    laneL.position.set(total * 0.5, 0.1, -2.2);
+    trackRoot.add(laneL);
+    var laneR = laneL.clone();
+    laneR.position.z = 2.2;
+    trackRoot.add(laneR);
+    function stripe(x, w, z, col) {
+      var s = new T.Mesh(new T.BoxGeometry(w, 0.04, 0.18), new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.2 }));
+      s.position.set(x, 0.14, z);
+      trackRoot.add(s);
+    }
+    var d;
+    for (d = 8; d < total; d += 8) stripe(d, 2.2, 0, 0xf8fafc);
+    var startLine = new T.Mesh(
+      new T.BoxGeometry(0.45, 0.06, 14),
+      new T.MeshStandardMaterial({ color: 0xf8fafc, emissive: 0x8899aa, emissiveIntensity: 0.25 })
+    );
+    startLine.position.set(startX, 0.16, 0);
+    trackRoot.add(startLine);
+    var finishLine = startLine.clone();
+    finishLine.position.x = finishX;
+    finishLine.material = new T.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x996600, emissiveIntensity: 0.35 });
+    trackRoot.add(finishLine);
+    [60, 330, 660, 1000, 1320].forEach(function (ft) {
+      var x = startX + ft / 3;
+      if (x > finishX + 1) return;
+      var mk = new T.Mesh(
+        new T.BoxGeometry(0.2, 0.04, 16),
+        new T.MeshStandardMaterial({ color: 0x5eead4, emissive: 0x134e4a })
+      );
+      mk.position.set(x, 0.15, 0);
+      trackRoot.add(mk);
+    });
+    var wallMat = new T.MeshStandardMaterial({ color: 0xc4c4c4, roughness: 0.55 });
+    var wallA = new T.Mesh(new T.BoxGeometry(total + 10, 1.1, 0.35), wallMat);
+    wallA.position.set(total * 0.5, 0.55, -9.2);
+    var wallB = wallA.clone();
+    wallB.position.z = 9.2;
+    trackRoot.add(wallA, wallB);
+    var i, pole, lamp;
+    var nFlood = 0;
+    for (i = 0; i < total; i += 52) {
+      pole = new T.Mesh(new T.CylinderGeometry(0.12, 0.16, 11, 6), new T.MeshStandardMaterial({ color: 0x334 }));
+      pole.position.set(i + 10, 5.5, -11);
+      lamp = new T.Mesh(new T.BoxGeometry(1.6, 0.2, 0.6), new T.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffe08a, emissiveIntensity: 1.4 }));
+      lamp.position.set(i + 10, 11.1, -10.2);
+      trackRoot.add(pole, lamp);
+      if (nFlood < 7) {
+        var light = new T.PointLight(0xffe8c0, 1.05, 52, 2);
+        light.position.set(i + 10, 10.5, -8);
+        trackRoot.add(light);
+        nFlood += 1;
+      }
+    }
+    var tower = new T.Mesh(new T.BoxGeometry(4.2, 14, 3.2), new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }));
+    tower.position.set(startX - 18, 7, 14);
+    trackRoot.add(tower);
+    var booth = new T.Mesh(new T.BoxGeometry(6, 3.2, 4), new T.MeshStandardMaterial({ color: 0x0f172a }));
+    booth.position.set(startX - 8, 1.6, 13);
+    trackRoot.add(booth);
+    var stand = new T.Mesh(new T.BoxGeometry(80, 6, 8), new T.MeshStandardMaterial({ color: 0x334155 }));
+    stand.position.set(startX + 40, 3, 18);
+    stand.rotation.x = -0.18;
+    trackRoot.add(stand);
+    var tree = new T.Group();
+    tree.position.set(startX - 9, 0, 0);
+    var post = new T.Mesh(new T.BoxGeometry(0.35, 8.2, 0.35), new T.MeshStandardMaterial({ color: 0x111827 }));
+    post.position.y = 4.1;
+    tree.add(post);
+    var head = new T.Mesh(new T.BoxGeometry(2.4, 5.6, 0.5), new T.MeshStandardMaterial({ color: 0x0b1220 }));
+    head.position.y = 6.4;
+    tree.add(head);
+    function pair(name, y, r, col) {
+      var L = bulbMesh(T, r, col);
+      var R = bulbMesh(T, r, col);
+      L.position.set(-0.55, y, 0.28);
+      R.position.set(0.55, y, 0.28);
+      tree.add(L, R);
+      treeLights[name + "L"] = L;
+      treeLights[name + "R"] = R;
+    }
+    treeLights = {};
+    pair("pre", 8.55, 0.1, 0xfde68a);
+    pair("stage", 8.15, 0.1, 0xfbbf24);
+    pair("a1", 7.45, 0.16, 0xf59e0b);
+    pair("a2", 6.9, 0.16, 0xf59e0b);
+    pair("a3", 6.35, 0.16, 0xf59e0b);
+    pair("green", 5.7, 0.17, 0x22c55e);
+    pair("red", 5.1, 0.17, 0xef4444);
+    trackRoot.add(tree);
+    var sand = new T.Mesh(
+      new T.BoxGeometry(40, 0.2, 18),
+      new T.MeshStandardMaterial({ color: 0xc4b58a, roughness: 1 })
+    );
+    sand.position.set(total - 18, 0.08, 0);
+    trackRoot.add(sand);
   }
 
   function makeCar(color, ghost) {
@@ -112,6 +247,10 @@
     }
     trackRoot = new T.Group();
     scene.add(trackRoot);
+    if (track.kind === "drag") {
+      buildDrag(track);
+      return;
+    }
     var th = themeOf(track.theme);
     scene.background = new T.Color(th.sky);
     scene.fog.color.setHex(th.fog);
@@ -179,12 +318,19 @@
   }
 
   function ensureActors() {
-    if (carMesh) return;
-    carMesh = makeCar(0x165e66, false);
-    scene.add(carMesh);
-    ghostMesh = makeCar(0xc084fc, true);
-    ghostMesh.visible = false;
-    scene.add(ghostMesh);
+    if (!carMesh) {
+      carMesh = makeCar(0x165e66, false);
+      scene.add(carMesh);
+      ghostMesh = makeCar(0xc084fc, true);
+      ghostMesh.visible = false;
+      scene.add(ghostMesh);
+    }
+    if (!aiMesh) {
+      aiMesh = makeCar(0xb45309, false);
+      aiMesh.visible = false;
+      scene.add(aiMesh);
+    }
+    if (sparkGroup) return;
     sparkGroup = new T.Group();
     var si, sm;
     for (si = 0; si < 28; si++) {
@@ -270,6 +416,21 @@
       if (tune.dist != null) camTune.dist = tune.dist;
       if (tune.height != null) camTune.height = tune.height;
     },
+    setTree: function (st) {
+      if (!treeLights || !st) return;
+      function set(name, on, hot) {
+        var m = treeLights[name];
+        if (!m || !m.material) return;
+        m.material.emissiveIntensity = on ? (hot || 2.8) : 0.08;
+      }
+      set("preL", st.pre, 2.2); set("preR", st.pre, 2.2);
+      set("stageL", st.stage, 2.4); set("stageR", st.stage, 2.4);
+      set("a1L", st.a1, 3); set("a1R", st.a1, 3);
+      set("a2L", st.a2, 3); set("a2R", st.a2, 3);
+      set("a3L", st.a3, 3); set("a3R", st.a3, 3);
+      set("greenL", st.green, 3.4); set("greenR", st.green, 3.4);
+      set("redL", st.redL, 3.6); set("redR", st.redR, 3.6);
+    },
     setState: function (s) {
       if (!ok() || !s || !s.car) return;
       ensureActors();
@@ -286,6 +447,13 @@
         ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
         ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
       } else ghostMesh.visible = false;
+      if (aiMesh) {
+        if (s.ai) {
+          aiMesh.visible = true;
+          aiMesh.position.set(s.ai.x, 0.02, s.ai.y);
+          aiMesh.rotation.y = -s.ai.h - Math.PI / 2;
+        } else aiMesh.visible = false;
+      }
       carMesh.traverse(function (ch) {
         if (ch.userData.fx) ch.visible = !s.reduceFx;
       });

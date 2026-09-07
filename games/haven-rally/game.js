@@ -148,9 +148,10 @@
     });
   }
 
-  function densifyClosed(pts, step) {
+  function densifyPath(pts, step, closed) {
     const out = [];
-    for (let i = 0; i < pts.length; i++) {
+    const segs = closed ? pts.length : Math.max(0, pts.length - 1);
+    for (let i = 0; i < segs; i++) {
       const a = pts[i], b = pts[(i + 1) % pts.length];
       const len = dist(a, b) || 1;
       const n = Math.max(1, Math.ceil(len / step));
@@ -159,11 +160,13 @@
         out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
       }
     }
+    if (!closed && pts.length) out.push(pts[pts.length - 1]);
     return out;
   }
-  function pathLen(pts) {
+  function pathLen(pts, closed) {
     let n = 0;
-    for (let i = 0; i < pts.length; i++) n += dist(pts[i], pts[(i + 1) % pts.length]);
+    const segs = closed ? pts.length : Math.max(0, pts.length - 1);
+    for (let i = 0; i < segs; i++) n += dist(pts[i], pts[(i + 1) % pts.length]);
     return n;
   }
   function wrapDelta(ds, len) {
@@ -171,13 +174,13 @@
     if (ds < -len * 0.5) ds += len;
     return ds;
   }
-  function project(p, samples, lastS) {
-    let best = 1e15, lat = 0, s = 0, hx = 1, hy = 0, acc = 0, total = 0;
-    for (let i = 0; i < samples.length; i++) {
-      const a = samples[i], b = samples[(i + 1) % samples.length];
-      total += dist(a, b);
-    }
-    for (let i = 0; i < samples.length; i++) {
+  function project(p, samples, lastS, closed) {
+    if (closed == null) closed = true;
+    let best = 1e15, lat = 0, s = 0, hx = 1, hy = 0, acc = 0;
+    const segs = closed ? samples.length : Math.max(0, samples.length - 1);
+    let total = 0;
+    for (let i = 0; i < segs; i++) total += dist(samples[i], samples[(i + 1) % samples.length]);
+    for (let i = 0; i < segs; i++) {
       const a = samples[i], b = samples[(i + 1) % samples.length];
       const dx = b.x - a.x, dy = b.y - a.y;
       const l2 = dx * dx + dy * dy || 1;
@@ -187,7 +190,8 @@
       const d = Math.hypot(p.x - qx, p.y - qy);
       const len = Math.sqrt(l2);
       const sHere = acc + t * len;
-      const score = d + (lastS == null ? 0 : 0.12 * Math.abs(wrapDelta(sHere - lastS, total || 1)));
+      const jump = lastS == null ? 0 : Math.abs(closed ? wrapDelta(sHere - lastS, total || 1) : (sHere - lastS));
+      const score = d + 0.12 * jump;
       if (score < best) {
         best = score;
         hx = dx / (len || 1); hy = dy / (len || 1);
@@ -201,8 +205,8 @@
 
   function makeTrack(spec) {
     const pts = spec.ctrl.slice();
-    const samples = densifyClosed(pts, 5);
-    const len = pathLen(samples);
+    const samples = densifyPath(pts, 5, true);
+    const len = pathLen(samples, true);
     return {
       id: spec.id,
       name: spec.name,
@@ -213,7 +217,39 @@
       pts: pts,
       samples: samples,
       len: len,
+      closed: true,
+      kind: "circuit",
       sectors: [0.28, 0.55, 0.82]
+    };
+  }
+
+  function makeDragTrack(spec) {
+    const race = spec.yards;
+    const pad = 48;
+    const shut = Math.max(160, race * 0.42);
+    const total = pad + race + shut;
+    const pts = [];
+    for (let x = 0; x <= total; x += 6) pts.push({ x: x, y: 0 });
+    if (pts[pts.length - 1].x < total) pts.push({ x: total, y: 0 });
+    const samples = densifyPath(pts, 4, false);
+    return {
+      id: spec.id,
+      name: spec.name,
+      theme: "drag-strip",
+      lore: spec.lore,
+      width: 9.2,
+      lane: 2.2,
+      laps: 1,
+      pts: pts,
+      samples: samples,
+      len: pathLen(samples, false),
+      closed: false,
+      kind: "drag",
+      startX: pad,
+      finishX: pad + race,
+      yards: race,
+      feet: spec.feet,
+      sectors: []
     };
   }
   function loopFromPolar(n, radius, jitter, rng, spin) {
@@ -240,6 +276,18 @@
     id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", width: 6.2, laps: 3,
     lore: "Night and tight. Kai's boost is a trap if you miss the apex.",
     ctrl: loopFromPolar(12, 78, 16, mulberry(73), 1.1)
+  });
+  const DRAG_EIGHTH = makeDragTrack({
+    id: "drag-eighth", name: "Drag · 1/8 mile", feet: 660, yards: 220,
+    lore: "NHRA eighth-mile. 660 ft. Short tree, short trap."
+  });
+  const DRAG_THOU = makeDragTrack({
+    id: "drag-1000", name: "Drag · 1000 ft", feet: 1000, yards: 1000 / 3,
+    lore: "1000-foot trap. Same length NHRA used for Top Fuel."
+  });
+  const DRAG_QUARTER = makeDragTrack({
+    id: "drag-quarter", name: "Drag · 1/4 mile", feet: 1320, yards: 440,
+    lore: "Classic quarter-mile. 1320 ft. Full sportsman tree vs AI."
   });
 
   function randomTrack(seed) {
@@ -274,6 +322,8 @@
     craft: CRAFTS[0],
     phase: "idle",
     car: { x: 0, y: 0, h: 0, speed: 0, steer: 0, boost: 1 },
+    ai: null,
+    tree: { phase: "off" },
     keys: {},
     lap: 0,
     laps: 3,
@@ -336,10 +386,15 @@
   }
 
   function spawnOnGrid() {
+    if (G.track && G.track.kind === "drag") {
+      spawnDrag(false);
+      return;
+    }
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
     G.car = { x: a.x, y: a.y, h: h, speed: 0, steer: 0, boost: 1 };
+    G.ai = null;
     G.lap = 0;
     G.lastS = 0;
     G.gates = [false, false, false];
@@ -355,6 +410,7 @@
     G.ghost = (G.save.ghosts && G.save.ghosts[gk]) || null;
     G.bestMs = G.ghost && G.ghost.ms;
     paintPilot();
+    showDragUi(false);
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
     log(tr.name + " · " + G.craft.name + " · " + tr.laps + " laps");
     $("app").classList.remove("hidden");
@@ -370,6 +426,240 @@
     spawnOnGrid();
   }
 
+  function showDragUi(on) {
+    if ($("dragTree")) $("dragTree").classList.toggle("hidden", !on);
+    if ($("dragHud")) $("dragHud").classList.toggle("hidden", !on);
+  }
+
+  function beginTree(now) {
+    const foulAi = Math.random() < 0.035;
+    return {
+      t0: now,
+      phase: "pre",
+      foul: false,
+      rt: null,
+      launched: false,
+      aiFoul: foulAi,
+      aiRt: foulAi ? -(0.02 + Math.random() * 0.08) : (0.072 + Math.random() * 0.155),
+      aiGoAt: 0,
+      greenAt: 0,
+      playerDone: false,
+      aiDone: false,
+      playerMs: null,
+      aiMs: null,
+      trapMph: null,
+      aiMph: null,
+      ft60: null
+    };
+  }
+
+  function spawnDrag(runTree) {
+    const tr = G.track;
+    const lane = tr.lane;
+    const x0 = runTree ? tr.startX : tr.startX - 22;
+    G.car = { x: x0, y: -lane, h: 0, speed: 0, steer: 0, boost: 1 };
+    const c = G.craft;
+    G.ai = {
+      x: x0, y: lane, h: 0, speed: 0, boost: 1,
+      acc: c.acc * (0.94 + Math.random() * 0.1),
+      vmax: c.vmax * (0.97 + Math.random() * 0.07),
+      boostMul: c.boost
+    };
+    G.lap = 0;
+    G.lastS = x0;
+    G.gates = [false, false, false];
+    G.splits = [];
+    G.rec = [];
+    G.ghost = null;
+    G.bestMs = null;
+    G._last = 0;
+    G.t0 = 0;
+    G.sparks = 0;
+    applyOptions();
+    paintPilot();
+    showDragUi(true);
+    if (use3d && window.Rally3D) Rally3D.setTrack(tr);
+    $("app").classList.remove("hidden");
+    hideOverlay();
+    canvas.focus();
+    if (runTree) {
+      G.phase = "tree";
+      G.tree = beginTree(performance.now());
+      log("Staged · sportsman tree · " + tr.feet + " ft");
+    } else {
+      G.phase = "drag_idle";
+      G.tree = { phase: "off", foul: false };
+      log(tr.name + " · roll to the tree · F stages and runs the lights");
+    }
+  }
+
+  function treeLights(st) {
+    const p = st && st.phase;
+    return {
+      pre: p === "pre" || p === "stage" || p === "a1" || p === "a2" || p === "a3" || p === "green" || p === "red",
+      stage: p === "stage" || p === "a1" || p === "a2" || p === "a3" || p === "green" || p === "red",
+      a1: p === "a1" || p === "a2" || p === "a3" || p === "green" || p === "red",
+      a2: p === "a2" || p === "a3" || p === "green" || p === "red",
+      a3: p === "a3" || p === "green" || p === "red",
+      green: p === "green",
+      redL: !!(st && st.foul),
+      redR: !!(st && st.aiFoul && (p === "green" || p === "red"))
+    };
+  }
+
+  function paintTreeDom(st) {
+    const el = $("dragTree");
+    if (!el) return;
+    const L = treeLights(st);
+    el.querySelectorAll("[data-bulb]").forEach(function (b) {
+      const id = b.getAttribute("data-bulb");
+      let on = false;
+      if (id === "pre") on = L.pre;
+      if (id === "stage") on = L.stage;
+      if (id === "a1") on = L.a1;
+      if (id === "a2") on = L.a2;
+      if (id === "a3") on = L.a3;
+      if (id === "green") on = L.green;
+      if (id === "redL") on = L.redL;
+      if (id === "redR") on = L.redR;
+      b.classList.toggle("on", on);
+    });
+  }
+
+  function stepAi(dt, now) {
+    const ai = G.ai;
+    if (!ai) return;
+    const st = G.tree || {};
+    const go = G.phase === "race" && st.greenAt && now >= (st.aiGoAt || st.greenAt);
+    if (!go || ai.done) {
+      if (!go) { ai.speed = 0; }
+      ai.x += Math.cos(ai.h) * ai.speed * dt;
+      return;
+    }
+    const boostOn = ai.boost > 0.05;
+    if (boostOn) ai.boost = Math.max(0, ai.boost - dt * 0.38);
+    const vmax = ai.vmax * (boostOn ? 1.16 : 1);
+    const acc = ai.acc * (boostOn ? 1.4 : 1) - ai.speed * 0.5;
+    ai.speed = clamp(ai.speed + acc * dt, 0, vmax);
+    ai.h = 0;
+    ai.y += (G.track.lane - ai.y) * clamp(dt * 6, 0, 1);
+    ai.x += ai.speed * dt;
+  }
+
+  function finishDrag() {
+    if (G.phase === "done") return;
+    G.phase = "done";
+    const st = G.tree;
+    const pMs = st.playerMs;
+    const aMs = st.aiMs;
+    const win = !st.foul && (st.aiFoul || (pMs != null && (aMs == null || pMs < aMs)));
+    if (!Array.isArray(G.save.rounds)) G.save.rounds = [];
+    G.save.rounds.unshift({
+      name: (G.save.name || "Operator").slice(0, 24),
+      craft: G.craft.name,
+      track: G.track.name,
+      trackId: G.track.id,
+      ms: pMs,
+      rt: st.rt,
+      aiMs: aMs,
+      win: win,
+      foul: !!st.foul,
+      at: Date.now()
+    });
+    G.save.rounds = G.save.rounds.slice(0, 40);
+    writeSave(G.save);
+    const title = st.foul ? "Red light" : (win ? "Lane 1 wins" : "Lane 2 wins");
+    log(title + " · ET " + fmt(pMs) + " vs " + fmt(aMs));
+    showSheet(
+      "<p class='kicker'>Drag · " + G.track.feet + " ft</p><h2>" + title + "</h2>" +
+      "<p class='lore'>You RT <b>" + (st.rt != null ? (st.rt / 1000).toFixed(3) + "s" : "—") + "</b> · ET <b>" + fmt(pMs) + "</b>" +
+      (st.trapMph != null ? " · " + Math.round(st.trapMph) + " mph" : "") + "</p>" +
+      "<p class='lore'>AI RT <b>" + (st.aiFoul ? "foul" : (st.aiRt != null ? st.aiRt.toFixed(3) + "s" : "—")) +
+      "</b> · ET <b>" + fmt(aMs) + "</b></p>" +
+      donateHtml() +
+      "<div class='modes'><button class='btn gold' id='again'>Restage (F)</button><button class='btn' id='toMenu'>Menu</button></div>"
+    );
+    $("again").onclick = function () { spawnDrag(true); };
+    $("toMenu").onclick = menu;
+  }
+
+  function tickDrag(now) {
+    if (G.phase === "done") {
+      heatHud(now);
+      draw(now);
+      return;
+    }
+    const tr = G.track;
+    const st = G.tree || { phase: "off" };
+    const k = G.keys;
+    const throttle = !!(k.KeyW || k.ArrowUp);
+    if (overlayOpen() && (G.phase === "race" || G.phase === "tree")) {
+      if (G._last && G.phase === "race" && G.t0) G.t0 += now - G._last;
+      G._last = now;
+      heatHud(now);
+      draw(now);
+      return;
+    }
+    if (G.phase === "tree") {
+      const t = (now - st.t0) / 1000;
+      if (t < 0.4) st.phase = "pre";
+      else if (t < 0.9) st.phase = "stage";
+      else if (t < 1.4) st.phase = "a1";
+      else if (t < 1.9) st.phase = "a2";
+      else if (t < 2.4) st.phase = "a3";
+      else if (st.phase !== "green" && st.phase !== "red") {
+        st.phase = st.foul ? "red" : "green";
+        st.greenAt = now;
+        st.aiGoAt = now + st.aiRt * 1000;
+        G.phase = "race";
+        G.t0 = now;
+        log(st.foul ? "Red-light start." : "Green.");
+      }
+      if (throttle && t < 2.4 && st.phase !== "green") {
+        st.foul = true;
+      }
+    }
+    const dt = Math.min(0.033, G._last ? (now - G._last) / 1000 : 0.016);
+    G._last = now;
+    const locked = G.phase === "tree" && !st.foul;
+    if (G.phase === "drag_idle" || G.phase === "race" || (G.phase === "tree" && st.foul)) {
+      stepCar(dt);
+    } else if (locked) {
+      G.car.speed = 0;
+      G.car.x = tr.startX;
+      G.car.y = -tr.lane;
+      G.car.h = 0;
+    }
+    if (G.phase === "race" && st.greenAt && !st.launched && throttle) {
+      st.launched = true;
+      st.rt = now - st.greenAt;
+    }
+    stepAi(dt, now);
+    if (G.phase === "race") {
+      const px = G.car.x - tr.startX;
+      if (st.ft60 == null && px >= 20) st.ft60 = now - G.t0;
+      if (!st.playerDone && G.car.x >= tr.finishX) {
+        st.playerDone = true;
+        st.playerMs = now - G.t0;
+        st.trapMph = Math.abs(G.car.speed) * 2.04545;
+        log("Trap · " + fmt(st.playerMs) + " · " + Math.round(st.trapMph) + " mph");
+      }
+      if (G.ai && !st.aiDone && G.ai.x >= tr.finishX) {
+        st.aiDone = true;
+        st.aiMs = now - G.t0;
+        st.aiMph = Math.abs(G.ai.speed) * 2.04545;
+        log("Lane 2 trap · " + fmt(st.aiMs));
+      }
+      if ((st.playerDone && st.aiDone) ||
+          ((st.playerDone || st.aiDone) && now - G.t0 > 14000) ||
+          (now - G.t0 > 28000)) finishDrag();
+    }
+    paintTreeDom(st);
+    if (use3d && window.Rally3D && Rally3D.setTree) Rally3D.setTree(treeLights(st));
+    heatHud(now);
+    draw(now);
+  }
+
   function stepCar(dt) {
     const c = G.craft;
     const k = G.keys;
@@ -382,7 +672,7 @@
     if (opt("invertSteer")) steerIn *= -1;
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
     const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
-    const proj0 = project(G.car, G.track.samples, G.lastS);
+    const proj0 = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
     else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
@@ -406,7 +696,7 @@
     } else if (!ebrake) G.sparks *= 0.9;
     G.car.x += Math.cos(G.car.h) * G.car.speed * dt;
     G.car.y += Math.sin(G.car.h) * G.car.speed * dt;
-    let proj = project(G.car, G.track.samples, G.lastS);
+    let proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const hw = G.track.width;
     if (Math.abs(proj.lat) > hw) {
       const extra = Math.abs(proj.lat) - hw;
@@ -415,7 +705,7 @@
       G.car.y -= proj.hx * dir * extra;
       G.car.speed *= 0.7;
       G.car.h += wrapDelta(Math.atan2(proj.hy, proj.hx) - G.car.h, Math.PI * 2) * 0.12;
-      proj = project(G.car, G.track.samples, G.lastS);
+      proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     }
     return proj;
   }
@@ -427,6 +717,46 @@
   }
 
   function heatHud(now) {
+    if (G.track && G.track.kind === "drag") {
+      const st = G.tree || {};
+      const elapsed = G.phase === "race" && G.t0 ? now - G.t0 : 0;
+      if ($("lapPill")) $("lapPill").textContent = (G.track.feet || "") + " FT";
+      if ($("hudMeta")) {
+        $("hudMeta").innerHTML =
+          "<span>RT <b>" + (st.rt != null ? (st.rt / 1000).toFixed(3) : "—") + "</b></span>" +
+          "<span>ET <b>" + fmt(st.playerMs != null ? st.playerMs : elapsed) + "</b></span>";
+      }
+      if ($("speedo")) {
+        const mph = Math.abs(G.car.speed) * 2.04545;
+        $("speedo").innerHTML = Math.round(mph) + "<small>MPH</small>";
+      }
+      if ($("boostFill")) $("boostFill").style.width = Math.round(G.car.boost * 100) + "%";
+      if ($("heatCard")) {
+        $("heatCard").innerHTML = "<p><b>" + G.track.name + "</b></p><p>" +
+          (G.phase === "drag_idle" ? "Roll to the tree · press F" : G.phase === "tree" ? "Tree · hold" : G.phase) +
+          "</p><p>60' <b>" + fmt(st.ft60) + "</b></p>";
+      }
+      if ($("secCard")) {
+        $("secCard").innerHTML = "You " + fmt(st.playerMs) + (st.foul ? " FOUL" : "") +
+          "<br>AI " + fmt(st.aiMs) + (st.aiFoul ? " FOUL" : "");
+      }
+      if ($("ghostCard")) {
+        $("ghostCard").innerHTML = G.ai
+          ? "Lane 2 AI · RT " + (st.aiFoul ? "foul" : (st.aiRt != null && G.phase !== "drag_idle" ? st.aiRt.toFixed(3) + "s" : "—"))
+          : "No opponent.";
+      }
+      if ($("dragHud")) {
+        $("dragHud").innerHTML = "RT " + (st.rt != null ? (st.rt / 1000).toFixed(3) : "—") +
+          " · ET " + fmt(st.playerMs != null ? st.playerMs : elapsed) +
+          " · AI " + fmt(st.aiMs);
+      }
+      if ($("dockStatus")) {
+        $("dockStatus").textContent = G.phase === "drag_idle" ? "F to stage" :
+          (G.phase === "tree" ? "Tree…" : (st.foul ? "Red light" : "On the power"));
+      }
+      if ($("hint") && G.phase === "drag_idle") $("hint").textContent = "Drive to the tree · F stages both lanes and runs the lights";
+      return;
+    }
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     if ($("lapPill")) $("lapPill").textContent = "LAP " + Math.min(G.laps, G.lap + 1) + "/" + G.laps;
     if ($("hudMeta")) {
@@ -507,6 +837,7 @@
   function tick(now) {
     requestAnimationFrame(tick);
     if (G.mode !== "race" || !G.track) return;
+    if (G.track.kind === "drag") { tickDrag(now); return; }
     if (overlayOpen() && G.phase === "race") {
       if (G._last) G.t0 += now - G._last;
       G._last = now;
@@ -569,7 +900,7 @@
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
-      Rally3D.setState({ car: G.car, ghost: gh, sparks: G.sparks, reduceFx: opt("reduceFx") });
+      Rally3D.setState({ car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx") });
       return;
     }
     if (!ctx || !G.track) return;
@@ -605,6 +936,12 @@
       c.arc(gh.x * scale, gh.y * scale, 6, 0, Math.PI * 2);
       c.fill();
     }
+    if (G.ai) {
+      c.fillStyle = "rgba(251,191,36,.85)";
+      c.beginPath();
+      c.arc(G.ai.x * scale, G.ai.y * scale, 7, 0, Math.PI * 2);
+      c.fill();
+    }
     c.fillStyle = G.craft.color;
     c.beginPath();
     c.arc(G.car.x * scale, G.car.y * scale, 7, 0, Math.PI * 2);
@@ -616,6 +953,7 @@
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts.</li>" +
+      "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Hit sectors in order, then the start line. Three laps (two on endless).</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
@@ -691,6 +1029,7 @@
   function menu() {
     G.mode = "menu";
     G.phase = "idle";
+    showDragUi(false);
     if (window.HavenCar) HavenCar.closeStudio();
     $("app").classList.add("hidden");
     $("boot").classList.add("hidden");
@@ -720,6 +1059,9 @@
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless coil</b><span>Seeded loop. Two laps. Make a ghost.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of heats.</span></a>" +
             "<a class='mode-card' href='./whitepaper.html'><b>Whitepaper</b><span>Physics, circuits, out of scope.</span></a>" +
@@ -757,6 +1099,9 @@
       if (go === "coral") startHeat(CORAL);
       if (go === "star") startHeat(STAR);
       if (go === "endless") startHeat(randomTrack((Date.now() ^ (Math.random() * 1e9)) >>> 0));
+      if (go === "drag8") startHeat(DRAG_EIGHTH);
+      if (go === "drag1k") startHeat(DRAG_THOU);
+      if (go === "drag14") startHeat(DRAG_QUARTER);
     };
   }
 
@@ -771,6 +1116,10 @@
     if (G.mode === "menu" || overlayOpen()) return;
     G.keys[e.code] = true;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); spawnOnGrid(); }
+    if ((e.key === "f" || e.key === "F") && G.track && G.track.kind === "drag") {
+      e.preventDefault();
+      spawnDrag(true);
+    }
     if (e.key === " " || e.key === "Enter") e.preventDefault();
   });
   window.addEventListener("keyup", function (e) { G.keys[e.code] = false; });
