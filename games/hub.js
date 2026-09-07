@@ -135,6 +135,166 @@
     root.innerHTML = html;
   }
 
+  function bestJson(urls, pick) {
+    return Promise.all(urls.map(function (url) {
+      return fetch(url, { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    })).then(function (all) {
+      var best = null, n = -1;
+      all.forEach(function (j) {
+        var rows = pick(j);
+        if (rows.length > n) {
+          n = rows.length;
+          best = j;
+        }
+      });
+      return best;
+    });
+  }
+
+  function lsJson(key) {
+    try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; }
+  }
+
+  function fmtMs(ms) {
+    if (ms == null || !isFinite(ms)) return "—";
+    var s = ms / 1000, m = Math.floor(s / 60), r = s - m * 60;
+    return m + ":" + r.toFixed(3).padStart(6, "0");
+  }
+
+  function vsPar(n) {
+    if (n == null || n === 0) return "E";
+    return n > 0 ? "+" + n : String(n);
+  }
+
+  function dollars(c) {
+    var n = Number(c);
+    if (!isFinite(n)) return "—";
+    return (n / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  }
+
+  function paintHall(id, meta, rows) {
+    var root = document.querySelector('[data-hall="' + id + '"]');
+    if (!root) return;
+    var metaEl = root.querySelector(".hall-meta");
+    var list = root.querySelector(".hall-rows");
+    if (metaEl) metaEl.textContent = meta;
+    if (!list) return;
+    if (!rows || !rows.length) {
+      list.innerHTML = "";
+      return;
+    }
+    list.innerHTML = rows.map(function (r) {
+      return "<li><b>" + esc(r.score) + "</b><span>" + esc(r.name) + "</span><em>" + esc(r.meta || "") + "</em></li>";
+    }).join("");
+  }
+
+  function renderHalls() {
+    bestJson([
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/ledger.json",
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/ledger.json",
+      "/games/lattice-marines/ledger.json"
+    ], function (j) { return (j && j.wins) || []; }).then(function (data) {
+      var wins = (data && data.wins) || [];
+      var q = lsJson("lygo_lattice_marines_ledger_q") || [];
+      var seen = {};
+      var mix = wins.concat(q).filter(function (w) {
+        var k = (w.name || "") + "|" + (w.score || "") + "|" + (w.date || "") + "|" + (w.seed || "");
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      });
+      paintHall(
+        "marines",
+        mix.length ? (mix.length + " AI wins · public book") : "No inscribed AI wins yet.",
+        mix.slice(0, 12).map(function (w) {
+          return {
+            name: w.name || "Commander",
+            score: w.score != null ? String(w.score) : "—",
+            meta: [w.diff, w.mapN ? w.mapN + "×" + w.mapN : "", w.date || ""].filter(Boolean).join(" · ")
+          };
+        })
+      );
+    });
+
+    bestJson([
+      "/games/stock-market-masters/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/stock-market-masters-cashouts/resolve/main/ledger.json",
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/smm/ledger.json"
+    ], function (j) { return (j && (j.cashouts || j.wins)) || []; }).then(function (data) {
+      var rows = ((data && (data.cashouts || data.wins)) || []).slice();
+      var q = lsJson("smm-queue") || [];
+      var seen = {};
+      rows.concat(q).forEach(function (x) {
+        var k = (x.name || "") + "|" + (x.worth || 0) + "|" + (x.date || "");
+        seen[k] = x;
+      });
+      var list = Object.keys(seen).map(function (k) { return seen[k]; })
+        .sort(function (a, b) { return (b.worth || 0) - (a.worth || 0); });
+      paintHall(
+        "smm",
+        list.length ? (list.length + " cashouts · public book") : "No cashouts yet.",
+        list.slice(0, 12).map(function (x) {
+          return {
+            name: x.name || "Desk",
+            score: dollars(x.worth),
+            meta: [x.rounds != null ? x.rounds + " rounds" : "", x.date || ""].filter(Boolean).join(" · ")
+          };
+        })
+      );
+    });
+
+    (function () {
+      var s = lsJson("lygo-haven-rally-v1") || {};
+      var arcade = s.arcade || {};
+      var heats = (s.rounds || []).slice(0, 8);
+      var runs = (arcade.runs || []).slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 4);
+      var rows = heats.map(function (r) {
+        return {
+          name: r.name || "Operator",
+          score: r.score != null ? (r.score + " pts") : fmtMs(r.ms),
+          meta: [r.track, r.craft, r.score != null ? fmtMs(r.ms) : ""].filter(Boolean).join(" · ")
+        };
+      });
+      if (arcade.bestScore) {
+        rows.unshift({
+          name: "Endless best",
+          score: String(arcade.bestScore) + " pts",
+          meta: "chain x" + (arcade.bestCombo || 1)
+        });
+      }
+      runs.forEach(function (r) {
+        rows.push({
+          name: r.name || "Operator",
+          score: (r.score || 0) + " pts",
+          meta: (r.kills || 0) + " wrecks · x" + (r.combo || 1)
+        });
+      });
+      paintHall(
+        "rally",
+        rows.length ? (rows.length + " lines on this browser") : "No heats on this device yet.",
+        rows.slice(0, 12)
+      );
+    })();
+
+    (function () {
+      var s = lsJson("lygo-lattice-golf-v1") || {};
+      var rounds = s.rounds || [];
+      paintHall(
+        "golf",
+        rounds.length ? (rounds.length + " rounds on this browser") : "No rounds on this device yet.",
+        rounds.slice(0, 12).map(function (r) {
+          return {
+            name: r.name || "Operator",
+            score: (r.total != null ? r.total : "—") + " · " + vsPar(r.vsPar),
+            meta: [r.course || r.mode, r.holes ? r.holes + " holes" : ""].filter(Boolean).join(" · ")
+          };
+        })
+      );
+    })();
+  }
+
   function bootPortalFx() {
     var c = document.getElementById("portalCanvas");
     if (!c || !c.getContext) return;
@@ -193,8 +353,11 @@
         document.querySelectorAll("[data-games-featured]").forEach(function (n) {
           renderFeatured(n, data);
         });
+        if (document.querySelector("[data-games-halls]")) renderHalls();
       })
-      .catch(function () { /* static markup stays */ });
+      .catch(function () {
+        if (document.querySelector("[data-games-halls]")) renderHalls();
+      });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

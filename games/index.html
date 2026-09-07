@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/games/hub.css?v=3">
+<link rel="stylesheet" href="/games/hub.css?v=4">
 <script type="application/ld+json" id="games-jsonld">
 {
   "@context": "https://schema.org",
@@ -231,6 +231,50 @@
   </div>
 </div>
 
+<section class="portal-halls" data-games-halls>
+  <p class="kicker">Δ9Φ963 · live halls</p>
+  <h2>Player ledgers</h2>
+  <p class="portal-lead">Public books are <strong>Lattice Marines</strong> AI wins and <strong>Stock Market Masters</strong> cashouts — names and match metadata only, no accounts. <strong>Haven Rally</strong> and <strong>Lattice Golf</strong> halls are this browser. Swarm and Eternal Lattice keep runs in their own rooms. Empty is honest. Nothing here is invented.</p>
+  <div class="hall-grid">
+    <article class="hall" data-hall="marines">
+      <header><p class="gcard-kicker">public</p><h3>Lattice Marines</h3></header>
+      <p class="hall-meta">Loading eternal AI wins…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-marines/ledger.html">Full ledger</a>
+    </article>
+    <article class="hall" data-hall="smm">
+      <header><p class="gcard-kicker">public</p><h3>Stock Market Masters</h3></header>
+      <p class="hall-meta">Loading cashouts…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/stock-market-masters/ledger.html">TOP Cashout</a>
+    </article>
+    <article class="hall" data-hall="rally">
+      <header><p class="gcard-kicker">this browser</p><h3>Haven Rally</h3></header>
+      <p class="hall-meta">Reading local heats…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/haven-rally/ledger.html">Local ledger</a>
+    </article>
+    <article class="hall" data-hall="golf">
+      <header><p class="gcard-kicker">this browser</p><h3>Lattice Golf</h3></header>
+      <p class="hall-meta">Reading local rounds…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-golf/ledger.html">Local ledger</a>
+    </article>
+    <article class="hall" data-hall="swarm">
+      <header><p class="gcard-kicker">in-room</p><h3>Lattice Swarm</h3></header>
+      <p class="hall-meta">No public book yet. Runs stay in the hex command client.</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-swarm/">Play Swarm</a>
+    </article>
+    <article class="hall" data-hall="eternal">
+      <header><p class="gcard-kicker">in-room</p><h3>Eternal Lattice</h3></header>
+      <p class="hall-meta">No public book yet. Campaign and Deckwright stay in the card client.</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/eternal-lattice/">Play Eternal Lattice</a>
+    </article>
+  </div>
+</section>
+
 <div class="ad-slot" aria-label="Advertisement">
   <div class="ad-label">Advertisement</div>
   <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
@@ -255,6 +299,6 @@
   </div>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
-<script src="/games/hub.js?v=2" defer></script>
+<script src="/games/hub.js?v=3" defer></script>
 </body>
 </html>
