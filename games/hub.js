@@ -190,7 +190,80 @@
     }).join("");
   }
 
+  function bookRows(book) {
+    if (!book) return [];
+    if (Array.isArray(book.rows)) return book.rows;
+    if (Array.isArray(book.wins)) return book.wins;
+    if (Array.isArray(book.cashouts)) return book.cashouts;
+    if (Array.isArray(book.rounds)) return book.rounds;
+    if (Array.isArray(book.scores)) return book.scores;
+    if (Array.isArray(book.ladder)) return book.ladder;
+    return [];
+  }
+
   function renderHalls() {
+    bestJson([
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
+      "/games/arcade.json"
+    ], function (j) {
+      return (j && j.books) ? Object.keys(j.books) : [];
+    }).then(function (arcade) {
+      if (arcade && arcade.books) {
+        paintArcadeBooks(arcade);
+        return;
+      }
+      renderHallsLegacy();
+    });
+  }
+
+  function paintArcadeBooks(arcade) {
+    var books = arcade.books || {};
+    var stamp = arcade.updated ? ("board " + arcade.updated + " · ") : "live board · ";
+    var el = document.querySelector("[data-board-stamp]");
+    if (el) el.textContent = stamp + Object.keys(books).length + " titles";
+
+    var wins = bookRows(books["lattice-marines"]).concat(lsJson("lygo_lattice_marines_ledger_q") || []);
+    paintHall("marines", wins.length ? (stamp + wins.length + " AI wins") : "No inscribed AI wins yet.", wins.slice(0, 12).map(function (w) {
+      return { name: w.name || "Commander", score: w.score != null ? String(w.score) : "—", meta: [w.diff, w.mapN ? w.mapN + "×" + w.mapN : "", w.date || ""].filter(Boolean).join(" · ") };
+    }));
+
+    var cash = bookRows(books["stock-market-masters"]).concat(lsJson("smm-queue") || []);
+    cash.sort(function (a, b) { return (b.worth || 0) - (a.worth || 0); });
+    paintHall("smm", cash.length ? (stamp + cash.length + " cashouts") : "No cashouts yet.", cash.slice(0, 12).map(function (x) {
+      return { name: x.name || "Desk", score: dollars(x.worth), meta: [x.rounds != null ? x.rounds + " rounds" : "", x.date || ""].filter(Boolean).join(" · ") };
+    }));
+
+    var rally = bookRows(books["haven-rally"]).concat(lsJson("lygo-haven-rally-ledger-q") || []);
+    var arcadeRows = rally.filter(function (r) { return r.event === "arcade" || r.score; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    var heats = rally.filter(function (r) { return r.event !== "arcade" && !r.score; }).sort(function (a, b) { return (a.ms || 1e12) - (b.ms || 1e12); });
+    var show = arcadeRows.slice(0, 6).map(function (r) {
+      return { name: r.name || "Operator", score: (r.score || 0) + " pts", meta: [r.track, r.craft].filter(Boolean).join(" · ") };
+    }).concat(heats.slice(0, 6).map(function (r) {
+      return { name: r.name || "Operator", score: fmtMs(r.ms), meta: [r.track, r.craft].filter(Boolean).join(" · ") };
+    }));
+    paintHall("rally", show.length ? (stamp + rally.length + " lines") : "No heats yet.", show.slice(0, 12));
+
+    var golf = bookRows(books["lattice-golf"]).concat(lsJson("lygo-lattice-golf-ledger-q") || []);
+    golf.sort(function (a, b) { return (a.vsPar == null ? 99 : a.vsPar) - (b.vsPar == null ? 99 : b.vsPar); });
+    paintHall("golf", golf.length ? (stamp + golf.length + " rounds") : "No rounds yet.", golf.slice(0, 12).map(function (r) {
+      return { name: r.name || "Operator", score: (r.total != null ? r.total : "—") + " · " + vsPar(r.vsPar), meta: [r.course || r.mode, r.holes ? r.holes + " holes" : ""].filter(Boolean).join(" · ") };
+    }));
+
+    var swarm = bookRows(books["lattice-swarm"]).concat(lsJson("lygo-swarm-ledger-q") || []);
+    swarm = swarm.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    paintHall("swarm", swarm.length ? (stamp + swarm.length + " scores") : "No scores yet.", swarm.slice(0, 12).map(function (r) {
+      return { name: r.name || "Operator", score: String(r.score), meta: r.date || "" };
+    }));
+
+    var etern = bookRows(books["eternal-lattice"]).concat(lsJson("lygo-eternal-ledger-q") || []);
+    etern = etern.filter(function (r) { return !!r.name; }).sort(function (a, b) { return (b.rating || 0) - (a.rating || 0); });
+    paintHall("eternal", etern.length ? (stamp + etern.length + " sealed names") : "No sealed names yet.", etern.slice(0, 12).map(function (r) {
+      return { name: r.name, score: String(r.rating || 1000) + " rt", meta: (r.wins || 0) + "W / " + (r.losses || 0) + "L" };
+    }));
+  }
+
+  function renderHallsLegacy() {
     bestJson([
       "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/ledger.json",
       "https://deepseekoracle-lattice-marines-ledger.hf.space/ledger.json",
@@ -430,6 +503,9 @@
       .catch(function () {
         if (document.querySelector("[data-games-halls]")) renderHalls();
       });
+    if (document.querySelector("[data-live-board]")) {
+      setInterval(function () { renderHalls(); }, 40000);
+    }
     if (window.ArcadeLedger) ArcadeLedger.boot();
   }
 

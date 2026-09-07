@@ -1,8 +1,11 @@
 {
   "updated": "2026-09-06",
   "hub": "https://chatagent.ca/games/",
+  "board": "https://chatagent.ca/games/board.html",
   "space": "https://deepseekoracle-lattice-marines-ledger.hf.space",
-  "note": "Public halls. Names and match metadata only. No accounts. Empty is honest.",
+  "arcade": "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
+  "submit": "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade/submit",
+  "note": "HF dataset arcade.json is the live book. Space writes it. Hub and board.html only GET. New game: POST {game:slug,...} to /arcade/submit.",
   "games": [
     {
       "id": "lattice-marines",

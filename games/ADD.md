@@ -17,6 +17,6 @@ The arcade is driven by `catalog.json`. HTML pages that list titles read that fi
 
 6. Mirror the folder + catalog to eternalhaven when the title ships on both hosts.
 7. Leave `slot-next` in the catalog (or replace it) so the arcade always shows an open slot.
-8. Wire the title to the live hall: POST finishes to the arcade Space (`arcade-ledger.js` + `/rally|/golf|/swarm|/eternal/submit`, or Marines `/submit` / SMM `/smm/submit`). Add `ledger.html` that reads the public JSON. List play + hall in `catalog.json` and `/games/live.json`. The Hub at `/games/` shows all six books.
+8. Wire the title to the live board: POST finishes through `arcade-ledger.js` to `POST /arcade/submit` with `{ "game": "<slug>", ... }`. The Space writes the per-game file and snapshots `arcade.json` on the HF dataset. Add `ledger.html`. List the title in `catalog.json` and `/games/live.json`. Hub + `/games/board.html` read `arcade.json` (dataset first, Space second). New games grow the board without a new Space.
 
 Do not put secrets, tokens, or PayPal credentials in game folders.

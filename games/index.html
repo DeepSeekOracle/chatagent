@@ -127,7 +127,7 @@
 <div class="portal-hero">
   <p class="kicker">Δ9Φ963 · games hub</p>
   <h1>GAMES <em>HUB</em></h1>
-  <p class="portal-lead">One floor for every live title and every public hall. Finish a match with a name on the title screen and the score posts to a shared book — Marines AI wins, SMM cashouts, Rally heats, Golf rounds, Swarm bests, Eternal ladder. <strong>No account. Names and match metadata only.</strong> Play is still in the browser. The Hub is where everyone can see it. Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>. Stream: <a href="https://ffm.to/eovnvo9">ffm.to/eovnvo9</a>. Machine feeds: <a href="/games/catalog.json">catalog.json</a> · <a href="/games/live.json">live.json</a>.</p>
+  <p class="portal-lead">One floor for every live title and the <a href="/games/board.html">live board</a>. Hugging Face writes <a href="https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/blob/main/arcade.json">arcade.json</a> after each finish. <strong>No account. Names and match metadata only.</strong> Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>. Feeds: <a href="/games/catalog.json">catalog.json</a> · <a href="/games/live.json">live.json</a> · <a href="/games/arcade.json">arcade.json</a>.</p>
 </div>
 <p class="meta">chatagent.ca · six live titles · six live halls · updated September 2026</p>
 
@@ -138,6 +138,7 @@
 </div>
 
 <nav class="hub-rail" aria-label="Play and halls">
+  <a href="/games/board.html"><b>Live board</b><span>All scores</span></a>
   <a href="/games/lattice-marines/"><b>Marines</b><span>Play</span></a>
   <a href="/games/lattice-marines/ledger.html"><b>Marines hall</b><span>AI wins</span></a>
   <a href="/games/lattice-swarm/"><b>Swarm</b><span>Play</span></a>
@@ -155,7 +156,8 @@
 <section class="portal-halls" data-games-halls>
   <p class="kicker">Δ9Φ963 · live halls</p>
   <h2>Shared ledgers</h2>
-  <p class="portal-lead">Every title writes the same public book. Set a name, finish a match, and the line shows here for every player. Names and match metadata only. Empty is honest. Nothing here is invented.</p>
+  <p class="portal-lead">Shared <a href="/games/board.html">live board</a> — Hugging Face snapshots every inscribe to arcade.json. Set a name, finish a match, the line shows for every player. Empty is honest.</p>
+  <p class="meta" data-board-stamp>Loading arcade.json…</p>
   <div class="hall-grid">
     <article class="hall" data-hall="marines">
       <header><p class="gcard-kicker">public</p><h3>Lattice Marines</h3></header>
@@ -315,7 +317,7 @@
   </div>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
-<script src="/games/arcade-ledger.js?v=1"></script>
-<script src="/games/hub.js?v=4" defer></script>
+<script src="/games/arcade-ledger.js?v=2"></script>
+<script src="/games/hub.js?v=5" defer></script>
 </body>
 </html>

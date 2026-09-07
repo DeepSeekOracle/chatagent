@@ -19,7 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from huggingface_hub import HfApi, hf_hub_download
 
-import witness_feed
+try:
+    import witness_feed
+except ImportError:
+    witness_feed = None
 
 DATASET = os.environ.get("LEDGER_DATASET", "DeepSeekOracle/lattice-marines-wins")
 SMM_DATASET = os.environ.get("SMM_DATASET", "DeepSeekOracle/stock-market-masters-cashouts")
@@ -188,6 +191,8 @@ def health():
         "dataset": DATASET,
         "writer": bool(TOKEN),
         "books": ["marines", "smm", "rally", "golf", "swarm", "eternal"],
+        "board": "/arcade.json",
+        "witness": bool(witness_feed),
     }
 
 
@@ -227,6 +232,10 @@ async def submit(request: Request):
         except Exception:
             CACHE["data"] = None
             return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+    try:
+        write_arcade_snapshot()
+    except Exception:
+        pass
     return {"ok": True, "status": "inscribed", "id": rec["id"], "rank": next((i + 1 for i, w in enumerate(data["wins"]) if w.get("id") == rec["id"]), None)}
 
 
@@ -344,6 +353,10 @@ async def smm_submit(request: Request):
         except Exception:
             SMM_CACHE["data"] = None
             return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+    try:
+        write_arcade_snapshot()
+    except Exception:
+        pass
     return {
         "ok": True,
         "status": "inscribed",
@@ -422,14 +435,63 @@ def arcade_inscribe(kind: str, filename: str, game: str, title: str, key: str, r
         return data, "inscribed"
 
 
-async def arcade_post(request: Request, route: str, validate, filename: str, game: str, title: str, key: str, sort_key, msg: str):
+def arcade_snapshot() -> dict:
+    mar = CACHE.get("data") if CACHE.get("data") is not None else load_ledger()
+    smm = SMM_CACHE.get("data") if SMM_CACHE.get("data") is not None else smm_load()
+    books = {
+        "lattice-marines": {
+            "title": "Lattice Marines Eternal Ledger",
+            "key": "wins",
+            "rows": (mar.get("wins") or [])[:80],
+        },
+        "stock-market-masters": {
+            "title": "Stock Market Masters TOP Cashout",
+            "key": "cashouts",
+            "rows": (smm.get("cashouts") or [])[:80],
+        },
+    }
+    extras = (
+        ("rally", "haven-rally.json", "haven-rally", "Haven Rally Hall", "rows"),
+        ("golf", "lattice-golf.json", "lattice-golf", "Lattice Golf Hall", "rounds"),
+        ("swarm", "lattice-swarm.json", "lattice-swarm", "Lattice Swarm Hall", "scores"),
+        ("eternal", "eternal-lattice.json", "eternal-lattice", "Eternal Lattice Ladder", "ladder"),
+    )
+    for kind, filename, game, title, key in extras:
+        data = arcade_load(kind, filename, game, title, key)
+        books[game] = {"title": title, "key": key, "rows": (data.get(key) or [])[:80]}
+    return {
+        "game": "arcade",
+        "title": "chatagent.ca live board",
+        "updated": utc_now(),
+        "space": "https://deepseekoracle-lattice-marines-ledger.hf.space",
+        "dataset": ARCADE_DS + "/arcade.json",
+        "books": books,
+    }
+
+
+def write_arcade_snapshot() -> None:
+    if not TOKEN:
+        return
+    snap = arcade_snapshot()
+    payload = json.dumps(snap, ensure_ascii=False, indent=2).encode("utf-8")
+    HfApi(token=TOKEN).upload_file(
+        path_or_fileobj=payload,
+        path_in_repo="arcade.json",
+        repo_id=ARCADE_DS,
+        repo_type="dataset",
+        commit_message="arcade board snapshot",
+    )
+
+
+async def arcade_post(request: Request, route: str, validate, filename: str, game: str, title: str, key: str, sort_key, msg: str, body: dict | None = None):
     ip = request.client.host if request.client else "0"
     if not rate_ok(ip, route):
         return JSONResponse({"ok": False, "error": "slow down"}, status_code=429)
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse({"ok": False, "error": "need JSON"}, status_code=400)
+    if body is None:
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"ok": False, "error": "need JSON"}, status_code=400)
     rec, err = validate(body)
     if not rec:
         return JSONResponse({"ok": False, "error": err}, status_code=400)
@@ -440,6 +502,10 @@ async def arcade_post(request: Request, route: str, validate, filename: str, gam
     except Exception:
         ARCADE_CACHE.pop(route, None)
         return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+    try:
+        write_arcade_snapshot()
+    except Exception:
+        pass
     rows = data.get(key) or []
     rank = next((i + 1 for i, w in enumerate(rows) if w.get("id") == rec["id"]), None)
     return {"ok": True, "status": status, "id": rec["id"], "rank": rank}
@@ -672,14 +738,120 @@ async def eternal_submit(request: Request):
     )
 
 
+@app.get("/arcade.json")
+def arcade_json():
+    return JSONResponse(arcade_snapshot(), headers={"Cache-Control": "public, max-age=20"})
+
+
+@app.post("/arcade/submit")
+async def arcade_any_submit(request: Request):
+    ip = request.client.host if request.client else "0"
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "need JSON"}, status_code=400)
+    game = str((body or {}).get("game") or "")
+    if game == "haven-rally":
+        return await arcade_post(
+            request, "rally", rally_validate, "haven-rally.json", "haven-rally",
+            "Haven Rally Hall", "rows",
+            lambda w: (0 if w.get("event") == "arcade" else 1, -int(w.get("score") or 0), int(w.get("ms") or 10**12)),
+            "inscribe rally heat",
+            body=body,
+        )
+    if game == "lattice-golf":
+        return await arcade_post(
+            request, "golf", golf_validate, "lattice-golf.json", "lattice-golf",
+            "Lattice Golf Hall", "rounds",
+            lambda w: (int(w.get("vsPar") or 0), int(w.get("total") or 0), str(w.get("iso") or "")),
+            "inscribe golf round",
+            body=body,
+        )
+    if game == "lattice-swarm":
+        return await arcade_post(
+            request, "swarm", swarm_validate, "lattice-swarm.json", "lattice-swarm",
+            "Lattice Swarm Hall", "scores",
+            lambda w: (-int(w.get("score") or 0), str(w.get("iso") or "")),
+            "inscribe swarm score",
+            body=body,
+        )
+    if game == "eternal-lattice":
+        return await arcade_post(
+            request, "eternal", eternal_validate, "eternal-lattice.json", "eternal-lattice",
+            "Eternal Lattice Ladder", "ladder",
+            lambda w: (-int(w.get("rating") or 0), -int(w.get("wins") or 0), str(w.get("iso") or "")),
+            "inscribe eternal ladder",
+            body=body,
+        )
+    if game == "lattice-marines":
+        rec, err = validate(body)
+        if not rec:
+            return JSONResponse({"ok": False, "error": err}, status_code=400)
+        if not rate_ok(ip, "marines"):
+            return JSONResponse({"ok": False, "error": "slow down"}, status_code=429)
+        if not TOKEN:
+            return JSONResponse({"ok": False, "error": "writer offline"}, status_code=503)
+        with LOCK:
+            data = load_ledger()
+            wins = data.get("wins") or []
+            if any(w.get("id") == rec["id"] for w in wins):
+                return {"ok": True, "status": "duplicate", "id": rec["id"]}
+            wins.append(rec)
+            wins.sort(key=lambda w: (-int(w.get("score") or 0), str(w.get("iso") or "")))
+            data["wins"] = wins[:MAX_WINS]
+            data["updated"] = utc_now()
+            try:
+                save_ledger(data)
+            except Exception:
+                CACHE["data"] = None
+                return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+        try:
+            write_arcade_snapshot()
+        except Exception:
+            pass
+        return {"ok": True, "status": "inscribed", "id": rec["id"]}
+    if game == "stock-market-masters":
+        rec, err = smm_validate(body)
+        if not rec:
+            return JSONResponse({"ok": False, "error": err}, status_code=400)
+        if not rate_ok(ip, "smm"):
+            return JSONResponse({"ok": False, "error": "slow down"}, status_code=429)
+        if not TOKEN:
+            return JSONResponse({"ok": False, "error": "writer offline"}, status_code=503)
+        with LOCK:
+            data = smm_load()
+            rows = data.get("cashouts") or []
+            if any(w.get("id") == rec["id"] for w in rows):
+                return {"ok": True, "status": "duplicate", "id": rec["id"]}
+            rows.append(rec)
+            rows.sort(key=lambda w: (-int(w.get("worth") or 0), str(w.get("iso") or "")))
+            data["cashouts"] = rows[:8000]
+            data["updated"] = utc_now()
+            try:
+                smm_save(data)
+            except Exception:
+                SMM_CACHE["data"] = None
+                return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+        try:
+            write_arcade_snapshot()
+        except Exception:
+            pass
+        return {"ok": True, "status": "inscribed", "id": rec["id"]}
+    return JSONResponse({"ok": False, "error": "unknown game"}, status_code=400)
+
+
 @app.get("/witness/feed.json")
 def witness_feed_json():
+    if not witness_feed:
+        return JSONResponse({"ok": False, "error": "witness module missing"}, status_code=503)
     feed = witness_feed.build_feed()
     return JSONResponse(feed, headers={"Cache-Control": "public, max-age=45"})
 
 
 @app.get("/witness/health")
 def witness_health():
+    if not witness_feed:
+        return {"ok": False, "error": "witness module missing"}
     feed = witness_feed.build_feed()
     return {
         "ok": feed.get("ok"),
@@ -704,14 +876,13 @@ a{color:#22d3ee} code{color:#fbbf24}
 </style></head><body>
 <p style="letter-spacing:.2em;text-transform:uppercase;color:#22d3ee;font-size:.75rem">Δ9Φ963</p>
 <h1>Arcade live halls</h1>
-<p>Public write API for chatagent.ca games. Names and match metadata only. Hub: <a href="https://chatagent.ca/games/">chatagent.ca/games/</a></p>
+<p>Public write API. Scores persist on the Hugging Face dataset as <code>arcade.json</code>. Hub: <a href="https://chatagent.ca/games/">chatagent.ca/games/</a> · Board: <a href="https://chatagent.ca/games/board.html">live board</a></p>
 <ul>
+<li>GET <a href="/arcade.json">/arcade.json</a> — all games</li>
+<li>POST <code>/arcade/submit</code> JSON with <code>game</code> id — new titles plug in here</li>
 <li>Marines POST <code>/submit</code> · GET <a href="/ledger.json">/ledger.json</a></li>
 <li>SMM POST <code>/smm/submit</code> · GET <a href="/smm/ledger.json">/smm/ledger.json</a></li>
-<li>Rally POST <code>/rally/submit</code> · GET <a href="/rally/ledger.json">/rally/ledger.json</a></li>
-<li>Golf POST <code>/golf/submit</code> · GET <a href="/golf/ledger.json">/golf/ledger.json</a></li>
-<li>Swarm POST <code>/swarm/submit</code> · GET <a href="/swarm/ledger.json">/swarm/ledger.json</a></li>
-<li>Eternal POST <code>/eternal/submit</code> · GET <a href="/eternal/ledger.json">/eternal/ledger.json</a></li>
-<li><a href="/witness/feed.json">Witness feed.json</a> · <a href="/health">health</a></li>
+<li>Rally / Golf / Swarm / Eternal keep their <code>/…/submit</code> aliases</li>
+<li><a href="/health">health</a></li>
 </ul>
 </body></html>"""

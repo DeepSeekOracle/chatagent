@@ -60,28 +60,29 @@
     post: post,
     rally: function (rec) {
       rec.game = "haven-rally";
-      return post("lygo-haven-rally-ledger-q", rec, SPACE + "/rally/submit");
+      return post("lygo-haven-rally-ledger-q", rec, SPACE + "/arcade/submit");
     },
     golf: function (rec) {
       rec.game = "lattice-golf";
       rec.event = rec.event || "round";
-      return post("lygo-lattice-golf-ledger-q", rec, SPACE + "/golf/submit");
+      return post("lygo-lattice-golf-ledger-q", rec, SPACE + "/arcade/submit");
     },
     swarm: function (rec) {
       rec.game = "lattice-swarm";
       rec.event = rec.event || "score";
-      return post("lygo-swarm-ledger-q", rec, SPACE + "/swarm/submit");
+      return post("lygo-swarm-ledger-q", rec, SPACE + "/arcade/submit");
     },
     eternal: function (rec) {
       rec.game = "eternal-lattice";
       rec.event = rec.event || "ladder";
-      return post("lygo-eternal-ledger-q", rec, SPACE + "/eternal/submit");
+      return post("lygo-eternal-ledger-q", rec, SPACE + "/arcade/submit");
     },
     boot: function () {
-      flush("lygo-haven-rally-ledger-q", SPACE + "/rally/submit");
-      flush("lygo-lattice-golf-ledger-q", SPACE + "/golf/submit");
-      flush("lygo-swarm-ledger-q", SPACE + "/swarm/submit");
-      flush("lygo-eternal-ledger-q", SPACE + "/eternal/submit");
+      var url = SPACE + "/arcade/submit";
+      flush("lygo-haven-rally-ledger-q", url);
+      flush("lygo-lattice-golf-ledger-q", url);
+      flush("lygo-swarm-ledger-q", url);
+      flush("lygo-eternal-ledger-q", url);
     }
   };
 })(window);
