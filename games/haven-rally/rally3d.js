@@ -7,6 +7,8 @@
   var sun, hemi, canvasEl, running = false;
   var trackRoot = null;
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
+  var trafficPool = [];
+  var tracerPool = [];
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
@@ -750,6 +752,111 @@
     }
     sparkGroup.visible = false;
     scene.add(sparkGroup);
+    attachGuns(carMesh);
+    ensureTraffic(24);
+    ensureTracers(12);
+  }
+
+  function attachGuns(root) {
+    if (!root || root.userData.mg) return;
+    var mat = new T.MeshStandardMaterial({ color: 0x1b1f28, metalness: 0.72, roughness: 0.32 });
+    function barrel(x) {
+      var b = new T.Mesh(new T.CylinderGeometry(0.038, 0.046, 0.92, 8), mat);
+      b.rotation.x = Math.PI / 2;
+      b.position.set(x, 0.36, -2.12);
+      root.add(b);
+      var flash = new T.PointLight(0xffe08a, 0, 14, 2);
+      flash.position.set(x, 0.38, -2.58);
+      root.add(flash);
+      return { mesh: b, flash: flash };
+    }
+    root.userData.mg = [barrel(-0.44), barrel(0.44)];
+  }
+
+  function makeTrafficCar(color) {
+    var g = new T.Group();
+    var body = new T.Mesh(
+      new T.BoxGeometry(1.65, 0.46, 3.05),
+      new T.MeshStandardMaterial({ color: color, roughness: 0.45, metalness: 0.32 })
+    );
+    body.position.y = 0.4;
+    g.add(body);
+    var cabin = new T.Mesh(
+      new T.BoxGeometry(1.35, 0.3, 1.25),
+      new T.MeshStandardMaterial({ color: 0x0b1220, roughness: 0.22, metalness: 0.4 })
+    );
+    cabin.position.set(0, 0.7, -0.08);
+    g.add(cabin);
+    var lamp = new T.Mesh(
+      new T.BoxGeometry(1.2, 0.08, 0.06),
+      new T.MeshStandardMaterial({ color: 0xfff1c4, emissive: 0xffe08a, emissiveIntensity: 1.4 })
+    );
+    lamp.position.set(0, 0.38, -1.54);
+    g.add(lamp);
+    return g;
+  }
+
+  function ensureTraffic(n) {
+    while (trafficPool.length < n) {
+      var cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314];
+      var m = makeTrafficCar(cols[trafficPool.length % cols.length]);
+      m.visible = false;
+      scene.add(m);
+      trafficPool.push(m);
+    }
+  }
+
+  function ensureTracers(n) {
+    while (tracerPool.length < n) {
+      var geo = new T.BufferGeometry();
+      geo.setAttribute("position", new T.Float32BufferAttribute([0, 0, 0, 0, 0, 1], 3));
+      var line = new T.Line(geo, new T.LineBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.92 }));
+      line.visible = false;
+      line.frustumCulled = false;
+      scene.add(line);
+      tracerPool.push(line);
+    }
+  }
+
+  function syncTraffic(list) {
+    var i, m, t;
+    for (i = 0; i < trafficPool.length; i++) {
+      m = trafficPool[i];
+      t = list && list[i];
+      if (!t || (!t.alive && !(t.wreck > 0.02))) {
+        m.visible = false;
+        continue;
+      }
+      m.visible = true;
+      m.position.set(t.x, t.alive ? 0.02 : 0.02 + (1 - t.wreck) * 0.4, t.y);
+      m.rotation.y = -t.h - Math.PI / 2;
+      m.rotation.z = t.alive ? 0 : (1 - t.wreck) * 0.8;
+      m.scale.setScalar(t.alive ? 1 : 0.55 + t.wreck * 0.45);
+    }
+  }
+
+  function syncGuns(gun, reduce) {
+    var i, line, tr, pos, mg, on;
+    on = !!(gun && gun.on);
+    if (carMesh && carMesh.userData.mg) {
+      mg = carMesh.userData.mg;
+      for (i = 0; i < mg.length; i++) {
+        if (mg[i].flash) mg[i].flash.intensity = on && !reduce ? (1.6 + Math.random() * 2.2) : 0;
+      }
+    }
+    for (i = 0; i < tracerPool.length; i++) {
+      line = tracerPool[i];
+      tr = gun && gun.tracers && gun.tracers[i];
+      if (!tr || reduce) {
+        line.visible = false;
+        continue;
+      }
+      pos = line.geometry.attributes.position.array;
+      pos[0] = tr.x; pos[1] = 0.55; pos[2] = tr.y;
+      pos[3] = tr.x2; pos[4] = 0.52; pos[5] = tr.y2;
+      line.geometry.attributes.position.needsUpdate = true;
+      line.visible = true;
+    }
   }
 
   function loop() {
@@ -900,6 +1007,8 @@
           HavenCar.setLights(aiMesh, { head: true, brake: false, reduceFx: s.reduceFx });
         }
       }
+      syncTraffic(s.traffic);
+      syncGuns(s.gun, s.reduceFx);
       if (sparkGroup) {
         var showFx = !s.reduceFx && (s.sparks || 0) > 0.25;
         sparkGroup.visible = showFx;

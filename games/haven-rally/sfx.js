@@ -4,7 +4,7 @@
   var ctx = null, master, engGain, oscA, oscB, oscC, engFilt, exhaust;
   var tireGain, tireFilt, tireSrc;
   var ambGain, ambFilt, ambLfo, ambSrc;
-  var noiseBuf = null, started = false, lastGear = 1, lastShiftAt = 0;
+  var noiseBuf = null, started = false, lastGear = 1, lastShiftAt = 0, lastGunAt = 0;
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
@@ -169,6 +169,21 @@
     tireGain.gain.setTargetAtTime(tire * 0.22, now, 0.04);
 
     ambGain.gain.setTargetAtTime(radio ? 0.012 : (racing ? 0.05 : 0.08), now, 0.25);
+
+    if (s.guns && now - lastGunAt > 0.058) {
+      lastGunAt = now;
+      var burst = ctx.createBufferSource();
+      burst.buffer = noiseBuf;
+      var hp = ctx.createBiquadFilter();
+      hp.type = "bandpass";
+      hp.frequency.value = 2200 + Math.random() * 900;
+      hp.Q.value = 4.5;
+      var gg = ctx.createGain();
+      gg.gain.setValueAtTime(reduce ? 0.04 : 0.13, now);
+      gg.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      burst.connect(hp); hp.connect(gg); gg.connect(master);
+      burst.start(now); burst.stop(now + 0.05);
+    }
   }
 
   function arm() {

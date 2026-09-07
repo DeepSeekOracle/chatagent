@@ -38,7 +38,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </div>
 
   <h2>1. Loop</h2>
-  <p>Countdown 3–2–1–GO. Circuits: three laps. Pass sector gates, then the start line. Endless run is one start-to-finish highway (~16 miles: long straights, esses, a hairpin, a tunnel, FINISH gantry). Holding a slide charges boost. Beat the ghost. Post the card to this browser.</p>
+  <p>Countdown 3–2–1–GO. Circuits: three laps. Pass sector gates, then the start line. Endless run is one start-to-finish highway (~16 miles) with light traffic. Right Shift spends the boost bar for speed <em>and</em> front guns; empty bar fires nothing. Wrecks sip boost back, add score, and chain a combo multiplier. Boost also trickles slowly. Holding a slide still charges boost. Beat the ghost. Post the card to this browser.</p>
 
   <h2>2. Controls</h2>
   <table>
@@ -48,7 +48,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td><code>A</code> / ←</td><td>Steer left (chase-cam). Options can invert.</td></tr>
     <tr><td><code>D</code> / →</td><td>Steer right</td></tr>
     <tr><td>Left <code>Shift</code></td><td>E-brake / drift (kills grip, extra yaw, sparks)</td></tr>
-    <tr><td>Right <code>Shift</code></td><td>Boost (meter)</td></tr>
+    <tr><td>Right <code>Shift</code></td><td>Boost (meter). Endless: also fires front guns while the bar lasts</td></tr>
     <tr><td><code>R</code></td><td>Restart heat / return to staging on drag</td></tr>
     <tr><td><code>F</code></td><td>Drag: snap both lanes to the line and run the Christmas tree</td></tr>
     <tr><td><code>C</code></td><td>Cycle camera: Chase, Close, Hood, Bumper, Cockpit, TV</td></tr>
@@ -89,7 +89,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </table>
 
   <h2>6. Ghost + ledger</h2>
-  <p>Each heat records <code>{x,z,h}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
+  <p>Each heat records <code>{x,z,h}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost. Endless also writes <code>save.arcade</code>: best score, best combo, last 20 wreck-runs. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
 
   <h2>7. Studio surface</h2>
   <p>Title screen matches Lattice Golf: full-bleed Apex still, right panel, operator name, garage chip, mode cards, radio, PayPal.me/ExcavationPro + Patreon. Garage is a live 3D studio (drag to orbit). 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>

@@ -451,13 +451,16 @@
     seed = seed >>> 0;
     const pts = ridgeCtrl(seed);
     const samples = densifyPath(pts, 8, false);
-    const len = pathLen(samples, false);
+    const sAcc = [0];
+    let i;
+    for (i = 0; i < samples.length - 1; i++) sAcc.push(sAcc[i] + dist(samples[i], samples[i + 1]));
+    const len = sAcc[sAcc.length - 1] || pathLen(samples, false);
     const name = RUN_NAMES[seed % RUN_NAMES.length];
     return {
       id: "ridge-" + seed.toString(16),
       name: name,
       theme: "endless",
-      lore: "One long start-to-finish four-lane highway — ~16 miles of straights, esses, a hairpin, a tunnel. Slide to charge boost.",
+      lore: "Four-lane start-to-finish. Light traffic. Right Shift boosts and fires the guns while the bar lasts. Wrecks refill boost and score.",
       width: TRACK_HALF,
       laneW: LANE_W,
       lanes: TRACK_LANES,
@@ -468,8 +471,198 @@
       closed: false,
       kind: "ridge",
       sectors: [0.22, 0.48, 0.74],
-      seed: seed
+      seed: seed,
+      sAcc: sAcc
     };
+  }
+
+  function poseAtS(track, s, lat) {
+    const samples = track.samples;
+    const acc = track.sAcc;
+    if (!samples || !acc || samples.length < 2) return { x: 0, y: 0, h: 0, s: 0 };
+    const total = acc[acc.length - 1] || 1;
+    let t = track.closed !== false ? ((s % total) + total) % total : clamp(s, 0, total - 0.02);
+    let lo = 0, hi = acc.length - 1, mid;
+    while (lo < hi - 1) {
+      mid = (lo + hi) >> 1;
+      if (acc[mid] <= t) lo = mid;
+      else hi = mid;
+    }
+    const a = samples[lo];
+    const b = samples[Math.min(samples.length - 1, lo + 1)];
+    const span = (acc[lo + 1] - acc[lo]) || 1;
+    const u = clamp((t - acc[lo]) / span, 0, 1);
+    const h = Math.atan2(b.y - a.y, b.x - a.x);
+    const px = -Math.sin(h), py = Math.cos(h);
+    const lat0 = lat || 0;
+    return {
+      x: a.x + (b.x - a.x) * u + px * lat0,
+      y: a.y + (b.y - a.y) * u + py * lat0,
+      h: h,
+      s: t
+    };
+  }
+  function laneLat(lane) {
+    return (lane - (TRACK_LANES - 1) * 0.5) * LANE_W;
+  }
+  function spawnTraffic(track) {
+    const rng = mulberry((track.seed || 1) ^ 0x91c3e);
+    const n = 24;
+    const cars = [];
+    let i, s, lane, pose;
+    for (i = 0; i < n; i++) {
+      s = track.len * (0.055 + (i + rng() * 0.55) / n * 0.9);
+      lane = (rng() * TRACK_LANES) | 0;
+      if (i < 3) lane = (lane + 2) % TRACK_LANES;
+      pose = poseAtS(track, s, laneLat(lane));
+      cars.push({
+        id: i,
+        s: s,
+        lane: lane,
+        speed: 16 + rng() * 26,
+        hp: 1,
+        alive: true,
+        wreck: 0,
+        x: pose.x,
+        y: pose.y,
+        h: pose.h,
+        color: [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314][i % 6]
+      });
+    }
+    return cars;
+  }
+  function resetArcade() {
+    G.traffic = [];
+    G.gunOn = false;
+    G.gunCool = 0;
+    G.tracers = [];
+    G.score = 0;
+    G.combo = 0;
+    G.mult = 1;
+    G.comboT = 0;
+    G.kills = 0;
+    G.bestCombo = 1;
+    G.multPulse = 0;
+    G.pops = [];
+  }
+  function arcadePop(text, kind) {
+    const host = $("arcPops");
+    if (!host) return;
+    const el = document.createElement("div");
+    el.className = "arc-pop" + (kind ? " " + kind : "");
+    el.textContent = text;
+    host.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 780);
+  }
+  function wreckTraffic(car) {
+    if (!car || !car.alive) return;
+    car.alive = false;
+    car.wreck = 1;
+    car.hp = 0;
+    G.kills += 1;
+    G.combo += 1;
+    G.comboT = 2.75;
+    G.mult = Math.min(12, G.combo);
+    if (G.mult > G.bestCombo) G.bestCombo = G.mult;
+    const pts = 100 * G.mult;
+    G.score += pts;
+    G.car.boost = Math.min(1, (G.car.boost || 0) + 0.11);
+    G.multPulse = 1;
+    arcadePop("+" + pts, "pts");
+    if (G.mult > 1) arcadePop("x" + G.mult, "mult");
+    log("Wreck · +" + pts + " · x" + G.mult);
+    const el = $("arcMult");
+    if (el) {
+      el.classList.remove("pop");
+      void el.offsetWidth;
+      el.classList.add("pop");
+    }
+    const sc = $("arcScore");
+    if (sc) {
+      sc.classList.remove("pop");
+      void sc.offsetWidth;
+      sc.classList.add("pop");
+    }
+  }
+  function stepTraffic(dt) {
+    const tr = G.track;
+    if (!tr || tr.kind !== "ridge" || !G.traffic) return;
+    const cars = G.traffic;
+    const px = G.car.x, py = G.car.y;
+    let i, c, pose, dx, dy, d;
+    for (i = 0; i < cars.length; i++) {
+      c = cars[i];
+      if (c.alive) {
+        c.s += c.speed * dt;
+        if (c.s > tr.len - 40) c.s = tr.len * 0.08 + (i * 17) % 400;
+        pose = poseAtS(tr, c.s, laneLat(c.lane));
+        c.x = pose.x; c.y = pose.y; c.h = pose.h;
+        dx = c.x - px; dy = c.y - py;
+        d = Math.hypot(dx, dy);
+        c.hitT = Math.max(0, (c.hitT || 0) - dt);
+        if (d < 3.35 && G.phase === "race" && c.hitT <= 0) {
+          G.car.speed *= 0.62;
+          G.car.x -= Math.cos(G.car.vh) * 0.55;
+          G.car.y -= Math.sin(G.car.vh) * 0.55;
+          G.sparks = 1;
+          c.s += 6;
+          c.hitT = 0.5;
+        }
+      } else if (c.wreck > 0) {
+        c.wreck = Math.max(0, c.wreck - dt * 0.35);
+        c.h += dt * 1.8;
+      }
+    }
+  }
+  function stepGuns(dt) {
+    G.gunOn = false;
+    G.tracers = [];
+    const tr = G.track;
+    if (!tr || tr.kind !== "ridge" || G.phase !== "race") return;
+    if (G.comboT > 0) {
+      G.comboT -= dt;
+      if (G.comboT <= 0) {
+        if (G.combo >= 3) arcadePop("COMBO BREAK", "break");
+        G.combo = 0;
+        G.mult = 1;
+      }
+    }
+    if (G.multPulse > 0) G.multPulse = Math.max(0, G.multPulse - dt * 3);
+    const boostOn = !!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft;
+    if (!boostOn) return;
+    G.gunOn = true;
+    G.gunCool -= dt;
+    const fx = Math.cos(G.car.h), fy = Math.sin(G.car.h);
+    const rx = -fy, ry = fx;
+    const ox = G.car.x + fx * 2.3, oy = G.car.y + fy * 2.3;
+    let best = null, bestAlong = 80, i, c, dx, dy, along, perp;
+    for (i = 0; i < (G.traffic || []).length; i++) {
+      c = G.traffic[i];
+      if (!c.alive) continue;
+      dx = c.x - ox; dy = c.y - oy;
+      along = dx * fx + dy * fy;
+      perp = Math.abs(dx * rx + dy * ry);
+      if (along > 2.5 && along < 52 && perp < 2.5 + along * 0.035 && along < bestAlong) {
+        bestAlong = along;
+        best = c;
+      }
+    }
+    if (best) {
+      best.hp -= 3.4 * dt;
+      if (best.hp <= 0) wreckTraffic(best);
+    }
+    if (G.gunCool <= 0) {
+      G.gunCool = 0.055;
+      const side = (G.kills + Math.floor(performance.now() / 55)) % 2 ? 1 : -1;
+      const sx = ox + rx * 0.42 * side;
+      const sy = oy + ry * 0.42 * side;
+      const reach = best ? bestAlong : 38;
+      G.tracers.push({
+        x: sx, y: sy,
+        x2: sx + fx * reach + (best ? 0 : rx * (Math.random() - 0.5) * 1.2),
+        y2: sy + fy * reach + (best ? 0 : ry * (Math.random() - 0.5) * 1.2)
+      });
+    }
   }
 
   function randomTrack(seed) {
@@ -477,12 +670,17 @@
   }
 
   function defaultSave() {
-    return { name: "", craft: "apex", ghosts: {}, rounds: [], options: defaultOptions() };
+    return {
+      name: "", craft: "apex", ghosts: {}, rounds: [], options: defaultOptions(),
+      arcade: { bestScore: 0, bestCombo: 0, runs: [] }
+    };
   }
   function loadSave() {
     try {
       const s = Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}"));
       s.options = Object.assign(defaultOptions(), s.options || {});
+      s.arcade = Object.assign({ bestScore: 0, bestCombo: 0, runs: [] }, s.arcade || {});
+      if (!Array.isArray(s.arcade.runs)) s.arcade.runs = [];
       if (!CRAFTS.some(function (c) { return c.id === s.craft; })) s.craft = "apex";
       return s;
     } catch (e) { return defaultSave(); }
@@ -516,6 +714,16 @@
     bestLap: null,
     lapStartMs: 0,
     lapTimes: [],
+    traffic: [],
+    gunOn: false,
+    gunCool: 0,
+    tracers: [],
+    score: 0,
+    combo: 0,
+    mult: 1,
+    comboT: 0,
+    kills: 0,
+    bestCombo: 1,
     hudSpd: 0,
     hudRpm: 800,
     _sheet: ""
@@ -597,6 +805,9 @@
     G.hudSpd = 0;
     G.hudRpm = 800;
     G._ridgeDone = false;
+    resetArcade();
+    if (tr.kind === "ridge") G.traffic = spawnTraffic(tr);
+    if ($("arcadeHud")) $("arcadeHud").classList.toggle("hidden", tr.kind !== "ridge");
     G.phase = opt("countdown") ? "count" : "race";
     G.countN = 3;
     G.countT = performance.now();
@@ -895,8 +1106,9 @@
     const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
     const proj0 = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
-    if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
-    else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
+    const ridge = G.track && G.track.kind === "ridge";
+    if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * (ridge ? 0.5 : 0.42));
+    else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
     stepPowertrain(c, G.car, dt, {
       throttle: throttle,
       brake: brake,
@@ -1103,6 +1315,23 @@
     if ($("rhThr")) $("rhThr").style.width = Math.round((G.car.thr || 0) * 100) + "%";
     if ($("rhBrk")) $("rhBrk").style.width = Math.round((G.car.brk || 0) * 100) + "%";
     if ($("rhBoost")) $("rhBoost").style.width = Math.round((G.car.boost || 0) * 100) + "%";
+    if ($("arcadeHud")) {
+      const on = !!(G.track && G.track.kind === "ridge" && G.mode === "race");
+      $("arcadeHud").classList.toggle("hidden", !on);
+      if (on) {
+        if ($("arcScore")) $("arcScore").textContent = String(G.score || 0);
+        if ($("arcMult")) {
+          $("arcMult").textContent = "x" + (G.mult || 1);
+          $("arcMult").classList.toggle("hot", (G.mult || 1) > 1);
+          $("arcMult").classList.toggle("guns", !!G.gunOn);
+        }
+        if ($("arcCombo")) {
+          $("arcCombo").textContent = (G.combo > 1 ? G.combo + " CHAIN" : (G.gunOn ? "GUNS LIVE" : "HOLD R-SHIFT"));
+        }
+        if ($("arcBest")) $("arcBest").textContent = "BEST " + ((G.save.arcade && G.save.arcade.bestScore) || 0);
+        if ($("arcKills")) $("arcKills").textContent = (G.kills || 0) + " WRECKS";
+      }
+    }
     if ($("rhSectors")) {
       if (drag) {
         const st = G.tree || {};
@@ -1175,9 +1404,14 @@
       }).join(" · ") || "—";
     }
     if ($("ghostCard")) {
-      $("ghostCard").innerHTML = G.ghost
-        ? "Ghost on · " + fmt(G.ghost.ms)
-        : "No ghost for this craft yet.";
+      if (G.track && G.track.kind === "ridge") {
+        $("ghostCard").innerHTML = "Arcade · " + (G.score || 0) + " pts · x" + (G.mult || 1) +
+          "<br>Browser best <b>" + ((G.save.arcade && G.save.arcade.bestScore) || 0) + "</b>";
+      } else {
+        $("ghostCard").innerHTML = G.ghost
+          ? "Ghost on · " + fmt(G.ghost.ms)
+          : "No ghost for this craft yet.";
+      }
     }
     if ($("dockStatus")) $("dockStatus").textContent = G.phase === "count" ? "Lights…" : (G.sparks > 0.4 ? "Drifting" : "On line");
     paintRaceHud(now);
@@ -1219,14 +1453,45 @@
       ms: ms,
       laps: G.laps,
       at: Date.now(),
-      beat: beat
+      beat: beat,
+      score: G.track.kind === "ridge" ? (G.score || 0) : null,
+      kills: G.track.kind === "ridge" ? (G.kills || 0) : null,
+      combo: G.track.kind === "ridge" ? (G.bestCombo || 1) : null
     });
     G.save.rounds = G.save.rounds.slice(0, 40);
+    let high = false;
+    if (G.track.kind === "ridge") {
+      if (!G.save.arcade) G.save.arcade = { bestScore: 0, bestCombo: 0, runs: [] };
+      if ((G.score || 0) > (G.save.arcade.bestScore || 0)) {
+        G.save.arcade.bestScore = G.score;
+        high = true;
+      }
+      if ((G.bestCombo || 1) > (G.save.arcade.bestCombo || 0)) G.save.arcade.bestCombo = G.bestCombo;
+      if (!Array.isArray(G.save.arcade.runs)) G.save.arcade.runs = [];
+      G.save.arcade.runs.unshift({
+        name: (G.save.name || "Operator").slice(0, 24),
+        craft: G.craft.name,
+        track: G.track.name,
+        ms: ms,
+        score: G.score || 0,
+        kills: G.kills || 0,
+        combo: G.bestCombo || 1,
+        at: Date.now()
+      });
+      G.save.arcade.runs = G.save.arcade.runs.slice(0, 20);
+    }
     writeSave(G.save);
-    log((beat ? "New ghost. " : "Heat closed. ") + fmt(ms));
+    log((beat ? "New ghost. " : "Heat closed. ") + fmt(ms) + (G.track.kind === "ridge" ? " · " + (G.score || 0) + " pts" : ""));
+    const arcadeLine = G.track.kind === "ridge"
+      ? "<p class='lore arc-result'>" + (G.score || 0) + " pts · " + (G.kills || 0) + " wrecks · x" + (G.bestCombo || 1) +
+        " combo" + (high ? " · NEW HIGH" : "") + "</p>" +
+        "<p class='lore'>Browser best <b>" + (G.save.arcade.bestScore || 0) + "</b></p>"
+      : "";
     showSheet(
-      "<p class='kicker'>Heat closed</p><h2>" + fmt(ms) + "</h2>" +
+      "<p class='kicker'>Heat closed</p><h2>" + (G.track.kind === "ridge" ? String(G.score || 0) : fmt(ms)) + "</h2>" +
+      (G.track.kind === "ridge" ? "<p class='lore'>" + fmt(ms) + "</p>" : "") +
       "<p class='lore'>" + G.track.name + " · " + G.craft.name + (beat ? " · ghost rewritten" : "") + "</p>" +
+      arcadeLine +
       donateHtml() +
       "<div class='modes'><button class='btn gold' id='again'>Replay</button><button class='btn' id='toMenu'>Menu</button></div>"
     );
@@ -1250,7 +1515,8 @@
         slip: Math.max(G.car.wheelSlip || 0, G.sparks || 0, slipLat > 0.14 ? slipLat : 0),
         speed: Math.abs(G.car.speed || 0),
         radio: radioOn,
-        reduceFx: opt("reduceFx")
+        reduceFx: opt("reduceFx"),
+        guns: !!(G.gunOn && G.track && G.track.kind === "ridge")
       });
     }
     if (G.mode !== "race" || !G.track) return;
@@ -1288,6 +1554,10 @@
     const dt = Math.min(0.033, G._last ? (now - G._last) / 1000 : 0.016);
     G._last = now;
     const proj = stepCar(dt);
+    if (G.track.kind === "ridge") {
+      stepTraffic(dt);
+      stepGuns(dt);
+    }
     const elapsed = now - G.t0;
     if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 16000) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
@@ -1334,7 +1604,11 @@
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
-      Rally3D.setState({ car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx") });
+      Rally3D.setState({
+        car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
+        traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
+        gun: { on: G.gunOn, tracers: G.tracers || [] }
+      });
       return;
     }
     if (!ctx || !G.track) return;
@@ -1405,16 +1679,35 @@
     c.beginPath();
     c.arc(G.car.x * scale, G.car.y * scale, 7, 0, Math.PI * 2);
     c.fill();
+    if (G.traffic && G.track && G.track.kind === "ridge") {
+      G.traffic.forEach(function (tc) {
+        if (tc.wreck <= 0 && !tc.alive) return;
+        c.fillStyle = tc.alive ? "#f59e0b" : "#64748b";
+        c.beginPath();
+        c.arc(tc.x * scale, tc.y * scale, 6, 0, Math.PI * 2);
+        c.fill();
+      });
+    }
+    if (G.gunOn && G.tracers) {
+      c.strokeStyle = "#fde68a";
+      c.lineWidth = 2;
+      G.tracers.forEach(function (tr) {
+        c.beginPath();
+        c.moveTo(tr.x * scale, tr.y * scale);
+        c.lineTo(tr.x2 * scale, tr.y2 * scale);
+        c.stroke();
+      });
+    }
     c.restore();
   }
 
   function help() {
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
-      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts. C cycles camera (Chase, Close, Hood, Bumper, Cockpit, TV).</li>" +
+      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Circuits: three laps, sectors, then the line. Endless run is one long start-to-finish highway — checkpoints, then FINISH.</li>" +
+      "<li>Circuits: three laps, sectors, then the line. Endless is one long highway with light traffic. Wreck cars with the guns for score, combos, and a sip of boost. Boost also trickles back slowly.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
@@ -1492,7 +1785,9 @@
     G.mode = "menu";
     G.phase = "idle";
     G.keys = {};
+    G.gunOn = false;
     showDragUi(false);
+    if ($("arcadeHud")) $("arcadeHud").classList.add("hidden");
     const flash = $("countFlash");
     if (flash) flash.classList.add("hidden");
     if (window.HavenCar) HavenCar.closeStudio();
@@ -1507,7 +1802,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
-          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost · C camera · R restart</p>" +
+          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost/guns · C camera · R restart</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
@@ -1523,7 +1818,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New ~16-mile four-lane start-to-finish highway. Checkpoints, tunnel, FINISH.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score stays in this browser.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Haven Rally — Local ledger | chatagent.ca</title>
-<meta name="description" content="This browser’s Haven Rally hall. Heats stay local. Empty beats a fake global board.">
+<meta name="description" content="This browser’s Haven Rally hall. Heats and arcade highs stay local. Empty beats a fake global board.">
 <link rel="canonical" href="https://chatagent.ca/games/haven-rally/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -13,7 +13,8 @@
 body { margin:0; background:#070b12; color:#e8eef5; font-family:"Source Sans 3",system-ui,sans-serif; }
 .wrap { max-width:820px; margin:0 auto; padding:1.4rem 1.1rem 3rem; }
 .kicker { letter-spacing:.2em; text-transform:uppercase; color:#5eead4; font-size:.72rem; }
-h1 { font-family:Syne,sans-serif; }
+h1,h2 { font-family:Syne,sans-serif; }
+h2 { font-size:1.15rem; color:#fbbf24; margin:1.6rem 0 .4rem; }
 a { color:#5eead4; }
 .row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
 .btn { display:inline-flex; padding:.5rem .8rem; border:1px solid #1e3a4a; border-radius:8px; text-decoration:none; color:#e8eef5; }
@@ -24,6 +25,7 @@ a { color:#5eead4; }
 }
 .rtop { display:flex; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
 .rtop b { font-family:Syne,sans-serif; color:#fbbf24; }
+.gold { color:#fbbf24; }
 </style>
 </head>
 <body>
@@ -37,6 +39,7 @@ a { color:#5eead4; }
     <a class="btn" href="/games/">All games</a>
     <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">PayPal</a>
   </div>
+  <div id="arcade"></div>
   <div id="hall"></div>
 </div>
 <script>
@@ -49,16 +52,27 @@ a { color:#5eead4; }
   function esc(s){ return String(s||"").replace(/[<>]/g,""); }
   try {
     var s = JSON.parse(localStorage.getItem("lygo-haven-rally-v1") || "{}");
+    var arcade = s.arcade || {};
+    var runs = arcade.runs || [];
+    var arcEl = document.getElementById("arcade");
+    if (arcade.bestScore || runs.length) {
+      var top = runs.slice().sort(function(a,b){ return (b.score||0)-(a.score||0); }).slice(0,10);
+      arcEl.innerHTML = "<h2>Endless arcade</h2>"+
+        "<p class='muted'>Best score <b class='gold'>"+(arcade.bestScore||0)+"</b> · best chain x"+(arcade.bestCombo||1)+"</p>"+
+        top.map(function(r, i){
+          return "<div class='round'><div class='rtop'><b>#"+(i+1)+" · "+(r.score||0)+" pts</b><span>"+fmt(r.ms)+"</span></div>"+
+            "<p class='muted'>"+esc(r.name)+" · "+esc(r.track)+" · "+(r.kills||0)+" wrecks · x"+(r.combo||1)+"</p></div>";
+        }).join("");
+    } else {
+      arcEl.innerHTML = "<h2>Endless arcade</h2><p class='muted'>No wreck scores on this device yet. Endless run logs them here.</p>";
+    }
     var rows = s.rounds || [];
     var hall = document.getElementById("hall");
-    if (!rows.length) {
-      hall.innerHTML = "<p class='muted'>No heats on this device yet.</p>";
-      return;
-    }
-    hall.innerHTML = rows.map(function(r){
+    hall.innerHTML = "<h2>Heats</h2>" + (rows.length ? rows.map(function(r){
+      var extra = r.score != null ? " · "+r.score+" pts · "+(r.kills||0)+" wrecks" : "";
       return "<div class='round'><div class='rtop'><b>"+esc(r.track)+"</b><span>"+fmt(r.ms)+"</span></div>"+
-        "<p class='muted'>"+esc(r.name)+" · "+esc(r.craft)+(r.beat?" · ghost rewritten":"")+"</p></div>";
-    }).join("");
+        "<p class='muted'>"+esc(r.name)+" · "+esc(r.craft)+extra+(r.beat?" · ghost rewritten":"")+"</p></div>";
+    }).join("") : "<p class='muted'>No heats on this device yet.</p>");
   } catch(e) {
     document.getElementById("hall").textContent = "Ledger unreadable.";
   }
