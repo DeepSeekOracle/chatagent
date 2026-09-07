@@ -75,6 +75,11 @@
   const TRACK_LANES = 4;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
   const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
+  const BOT_ROSTER = [
+    { name: "Reed", skill: 0.88, color: "#1d4ed8", body: "apex" },
+    { name: "Mira", skill: 0.82, color: "#7c3aed", body: "apex" },
+    { name: "Kai", skill: 0.74, color: "#0f766e", body: "boxcut" }
+  ];
 
   function mulberry(seed) {
     let t = seed >>> 0;
@@ -196,7 +201,8 @@
       Rally3D.setCam({
         dist: Number(opt("camDist")) || 1,
         height: Number(opt("camHeight")) || 1,
-        view: Math.round(Number(opt("camView")) || 0)
+        view: Math.round(Number(opt("camView")) || 0),
+        view2: G.camView2 || 0
       });
     }
     if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
@@ -804,7 +810,12 @@
     bestCombo: 1,
     hudSpd: 0,
     hudRpm: 800,
-    _sheet: ""
+    _sheet: "",
+    field: "solo",
+    racers: [],
+    camView2: 0,
+    pendingTrack: null,
+    _firstFinish: 0
   };
 
   const $ = function (id) { return document.getElementById(id); };
@@ -855,20 +866,50 @@
 
   function spawnOnGrid() {
     if (G.track && G.track.kind === "drag") {
+      G.field = "solo";
+      G.racers = [];
+      if (use3d && window.Rally3D && Rally3D.setSplit) Rally3D.setSplit(false);
       spawnDrag(false);
       return;
     }
     const tr = G.track;
-    const a = tr.pts[0], b = tr.pts[1];
-    const h = Math.atan2(b.y - a.y, b.x - a.x);
-    const tlen = dist(a, b) || 1;
-    const lat0 = -LANE_W * 0.5;
-    G.car = {
-      x: a.x + (-(b.y - a.y) / tlen) * lat0,
-      y: a.y + ((b.x - a.x) / tlen) * lat0,
-      h: h, vh: h, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
-    };
+    if (tr.kind === "ridge") G.field = "solo";
+    const p1craft = craftOf(G.save.craft);
+    const p2id = p1craft.id === "apex" ? "boxcut" : "apex";
+    const p2craft = craftOf(p2id);
+    const wantSplit = isSplit() && tr.kind !== "ridge";
+    const wantBots = (G.field === "bots" || G.field === "splitbots") && tr.kind !== "ridge";
+    G.racers = [];
+    G.racers.push(makeRacer({
+      id: "p1", name: (G.save.name || "P1").slice(0, 16), kind: "human", slot: 0,
+      craft: p1craft, lane: wantSplit || wantBots ? 0 : 1, stagger: 0, seed: 11
+    }));
+    if (wantSplit) {
+      G.racers.push(makeRacer({
+        id: "p2", name: "P2", kind: "human", slot: 1,
+        craft: p2craft, lane: 1, stagger: 0, seed: 23
+      }));
+    }
+    if (wantBots) {
+      const nBot = wantSplit ? 2 : 3;
+      for (let i = 0; i < nBot; i++) {
+        const bot = BOT_ROSTER[i];
+        const lane = wantSplit ? 2 + i : 1 + i;
+        G.racers.push(makeRacer({
+          id: "bot" + i, name: bot.name, kind: "bot", slot: 2 + i,
+          craft: craftNorm(Object.assign({}, craftOf(bot.body === "boxcut" ? "boxcut" : "apex"), { color: bot.color, body: bot.body })),
+          lane: lane, stagger: 1 + (i % 2), skill: bot.skill, seed: 40 + i * 17,
+          laneBias: (lane - 1.5) * LANE_W * 0.42
+        }));
+      }
+    }
+    syncP1();
     G.ai = null;
+    G._firstFinish = 0;
+    if (use3d && window.Rally3D && Rally3D.setSplit) Rally3D.setSplit(wantSplit);
+    if ($("raceHud")) $("raceHud").classList.toggle("hidden", wantSplit);
+    if ($("splitHud")) $("splitHud").classList.toggle("hidden", !wantSplit);
+    if ($("splitBar")) $("splitBar").classList.toggle("hidden", !wantSplit);
     G.lap = 0;
     G.lastS = 0;
     G.gates = (tr.sectors || [0, 0, 0]).map(function () { return false; });
@@ -896,12 +937,20 @@
     G._last = 0;
     applyOptions();
     const gk = tr.id + "|" + G.craft.id;
-    G.ghost = (G.save.ghosts && G.save.ghosts[gk]) || null;
+    G.ghost = (!isFieldRace() && G.save.ghosts && G.save.ghosts[gk]) || null;
     G.bestMs = G.ghost && G.ghost.ms;
     paintPilot();
     showDragUi(false);
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
-    log(tr.name + " · " + G.craft.name + " · " + (tr.kind === "ridge" ? Math.round(tr.len) + " yd to FINISH" : tr.laps + " laps"));
+    const pads = livePads();
+    log(tr.name + " · " + (isFieldRace()
+      ? (G.racers.map(function (r) { return r.name; }).join(" / ") + (pads.length ? " · " + pads.length + " pad" : ""))
+      : G.craft.name) + " · " + (tr.kind === "ridge" ? Math.round(tr.len) + " yd to FINISH" : tr.laps + " laps"));
+    if ($("hint")) {
+      $("hint").textContent = wantSplit
+        ? "P1 WASD · P2 arrows (Ctrl drift, Enter boost) · pad: stick + RT/LT, A gas, B e-brake, RB boost · V P2 cam"
+        : "W throttle · Space brake · L-Shift drift · R-Shift boost/guns · F drag tree";
+    }
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
@@ -913,6 +962,22 @@
     G.laps = track.laps;
     G.craft = craftOf(G.save.craft);
     spawnOnGrid();
+  }
+  function pickField(track) {
+    G.pendingTrack = track;
+    showSheet(
+      "<p class='kicker'>Grid</p><h2>" + track.name + "</h2>" +
+      "<p class='lore'>" + track.laps + " laps. How do you want this heat?</p>" +
+      "<div class='mode-grid'>" +
+        "<button type='button' class='mode-card' data-field='solo'><b>Solo · ghost</b><span>Time trial. Beat your ghost for this chassis.</span></button>" +
+        "<button type='button' class='mode-card' data-field='split'><b>2P Split</b><span>Left P1 WASD. Right P2 arrows or a gamepad.</span></button>" +
+        "<button type='button' class='mode-card' data-field='bots'><b>vs AI</b><span>You plus Reed, Mira, and Kai. Same cars, racing line.</span></button>" +
+        "<button type='button' class='mode-card' data-field='splitbots'><b>2P + AI</b><span>Split screen with two bots filling the grid.</span></button>" +
+      "</div>" +
+      "<p class='lore'>Pad: left stick steer, RT throttle, LT brake, A throttle, B / LB e-brake, RB / Y boost. One pad rides with P2; two pads are P1 then P2.</p>" +
+      "<div class='modes'><button type='button' class='btn' data-go='title'>Back</button></div>"
+    );
+    G._sheet = "field";
   }
 
   function showDragUi(on) {
@@ -1167,80 +1232,322 @@
     draw(now);
   }
 
-  function stepCar(dt) {
-    const c = G.craft;
+  function isSplit() {
+    return G.field === "split" || G.field === "splitbots";
+  }
+  function isFieldRace() {
+    return G.field && G.field !== "solo";
+  }
+  function livePads() {
+    const raw = navigator.getGamepads ? navigator.getGamepads() : [];
+    const out = [];
+    for (let i = 0; i < raw.length; i++) if (raw[i]) out.push(raw[i]);
+    return out;
+  }
+  function deadAxis(v) {
+    return Math.abs(v) < 0.18 ? 0 : v;
+  }
+  function btnVal(b) {
+    if (!b) return 0;
+    if (typeof b === "object") return b.value != null ? b.value : (b.pressed ? 1 : 0);
+    return b ? 1 : 0;
+  }
+  function padInput(pad) {
+    if (!pad) return null;
+    const ax = pad.axes || [];
+    const bt = pad.buttons || [];
+    const sx = deadAxis(ax[0] || 0);
+    const sy = deadAxis(ax[1] || 0);
+    const dL = btnVal(bt[14]);
+    const dR = btnVal(bt[15]);
+    const dU = btnVal(bt[12]);
+    const dD = btnVal(bt[13]);
+    let steerIn = sx + (dR - dL);
+    let throttle = Math.max(btnVal(bt[7]), sy < 0 ? -sy : 0, dU);
+    let brake = Math.max(btnVal(bt[6]), sy > 0 ? sy : 0, dD);
+    if (btnVal(bt[0]) > 0.4 && throttle < 0.2 && brake < 0.2) throttle = 1;
+    return {
+      throttle: clamp(throttle, 0, 1),
+      brake: clamp(brake, 0, 1),
+      ebrake: btnVal(bt[1]) > 0.4 || btnVal(bt[2]) > 0.4 || btnVal(bt[4]) > 0.4,
+      boost: btnVal(bt[5]) > 0.4 || btnVal(bt[3]) > 0.4,
+      steerIn: clamp(steerIn, -1, 1),
+      pad: true
+    };
+  }
+  function humanInput(slot) {
     const k = G.keys;
-    const throttle = (k.KeyW || k.ArrowUp) ? 1 : 0;
-    const brake = (k.KeyS || k.ArrowDown || k.Space) ? 1 : 0;
-    const ebrake = !!k.ShiftLeft;
-    G.car.thr = throttle;
-    G.car.brk = brake || (ebrake ? 1 : 0);
-    let steerIn = 0;
-    if (k.KeyA || k.ArrowLeft) steerIn -= 1;
-    if (k.KeyD || k.ArrowRight) steerIn += 1;
-    if (opt("invertSteer")) steerIn *= -1;
-    const spd = Math.abs(G.car.speed);
+    const pads = livePads();
+    const split = isSplit();
+    let pad = null;
+    if (split) {
+      pad = pads.length >= 2 ? pads[slot] : (slot === 1 ? pads[0] : null);
+    } else {
+      pad = pads[0] || null;
+    }
+    const p = padInput(pad) || { throttle: 0, brake: 0, ebrake: false, boost: false, steerIn: 0 };
+    if (slot === 0) {
+      if (!split) {
+        if (k.KeyW || k.ArrowUp) p.throttle = 1;
+        if (k.KeyS || k.ArrowDown || k.Space) p.brake = 1;
+        if (k.KeyA || k.ArrowLeft) p.steerIn -= 1;
+        if (k.KeyD || k.ArrowRight) p.steerIn += 1;
+      } else {
+        if (k.KeyW) p.throttle = 1;
+        if (k.KeyS || k.Space) p.brake = 1;
+        if (k.KeyA) p.steerIn -= 1;
+        if (k.KeyD) p.steerIn += 1;
+      }
+      if (k.ShiftLeft) p.ebrake = true;
+      if (k.ShiftRight) p.boost = true;
+    } else {
+      if (k.ArrowUp) p.throttle = 1;
+      if (k.ArrowDown) p.brake = 1;
+      if (k.ArrowLeft) p.steerIn -= 1;
+      if (k.ArrowRight) p.steerIn += 1;
+      if (k.ControlRight || k.Period || k.KeyK) p.ebrake = true;
+      if (k.Enter || k.NumpadEnter || k.Slash || k.KeyL) p.boost = true;
+    }
+    p.steerIn = clamp(p.steerIn, -1, 1);
+    if (opt("invertSteer")) p.steerIn *= -1;
+    return p;
+  }
+  function pointAtS(samples, sWant, closed) {
+    const segs = closed ? samples.length : Math.max(0, samples.length - 1);
+    let total = 0;
+    const lens = [];
+    for (let i = 0; i < segs; i++) {
+      const L = dist(samples[i], samples[(i + 1) % samples.length]);
+      lens.push(L);
+      total += L;
+    }
+    if (total < 1) return { x: samples[0].x, y: samples[0].y, hx: 1, hy: 0 };
+    let s = closed ? ((sWant % total) + total) % total : clamp(sWant, 0, total);
+    let acc = 0;
+    for (let i = 0; i < segs; i++) {
+      if (acc + lens[i] >= s || i === segs - 1) {
+        const t = lens[i] ? (s - acc) / lens[i] : 0;
+        const a = samples[i], b = samples[(i + 1) % samples.length];
+        const hx = (b.x - a.x) / (lens[i] || 1), hy = (b.y - a.y) / (lens[i] || 1);
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, hx: hx, hy: hy };
+      }
+      acc += lens[i];
+    }
+    return { x: samples[0].x, y: samples[0].y, hx: 1, hy: 0 };
+  }
+  function botInput(racer) {
+    const tr = G.track;
+    const car = racer.car;
+    const proj = project(car, tr.samples, racer.lastS, tr.closed !== false);
+    const look = 16 + Math.abs(car.speed) * 0.42 * racer.skill;
+    const tgt = pointAtS(tr.samples, proj.s + look, tr.closed !== false);
+    const nx = -tgt.hy, ny = tgt.hx;
+    const aimX = tgt.x + nx * racer.laneBias;
+    const aimY = tgt.y + ny * racer.laneBias;
+    const desired = Math.atan2(aimY - car.y, aimX - car.x);
+    let err = wrapDelta(desired - car.h, Math.PI * 2);
+    err += (proj.lat - racer.laneBias) * 0.035;
+    err += (racer.rng() - 0.5) * (1 - racer.skill) * 0.28;
+    const corner = Math.abs(err);
+    const spd = Math.abs(car.speed);
+    let throttle = 0.78 + 0.22 * racer.skill;
+    let brake = 0;
+    if (corner > 0.62 && spd > 22) { throttle = 0.22; brake = 0.55; }
+    else if (corner > 0.38 && spd > 34) { throttle = 0.55; brake = 0.18; }
+    else if (corner > 0.22 && spd > 48) { throttle = 0.82; }
+    const boost = corner < 0.12 && spd > 32 && car.boost > 0.18 && racer.skill > 0.78;
+    const ebrake = corner > 0.9 && spd > 24;
+    return {
+      throttle: throttle,
+      brake: brake,
+      ebrake: ebrake,
+      boost: boost,
+      steerIn: clamp(err * (1.4 + racer.skill), -1, 1)
+    };
+  }
+  function blankCar(pose, tank) {
+    return {
+      x: pose.x, y: pose.y, h: pose.h, vh: pose.h, speed: 0, steer: 0,
+      boost: tank || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
+    };
+  }
+  function poseOnGrid(laneIdx, stagger) {
+    const tr = G.track;
+    const a = tr.pts[0], b = tr.pts[1];
+    const h = Math.atan2(b.y - a.y, b.x - a.x);
+    const tlen = dist(a, b) || 1;
+    const lat = (laneIdx - 1.5) * LANE_W;
+    const back = (stagger || 0) * 5.5;
+    return {
+      x: a.x + (-(b.y - a.y) / tlen) * lat - Math.cos(h) * back,
+      y: a.y + ((b.x - a.x) / tlen) * lat - Math.sin(h) * back,
+      h: h
+    };
+  }
+  function makeRacer(spec) {
+    const craft = craftNorm(spec.craft);
+    const pose = poseOnGrid(spec.lane, spec.stagger || 0);
+    return {
+      id: spec.id,
+      name: spec.name,
+      kind: spec.kind,
+      slot: spec.slot || 0,
+      craft: craft,
+      car: blankCar(pose, craft.boostTank),
+      lastS: 0,
+      lap: 0,
+      gates: (G.track.sectors || [0, 0, 0]).map(function () { return false; }),
+      splits: [],
+      lastLap: null,
+      bestLap: null,
+      lapStartMs: 0,
+      done: false,
+      finishMs: null,
+      skill: spec.skill || 1,
+      laneBias: spec.laneBias || ((spec.lane - 1.5) * LANE_W * 0.55),
+      rng: mulberry(spec.seed || 7),
+      sparks: 0
+    };
+  }
+  function raceAlong(r) {
+    return (r.lap || 0) * ((G.track && G.track.len) || 1) + (r.lastS || 0);
+  }
+  function standings() {
+    return (G.racers || []).slice().sort(function (a, b) {
+      if (a.done && b.done) return (a.finishMs || 0) - (b.finishMs || 0);
+      if (a.done) return -1;
+      if (b.done) return 1;
+      return raceAlong(b) - raceAlong(a);
+    });
+  }
+  function posLabel(racer) {
+    const st = standings();
+    const i = st.indexOf(racer);
+    return "P" + (i < 0 ? 1 : i + 1);
+  }
+  function bumpRacers() {
+    const list = G.racers || [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i].car, b = list[j].car;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        if (d >= 2.35 || d < 0.05) continue;
+        const nx = dx / d, ny = dy / d;
+        const push = (2.35 - d) * 0.5;
+        a.x -= nx * push; a.y -= ny * push;
+        b.x += nx * push; b.y += ny * push;
+        a.speed *= 0.9; b.speed *= 0.9;
+        if (list[i].kind === "human" && list[i].slot === 0) G.sparks = Math.max(G.sparks, 0.55);
+      }
+    }
+  }
+  function stepVehicle(dt, racer, inp) {
+    const c = racer.craft;
+    const car = racer.car;
+    const throttle = inp.throttle || 0;
+    const brake = inp.brake || 0;
+    const ebrake = !!inp.ebrake;
+    car.thr = throttle;
+    car.brk = brake || (ebrake ? 1 : 0);
+    const spd = Math.abs(car.speed);
     const vmaxEst = topSpeedYd(c);
     const spd01 = clamp(spd / (vmaxEst + 6), 0, 1);
     const steerRate = (2.15 + 1.35 * (c.turn / 2.4)) * (1.12 - 0.58 * spd01);
-    G.car.steer += (steerIn - G.car.steer) * clamp(dt * steerRate, 0, 1);
+    car.steer += ((inp.steerIn || 0) - car.steer) * clamp(dt * steerRate, 0, 1);
     const tank = c.boostTank || 1;
-    const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
-    const proj0 = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
+    const boostOn = !!inp.boost && car.boost > 0.04 && !ebrake;
+    const proj0 = project(car, G.track.samples, racer.lastS, G.track.closed !== false);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     const ridge = G.track && G.track.kind === "ridge";
-    if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * (ridge ? 0.5 : 0.42));
-    else if (on0) G.car.boost = Math.min(tank, G.car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
-    stepPowertrain(c, G.car, dt, {
+    if (boostOn) car.boost = Math.max(0, car.boost - dt * (ridge ? 0.5 : 0.42));
+    else if (on0) car.boost = Math.min(tank, car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
+    const fx = racer.kind === "human" && racer.slot === 0;
+    stepPowertrain(c, car, dt, {
       throttle: throttle,
       brake: brake,
       ebrake: ebrake,
       boostOn: boostOn,
-      onTrack: on0
+      onTrack: on0,
+      fx: fx,
+      ignoreCombo: !fx
     });
-    if (G.car.vh == null) G.car.vh = G.car.h;
+    if (car.vh == null) car.vh = car.h;
     const turnAuth = c.turn * 0.62 * (1.08 - 0.58 * spd01);
-    let yaw = G.car.steer * turnAuth;
+    let yaw = car.steer * turnAuth;
     if (ebrake && spd > 9) {
-      yaw += G.car.steer * (0.95 + 0.7 * c.turn) * (0.35 + 0.65 * spd01);
+      yaw += car.steer * (0.95 + 0.7 * c.turn) * (0.35 + 0.65 * spd01);
     }
-    const wslip = G.car.wheelSlip || 0;
-    if (wslip > 0.28 && c.drive === "rwd") yaw += G.car.steer * wslip * 1.15;
+    const wslip = car.wheelSlip || 0;
+    if (wslip > 0.28 && c.drive === "rwd") yaw += car.steer * wslip * 1.15;
     if (wslip > 0.28 && c.drive === "fwd") yaw *= (1 - 0.5 * wslip);
     yaw = clamp(yaw, -2.05, 2.05);
-    G.car.h += yaw * dt;
+    car.h += yaw * dt;
     let latGrip = (c.mu * 0.74) * (on0 ? 1 : 0.3);
     if (ebrake && spd > 10) latGrip *= 0.16;
     else latGrip *= 0.82 + 0.18 * (1 - spd01);
-    const slip = wrapDelta(G.car.h - G.car.vh, Math.PI * 2);
-    const counter = (G.car.steer * slip) < -0.04;
+    const slip = wrapDelta(car.h - car.vh, Math.PI * 2);
+    const counter = (car.steer * slip) < -0.04;
     let align = latGrip * (ebrake ? 4.2 : 8.4);
     if (ebrake && counter) align *= 1.85;
-    else if (ebrake && Math.abs(G.car.steer) > 0.25) align *= 0.62;
-    G.car.vh += slip * clamp(align * dt, 0, 1);
-    const slipAbs = Math.abs(wrapDelta(G.car.h - G.car.vh, Math.PI * 2));
+    else if (ebrake && Math.abs(car.steer) > 0.25) align *= 0.62;
+    car.vh += slip * clamp(align * dt, 0, 1);
+    const slipAbs = Math.abs(wrapDelta(car.h - car.vh, Math.PI * 2));
     if (slipAbs > 0.16 && spd > 12) {
-      G.sparks = Math.max(G.sparks, clamp(slipAbs * 1.5, 0, 1));
-      if (ebrake) G.car.speed *= (1 - 0.12 * dt);
-      if (on0 && !boostOn) G.car.boost = Math.min(1, G.car.boost + dt * 0.42 * c.boost * clamp(slipAbs, 0, 0.8));
-    } else if ((G.car.wheelSlip || 0) < 0.25) G.sparks *= 0.88;
-    G.car.x += Math.cos(G.car.vh) * G.car.speed * dt;
-    G.car.y += Math.sin(G.car.vh) * G.car.speed * dt;
-    let proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
+      racer.sparks = clamp(slipAbs * 1.5, 0, 1);
+      if (fx) G.sparks = Math.max(G.sparks, racer.sparks);
+      if (ebrake) car.speed *= (1 - 0.12 * dt);
+      if (on0 && !boostOn) car.boost = Math.min(tank, car.boost + dt * 0.42 * c.boost * clamp(slipAbs, 0, 0.8));
+    } else if ((car.wheelSlip || 0) < 0.25) {
+      racer.sparks = (racer.sparks || 0) * 0.88;
+      if (fx) G.sparks *= 0.88;
+    }
+    car.x += Math.cos(car.vh) * car.speed * dt;
+    car.y += Math.sin(car.vh) * car.speed * dt;
+    let proj = project(car, G.track.samples, racer.lastS, G.track.closed !== false);
     const hw = G.track.width;
     if (Math.abs(proj.lat) > hw) {
       const extra = Math.abs(proj.lat) - hw;
       const dir = proj.lat >= 0 ? 1 : -1;
-      G.car.x -= (-proj.hy) * dir * extra;
-      G.car.y -= proj.hx * dir * extra;
-      G.car.speed *= Math.max(0.22, 1 - 1.7 * dt);
+      car.x -= (-proj.hy) * dir * extra;
+      car.y -= proj.hx * dir * extra;
+      car.speed *= Math.max(0.22, 1 - 1.7 * dt);
       const trackH = Math.atan2(proj.hy, proj.hx);
-      G.car.h += wrapDelta(trackH - G.car.h, Math.PI * 2) * 0.08;
-      G.car.vh += wrapDelta(trackH - G.car.vh, Math.PI * 2) * 0.18;
-      if (ridge) breakCombo("WALL");
-      proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
+      car.h += wrapDelta(trackH - car.h, Math.PI * 2) * 0.08;
+      car.vh += wrapDelta(trackH - car.vh, Math.PI * 2) * 0.18;
+      if (ridge && fx) breakCombo("WALL");
+      proj = project(car, G.track.samples, racer.lastS, G.track.closed !== false);
     }
+    racer.boostOn = boostOn;
+    racer.ebrake = ebrake;
     return proj;
+  }
+  function stepCar(dt) {
+    if (G.racers && G.racers.length) {
+      const r = G.racers[0];
+      const proj = stepVehicle(dt, r, humanInput(0));
+      G.car = r.car;
+      G.craft = r.craft;
+      return proj;
+    }
+    const racer = {
+      kind: "human", slot: 0, craft: G.craft, car: G.car, lastS: G.lastS, sparks: G.sparks || 0
+    };
+    const proj = stepVehicle(dt, racer, humanInput(0));
+    G.sparks = racer.sparks;
+    return proj;
+  }
+  function syncP1() {
+    const r = G.racers && G.racers[0];
+    if (!r) return;
+    G.car = r.car;
+    G.craft = r.craft;
+    G.lastS = r.lastS;
+    G.lap = r.lap;
+    G.gates = r.gates;
+    G.lastLap = r.lastLap;
+    G.bestLap = r.bestLap;
+    G.lapStartMs = r.lapStartMs;
   }
 
   function stepPowertrain(c, car, dt, inp) {
@@ -1305,12 +1612,12 @@
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
       Fdrive = Math.sign(Fdrive) * Fmax * (1 - 0.35 * car.wheelSlip);
-      G.sparks = Math.max(G.sparks || 0, 0.4 + car.wheelSlip * 0.7);
+      if (inp.fx) G.sparks = Math.max(G.sparks || 0, 0.4 + car.wheelSlip * 0.7);
     } else {
       car.wheelSlip = Math.max(0, car.wheelSlip - dt * 1.8);
     }
     let Fdrag = 0.5 * RHO * c.cd * c.area * vMs * vMs * (vMs >= 0 ? 1 : -1);
-    const bonusYd = comboVmaxBonusYd();
+    const bonusYd = inp.ignoreCombo ? 0 : comboVmaxBonusYd();
     if (bonusYd > 0) {
       const v0 = baseTopSpeedYd(c);
       const v1 = v0 + bonusYd;
@@ -1321,7 +1628,7 @@
     const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
     let Fnet = Fdrive - Fdrag - Froll;
     if (vAbs > 0.25 || inp.brake || inp.ebrake) Fnet -= Fbrk * (vAbs > 0.25 ? 1 : 0) + Feb;
-    if (bonusYd > 0 && inp.throttle) Fnet += (G.combo || 0) * 190;
+    if (bonusYd > 0 && inp.throttle && !inp.ignoreCombo) Fnet += (G.combo || 0) * 190;
     const a = Fnet / c.massKg;
     car.speed += (a / YD) * dt;
     const vmax = topSpeedYd(c);
@@ -1384,7 +1691,8 @@
       deltaEl.classList.toggle("down", d != null && d > 12);
     }
     let pos = "P1";
-    if (drag && G.ai) pos = G.ai.x > G.car.x + 1.2 ? "P2" : "P1";
+    if (G.racers && G.racers.length > 1) pos = posLabel(G.racers[0]);
+    else if (drag && G.ai) pos = G.ai.x > G.car.x + 1.2 ? "P2" : "P1";
     else if (racing && G.ghost && G.ghost.samples && G.track) {
       const gh = ghostAt(elapsed);
       if (gh) {
@@ -1513,6 +1821,10 @@
       if (G.track && G.track.kind === "ridge") {
         $("ghostCard").innerHTML = "Arcade · " + (G.score || 0) + " pts · x" + (G.mult || 1) +
           "<br>Browser best <b>" + ((G.save.arcade && G.save.arcade.bestScore) || 0) + "</b>";
+      } else if (G.racers && G.racers.length > 1) {
+        $("ghostCard").innerHTML = standings().map(function (r, i) {
+          return "P" + (i + 1) + " " + r.name + (r.done ? " · " + fmt(r.finishMs) : "");
+        }).join("<br>");
       } else {
         $("ghostCard").innerHTML = G.ghost
           ? "Ghost on · " + fmt(G.ghost.ms)
@@ -1521,6 +1833,33 @@
     }
     if ($("dockStatus")) $("dockStatus").textContent = G.phase === "count" ? "Lights…" : (G.sparks > 0.4 ? "Drifting" : "On line");
     paintRaceHud(now);
+    paintSplitHud(now);
+  }
+  function paintSplitHud(now) {
+    const on = isSplit() && G.mode === "race";
+    if ($("splitHud")) $("splitHud").classList.toggle("hidden", !on);
+    if ($("splitBar")) $("splitBar").classList.toggle("hidden", !on);
+    if (!on) return;
+    const unit = opt("metric") ? "km/h" : "MPH";
+    [0, 1].forEach(function (slot) {
+      const r = (G.racers || []).find(function (x) { return x.kind === "human" && x.slot === slot; });
+      if (!r) return;
+      const pref = slot === 0 ? "sp1" : "sp2";
+      if ($(pref + "Name")) $(pref + "Name").textContent = r.name + " · " + posLabel(r);
+      if ($(pref + "Spd")) $(pref + "Spd").textContent = String(Math.round(speedVal(r.car.speed || 0)));
+      if ($(pref + "Unit")) $(pref + "Unit").textContent = unit;
+      if ($(pref + "Gear")) $(pref + "Gear").textContent = gearLabel(r.car.gear);
+      if ($(pref + "Lap")) $(pref + "Lap").textContent = Math.min(G.laps, (r.lap || 0) + 1) + "/" + G.laps;
+      if ($(pref + "Bst")) {
+        const tank = (r.craft && r.craft.boostTank) || 1;
+        $(pref + "Bst").style.width = Math.round(clamp((r.car.boost || 0) / tank, 0, 1) * 100) + "%";
+      }
+    });
+    if ($("splitStand")) {
+      $("splitStand").textContent = standings().map(function (r, i) {
+        return "P" + (i + 1) + " " + r.name;
+      }).join(" · ");
+    }
   }
 
   function ghostAt(elapsed) {
@@ -1545,10 +1884,13 @@
     G.phase = "done";
     const key = G.track.id + "|" + G.craft.id;
     let beat = false;
-    if (!G.save.ghosts) G.save.ghosts = {};
-    if (!G.save.ghosts[key] || ms < G.save.ghosts[key].ms) {
-      G.save.ghosts[key] = { ms: ms, samples: G.rec.slice() };
-      beat = true;
+    const fieldOn = G.racers && G.racers.length > 1;
+    if (!fieldOn) {
+      if (!G.save.ghosts) G.save.ghosts = {};
+      if (!G.save.ghosts[key] || ms < G.save.ghosts[key].ms) {
+        G.save.ghosts[key] = { ms: ms, samples: G.rec.slice() };
+        beat = true;
+      }
     }
     if (!Array.isArray(G.save.rounds)) G.save.rounds = [];
     G.save.rounds.unshift({
@@ -1560,6 +1902,7 @@
       laps: G.laps,
       at: Date.now(),
       beat: beat,
+      field: G.field || "solo",
       score: G.track.kind === "ridge" ? (G.score || 0) : null,
       kills: G.track.kind === "ridge" ? (G.kills || 0) : null,
       combo: G.track.kind === "ridge" ? (G.bestCombo || 1) : null
@@ -1593,10 +1936,15 @@
         " combo" + (high ? " · NEW HIGH" : "") + "</p>" +
         "<p class='lore'>Browser best <b>" + (G.save.arcade.bestScore || 0) + "</b></p>"
       : "";
+    const board = fieldOn ? "<ol class='lore'>" + standings().map(function (r, i) {
+      const t = r.finishMs != null ? fmt(r.finishMs) : ("lap " + Math.min(G.laps, (r.lap || 0) + 1));
+      return "<li>P" + (i + 1) + " " + r.name + " · " + r.craft.name + " · " + t + "</li>";
+    }).join("") + "</ol>" : "";
     showSheet(
       "<p class='kicker'>Heat closed</p><h2>" + (G.track.kind === "ridge" ? String(G.score || 0) : fmt(ms)) + "</h2>" +
       (G.track.kind === "ridge" ? "<p class='lore'>" + fmt(ms) + "</p>" : "") +
-      "<p class='lore'>" + G.track.name + " · " + G.craft.name + (beat ? " · ghost rewritten" : "") + "</p>" +
+      "<p class='lore'>" + G.track.name + " · " + (fieldOn ? (G.field === "split" || G.field === "splitbots" ? "split" : "grid") : G.craft.name) + (beat ? " · ghost rewritten" : "") + "</p>" +
+      board +
       arcadeLine +
       donateHtml() +
       "<div class='modes'><button class='btn gold' id='again'>Replay</button><button class='btn' id='toMenu'>Menu</button></div>"
@@ -1659,49 +2007,97 @@
     }
     const dt = Math.min(0.033, G._last ? (now - G._last) / 1000 : 0.016);
     G._last = now;
-    const proj = stepCar(dt);
+    const elapsed = now - G.t0;
+    const fieldOn = G.racers && G.racers.length > 1;
+    let proj = null;
+    if (fieldOn) {
+      G.racers.forEach(function (r) {
+        const prevS = r.lastS || 0;
+        let inp = r.kind === "bot" || r.done ? botInput(r) : humanInput(r.slot);
+        if (r.done) { inp.throttle = Math.min(inp.throttle, 0.28); inp.boost = false; }
+        const p = stepVehicle(dt, r, inp);
+        if (r.slot === 0) proj = p;
+        (G.track.sectors || []).forEach(function (frac, i) {
+          const target = frac * p.len;
+          if (!r.gates[i] && crossed(prevS, p.s, target, p.len)) {
+            r.gates[i] = true;
+            if (r.slot === 0) {
+              G.splits.push(elapsed);
+              log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
+            }
+          }
+        });
+        if (!r.done && G.track.kind !== "ridge" && r.gates.every(Boolean) && crossed(prevS, p.s, 0, p.len) && prevS > p.len * 0.7) {
+          r.lap += 1;
+          r.gates = [false, false, false];
+          const lapMs = elapsed - (r.lapStartMs || 0);
+          r.lastLap = lapMs;
+          if (r.bestLap == null || lapMs < r.bestLap) r.bestLap = lapMs;
+          r.lapStartMs = elapsed;
+          log(r.name + " lap " + r.lap + " · " + fmt(elapsed));
+          if (r.lap >= G.laps) {
+            r.done = true;
+            r.finishMs = elapsed;
+            log(r.name + " finished · " + fmt(elapsed));
+            if (r.kind === "human" && !G._firstFinish) G._firstFinish = now;
+          }
+        }
+        r.lastS = p.s;
+      });
+      bumpRacers();
+      syncP1();
+      if (!proj) proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
+      const humans = G.racers.filter(function (r) { return r.kind === "human"; });
+      const humansDone = humans.every(function (r) { return r.done; });
+      const waitUp = G._firstFinish && now - G._firstFinish > 18000;
+      if (humansDone || waitUp) finishHeat(humans[0] && humans[0].finishMs != null ? humans[0].finishMs : elapsed);
+    } else {
+      proj = stepCar(dt);
+    }
     if (G.track.kind === "ridge") {
       stepTraffic(dt);
       stepGuns(dt);
     }
-    const elapsed = now - G.t0;
     if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 60000) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
     }
-    (G.track.sectors || []).forEach(function (frac, i) {
-      const target = frac * proj.len;
-      if (!G.gates[i] && crossed(G.lastS, proj.s, target, proj.len)) {
-        G.gates[i] = true;
-        G.splits.push(elapsed);
-        log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
-      }
-    });
-    if (G.track.kind === "ridge") {
-      if (!G._ridgeDone && proj.s >= proj.len * 0.982) {
-        G._ridgeDone = true;
-        G.lap = 1;
+    if (!fieldOn) {
+      (G.track.sectors || []).forEach(function (frac, i) {
+        const target = frac * proj.len;
+        if (!G.gates[i] && crossed(G.lastS, proj.s, target, proj.len)) {
+          G.gates[i] = true;
+          G.splits.push(elapsed);
+          log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
+        }
+      });
+      if (G.track.kind === "ridge") {
+        if (!G._ridgeDone && proj.s >= proj.len * 0.982) {
+          G._ridgeDone = true;
+          G.lap = 1;
+          const lapMs = elapsed - (G.lapStartMs || 0);
+          G.lastLap = lapMs;
+          if (G.bestLap == null || lapMs < G.bestLap) G.bestLap = lapMs;
+          finishHeat(elapsed);
+        }
+      } else if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
+        G.lap += 1;
+        G.gates = [false, false, false];
         const lapMs = elapsed - (G.lapStartMs || 0);
         G.lastLap = lapMs;
-        if (G.bestLap == null || lapMs < G.bestLap) G.bestLap = lapMs;
-        finishHeat(elapsed);
+        G.lapTimes.unshift(lapMs);
+        if (G.bestLap == null || lapMs < G.bestLap) {
+          G.bestLap = lapMs;
+          log("Best lap · " + fmt(lapMs));
+        }
+        G.lapStartMs = elapsed;
+        log("Lap " + G.lap + " · " + fmt(elapsed));
+        if (G.lap >= G.laps) {
+          finishHeat(elapsed);
+        }
       }
-    } else if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
-      G.lap += 1;
-      G.gates = [false, false, false];
-      const lapMs = elapsed - (G.lapStartMs || 0);
-      G.lastLap = lapMs;
-      G.lapTimes.unshift(lapMs);
-      if (G.bestLap == null || lapMs < G.bestLap) {
-        G.bestLap = lapMs;
-        log("Best lap · " + fmt(lapMs));
-      }
-      G.lapStartMs = elapsed;
-      log("Lap " + G.lap + " · " + fmt(elapsed));
-      if (G.lap >= G.laps) {
-        finishHeat(elapsed);
-      }
+      G.lastS = proj.s;
+      if (G.racers && G.racers[0]) G.racers[0].lastS = proj.s;
     }
-    G.lastS = proj.s;
     heatHud(now);
     draw(now);
   }
@@ -1716,15 +2112,28 @@
         ((G.car.wheelSlip || 0) > 0.05 || spdAbs < 24);
       const driftBurn = (G.sparks || 0) > 0.28 || (!!G.keys.ShiftLeft && spdAbs > 8);
       const burnout = G.mode === "race" && G.phase !== "done" && G.phase !== "idle" && (launchBurn || driftBurn);
-      const boostOn = !!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft;
+      const boostOn = !!(G.racers[0] && G.racers[0].boostOn) || (!!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft);
+      const field = (G.racers || []).slice(1).map(function (r) {
+        return {
+          car: r.car,
+          body: (r.craft && r.craft.body) || "apex",
+          paint: parseInt(String((r.craft && r.craft.color) || "#334155").replace("#", ""), 16),
+          slot: r.slot,
+          boostOn: !!r.boostOn
+        };
+      });
+      const p2 = G.racers && G.racers[1] && G.racers[1].kind === "human" ? G.racers[1].car : null;
       Rally3D.setState({
-        car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
+        car: G.car, ghost: isFieldRace() ? null : gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
         gun: { on: G.gunOn, tracers: G.tracers || [] },
         burnout: burnout,
         boostOn: boostOn,
         body: (G.craft && G.craft.body) || "apex",
-        paint: parseInt(String((G.craft && G.craft.color) || "#165e66").replace("#", ""), 16)
+        paint: parseInt(String((G.craft && G.craft.color) || "#165e66").replace("#", ""), 16),
+        field: field,
+        p2: p2,
+        cam2: G.camView2 || 0
       });
       return;
     }
@@ -1792,6 +2201,12 @@
       c.arc(G.ai.x * scale, G.ai.y * scale, 7, 0, Math.PI * 2);
       c.fill();
     }
+    (G.racers || []).slice(1).forEach(function (r) {
+      c.fillStyle = (r.craft && r.craft.color) || "#94a3b8";
+      c.beginPath();
+      c.arc(r.car.x * scale, r.car.y * scale, 7, 0, Math.PI * 2);
+      c.fill();
+    });
     c.fillStyle = G.craft.color;
     c.beginPath();
     c.arc(G.car.x * scale, G.car.y * scale, 7, 0, Math.PI * 2);
@@ -1821,7 +2236,8 @@
   function help() {
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
-      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera.</li>" +
+      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
+      "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain dumps. Launch is 1–2–3 torque slingshot; 4th-on is the long pull.</li>" +
@@ -1905,7 +2321,13 @@
     G.phase = "idle";
     G.keys = {};
     G.gunOn = false;
+    G.field = "solo";
+    G.racers = [];
     showDragUi(false);
+    if (use3d && window.Rally3D && Rally3D.setSplit) Rally3D.setSplit(false);
+    if ($("splitHud")) $("splitHud").classList.add("hidden");
+    if ($("splitBar")) $("splitBar").classList.add("hidden");
+    if ($("raceHud")) $("raceHud").classList.remove("hidden");
     if ($("arcadeHud")) $("arcadeHud").classList.add("hidden");
     const flash = $("countFlash");
     if (flash) flash.classList.add("hidden");
@@ -1921,7 +2343,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
-          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost/guns · C camera · R restart</p>" +
+          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost/guns · C camera · pad RT/LT · R restart</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
@@ -1967,6 +2389,13 @@
         if (rp) rp.click();
         return;
       }
+      const fld = e.target.closest("[data-field]");
+      if (fld) {
+        G.field = fld.getAttribute("data-field") || "solo";
+        const tr = G.pendingTrack;
+        if (tr) startHeat(tr);
+        return;
+      }
       const b = e.target.closest("[data-go]");
       if (!b) return;
       const nm = ($("nm") && $("nm").value || "").replace(/[<>]/g, "").trim().slice(0, 24);
@@ -1975,9 +2404,9 @@
       if (go === "options") { optionsMenu(); return; }
       if (go === "garage") { garage(); return; }
       if (go === "confirmCraft" || go === "title") { menu(); return; }
-      if (go === "pine") startHeat(PINE);
-      if (go === "coral") startHeat(CORAL);
-      if (go === "star") startHeat(STAR);
+      if (go === "pine") pickField(PINE);
+      if (go === "coral") pickField(CORAL);
+      if (go === "star") pickField(STAR);
       if (go === "endless") startHeat(randomTrack((Date.now() ^ (Math.random() * 1e9)) >>> 0));
       if (go === "drag8") startHeat(DRAG_EIGHTH);
       if (go === "drag1k") startHeat(DRAG_THOU);
@@ -2004,12 +2433,21 @@
       e.preventDefault();
       const n = (Math.round(Number(opt("camView")) || 0) + 1) % CAM_NAMES.length;
       setOpt("camView", n);
-      log("Camera · " + CAM_NAMES[n]);
+      log("P1 camera · " + CAM_NAMES[n]);
     }
-    if (e.key === " " || e.key === "Enter") e.preventDefault();
+    if ((e.key === "v" || e.key === "V") && isSplit()) {
+      e.preventDefault();
+      G.camView2 = ((G.camView2 || 0) + 1) % CAM_NAMES.length;
+      if (use3d && window.Rally3D && Rally3D.setCam) Rally3D.setCam({ view2: G.camView2 });
+      log("P2 camera · " + CAM_NAMES[G.camView2]);
+    }
+    if (e.key === " " || e.key === "Enter" || e.key.indexOf("Arrow") === 0) e.preventDefault();
   });
   window.addEventListener("keyup", function (e) { G.keys[e.code] = false; });
   window.addEventListener("blur", function () { G.keys = {}; });
+  window.addEventListener("gamepadconnected", function (e) {
+    log("Pad " + ((e.gamepad && e.gamepad.index) + 1) + " · " + ((e.gamepad && e.gamepad.id) || "controller"));
+  });
 
   if ($("btnHelp")) $("btnHelp").onclick = help;
   if ($("btnOptions")) $("btnOptions").onclick = optionsMenu;

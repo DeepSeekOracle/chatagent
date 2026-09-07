@@ -425,6 +425,36 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   background: #070b12cc; border: 1px solid var(--line); border-radius: 8px;
   padding: .28rem .65rem;
 }
+.split-bar {
+  position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+  transform: translateX(-50%); z-index: 8; pointer-events: none;
+  background: linear-gradient(180deg, #5eead4, #fbbf24);
+  box-shadow: 0 0 12px #fbbf2488;
+}
+.split-hud {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  display: flex;
+}
+.split-pane { flex: 1; position: relative; }
+.split-mini {
+  position: absolute; right: 10px; bottom: 12%;
+  background: #070b12e0; border: 1px solid var(--line); border-radius: 10px;
+  padding: .35rem .55rem .4rem; min-width: 7.2rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+.split-mini em { display: block; font: 700 .68rem Syne, sans-serif; color: var(--cyan); letter-spacing: .08em; font-style: normal; }
+.split-mini b { display: block; font: 800 1.55rem "IBM Plex Mono", monospace; color: var(--gold); line-height: 1.05; }
+.split-mini small { color: var(--cyan); letter-spacing: .12em; font-size: .62rem; }
+.split-mini span { display: block; font-size: .68rem; color: var(--mute); margin-top: .15rem; }
+.split-mini span i { color: var(--text); font-style: normal; }
+.split-bst { height: 6px; background: #122; border-radius: 99px; overflow: hidden; margin-top: .3rem; }
+.split-bst i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5eead4, #fbbf24); }
+.split-stand {
+  position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+  font: 700 .68rem "IBM Plex Mono", monospace; letter-spacing: .06em;
+  color: var(--gold); background: #070b12cc; border: 1px solid var(--line);
+  border-radius: 8px; padding: .18rem .5rem; white-space: nowrap;
+}
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin: .8rem 0; }
 @media (max-width: 900px) {
   .stage { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }

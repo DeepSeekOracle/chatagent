@@ -3,21 +3,29 @@
   "use strict";
   if (global.Rally3D) return;
   var T = null;
-  var renderer, scene, camera, clock;
+  var renderer, scene, camera, camera2, clock;
   var sun, hemi, canvasEl, running = false;
   var trackRoot = null;
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
   var carKind = "", carPaint = null;
   var trafficPool = [];
   var tracerPool = [];
+  var fieldPool = [];
+  var p2Mesh = null;
+  var splitOn = false;
   var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9, t: 0 };
   var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false };
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
+  var camB = { x: 0, y: 18, z: 28 };
+  var lookB = { x: 0, y: 1, z: 0 };
+  var camTuneB = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
   var lastView = -1;
+  var lastViewB = -1;
   var envMap = null;
   var lastSpeed = 0;
+  var lastReduce = false;
 
   function ok() { return !!(renderer && scene && camera); }
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -953,19 +961,104 @@
     }
   }
 
+  function poseChase(outCam, outLook, tune, c) {
+    if (!c) return;
+    var fx = Math.cos(c.h), fz = Math.sin(c.h);
+    var rx = -fz, rz = fx;
+    var spd = c.speed || 0;
+    var d = tune.dist || 1;
+    var ht = tune.height || 1;
+    var view = tune.view | 0;
+    var back, side;
+    if (view === 1) {
+      back = (7.1 + spd * 0.022) * d;
+      outCam.x = c.x - fx * back; outCam.z = c.y - fz * back; outCam.y = (2.85 + spd * 0.008) * ht;
+      outLook.x = c.x + fx * 7; outLook.z = c.y + fz * 7; outLook.y = 0.7;
+      tune.fov = 60; tune.lag = 8e-7;
+    } else if (view === 2) {
+      outCam.x = c.x + fx * 0.55; outCam.z = c.y + fz * 0.55; outCam.y = 1.12 * ht;
+      outLook.x = c.x + fx * 28; outLook.z = c.y + fz * 28; outLook.y = 0.55;
+      tune.fov = 72; tune.lag = 1e-12;
+    } else if (view === 3) {
+      outCam.x = c.x - fx * 2.35; outCam.z = c.y - fz * 2.35; outCam.y = 0.62 * ht;
+      outLook.x = c.x + fx * 16; outLook.z = c.y + fz * 16; outLook.y = 0.45;
+      tune.fov = 70; tune.lag = 1e-12;
+    } else if (view === 4) {
+      outCam.x = c.x + fx * 0.12 + rx * 0.18; outCam.z = c.y + fz * 0.12 + rz * 0.18; outCam.y = 1.02;
+      outLook.x = c.x + fx * 22; outLook.z = c.y + fz * 22; outLook.y = 0.85;
+      tune.fov = 78; tune.lag = 1e-14;
+    } else if (view === 5) {
+      back = 16 * d; side = 11 * d;
+      outCam.x = c.x - fx * back + rx * side; outCam.z = c.y - fz * back + rz * side; outCam.y = 13.5 * ht;
+      outLook.x = c.x + fx * 4; outLook.z = c.y + fz * 4; outLook.y = 0.6;
+      tune.fov = 46; tune.lag = 0.012;
+    } else {
+      back = (12.4 + spd * 0.04) * d;
+      outCam.x = c.x - fx * back; outCam.z = c.y - fz * back; outCam.y = (5.4 + spd * 0.012) * ht;
+      outLook.x = c.x + fx * 8; outLook.z = c.y + fz * 8; outLook.y = 0.8;
+      tune.fov = 52; tune.lag = 0.0004;
+    }
+  }
+
+  function lerpCam(camObj, camState, lookState, tune, dt) {
+    if (!camObj) return;
+    var k = 1 - Math.pow(tune.lag || 0.0004, dt);
+    camObj.position.x += (camState.x - camObj.position.x) * k;
+    camObj.position.y += (camState.y - camObj.position.y) * k;
+    camObj.position.z += (camState.z - camObj.position.z) * k;
+    if (Math.abs(camObj.fov - tune.fov) > 0.15) {
+      camObj.fov += (tune.fov - camObj.fov) * Math.min(1, k * 1.6);
+      camObj.updateProjectionMatrix();
+    }
+    camObj.lookAt(lookState.x, lookState.y, lookState.z);
+  }
+
+  function hideCockpit(mesh, hide) {
+    if (!mesh) return;
+    mesh.traverse(function (ch) {
+      if (ch.isLight) { ch.visible = true; return; }
+      if (hide && ch.isMesh) { ch.visible = false; return; }
+      if (ch.userData.fx) ch.visible = !lastReduce;
+      else if (ch.isMesh) ch.visible = true;
+    });
+  }
+
+  function snapMesh(mesh, car) {
+    if (!mesh || !car) return;
+    mesh.visible = true;
+    mesh.position.set(car.x, 0.02, car.y);
+    mesh.rotation.y = -car.h - Math.PI / 2;
+    mesh.rotation.z = -(car.steer || 0) * 0.08;
+    mesh.traverse(function (ch) {
+      if (ch.userData.steer) ch.rotation.y = (car.steer || 0) * 0.42;
+    });
+  }
+
+  function ensureFieldSlot(i, body, paint) {
+    body = body || "apex";
+    paint = paint != null ? paint : 0x334155;
+    var slot = fieldPool[i];
+    if (slot && (slot.body !== body || slot.paint !== paint)) {
+      disposeObj(slot.mesh);
+      fieldPool[i] = null;
+      slot = null;
+    }
+    if (!slot) {
+      var m = makeCar(paint, false, body);
+      scene.add(m);
+      slot = { mesh: m, body: body, paint: paint };
+      fieldPool[i] = slot;
+    }
+    return slot.mesh;
+  }
+
   function loop() {
     if (!running) return;
     requestAnimationFrame(loop);
     var dt = Math.min(0.05, clock.getDelta());
-    var k = 1 - Math.pow(camTune.lag || 0.0004, dt);
-    camera.position.x += (cam.x - camera.position.x) * k;
-    camera.position.y += (cam.y - camera.position.y) * k;
-    camera.position.z += (cam.z - camera.position.z) * k;
-    if (Math.abs(camera.fov - camTune.fov) > 0.15) {
-      camera.fov += (camTune.fov - camera.fov) * Math.min(1, k * 1.6);
-      camera.updateProjectionMatrix();
+    if (!splitOn) {
+      lerpCam(camera, cam, look, camTune, dt);
     }
-    camera.lookAt(look.x, look.y, look.z);
     if (carMesh) {
       var spin = Math.abs(lastSpeed) * 0.85;
       carMesh.traverse(function (ch) {
@@ -1015,7 +1108,32 @@
         if (puff.userData.life <= 0) puff.visible = false;
       }
     }
-    renderer.render(scene, camera);
+    var el = renderer.domElement;
+    var rw = el.width, rh = el.height;
+    if (splitOn && camera2) {
+      renderer.setScissorTest(true);
+      renderer.setViewport(0, 0, rw * 0.5, rh);
+      renderer.setScissor(0, 0, rw * 0.5, rh);
+      camera.aspect = (rw * 0.5) / Math.max(1, rh);
+      camera.updateProjectionMatrix();
+      lerpCam(camera, cam, look, camTune, dt);
+      hideCockpit(carMesh, (camTune.view | 0) === 4);
+      hideCockpit(p2Mesh, false);
+      renderer.render(scene, camera);
+      renderer.setViewport(rw * 0.5, 0, rw * 0.5, rh);
+      renderer.setScissor(rw * 0.5, 0, rw * 0.5, rh);
+      camera2.aspect = (rw * 0.5) / Math.max(1, rh);
+      camera2.updateProjectionMatrix();
+      lerpCam(camera2, camB, lookB, camTuneB, dt);
+      hideCockpit(carMesh, false);
+      hideCockpit(p2Mesh, (camTuneB.view | 0) === 4);
+      renderer.render(scene, camera2);
+      renderer.setScissorTest(false);
+    } else {
+      renderer.setScissorTest(false);
+      renderer.setViewport(0, 0, rw, rh);
+      renderer.render(scene, camera);
+    }
   }
 
   function resize() {
@@ -1023,8 +1141,13 @@
     var w = canvasEl.clientWidth || 800, h = canvasEl.clientHeight || 480;
     if (w < 8 || h < 8) return;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    var aspect = splitOn ? (w * 0.5) / h : w / h;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
+    if (camera2) {
+      camera2.aspect = aspect;
+      camera2.updateProjectionMatrix();
+    }
   }
 
   function init(canvas) {
@@ -1041,6 +1164,7 @@
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0x87a8c4, 0.006);
     camera = new T.PerspectiveCamera(52, 1, 0.35, 32000);
+    camera2 = new T.PerspectiveCamera(52, 1, 0.35, 32000);
     clock = new T.Clock();
     hemi = new T.HemisphereLight(0xdce8ff, 0x2a3a28, 0.7);
     scene.add(hemi);
@@ -1078,9 +1202,16 @@
     },
     setCam: function (tune) {
       if (!tune) return;
-      if (tune.dist != null) camTune.dist = tune.dist;
-      if (tune.height != null) camTune.height = tune.height;
+      if (tune.dist != null) camTune.dist = camTuneB.dist = tune.dist;
+      if (tune.height != null) camTune.height = camTuneB.height = tune.height;
       if (tune.view != null) camTune.view = Math.max(0, Math.min(5, tune.view | 0));
+      if (tune.view2 != null) camTuneB.view = Math.max(0, Math.min(5, tune.view2 | 0));
+    },
+    setSplit: function (on) {
+      splitOn = !!on;
+      lastView = -1;
+      lastViewB = -1;
+      resize();
     },
     setTree: function (st) {
       if (!treeLights || !st) return;
@@ -1101,14 +1232,10 @@
       if (!ok() || !s || !s.car) return;
       ensureActors(s.body, s.paint);
       var c = s.car;
-      carMesh.position.set(c.x, 0.02, c.y);
-      carMesh.rotation.y = -c.h - Math.PI / 2;
-      carMesh.rotation.z = -(c.steer || 0) * 0.08;
+      snapMesh(carMesh, c);
       lastSpeed = c.speed || 0;
       lastBurnout = !!s.burnout;
-      carMesh.traverse(function (ch) {
-        if (ch.userData.steer) ch.rotation.y = (c.steer || 0) * 0.42;
-      });
+      lastReduce = !!s.reduceFx;
       if (s.ghost) {
         ghostMesh.visible = true;
         ghostMesh.position.set(s.ghost.x, 0.02, s.ghost.y);
@@ -1121,18 +1248,26 @@
           aiMesh.rotation.y = -s.ai.h - Math.PI / 2;
         } else aiMesh.visible = false;
       }
-      carMesh.traverse(function (ch) {
-        if (ch.isLight) {
-          ch.visible = true;
-          return;
+      p2Mesh = null;
+      var fi, fcar, fmesh, field = s.field || [];
+      for (fi = 0; fi < field.length; fi++) {
+        fcar = field[fi];
+        fmesh = ensureFieldSlot(fi, fcar.body || "apex", fcar.paint != null ? fcar.paint : 0x334155);
+        snapMesh(fmesh, fcar.car);
+        if (fcar.slot === 1) p2Mesh = fmesh;
+        if (global.HavenCar && HavenCar.setLights) {
+          HavenCar.setLights(fmesh, {
+            head: true,
+            brake: (fcar.car.brk || 0) > 0.08,
+            boost: !!fcar.boostOn,
+            reduceFx: s.reduceFx
+          });
         }
-        if ((camTune.view | 0) === 4 && ch.isMesh) {
-          ch.visible = false;
-          return;
-        }
-        if (ch.userData.fx) ch.visible = !s.reduceFx;
-        else if (ch.isMesh) ch.visible = true;
-      });
+      }
+      for (fi = field.length; fi < fieldPool.length; fi++) {
+        if (fieldPool[fi] && fieldPool[fi].mesh) fieldPool[fi].mesh.visible = false;
+      }
+      hideCockpit(carMesh, !splitOn && (camTune.view | 0) === 4);
       if (global.HavenCar && HavenCar.setLights) {
         HavenCar.setLights(carMesh, {
           head: true,
@@ -1204,78 +1339,23 @@
         sun.position.set(c.x - 42, 58, c.y + 24);
         sun.target.position.set(c.x, 0, c.y);
       }
-      var fx = Math.cos(c.h), fz = Math.sin(c.h);
-      var rx = -fz, rz = fx;
-      var spd = c.speed || 0;
-      var d = camTune.dist || 1;
-      var ht = camTune.height || 1;
-      var view = camTune.view | 0;
-      var back, side;
-      if (view === 1) {
-        back = (7.1 + spd * 0.022) * d;
-        cam.x = c.x - fx * back;
-        cam.z = c.y - fz * back;
-        cam.y = (2.85 + spd * 0.008) * ht;
-        look.x = c.x + fx * 7;
-        look.z = c.y + fz * 7;
-        look.y = 0.7;
-        camTune.fov = 60;
-        camTune.lag = 8e-7;
-      } else if (view === 2) {
-        cam.x = c.x + fx * 0.55;
-        cam.z = c.y + fz * 0.55;
-        cam.y = 1.12 * ht;
-        look.x = c.x + fx * 28;
-        look.z = c.y + fz * 28;
-        look.y = 0.55;
-        camTune.fov = 72;
-        camTune.lag = 1e-12;
-      } else if (view === 3) {
-        cam.x = c.x - fx * 2.35;
-        cam.z = c.y - fz * 2.35;
-        cam.y = 0.62 * ht;
-        look.x = c.x + fx * 16;
-        look.z = c.y + fz * 16;
-        look.y = 0.45;
-        camTune.fov = 70;
-        camTune.lag = 1e-12;
-      } else if (view === 4) {
-        cam.x = c.x + fx * 0.12 + rx * 0.18;
-        cam.z = c.y + fz * 0.12 + rz * 0.18;
-        cam.y = 1.02;
-        look.x = c.x + fx * 22;
-        look.z = c.y + fz * 22;
-        look.y = 0.85;
-        camTune.fov = 78;
-        camTune.lag = 1e-14;
-      } else if (view === 5) {
-        back = 16 * d;
-        side = 11 * d;
-        cam.x = c.x - fx * back + rx * side;
-        cam.z = c.y - fz * back + rz * side;
-        cam.y = 13.5 * ht;
-        look.x = c.x + fx * 4;
-        look.z = c.y + fz * 4;
-        look.y = 0.6;
-        camTune.fov = 46;
-        camTune.lag = 0.012;
-      } else {
-        back = (12.4 + spd * 0.04) * d;
-        cam.x = c.x - fx * back;
-        cam.z = c.y - fz * back;
-        cam.y = (5.4 + spd * 0.012) * ht;
-        look.x = c.x + fx * 8;
-        look.z = c.y + fz * 8;
-        look.y = 0.8;
-        camTune.fov = 52;
-        camTune.lag = 0.0004;
+      poseChase(cam, look, camTune, c);
+      if (s.p2) {
+        if (s.cam2 != null) camTuneB.view = Math.max(0, Math.min(5, s.cam2 | 0));
+        poseChase(camB, lookB, camTuneB, s.p2);
       }
       if (carMesh) carMesh.visible = true;
-      if (view !== lastView) {
-        lastView = view;
+      if ((camTune.view | 0) !== lastView) {
+        lastView = camTune.view | 0;
         camera.position.set(cam.x, cam.y, cam.z);
         camera.fov = camTune.fov;
         camera.updateProjectionMatrix();
+      }
+      if (splitOn && camera2 && s.p2 && (camTuneB.view | 0) !== lastViewB) {
+        lastViewB = camTuneB.view | 0;
+        camera2.position.set(camB.x, camB.y, camB.z);
+        camera2.fov = camTuneB.fov;
+        camera2.updateProjectionMatrix();
       }
     }
   };

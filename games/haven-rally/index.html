@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=12">
+<link rel="stylesheet" href="./game.css?v=13">
 <link rel="stylesheet" href="/games/hub.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: Apex Mk I, lattice circuits, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/apex-hero.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
 </head>
@@ -149,8 +149,28 @@
         </div>
       </div>
       <div id="arcPops" class="arc-pops"></div>
+      <div id="splitBar" class="split-bar hidden" aria-hidden="true"></div>
+      <div id="splitHud" class="split-hud hidden">
+        <div class="split-pane">
+          <div class="split-mini">
+            <em id="sp1Name">P1</em>
+            <b id="sp1Spd">0</b><small id="sp1Unit">MPH</small>
+            <span>GEAR <i id="sp1Gear">1</i> · LAP <i id="sp1Lap">1/24</i></span>
+            <div class="split-bst"><i id="sp1Bst"></i></div>
+          </div>
+        </div>
+        <div class="split-pane">
+          <div class="split-mini">
+            <em id="sp2Name">P2</em>
+            <b id="sp2Spd">0</b><small id="sp2Unit">MPH</small>
+            <span>GEAR <i id="sp2Gear">1</i> · LAP <i id="sp2Lap">1/24</i></span>
+            <div class="split-bst"><i id="sp2Bst"></i></div>
+          </div>
+        </div>
+        <div class="split-stand" id="splitStand"></div>
+      </div>
       <div class="hint" id="hint">W throttle · Space brake · L-Shift drift · R-Shift boost/guns · F drag tree</div>
-      <div class="keys">C camera · R-Shift boost+guns · R restart · Esc menu</div>
+      <div class="keys">C camera · V P2 cam · R-Shift boost+guns · R restart · Esc menu</div>
     </div>
     <aside class="rail">
       <div class="panel">
@@ -192,7 +212,7 @@
 <script src="./radio.js"></script>
 <script src="./sfx.js?v=3"></script>
 <script src="./carmodel.js?v=7"></script>
-<script src="./rally3d.js?v=19"></script>
-<script src="./game.js?v=34"></script>
+<script src="./rally3d.js?v=20"></script>
+<script src="./game.js?v=35"></script>
 </body>
 </html>
