@@ -1168,6 +1168,23 @@
 
   function tick(now) {
     requestAnimationFrame(tick);
+    if (window.HavenSfx) {
+      const radioEl = $("radioEl");
+      const radioOn = !!(radioEl && !radioEl.paused && !radioEl.muted && radioEl.volume > 0.02);
+      const slipLat = G.car && G.car.h != null && G.car.vh != null
+        ? Math.abs(wrapDelta(G.car.h - G.car.vh, Math.PI * 2))
+        : 0;
+      HavenSfx.tick({
+        racing: G.mode === "race" && G.phase !== "done" && G.phase !== "idle",
+        rpm: G.car.rpm,
+        gear: G.car.gear,
+        thr: G.car.thr,
+        slip: Math.max(G.car.wheelSlip || 0, G.sparks || 0, slipLat > 0.14 ? slipLat : 0),
+        speed: Math.abs(G.car.speed || 0),
+        radio: radioOn,
+        reduceFx: opt("reduceFx")
+      });
+    }
     if (G.mode !== "race" || !G.track) return;
     if (G.track.kind === "drag") { tickDrag(now); return; }
     if (overlayOpen() && G.phase === "race") {
