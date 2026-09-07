@@ -512,12 +512,12 @@
       camGoal.y = 8.2;
       camGoal.z = ball.y + Math.sin(side) * 24;
     } else if (phase === "roll") {
-      camLag = 0.018;
-      var side = orbit.yaw + 0.48;
-      camGoal.ly = 0.45;
-      camGoal.x = ball.x + Math.cos(side) * 18;
-      camGoal.y = 6.4;
-      camGoal.z = ball.y + Math.sin(side) * 18;
+      camLag = 0.045;
+      var side = orbit.yaw + 0.42;
+      camGoal.ly = 0.4;
+      camGoal.x = ball.x + Math.cos(side) * 16;
+      camGoal.y = 5.8;
+      camGoal.z = ball.y + Math.sin(side) * 16;
     } else {
       camLag = 0.006;
       camGoal.ly = 0.35;

@@ -6,6 +6,7 @@
   const CUP = 1.2;
   const GIMME = 2.0;
   const CENTER = 140;
+  const CHIP_FLOOR = 3;
   const CLUBS = [
     { id: "dr", name: "Driver", min: 220, max: 290 },
     { id: "3w", name: "3 Wood", min: 190, max: 250 },
@@ -624,7 +625,8 @@
     const markD = G.marker && G.ball ? dist(G.ball, G.marker) : 0;
     const onG = G.hole && G.ball && lieAt(G.hole, G.ball) === "green";
     if (G.club.putt || onG) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
-    return G.club.min + (G.club.max - G.club.min) * G.power;
+    const floor = Math.min(CHIP_FLOOR, G.club.max * 0.04);
+    return floor + (G.club.max - floor) * G.power;
   }
 
   function lieMulOf(lie) {
@@ -637,18 +639,17 @@
 
   function rollFracOf(club) {
     if (!club || club.putt) return 1;
-    const mid = (club.min + club.max) / 2;
-    return Math.max(0.02, Math.min(0.16, (mid - 80) / 1100));
+    return Math.max(0.012, Math.min(0.08, (club.max - 60) / 2800));
   }
 
   function rollMu(lie, putt) {
-    if (lie === "green") return putt ? 1.0 : 0.7;
-    if (lie === "fairway") return putt ? 1.85 : 1.05;
-    if (lie === "rough") return putt ? 6.2 : 4.8;
-    if (lie === "bunker") return 11;
+    if (lie === "green") return putt ? 1.05 : 1.45;
+    if (lie === "fairway") return putt ? 2.1 : 1.55;
+    if (lie === "rough") return putt ? 6.2 : 5.4;
+    if (lie === "bunker") return 12;
     if (lie === "trees" || lie === "water") return 90;
-    if (lie === "oob") return 2.5;
-    return 1.5;
+    if (lie === "oob") return 2.8;
+    return 1.8;
   }
 
   function pathLenPts(pts) {
@@ -683,14 +684,14 @@
     let x = start.x, y = start.y;
     let v = v0;
     let steps = 0;
-    while (v > 0.16 && steps < 520) {
+    while (v > 0.12 && steps < 720) {
       steps += 1;
       const here = { x: x, y: y };
       const lie = lieAt(hole, here);
       if (lie === "trees") break;
       if (lie === "water") return { rest: here, path: path, holed: false, water: true };
       const mu = rollMu(lie, putt);
-      const ds = Math.min(1.05, v);
+      const ds = Math.min(0.42, v);
       let nx = x + Math.cos(heading) * ds;
       let ny = y + Math.sin(heading) * ds;
       if (lie === "green") {
@@ -850,7 +851,8 @@
   }
 
   function pickClub(d, onGreen) {
-    if (onGreen || d < 14) return CLUBS.find(function (c) { return c.putt; });
+    if (onGreen) return CLUBS.find(function (c) { return c.putt; });
+    if (d < 16) return CLUBS.find(function (c) { return c.id === "lw"; }) || CLUBS[CLUBS.length - 2];
     let best = CLUBS[0];
     let bestErr = 1e9;
     for (let i = 0; i < CLUBS.length; i++) {
@@ -1511,8 +1513,8 @@
     const pct = Math.round(G.power * 100);
     const yd = intendedCarry();
     const putt = !!(G.club && G.club.putt);
-    const minLab = putt ? "0 yd" : (G.club.min + " yd");
-    const maxLab = putt ? "to marker" : (G.club.max + " yd");
+    const minLab = putt ? "0 yd" : "chip";
+    const maxLab = putt ? "to marker" : (G.club.max + " yd full");
     const fill = pct + "%";
     if ($("powPct")) $("powPct").textContent = pct + "%";
     if ($("powYd")) $("powYd").textContent = yd.toFixed(0) + " yd";
@@ -1536,7 +1538,7 @@
     if (!$("clubs") || !G.club) return;
     $("clubs").innerHTML = CLUBS.map(function (c) {
       return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '">' +
-        c.name + "<small>" + (c.putt ? "to marker" : (c.min + "–" + c.max + " yd")) + "</small></button>";
+        c.name + "<small>" + (c.putt ? "to marker" : ("chip–" + c.max + " yd")) + "</small></button>";
     }).join("");
   }
 
@@ -1606,11 +1608,11 @@
     const loft = putt ? 0 : Math.min(46, 8 + flyLen * 0.095);
     const flyMs = putt ? 0 : (560 + flyLen * 5.1);
     const canBounce = !putt && !blocked && loft > 6 && (landLie === "fairway" || landLie === "green");
-    const bounceMs = canBounce ? Math.min(480, 160 + Math.min(rollLen, 36) * 5) : (landLie === "rough" && !putt && !blocked ? 90 : 0);
+    const bounceMs = canBounce ? Math.min(360, 140 + Math.min(rollLen, 22) * 7) : (landLie === "rough" && !putt && !blocked ? 110 : 0);
     const roughSlow = landLie === "rough" || landLie === "bunker";
     const rollMs = (blocked || landLie === "water")
       ? 0
-      : (putt ? (480 + rollLen * 16) : (roughSlow ? (140 + rollLen * 12) : (240 + rollLen * 24)));
+      : (putt ? (520 + rollLen * 22) : (roughSlow ? (220 + rollLen * 28) : (420 + rollLen * 42)));
     const holdMs = model.holed ? 1180 : 920;
     const t0 = performance.now();
     const shotN = ++G.shotN;
@@ -1641,7 +1643,7 @@
         phase = "fly";
       } else if (bounceMs && t < flyMs + bounceMs) {
         const u = (t - flyMs) / bounceMs;
-        const p = pointOnPath(rollPts, u * 0.12);
+        const p = pointOnPath(rollPts, u * 0.05);
         x = p.x;
         y = p.y;
         if (canBounce) {
@@ -1654,7 +1656,7 @@
         phase = "bounce";
       } else if (rollMs && t < flyMs + bounceMs + rollMs) {
         const u = (t - flyMs - bounceMs) / rollMs;
-        const e = 1 - Math.pow(1 - u, roughSlow ? 1.7 : 2.55);
+        const e = 1 - Math.pow(1 - u, roughSlow ? 1.35 : 1.55);
         const p = pointOnPath(rollPts, e);
         x = p.x;
         y = p.y;
@@ -2374,7 +2376,7 @@
       "<h2>How to play</h2>" +
       "<ol class='lore'><li>Do not click the hole. The first marker sits on the next landing. Pick a club that finishes there — 100% driver often flies the corner into trouble.</li>" +
       "<li>Gold ring is this power’s carry. Gold pip is the air landing. Violet pip is rest after roll. Trees stop a cut. Water you must actually carry.</li>" +
-      "<li>Drag the full power bar (0–100%) inside this club’s range. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%. Wind still moves the ball a little.</li>" +
+      "<li>Power is 0–100% of this club’s full shot. 0% is a short chip (a few yards) — that’s how you get on from close. 100% is max. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%.</li>" +
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>The hole is a 2.5D course. Click the ground to plant the marker. Gold ring is club carry. Violet pip is the wind landing. Red means trees stop the flight.</li>" +
