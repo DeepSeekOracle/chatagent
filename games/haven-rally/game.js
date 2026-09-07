@@ -245,6 +245,7 @@
   const OPTIONS = [
     { key: "ghost", group: "Race", type: "toggle", label: "Show ghost", hint: "Best heat for this circuit + craft rides with you.", def: true },
     { key: "countdown", group: "Race", type: "toggle", label: "Countdown lights", hint: "3–2–1 before green.", def: true },
+    { key: "manual", group: "Controls", type: "toggle", label: "Manual transmission", hint: "↑ upshift · ↓ downshift. Split: P1 Q/E, P2 O/P. Pad: D-pad up/down. Off is auto.", def: true },
     { key: "invertSteer", group: "Controls", type: "toggle", label: "Invert steer", hint: "Swap A/D and the arrow keys.", def: false },
     { key: "camView", group: "Camera", type: "range", label: "Camera", hint: "C cycles views.", min: 0, max: 5, step: 1, def: 0 },
     { key: "camDist", group: "Camera", type: "range", label: "Chase distance", min: 0.7, max: 1.7, step: 0.05, def: 1 },
@@ -1155,8 +1156,12 @@
       : G.craft.name) + " · " + (tr.kind === "ridge" ? Math.round(tr.len) + " yd to FINISH" : tr.laps + " laps"));
     if ($("hint")) {
       $("hint").textContent = wantSplit
-        ? "P1 WASD · P2 arrows (Ctrl drift, Enter boost) · pad: stick + RT/LT, A gas, B e-brake, RB boost · V P2 cam"
-        : "W throttle · Space brake · L-Shift drift · R-Shift boost/guns · F drag tree";
+        ? (opt("manual")
+          ? "P1 WASD · Q/E shift · P2 arrows · O/P shift · pad D-pad shift"
+          : "P1 WASD · P2 arrows (Ctrl drift, Enter boost) · pad: stick + RT/LT, A gas, B e-brake, RB boost · V P2 cam")
+        : (opt("manual")
+          ? "W throttle · Space brake · ↑↓ shift · L-Shift drift · R-Shift boost"
+          : "W throttle · Space brake · L-Shift drift · R-Shift boost/guns · F drag tree");
     }
     $("app").classList.remove("hidden");
     hideOverlay();
@@ -1549,15 +1554,18 @@
     const dR = btnVal(bt[15]);
     const dU = btnVal(bt[12]);
     const dD = btnVal(bt[13]);
+    const manual = !!opt("manual");
     let steerIn = sx + (dR - dL);
-    let throttle = Math.max(btnVal(bt[7]), sy < 0 ? -sy : 0, dU);
-    let brake = Math.max(btnVal(bt[6]), sy > 0 ? sy : 0, dD);
+    let throttle = Math.max(btnVal(bt[7]), sy < 0 ? -sy : 0, manual ? 0 : dU);
+    let brake = Math.max(btnVal(bt[6]), sy > 0 ? sy : 0, manual ? 0 : dD);
     if (btnVal(bt[0]) > 0.4 && throttle < 0.2 && brake < 0.2) throttle = 1;
     return {
       throttle: clamp(throttle, 0, 1),
       brake: clamp(brake, 0, 1),
       ebrake: btnVal(bt[1]) > 0.4 || btnVal(bt[2]) > 0.4 || btnVal(bt[4]) > 0.4,
       boost: btnVal(bt[5]) > 0.4 || btnVal(bt[3]) > 0.4,
+      shiftUp: manual && dU > 0.45,
+      shiftDown: manual && dD > 0.45,
       steerIn: clamp(steerIn, -1, 1),
       pad: true
     };
@@ -1572,11 +1580,12 @@
     } else {
       pad = pads[0] || null;
     }
-    const p = padInput(pad) || { throttle: 0, brake: 0, ebrake: false, boost: false, steerIn: 0 };
+    const manual = !!opt("manual");
+    const p = padInput(pad) || { throttle: 0, brake: 0, ebrake: false, boost: false, steerIn: 0, shiftUp: false, shiftDown: false };
     if (slot === 0) {
       if (!split) {
-        if (k.KeyW || k.ArrowUp) p.throttle = 1;
-        if (k.KeyS || k.ArrowDown || k.Space) p.brake = 1;
+        if (k.KeyW || (!manual && k.ArrowUp)) p.throttle = 1;
+        if (k.KeyS || k.Space || (!manual && k.ArrowDown)) p.brake = 1;
         if (k.KeyA || k.ArrowLeft) p.steerIn -= 1;
         if (k.KeyD || k.ArrowRight) p.steerIn += 1;
       } else {
@@ -1587,6 +1596,10 @@
       }
       if (k.ShiftLeft) p.ebrake = true;
       if (k.ShiftRight) p.boost = true;
+      if (manual) {
+        if (k.ArrowUp || k.KeyE) p.shiftUp = true;
+        if (k.ArrowDown || k.KeyQ) p.shiftDown = true;
+      }
     } else {
       if (k.ArrowUp) p.throttle = 1;
       if (k.ArrowDown) p.brake = 1;
@@ -1594,7 +1607,12 @@
       if (k.ArrowRight) p.steerIn += 1;
       if (k.ControlRight || k.Period || k.KeyK) p.ebrake = true;
       if (k.Enter || k.NumpadEnter || k.Slash || k.KeyL) p.boost = true;
+      if (manual) {
+        if (k.KeyP || k.BracketRight) p.shiftUp = true;
+        if (k.KeyO || k.BracketLeft) p.shiftDown = true;
+      }
     }
+    p.manual = manual;
     p.steerIn = clamp(p.steerIn, -1, 1);
     if (opt("invertSteer")) p.steerIn *= -1;
     return p;
@@ -1754,6 +1772,13 @@
     if (boostOn) car.boost = Math.max(0, car.boost - dt * (ridge ? 0.5 : 0.42));
     else if (on0) car.boost = Math.min(tank, car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
     const fx = racer.kind === "human" && racer.slot === 0;
+    const manual = !!inp.manual && racer.kind === "human";
+    if (manual) {
+      if (inp.shiftUp && !racer._shiftUp) manualShift(car, c, 1);
+      if (inp.shiftDown && !racer._shiftDown) manualShift(car, c, -1);
+      racer._shiftUp = !!inp.shiftUp;
+      racer._shiftDown = !!inp.shiftDown;
+    }
     stepPowertrain(c, car, dt, {
       throttle: throttle,
       brake: brake,
@@ -1761,7 +1786,8 @@
       boostOn: boostOn,
       onTrack: on0,
       fx: fx,
-      ignoreCombo: !fx
+      ignoreCombo: !fx,
+      manual: manual
     });
     if (car.vh == null) car.vh = car.h;
     const turnAuth = c.turn * 0.62 * (1.08 - 0.58 * spd01);
@@ -1853,11 +1879,13 @@
     const vMs = car.speed * YD;
     const vAbs = Math.abs(vMs);
     if (car.shiftT > 0) car.shiftT -= dt;
-    if (vMs < -1.6) car.gear = -1;
-    else if (vAbs < 0.9 && !inp.throttle) car.gear = 0;
-    else if (car.gear <= 0 && inp.throttle) {
-      car.gear = 1;
-      car.shiftT = 0.1;
+    if (!inp.manual) {
+      if (vMs < -1.6) car.gear = -1;
+      else if (vAbs < 0.9 && !inp.throttle) car.gear = 0;
+      else if (car.gear <= 0 && inp.throttle) {
+        car.gear = 1;
+        car.shiftT = 0.1;
+      }
     }
     let gIdx = car.gear < 1 ? 0 : car.gear - 1;
     if (gIdx > nG - 1) gIdx = nG - 1;
@@ -1870,7 +1898,7 @@
     }
     rpm = rpm + car.wheelSlip * (c.redline - rpm) * (car.gear <= 1 ? 0.92 : 0.55);
     rpm = clamp(rpm, c.idle * 0.7, c.redline + 200);
-    if (car.shiftT <= 0 && car.gear > 0) {
+    if (!inp.manual && car.shiftT <= 0 && car.gear > 0) {
       const shiftRpm = car.gear <= 3 ? c.redline * 0.965 : c.redline * 0.915;
       if (rpm > shiftRpm && car.gear < nG) {
         car.gear += 1;
@@ -1945,6 +1973,25 @@
     if (!g) return "N";
     return String(g);
   }
+  function manualShift(car, c, dir) {
+    if (!car || !c) return;
+    if ((car.shiftT || 0) > 0.05) return;
+    const nG = (c.gears && c.gears.length) || 6;
+    let g = car.gear;
+    if (g == null) g = 1;
+    if (dir > 0) {
+      if (g < 0) g = 0;
+      else if (g === 0) g = 1;
+      else if (g < nG) g += 1;
+    } else {
+      if (g > 1) g -= 1;
+      else if (g === 1) g = 0;
+      else if (g === 0) g = -1;
+    }
+    if (g === car.gear) return;
+    car.gear = g;
+    car.shiftT = 0.12;
+  }
 
   function fmtDelta(ms) {
     if (ms == null || !isFinite(ms)) return "DELTA —";
@@ -2015,6 +2062,7 @@
     if (gearEl) {
       gearEl.textContent = gearLabel(G.car.gear);
       gearEl.classList.toggle("shift", (G.car.shiftT || 0) > 0);
+      gearEl.classList.toggle("mt", !!opt("manual"));
     }
     const red = (G.craft && G.craft.redline) || 7800;
     const rpmN = clamp((G.hudRpm || 0) / red, 0, 1);
@@ -2593,6 +2641,7 @@
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
+      "<li>Manual is on by default: ↑ upshift, ↓ downshift (through N and R). Options can switch back to auto. Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
@@ -2701,7 +2750,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
-          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost/guns · C camera · pad RT/LT · R restart</p>" +
+          "<p class='lore'>W throttle · Space brake · A D steer · ↑↓ shift (manual) · L-Shift drift · R-Shift boost/guns · C camera</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +

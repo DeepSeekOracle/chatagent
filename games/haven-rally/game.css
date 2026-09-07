@@ -155,6 +155,13 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   text-shadow: 0 0 18px #fbbf2466;
 }
 .rh-gear.shift { color: #5eead4; }
+.rh-gear.mt::after {
+  content: " MT";
+  font-size: .38em;
+  letter-spacing: .12em;
+  color: var(--cyan);
+  vertical-align: super;
+}
 .rh-spd b {
   font: 800 2.55rem "IBM Plex Mono", monospace; color: #e8eef5; letter-spacing: .04em;
 }
