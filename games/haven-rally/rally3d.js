@@ -1319,12 +1319,12 @@
     var dx = camObj.position.x - camState.x;
     var dy = camObj.position.y - camState.y;
     var dz = camObj.position.z - camState.z;
-    return dx * dx + dy * dy + dz * dz > 6400;
+    return dx * dx + dy * dy + dz * dz > 576;
   }
 
   function lerpCam(camObj, camState, lookState, tune, dt) {
     if (!camObj) return;
-    if (chaseFar(camObj, camState)) {
+    if (needSnap || chaseFar(camObj, camState)) {
       snapChase(camObj, camState, lookState, tune);
       return;
     }
@@ -1378,11 +1378,46 @@
     return slot.mesh;
   }
 
+  function paintFrame() {
+    if (!ok() || !renderer) return;
+    var cw = (canvasEl && canvasEl.clientWidth) || 800;
+    var ch = (canvasEl && canvasEl.clientHeight) || 480;
+    if (cw < 8 || ch < 8) return;
+    var aspect = splitOn ? (cw * 0.5) / Math.max(1, ch) : cw / Math.max(1, ch);
+    if (Math.abs(camera.aspect - aspect) > 0.002) {
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
+    }
+    if (splitOn && camera2) {
+      if (Math.abs(camera2.aspect - aspect) > 0.002) {
+        camera2.aspect = aspect;
+        camera2.updateProjectionMatrix();
+      }
+      renderer.setScissorTest(true);
+      renderer.setViewport(0, 0, cw * 0.5, ch);
+      renderer.setScissor(0, 0, cw * 0.5, ch);
+      hideCockpit(carMesh, (camTune.view | 0) === 4);
+      hideCockpit(p2Mesh, false);
+      renderer.render(scene, camera);
+      renderer.setViewport(cw * 0.5, 0, cw * 0.5, ch);
+      renderer.setScissor(cw * 0.5, 0, cw * 0.5, ch);
+      hideCockpit(carMesh, false);
+      hideCockpit(p2Mesh, (camTuneB.view | 0) === 4);
+      renderer.render(scene, camera2);
+      renderer.setScissorTest(false);
+    } else {
+      renderer.setScissorTest(false);
+      renderer.setViewport(0, 0, cw, ch);
+      hideCockpit(carMesh, (camTune.view | 0) === 4);
+      renderer.render(scene, camera);
+    }
+  }
+
   function loop() {
     if (!running) return;
     requestAnimationFrame(loop);
     var dt = Math.min(0.05, clock.getDelta());
-    if (!splitOn) {
+    if (!splitOn && !needSnap) {
       lerpCam(camera, cam, look, camTune, dt);
     }
     if (carMesh) {
@@ -1453,32 +1488,11 @@
       if (Math.random() < 0.014) sun.intensity = 2.6;
       else sun.intensity += (0.16 - sun.intensity) * 0.12;
     }
-    var cw = (canvasEl && canvasEl.clientWidth) || 800;
-    var ch = (canvasEl && canvasEl.clientHeight) || 480;
-    if (splitOn && camera2) {
-      renderer.setScissorTest(true);
-      renderer.setViewport(0, 0, cw * 0.5, ch);
-      renderer.setScissor(0, 0, cw * 0.5, ch);
-      camera.aspect = (cw * 0.5) / Math.max(1, ch);
-      camera.updateProjectionMatrix();
+    if (splitOn && camera2 && !needSnap) {
       lerpCam(camera, cam, look, camTune, dt);
-      hideCockpit(carMesh, (camTune.view | 0) === 4);
-      hideCockpit(p2Mesh, false);
-      renderer.render(scene, camera);
-      renderer.setViewport(cw * 0.5, 0, cw * 0.5, ch);
-      renderer.setScissor(cw * 0.5, 0, cw * 0.5, ch);
-      camera2.aspect = (cw * 0.5) / Math.max(1, ch);
-      camera2.updateProjectionMatrix();
       lerpCam(camera2, camB, lookB, camTuneB, dt);
-      hideCockpit(carMesh, false);
-      hideCockpit(p2Mesh, (camTuneB.view | 0) === 4);
-      renderer.render(scene, camera2);
-      renderer.setScissorTest(false);
-    } else {
-      renderer.setScissorTest(false);
-      renderer.setViewport(0, 0, cw, ch);
-      renderer.render(scene, camera);
     }
+    paintFrame();
   }
 
   function resize() {
@@ -1509,7 +1523,11 @@
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0x87a8c4, 0.006);
     camera = new T.PerspectiveCamera(52, 1, 0.35, 32000);
+    camera.position.set(cam.x, cam.y, cam.z);
+    camera.lookAt(look.x, look.y, look.z);
     camera2 = new T.PerspectiveCamera(52, 1, 0.35, 32000);
+    camera2.position.set(camB.x, camB.y, camB.z);
+    camera2.lookAt(lookB.x, lookB.y, lookB.z);
     clock = new T.Clock();
     hemi = new T.HemisphereLight(0xdce8ff, 0x2a3a28, 0.7);
     scene.add(hemi);
@@ -1542,6 +1560,7 @@
     init: init,
     active: ok,
     resize: resize,
+    present: paintFrame,
     setTrack: function (track) {
       if (!ok() || !track) return;
       rebuild(track);
@@ -1717,16 +1736,19 @@
         poseChase(camB, lookB, camTuneB, s.p2);
       }
       if (carMesh) carMesh.visible = true;
+      var hardSnap = needSnap;
       var doSnap = !!(needSnap || s.snap || chaseFar(camera, cam) || (camTune.view | 0) !== lastView);
       if (doSnap) {
         lastView = camTune.view | 0;
         snapChase(camera, cam, look, camTune);
         needSnap = false;
+        if (hardSnap && clock) clock.getDelta();
       }
       if (splitOn && camera2 && s.p2 && (doSnap || chaseFar(camera2, camB) || (camTuneB.view | 0) !== lastViewB)) {
         lastViewB = camTuneB.view | 0;
         snapChase(camera2, camB, lookB, camTuneB);
       }
+      if (doSnap) paintFrame();
     }
   };
 })(window);

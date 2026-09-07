@@ -1144,6 +1144,12 @@
     if ($("pilotCraft")) $("pilotCraft").textContent = c.name + " · " + d.bonus;
   }
 
+  function kickChaseCam() {
+    if (!(use3d && window.Rally3D)) return;
+    if (Rally3D.resize) Rally3D.resize();
+    if (Rally3D.setCam) Rally3D.setCam({ snap: true });
+  }
+
   function spawnOnGrid() {
     if (G.track && G.track.kind === "drag") {
       G.field = "solo";
@@ -1224,6 +1230,7 @@
     paintPilot();
     showDragUi(false);
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
+    G._camSnap = 8;
     const pads = livePads();
     log(tr.name + " · " + (isFieldRace()
       ? (G.racers.map(function (r) { return r.name; }).join(" / ") + (pads.length ? " · " + pads.length + " pad" : ""))
@@ -1240,11 +1247,12 @@
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
-    if (use3d && window.Rally3D) {
-      if (Rally3D.resize) Rally3D.resize();
-      if (Rally3D.setCam) Rally3D.setCam({ snap: true });
-    }
+    kickChaseCam();
     draw(performance.now());
+    requestAnimationFrame(function () {
+      kickChaseCam();
+      if (G.mode === "race") draw(performance.now());
+    });
   }
 
   function startHeat(track) {
@@ -1399,13 +1407,16 @@
     paintPilot();
     showDragUi(true);
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
+    G._camSnap = 8;
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
-    if (use3d && window.Rally3D) {
-      if (Rally3D.resize) Rally3D.resize();
-      if (Rally3D.setCam) Rally3D.setCam({ snap: true });
-    }
+    kickChaseCam();
+    draw(performance.now());
+    requestAnimationFrame(function () {
+      kickChaseCam();
+      if (G.mode === "race") draw(performance.now());
+    });
     if (runTree) {
       G.phase = "tree";
       G.tree = beginTree(performance.now());
@@ -2699,8 +2710,10 @@
         paint: parseInt(String((G.craft && G.craft.color) || "#165e66").replace("#", ""), 16),
         field: field,
         p2: p2,
-        cam2: G.camView2 || 0
+        cam2: G.camView2 || 0,
+        snap: G._camSnap > 0
       });
+      if (G._camSnap > 0) G._camSnap -= 1;
       return;
     }
     if (!ctx || !G.track) return;
