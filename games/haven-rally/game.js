@@ -5,7 +5,8 @@
   const YD = 0.9144;
   const G0 = 9.81;
   const RHO = 1.225;
-  const DEFAULT_GEARS = [4.10, 2.58, 1.78, 1.36, 1.10, 0.89];
+  const DEFAULT_GEARS = [4.28, 2.72, 1.78, 1.36, 1.10, 0.89];
+  const COMBO_MPH = 5;
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
@@ -105,10 +106,16 @@
     const ratio = (c.gears[gearIndex] || c.gears[0]) * c.finalDrive;
     return (v / c.wheelRadius) * ratio * 60 / (Math.PI * 2);
   }
-  function topSpeedYd(c) {
+  function comboVmaxBonusYd() {
+    return (G.combo || 0) * (COMBO_MPH / 2.04545);
+  }
+  function baseTopSpeedYd(c) {
     const P = Math.max(1, c.hp) * 745.7;
     const k = 0.5 * RHO * c.cd * c.area;
     return Math.pow(P / Math.max(k, 0.05), 1 / 3) / YD;
+  }
+  function topSpeedYd(c) {
+    return baseTopSpeedYd(c) + comboVmaxBonusYd();
   }
 
   const OPTIONS = [
@@ -546,7 +553,7 @@
     G.tracers = [];
     G.score = 0;
     G.combo = 0;
-    G.mult = 1;
+    G.mult = 0;
     G.comboT = 0;
     G.kills = 0;
     G.bestCombo = 1;
@@ -569,16 +576,15 @@
     car.hp = 0;
     G.kills += 1;
     G.combo += 1;
-    G.comboT = 2.75;
-    G.mult = Math.min(12, G.combo);
-    if (G.mult > G.bestCombo) G.bestCombo = G.mult;
+    G.mult = G.combo;
+    if (G.combo > G.bestCombo) G.bestCombo = G.combo;
     const pts = 100 * G.mult;
     G.score += pts;
     G.car.boost = Math.min(1, (G.car.boost || 0) + 0.11);
     G.multPulse = 1;
     arcadePop("+" + pts, "pts");
-    if (G.mult > 1) arcadePop("x" + G.mult, "mult");
-    log("Wreck · +" + pts + " · x" + G.mult);
+    arcadePop("x" + G.combo + "  +" + (G.combo * COMBO_MPH) + " MPH", "mult");
+    log("Wreck · +" + pts + " · x" + G.combo + " · vmax +" + (G.combo * COMBO_MPH) + " mph");
     const el = $("arcMult");
     if (el) {
       el.classList.remove("pop");
@@ -615,6 +621,7 @@
           G.sparks = 1;
           c.s += 6;
           c.hitT = 0.5;
+          breakCombo("HIT");
         }
       } else if (c.wreck > 0) {
         c.wreck = Math.max(0, c.wreck - dt * 0.35);
@@ -622,19 +629,24 @@
       }
     }
   }
+  function breakCombo(why) {
+    if ((G.combo || 0) <= 0) return;
+    arcadePop("COMBO BREAK", "break");
+    log("Combo break · " + why + " · was x" + G.combo);
+    G.combo = 0;
+    G.mult = 0;
+    G.comboT = 0;
+    const el = $("arcMult");
+    if (el) {
+      el.classList.remove("pop");
+      el.classList.remove("hot");
+    }
+  }
   function stepGuns(dt) {
     G.gunOn = false;
     G.tracers = [];
     const tr = G.track;
     if (!tr || tr.kind !== "ridge" || G.phase !== "race") return;
-    if (G.comboT > 0) {
-      G.comboT -= dt;
-      if (G.comboT <= 0) {
-        if (G.combo >= 3) arcadePop("COMBO BREAK", "break");
-        G.combo = 0;
-        G.mult = 1;
-      }
-    }
     if (G.multPulse > 0) G.multPulse = Math.max(0, G.multPulse - dt * 3);
     const boostOn = !!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft;
     if (!boostOn) return;
@@ -1166,6 +1178,7 @@
       const trackH = Math.atan2(proj.hy, proj.hx);
       G.car.h += wrapDelta(trackH - G.car.h, Math.PI * 2) * 0.08;
       G.car.vh += wrapDelta(trackH - G.car.vh, Math.PI * 2) * 0.18;
+      if (ridge) breakCombo("WALL");
       proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     }
     return proj;
@@ -1209,8 +1222,8 @@
     }
     const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
-    if (car.gear === 1) Fdrive *= 1.13;
-    else if (car.gear === 2) Fdrive *= 1.08;
+    if (car.gear === 1) Fdrive *= 1.34;
+    else if (car.gear === 2) Fdrive *= 1.22;
     const axEst = car.speed >= 0 ? 1 : -1;
     const df = driveFrac(c);
     const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
@@ -1218,8 +1231,8 @@
     const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
     const surf = inp.onTrack ? 1 : 0.32;
     let Fmax = Math.max(400, c.mu * drivenN * surf);
-    if (car.gear === 1) Fmax *= 1.09;
-    else if (car.gear === 2) Fmax *= 1.05;
+    if (car.gear === 1) Fmax *= 1.24;
+    else if (car.gear === 2) Fmax *= 1.14;
     const want = Math.abs(Fdrive);
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
@@ -1228,14 +1241,23 @@
     } else {
       car.wheelSlip = Math.max(0, car.wheelSlip - dt * 1.8);
     }
-    const Fdrag = 0.5 * RHO * c.cd * c.area * vMs * vMs * (vMs >= 0 ? 1 : -1);
+    let Fdrag = 0.5 * RHO * c.cd * c.area * vMs * vMs * (vMs >= 0 ? 1 : -1);
+    const bonusYd = comboVmaxBonusYd();
+    if (bonusYd > 0) {
+      const v0 = baseTopSpeedYd(c);
+      const v1 = v0 + bonusYd;
+      Fdrag *= (v0 * v0) / (v1 * v1);
+    }
     const Froll = c.crr * c.massKg * G0 * (vAbs < 0.15 ? 0 : (vMs >= 0 ? 1 : -1));
     const Fbrk = inp.brake * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
     const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
     let Fnet = Fdrive - Fdrag - Froll;
     if (vAbs > 0.25 || inp.brake || inp.ebrake) Fnet -= Fbrk * (vAbs > 0.25 ? 1 : 0) + Feb;
+    if (bonusYd > 0 && inp.throttle) Fnet += (G.combo || 0) * 190;
     const a = Fnet / c.massKg;
     car.speed += (a / YD) * dt;
+    const vmax = topSpeedYd(c);
+    if (car.speed > vmax) car.speed = vmax;
     if (inp.brake && !inp.throttle && car.speed < 0 && car.speed > -5) car.speed = 0;
     if (!inp.throttle && Math.abs(car.speed) < 0.35) car.speed = 0;
     car.rpm = rpm;
@@ -1332,12 +1354,14 @@
       if (on) {
         if ($("arcScore")) $("arcScore").textContent = String(G.score || 0);
         if ($("arcMult")) {
-          $("arcMult").textContent = "x" + (G.mult || 1);
-          $("arcMult").classList.toggle("hot", (G.mult || 1) > 1);
+          $("arcMult").textContent = "x" + (G.combo || 0);
+          $("arcMult").classList.toggle("hot", (G.combo || 0) > 0);
           $("arcMult").classList.toggle("guns", !!G.gunOn);
         }
         if ($("arcCombo")) {
-          $("arcCombo").textContent = (G.combo > 1 ? G.combo + " CHAIN" : (G.gunOn ? "GUNS LIVE" : "HOLD R-SHIFT"));
+          const bonus = (G.combo || 0) * COMBO_MPH;
+          const bonusTxt = bonus ? ("+" + Math.round(opt("metric") ? bonus * 1.60934 : bonus) + " " + (opt("metric") ? "km/h" : "MPH")) : "";
+          $("arcCombo").textContent = bonusTxt || (G.gunOn ? "GUNS LIVE" : "HOLD R-SHIFT");
         }
         if ($("arcBest")) $("arcBest").textContent = "BEST " + ((G.save.arcade && G.save.arcade.bestScore) || 0);
         if ($("arcKills")) $("arcKills").textContent = (G.kills || 0) + " WRECKS";
@@ -1718,7 +1742,7 @@
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Circuits: three laps, sectors, then the line. Endless is one long highway with light traffic. Wreck cars with the guns for score, combos, and a sip of boost. Boost also trickles back slowly.</li>" +
+      "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed, no cap. Ram a car or leave the asphalt and the chain (and the bonus speed) dumps. 1st and 2nd pull harder off the line.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
