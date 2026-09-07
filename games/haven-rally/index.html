@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=16">
+<link rel="stylesheet" href="./game.css?v=17">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: Apex Mk I, lattice circuits, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/apex-hero.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
 </head>
@@ -113,9 +113,11 @@
                 <stop offset="100%" stop-color="#ef4444"/>
               </linearGradient>
             </defs>
-            <g id="rhNeedle" class="rh-needle">
-              <line x1="120" y1="128" x2="120" y2="42" stroke="#e8eef5" stroke-width="2.4"/>
-              <circle cx="120" cy="128" r="6" fill="#fbbf24"/>
+            <g transform="translate(120 128)">
+              <g id="rhNeedle" class="rh-needle">
+                <line x1="0" y1="0" x2="0" y2="-86" stroke="#e8eef5" stroke-width="2.4"/>
+                <circle cx="0" cy="0" r="6" fill="#fbbf24"/>
+              </g>
             </g>
           </svg>
           <div class="rh-shift" id="rhShift"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -214,6 +216,6 @@
 <script src="./carmodel.js?v=9"></script>
 <script src="./rally3d.js?v=25"></script>
 <script src="/games/arcade-ledger.js?v=1"></script>
-<script src="./game.js?v=45"></script>
+<script src="./game.js?v=46"></script>
 </body>
 </html>

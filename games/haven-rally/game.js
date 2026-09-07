@@ -2002,9 +2002,12 @@
       }
     }
     if ($("rhPos")) $("rhPos").textContent = pos;
-    const disp = speedVal(G.car.speed || 0);
-    G.hudSpd += (disp - (G.hudSpd || 0)) * 0.22;
-    G.hudRpm += ((G.car.rpm || 800) - (G.hudRpm || 800)) * 0.28;
+    const disp = Math.max(0, speedVal(G.car.speed || 0));
+    const dtHud = clamp(((now || 0) - (G._hudT || now || 0)) / 1000, 0.008, 0.05);
+    G._hudT = now || G._hudT;
+    const follow = 1 - Math.exp(-10 * dtHud);
+    G.hudSpd += (disp - (G.hudSpd || 0)) * follow;
+    G.hudRpm += ((G.car.rpm || 800) - (G.hudRpm || 800)) * follow;
     if ($("rhSpd")) $("rhSpd").textContent = String(Math.round(Math.max(0, G.hudSpd)));
     if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
     if ($("rhRpm")) $("rhRpm").textContent = String(Math.round(G.hudRpm)).padStart(4, "0");
@@ -2015,7 +2018,8 @@
     }
     const red = (G.craft && G.craft.redline) || 7800;
     const rpmN = clamp((G.hudRpm || 0) / red, 0, 1);
-    if ($("rhNeedle")) $("rhNeedle").setAttribute("transform", "rotate(" + (-120 + rpmN * 240).toFixed(1) + " 120 128)");
+    const needle = $("rhNeedle");
+    if (needle) needle.setAttribute("transform", "rotate(" + (-90 + rpmN * 180).toFixed(2) + ")");
     if ($("rhArc")) $("rhArc").style.strokeDashoffset = String((289 * (1 - rpmN)).toFixed(1));
     const leds = document.querySelectorAll("#rhShift i");
     const nOn = Math.round(rpmN * 7);

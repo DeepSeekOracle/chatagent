@@ -139,8 +139,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   box-shadow: 0 12px 32px #000a;
 }
 .rh-tacho-wrap { display: flex; flex-direction: column; align-items: center; gap: .2rem; }
-.rh-tacho { width: 200px; height: 124px; display: block; }
-.rh-needle { transform-origin: 120px 128px; transition: transform 50ms linear; }
+.rh-tacho { width: 200px; height: 124px; display: block; overflow: visible; }
+.rh-needle { transform-box: fill-box; }
 .rh-shift { display: flex; gap: 4px; justify-content: center; }
 .rh-shift i {
   width: 10px; height: 8px; border-radius: 2px; background: #1a2830; display: block;
