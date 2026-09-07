@@ -9,6 +9,8 @@
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
   var trafficPool = [];
   var tracerPool = [];
+  var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9 };
+  var lastBurnout = false;
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
@@ -756,6 +758,51 @@
     attachGuns(carMesh);
     ensureTraffic(64);
     ensureTracers(12);
+    ensureSkids();
+  }
+
+  function ensureSkids() {
+    if (skidMesh) return;
+    var geo = new T.PlaneGeometry(0.32, 0.78);
+    var mat = new T.MeshBasicMaterial({
+      color: 0x0b0b0b, transparent: true, opacity: 0.62, depthWrite: false
+    });
+    skidMesh = new T.InstancedMesh(geo, mat, 560);
+    skidMesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    skidMesh.frustumCulled = false;
+    skidMesh.renderOrder = 1;
+    scene.add(skidMesh);
+    skidDummy = new T.Object3D();
+    skidDummy.rotation.order = "YXZ";
+    var i;
+    skidDummy.scale.set(0, 0, 0);
+    skidDummy.updateMatrix();
+    for (i = 0; i < 560; i++) skidMesh.setMatrixAt(i, skidDummy.matrix);
+    skidMesh.instanceMatrix.needsUpdate = true;
+    skidIdx = 0;
+  }
+
+  function resetSkids() {
+    if (!skidMesh || !skidDummy) return;
+    var i;
+    skidDummy.scale.set(0, 0, 0);
+    skidDummy.updateMatrix();
+    for (i = 0; i < 560; i++) skidMesh.setMatrixAt(i, skidDummy.matrix);
+    skidMesh.instanceMatrix.needsUpdate = true;
+    skidIdx = 0;
+    skidLast.x = 1e9;
+    skidLast.z = 1e9;
+  }
+
+  function dropSkid(x, z, h, wide) {
+    if (!skidMesh || !skidDummy) return;
+    skidDummy.position.set(x, 0.096, z);
+    skidDummy.rotation.set(-Math.PI / 2, -h, 0);
+    skidDummy.scale.set(wide || 1, 1, 1);
+    skidDummy.updateMatrix();
+    skidMesh.setMatrixAt(skidIdx % 560, skidDummy.matrix);
+    skidIdx += 1;
+    skidMesh.instanceMatrix.needsUpdate = true;
   }
 
   function attachGuns(root) {
@@ -882,7 +929,7 @@
     if (carMesh) {
       var spin = Math.abs(lastSpeed) * 0.85;
       carMesh.traverse(function (ch) {
-        if (ch.userData.spin) ch.rotation.x += dt * (0.4 + spin);
+        if (ch.userData.spin) ch.rotation.x += dt * (0.4 + spin) * (lastBurnout ? 7.5 : 1);
       });
     }
     renderer.render(scene, camera);
@@ -944,6 +991,7 @@
       if (!ok() || !track) return;
       rebuild(track);
       ensureActors();
+      resetSkids();
     },
     setCam: function (tune) {
       if (!tune) return;
@@ -974,6 +1022,7 @@
       carMesh.rotation.y = -c.h - Math.PI / 2;
       carMesh.rotation.z = -(c.steer || 0) * 0.08;
       lastSpeed = c.speed || 0;
+      lastBurnout = !!s.burnout;
       carMesh.traverse(function (ch) {
         if (ch.userData.steer) ch.rotation.y = (c.steer || 0) * 0.42;
       });
@@ -1005,6 +1054,7 @@
         HavenCar.setLights(carMesh, {
           head: true,
           brake: (c.brk || 0) > 0.08,
+          boost: !!s.boostOn,
           reduceFx: s.reduceFx
         });
         if (ghostMesh && ghostMesh.visible) {
@@ -1013,6 +1063,27 @@
         if (aiMesh && aiMesh.visible) {
           HavenCar.setLights(aiMesh, { head: true, brake: false, reduceFx: s.reduceFx });
         }
+      }
+      if (s.burnout && !s.reduceFx) {
+        var bfx = Math.cos(c.h), bfz = Math.sin(c.h);
+        var brx = -bfz, brz = bfx;
+        var dxs = c.x - skidLast.x, dzs = c.y - skidLast.z;
+        if (dxs * dxs + dzs * dzs > 0.11) {
+          dropSkid(c.x - bfx * 1.18 + brx * 0.82, c.y - bfz * 1.18 + brz * 0.82, c.h, 0.85 + Math.random() * 0.35);
+          dropSkid(c.x - bfx * 1.18 - brx * 0.82, c.y - bfz * 1.18 - brz * 0.82, c.h, 0.85 + Math.random() * 0.35);
+          skidLast.x = c.x;
+          skidLast.z = c.y;
+        }
+      }
+      if (carMesh) {
+        var boosting = !!s.boostOn && !s.reduceFx;
+        carMesh.traverse(function (ch) {
+          if (!ch.userData.boostFx || !ch.isMesh) return;
+          if (boosting) {
+            ch.scale.x = 0.75 + Math.random() * 0.55;
+            ch.scale.z = 0.85 + Math.random() * 0.7;
+          }
+        });
       }
       syncTraffic(s.traffic);
       syncGuns(s.gun, s.reduceFx);

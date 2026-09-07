@@ -462,6 +462,33 @@
     var exhaustR = exhaustL.clone();
     exhaustR.position.x = 0.28;
     g.add(exhaustL, exhaustR);
+    function addBoostFlame(sign) {
+      var flameMat = new T.MeshBasicMaterial({
+        color: 0xff5a12, transparent: true, opacity: 0,
+        blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide
+      });
+      var coreMat = new T.MeshBasicMaterial({
+        color: 0xffe08a, transparent: true, opacity: 0,
+        blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide
+      });
+      var flame = new T.Mesh(new T.ConeGeometry(0.075, 0.48, 7, 1, true), flameMat);
+      flame.rotation.x = -Math.PI / 2;
+      flame.position.set(0.28 * sign, 0.22, 2.34);
+      flame.userData.boostFx = true;
+      var core = new T.Mesh(new T.ConeGeometry(0.038, 0.28, 6, 1, true), coreMat);
+      core.rotation.x = -Math.PI / 2;
+      core.position.set(0.28 * sign, 0.22, 2.26);
+      core.userData.boostFx = true;
+      g.add(flame, core);
+      if (!ghost) {
+        var lite = new T.PointLight(0xff6a18, 0, 9, 2);
+        lite.position.set(0.28 * sign, 0.24, 2.22);
+        lite.userData.boostFx = true;
+        g.add(lite);
+      }
+    }
+    addBoostFlame(-1);
+    addBoostFlame(1);
 
     var badge = new T.Mesh(new T.CircleGeometry(0.065, 18), mats.gold);
     badge.position.set(0, 0.44, -2.16);
@@ -633,6 +660,14 @@
           ch.material.emissiveIntensity = headOn ? (ghost ? 0.4 : 3.4) : 0.1;
         }
         if (ch.isLight) ch.intensity = headOn && fx ? (ch.userData.headBoost || 2.2) : 0;
+      }
+      if (ch.userData.boostFx) {
+        var on = !!st.boost && fx && !ghost;
+        if (ch.isLight) ch.intensity = on ? (1.6 + Math.random() * 2.4) : 0;
+        if (ch.material && ch.material.opacity != null) {
+          ch.visible = on;
+          ch.material.opacity = on ? (0.42 + Math.random() * 0.45) : 0;
+        }
       }
     });
   }

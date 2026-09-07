@@ -1639,10 +1639,16 @@
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     const gh = opt("ghost") ? ghostAt(elapsed) : null;
     if (use3d && window.Rally3D && Rally3D.active()) {
+      const spdAbs = Math.abs(G.car.speed || 0);
+      const burnout = G.car.gear === 1 && (G.car.thr || 0) > 0.35 && spdAbs < 34 &&
+        ((G.car.wheelSlip || 0) > 0.08 || spdAbs < 16);
+      const boostOn = !!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft;
       Rally3D.setState({
         car: G.car, ghost: gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
-        gun: { on: G.gunOn, tracers: G.tracers || [] }
+        gun: { on: G.gunOn, tracers: G.tracers || [] },
+        burnout: burnout,
+        boostOn: boostOn
       });
       return;
     }
