@@ -438,6 +438,23 @@
     );
     body.position.y = 0.42;
     g.add(body);
+    var headMat = new T.MeshStandardMaterial({
+      color: 0xfff4d4, emissive: 0xffe7b0, emissiveIntensity: ghost ? 0.3 : 3.2
+    });
+    var tailMat = new T.MeshStandardMaterial({
+      color: 0x3b0000, emissive: 0xff2211, emissiveIntensity: ghost ? 0.15 : 0.5
+    });
+    var hL = new T.Mesh(new T.BoxGeometry(0.22, 0.1, 0.08), headMat);
+    var hR = hL.clone();
+    hL.position.set(-0.55, 0.42, -1.55);
+    hR.position.set(0.55, 0.42, -1.55);
+    hL.userData.head = hR.userData.head = true;
+    var tL = new T.Mesh(new T.BoxGeometry(0.28, 0.1, 0.06), tailMat);
+    var tR = tL.clone();
+    tL.position.set(-0.55, 0.42, 1.55);
+    tR.position.set(0.55, 0.42, 1.55);
+    tL.userData.brake = tR.userData.brake = true;
+    g.add(hL, hR, tL, tR);
     return g;
   }
 
@@ -739,8 +756,30 @@
         } else aiMesh.visible = false;
       }
       carMesh.traverse(function (ch) {
+        if (ch.isLight) {
+          ch.visible = true;
+          return;
+        }
+        if ((camTune.view | 0) === 4 && ch.isMesh) {
+          ch.visible = false;
+          return;
+        }
         if (ch.userData.fx) ch.visible = !s.reduceFx;
+        else if (ch.isMesh) ch.visible = true;
       });
+      if (global.HavenCar && HavenCar.setLights) {
+        HavenCar.setLights(carMesh, {
+          head: true,
+          brake: (c.brk || 0) > 0.08,
+          reduceFx: s.reduceFx
+        });
+        if (ghostMesh && ghostMesh.visible) {
+          HavenCar.setLights(ghostMesh, { head: true, brake: false, ghost: true, reduceFx: true });
+        }
+        if (aiMesh && aiMesh.visible) {
+          HavenCar.setLights(aiMesh, { head: true, brake: false, reduceFx: s.reduceFx });
+        }
+      }
       if (sparkGroup) {
         var showFx = !s.reduceFx && (s.sparks || 0) > 0.25;
         sparkGroup.visible = showFx;
@@ -825,7 +864,7 @@
         camTune.fov = 52;
         camTune.lag = 0.0004;
       }
-      if (carMesh) carMesh.visible = view !== 4;
+      if (carMesh) carMesh.visible = true;
       if (view !== lastView) {
         lastView = view;
         camera.position.set(cam.x, cam.y, cam.z);

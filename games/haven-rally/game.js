@@ -5,7 +5,7 @@
   const YD = 0.9144;
   const G0 = 9.81;
   const RHO = 1.225;
-  const DEFAULT_GEARS = [3.91, 2.48, 1.78, 1.36, 1.10, 0.89];
+  const DEFAULT_GEARS = [4.10, 2.58, 1.78, 1.36, 1.10, 0.89];
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
@@ -950,7 +950,7 @@
     const ratio = clutch === 0 ? 0 : (car.gear < 0 ? -gears[0] * 0.82 : gears[gIdx]) * c.finalDrive;
     let rpm = c.idle;
     if (ratio !== 0) rpm = (vAbs / c.wheelRadius) * Math.abs(ratio) * 60 / (Math.PI * 2);
-    if (vAbs < 2.4 && inp.throttle && clutch) rpm = Math.max(rpm, c.idle + inp.throttle * (c.tqRpm - c.idle) * 0.92);
+    if (vAbs < 3.2 && inp.throttle && clutch) rpm = Math.max(rpm, c.idle + inp.throttle * (c.tqRpm - c.idle) * 0.96);
     rpm = rpm + car.wheelSlip * (c.redline - rpm) * 0.85;
     rpm = clamp(rpm, c.idle * 0.7, c.redline + 200);
     if (car.shiftT <= 0 && car.gear > 0) {
@@ -967,13 +967,17 @@
     }
     const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
     let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
+    if (car.gear === 1) Fdrive *= 1.13;
+    else if (car.gear === 2) Fdrive *= 1.08;
     const axEst = car.speed >= 0 ? 1 : -1;
     const df = driveFrac(c);
     const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
     const frontLoad = 1 - rearLoad;
     const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
     const surf = inp.onTrack ? 1 : 0.32;
-    const Fmax = Math.max(400, c.mu * drivenN * surf);
+    let Fmax = Math.max(400, c.mu * drivenN * surf);
+    if (car.gear === 1) Fmax *= 1.09;
+    else if (car.gear === 2) Fmax *= 1.05;
     const want = Math.abs(Fdrive);
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);

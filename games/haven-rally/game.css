@@ -89,7 +89,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 }
 .race-hud {
   position: absolute; inset: 0; z-index: 7; pointer-events: none;
-  display: flex; flex-direction: column; justify-content: space-between;
+  display: flex; flex-direction: column; justify-content: flex-start;
   padding: 10px 12px 8px;
 }
 .rh-top {
@@ -131,15 +131,15 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   padding: .2rem .55rem;
 }
 .rh-dash {
-  align-self: center;
-  display: flex; gap: .85rem; align-items: flex-end;
-  background: linear-gradient(180deg, #0c1622e8, #070b12f0);
-  border: 1px solid var(--line); border-radius: 18px 18px 14px 14px;
-  padding: .45rem .9rem .5rem;
-  box-shadow: 0 10px 28px #0008;
+  position: absolute; right: 14px; bottom: 20px;
+  display: flex; gap: 1rem; align-items: flex-end;
+  background: linear-gradient(180deg, #0c1622ee, #070b12f5);
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: .55rem 1.05rem .6rem;
+  box-shadow: 0 12px 32px #000a;
 }
 .rh-tacho-wrap { display: flex; flex-direction: column; align-items: center; gap: .2rem; }
-.rh-tacho { width: 168px; height: 104px; display: block; }
+.rh-tacho { width: 200px; height: 124px; display: block; }
 .rh-needle { transform-origin: 120px 128px; transition: transform 50ms linear; }
 .rh-shift { display: flex; gap: 4px; justify-content: center; }
 .rh-shift i {
@@ -149,14 +149,14 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .rh-shift i.on:nth-child(n+4):nth-child(-n+5) { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
 .rh-shift i.on:nth-child(n+6) { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
 .rh-shift.flash i.on { opacity: .35; }
-.rh-core { text-align: center; min-width: 7rem; }
+.rh-core { text-align: center; min-width: 8.2rem; }
 .rh-gear {
-  font: 800 2.2rem Syne, sans-serif; color: var(--gold); line-height: 1;
+  font: 800 2.55rem Syne, sans-serif; color: var(--gold); line-height: 1;
   text-shadow: 0 0 18px #fbbf2466;
 }
 .rh-gear.shift { color: #5eead4; }
 .rh-spd b {
-  font: 800 2.1rem "IBM Plex Mono", monospace; color: #e8eef5; letter-spacing: .04em;
+  font: 800 2.55rem "IBM Plex Mono", monospace; color: #e8eef5; letter-spacing: .04em;
 }
 .rh-spd small { display: block; font: 700 .62rem "IBM Plex Mono", monospace; color: var(--cyan); letter-spacing: .16em; }
 .rh-rpm { font: 500 .68rem "IBM Plex Mono", monospace; color: var(--mute); margin-top: .1rem; }
@@ -168,14 +168,17 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .rh-pedal.brk i { background: #f87171; }
 .rh-pedal.bst i { background: linear-gradient(90deg, #5eead4, #fbbf24); }
 .rh-prog {
-  height: 4px; background: #122; border-radius: 99px; overflow: hidden; margin-top: .35rem;
+  position: absolute; left: 12px; right: 12px; bottom: 6px;
+  height: 4px; background: #122; border-radius: 99px; overflow: hidden; margin-top: 0;
 }
 .rh-prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5eead4, #fbbf24); }
 @media (max-width: 900px) {
   .rh-top { grid-template-columns: 1fr 1fr; }
   .rh-live { grid-column: 1 / -1; order: -1; }
-  .rh-tacho { width: 132px; height: 82px; }
-  .rh-dash { flex-wrap: wrap; justify-content: center; }
+  .rh-tacho { width: 156px; height: 96px; }
+  .rh-dash { right: 8px; bottom: 16px; gap: .7rem; padding: .4rem .7rem .45rem; }
+  .rh-gear { font-size: 2.1rem; }
+  .rh-spd b { font-size: 2.1rem; }
   .rh-side { width: 100%; grid-template-columns: 1fr 1fr 1fr; display: grid; }
 }
 .rail {

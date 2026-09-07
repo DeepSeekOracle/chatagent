@@ -259,8 +259,12 @@
         color: 0xdffcff, emissive: 0x5eead4, emissiveIntensity: ghost ? 0.4 : 3.6,
         roughness: 0.12, metalness: 0.15, transparent: ghost, opacity: ghost ? 0.3 : 1
       }),
+      head: new T.MeshStandardMaterial({
+        color: 0xfff4d4, emissive: 0xffe7b0, emissiveIntensity: ghost ? 0.35 : 3.4,
+        roughness: 0.16, metalness: 0.18, transparent: ghost, opacity: ghost ? 0.3 : 1
+      }),
       tail: new T.MeshStandardMaterial({
-        color: 0x3b0000, emissive: 0xff2a2a, emissiveIntensity: ghost ? 0.2 : 1.8,
+        color: 0x3b0000, emissive: 0xff2211, emissiveIntensity: ghost ? 0.18 : 0.5,
         roughness: 0.28, transparent: ghost, opacity: ghost ? 0.3 : 1
       })
     };
@@ -387,11 +391,57 @@
     }
     addDrl(-1);
     addDrl(1);
-    var tailL = new T.Mesh(new T.BoxGeometry(0.38, 0.045, 0.035), mats.tail);
-    var tailR = tailL.clone();
-    tailL.position.set(-0.55, 0.48, 1.92);
-    tailR.position.set(0.55, 0.48, 1.92);
-    g.add(tailL, tailR);
+    function addHead(sign) {
+      var house = new T.Mesh(new T.BoxGeometry(0.3, 0.13, 0.16), mats.dark);
+      house.position.set(0.6 * sign, 0.355, -1.9);
+      house.rotation.y = -0.12 * sign;
+      g.add(house);
+      var lens = new T.Mesh(new T.SphereGeometry(0.1, 14, 12), mats.head);
+      lens.scale.set(1.25, 0.72, 0.42);
+      lens.position.set(0.6 * sign, 0.355, -2.0);
+      lens.userData.head = true;
+      g.add(lens);
+      var glass = new T.Mesh(new T.CircleGeometry(0.09, 14), mats.head);
+      glass.position.set(0.6 * sign, 0.355, -2.05);
+      glass.rotation.y = Math.PI;
+      glass.userData.head = true;
+      g.add(glass);
+      if (!ghost) {
+        var spot = new T.SpotLight(0xffe6c4, 2.35, 46, 0.4, 0.5, 1.15);
+        spot.position.set(0.55 * sign, 0.4, -2.02);
+        var tgt = new T.Object3D();
+        tgt.position.set(0.7 * sign, 0.08, -18);
+        g.add(spot);
+        g.add(tgt);
+        spot.target = tgt;
+        spot.userData.head = true;
+        spot.userData.headBoost = 2.35;
+      }
+    }
+    addHead(-1);
+    addHead(1);
+    function addTail(sign) {
+      var cluster = new T.Mesh(new T.BoxGeometry(0.44, 0.13, 0.05), mats.tail);
+      cluster.position.set(0.58 * sign, 0.49, 1.95);
+      cluster.userData.brake = true;
+      g.add(cluster);
+      var inner = new T.Mesh(new T.BoxGeometry(0.24, 0.05, 0.04), mats.tail);
+      inner.position.set(0.5 * sign, 0.4, 1.97);
+      inner.userData.brake = true;
+      g.add(inner);
+    }
+    addTail(-1);
+    addTail(1);
+    var chmsl = new T.Mesh(new T.BoxGeometry(0.52, 0.032, 0.03), mats.tail);
+    chmsl.position.set(0, 1.12, 1.64);
+    chmsl.userData.brake = true;
+    g.add(chmsl);
+    if (!ghost) {
+      var bLite = new T.PointLight(0xff1a12, 0, 8, 2);
+      bLite.position.set(0, 0.52, 2.08);
+      bLite.userData.brake = true;
+      g.add(bLite);
+    }
 
     var grill = new T.Mesh(new T.BoxGeometry(0.72, 0.2, 0.07), mats.lattice);
     grill.position.set(0, 0.27, -2.1);
@@ -564,9 +614,33 @@
     return true;
   }
 
+  function setLights(root, st) {
+    if (!root) return;
+    st = st || {};
+    var headOn = st.head !== false;
+    var brakeOn = !!st.brake;
+    var fx = !st.reduceFx;
+    var ghost = !!st.ghost;
+    root.traverse(function (ch) {
+      if (ch.userData.brake) {
+        if (ch.material && ch.material.emissiveIntensity != null) {
+          ch.material.emissiveIntensity = brakeOn ? (ghost ? 1.4 : 4.8) : (ghost ? 0.16 : 0.48);
+        }
+        if (ch.isLight) ch.intensity = brakeOn && fx ? 2.4 : 0;
+      }
+      if (ch.userData.head) {
+        if (ch.material && ch.material.emissiveIntensity != null) {
+          ch.material.emissiveIntensity = headOn ? (ghost ? 0.4 : 3.4) : 0.1;
+        }
+        if (ch.isLight) ch.intensity = headOn && fx ? (ch.userData.headBoost || 2.2) : 0;
+      }
+    });
+  }
+
   global.HavenCar = {
     bakeEnv: bakeEnv,
     build: build,
+    setLights: setLights,
     openStudio: openStudio,
     closeStudio: closeStudio,
     resizeStudio: resizeStudio,
