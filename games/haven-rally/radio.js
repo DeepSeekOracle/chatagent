@@ -20,15 +20,35 @@
   const $ = (id) => document.getElementById(id);
   const el = () => $("radioEl");
 
+  const LS = "lygo-haven-radio-v1";
   const st = {
     tracks: [],
     i: 0,
     playing: false,
     muted: false,
     view: true,
-    vol: 0.55,
-    bag: []
+    vol: 0.5,
+    bag: [],
+    userPaused: false,
+    unlockArmed: false
   };
+
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  function loadPref() {
+    try {
+      const p = JSON.parse(localStorage.getItem(LS) || "null");
+      if (!p || typeof p !== "object") return;
+      if (p.vol != null && isFinite(Number(p.vol))) st.vol = clamp(Number(p.vol), 0, 1);
+      if (p.muted != null) st.muted = !!p.muted;
+    } catch (_) {}
+  }
+
+  function savePref() {
+    try {
+      localStorage.setItem(LS, JSON.stringify({ vol: st.vol, muted: st.muted }));
+    } catch (_) {}
+  }
 
   function normTrack(t) {
     const url = t.stream_url || t.url;
@@ -73,12 +93,24 @@
     }
   }
 
+  function volPct() { return String(Math.round(st.vol * 100)); }
+
+  function bindVol(node) {
+    if (!node || node.getAttribute("data-radio-bound") === "1") return;
+    node.setAttribute("data-radio-bound", "1");
+    node.addEventListener("input", function (e) {
+      setVol(Number(e.target.value) / 100);
+    });
+  }
+
   function paint() {
     const title = $("radioTitle");
     const play = $("radioPlay");
     const mute = $("radioMute");
     const view = $("radioView");
     const dock = $("radioDock");
+    const menuPlay = $("menuRadio");
+    const pct = volPct();
     if (title) {
       const t = st.tracks[st.i];
       title.textContent = t
@@ -86,14 +118,49 @@
         : "Loading listen portal…";
     }
     if (play) play.textContent = st.playing ? "Pause" : "Play";
+    if (menuPlay) menuPlay.textContent = st.playing ? "Pause radio" : "Play radio";
     if (mute) mute.textContent = st.muted ? "Unmute" : "Mute";
     if (view) view.textContent = st.view ? "Hide" : "Radio";
     if (dock) dock.classList.toggle("collapsed", !st.view);
+    ["radioVol", "menuRadioVol"].forEach(function (id) {
+      const n = $(id);
+      if (!n) return;
+      bindVol(n);
+      if (document.activeElement !== n) n.value = pct;
+    });
+    ["radioVolPct", "menuRadioVolPct"].forEach(function (id) {
+      const n = $(id);
+      if (n) n.textContent = pct + "%";
+    });
     const a = el();
     if (a) {
       a.muted = st.muted;
       a.volume = st.vol;
     }
+  }
+
+  function setVol(v) {
+    st.vol = clamp(Number(v), 0, 1);
+    if (st.vol > 0 && st.muted) {
+      st.muted = false;
+      const a = el();
+      if (a) a.muted = false;
+    }
+    savePref();
+    paint();
+  }
+
+  function armUnlock() {
+    if (st.unlockArmed) return;
+    st.unlockArmed = true;
+    const go = function () {
+      document.removeEventListener("pointerdown", go, true);
+      document.removeEventListener("keydown", go, true);
+      st.unlockArmed = false;
+      if (!st.userPaused && !st.playing) play();
+    };
+    document.addEventListener("pointerdown", go, true);
+    document.addEventListener("keydown", go, true);
   }
 
   function loadIndex(i) {
@@ -117,17 +184,37 @@
 
   function play() {
     if (!st.tracks.length) return;
+    st.userPaused = false;
     const a = el();
     if (!a.src) next();
-    a.play().then(() => { st.playing = true; paint(); }).catch(() => {
+    if (!a.src) return;
+    a.volume = st.vol;
+    a.muted = st.muted;
+    a.play().then(function () { st.playing = true; paint(); }).catch(function (err) {
+      if (err && err.name === "NotAllowedError") {
+        st.playing = false;
+        paint();
+        armUnlock();
+        return;
+      }
       next();
     });
   }
 
   function pauseKeep() {
-    el().pause();
+    const a = el();
+    if (a) a.pause();
     st.playing = false;
+    st.userPaused = true;
     paint();
+  }
+
+  function ensurePlay() {
+    if (st.userPaused || st.playing) {
+      paint();
+      return;
+    }
+    play();
   }
 
   function ensureDsp() {
@@ -150,36 +237,43 @@
   }
 
   function bootRadio() {
+    loadPref();
     ensureDsp();
-    loadPlaylists().then(paint);
     const a = el();
-    a.addEventListener("ended", () => { st.playing = true; next(); });
-    a.addEventListener("error", () => { if (st.playing) next(); });
+    if (a) {
+      a.volume = st.vol;
+      a.muted = st.muted;
+      a.addEventListener("ended", () => { st.playing = true; next(); });
+      a.addEventListener("error", () => { if (st.playing) next(); });
+    }
+    loadPlaylists().then(function () {
+      paint();
+      ensurePlay();
+    });
     const on = (id, fn) => { const n = $(id); if (n) n.onclick = fn; };
     on("radioPlay", () => { st.playing ? pauseKeep() : play(); });
-    on("radioNext", () => { st.playing = true; next(); });
+    on("radioNext", () => { st.userPaused = false; st.playing = true; next(); });
     on("radioMute", () => {
       st.muted = !st.muted;
-      el().muted = st.muted;
+      if (el()) el().muted = st.muted;
+      savePref();
       paint();
     });
     on("radioView", () => {
       st.view = !st.view;
       paint();
     });
-    const vol = $("radioVol");
-    if (vol) vol.oninput = (e) => {
-      st.vol = Number(e.target.value) / 100;
-      el().volume = st.vol;
-      if (st.vol > 0 && st.muted) {
-        st.muted = false;
-        el().muted = false;
-      }
-      paint();
-    };
     paint();
+    window.HavenRadio = {
+      play: play,
+      pause: pauseKeep,
+      ensurePlay: ensurePlay,
+      setVol: setVol,
+      vol: function () { return st.vol; },
+      playing: function () { return st.playing; },
+      paint: paint
+    };
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootRadio);
-  else bootRadio();
+  bootRadio();
 })();

@@ -2945,7 +2945,14 @@
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
           "<p class='lore'>W throttle · Space brake · A D steer · Z manual · L-Shift drift · R-Shift boost/guns · C camera</p>" +
-          "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
+          "<div class='radio-menu'>" +
+            "<button type='button' class='btn' id='menuRadio'>Play radio</button>" +
+            "<label class='radio-vol' title='Radio volume'>" +
+              "<span>Vol</span>" +
+              "<input type='range' id='menuRadioVol' min='0' max='100' step='1' value='" + (window.HavenRadio && HavenRadio.vol ? Math.round(HavenRadio.vol() * 100) : 50) + "' aria-label='Radio volume'>" +
+              "<span id='menuRadioVolPct'>" + (window.HavenRadio && HavenRadio.vol ? Math.round(HavenRadio.vol() * 100) : 50) + "%</span>" +
+            "</label>" +
+          "</div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
@@ -2977,6 +2984,10 @@
         "</div></div>",
       true
     );
+    if (window.HavenRadio) {
+      if (HavenRadio.paint) HavenRadio.paint();
+      if (HavenRadio.ensurePlay) HavenRadio.ensurePlay();
+    }
     if ($("menuControls")) $("menuControls").onclick = function (e) { e.stopPropagation(); help("menu"); };
     $("overlay").onclick = function (e) {
       const pick = e.target.closest("[data-cast]");

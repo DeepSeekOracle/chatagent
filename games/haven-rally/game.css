@@ -282,11 +282,23 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .btn:hover { border-color: var(--cyan); }
 .btn.gold { background: #3a2a08; border-color: var(--gold); color: var(--gold); }
 .btn.ghost { background: transparent; }
-.radio-inline { display: flex; align-items: center; gap: .35rem; }
+.radio-inline { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .radio-inline button {
   font: 650 .68rem "IBM Plex Mono", monospace; background: #102018; color: var(--cyan);
   border: 1px solid var(--line); border-radius: 7px; padding: .28rem .45rem; cursor: pointer;
 }
+.radio-vol {
+  display: inline-flex; align-items: center; gap: .28rem;
+  font: 500 .68rem "IBM Plex Mono", monospace; color: var(--mute);
+}
+.radio-vol input[type="range"] {
+  width: 6.4rem; height: .9rem; accent-color: var(--cyan); cursor: pointer;
+}
+.radio-menu {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .75rem;
+  margin: .55rem 0 0;
+}
+.title-panel .radio-vol input[type="range"] { width: 8.2rem; accent-color: var(--gold); }
 .radio-title-inline {
   font-family: "IBM Plex Mono", monospace; font-size: .68rem; color: var(--mute);
   max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
