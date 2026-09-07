@@ -37,7 +37,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/games/hub.css?v=5">
+<link rel="stylesheet" href="/games/hub.css?v=7">
 <script type="application/ld+json" id="games-jsonld">
 {
   "@context": "https://schema.org",
@@ -138,66 +138,25 @@
 </div>
 
 <nav class="hub-rail" aria-label="Play and halls">
-  <a href="/games/board.html"><b>Live board</b><span>All scores</span></a>
   <a href="/games/lattice-marines/"><b>Marines</b><span>Play</span></a>
-  <a href="/games/lattice-marines/ledger.html"><b>Marines hall</b><span>AI wins</span></a>
   <a href="/games/lattice-swarm/"><b>Swarm</b><span>Play</span></a>
-  <a href="/games/lattice-swarm/ledger.html"><b>Swarm hall</b><span>Best scores</span></a>
   <a href="/games/eternal-lattice/"><b>Eternal</b><span>Play</span></a>
-  <a href="/games/eternal-lattice/ledger.html"><b>Eternal ladder</b><span>Rating</span></a>
   <a href="/games/stock-market-masters/"><b>SMM</b><span>Play</span></a>
-  <a href="/games/stock-market-masters/ledger.html"><b>TOP Cashout</b><span>Net worth</span></a>
   <a href="/games/lattice-golf/"><b>Golf</b><span>Play</span></a>
-  <a href="/games/lattice-golf/ledger.html"><b>Golf hall</b><span>Rounds</span></a>
   <a href="/games/haven-rally/"><b>Rally</b><span>Play</span></a>
+  <a href="/games/board.html"><b>Live board</b><span>All scores</span></a>
+  <a href="/games/lattice-marines/ledger.html"><b>Marines hall</b><span>AI wins</span></a>
+  <a href="/games/lattice-swarm/ledger.html"><b>Swarm hall</b><span>Best scores</span></a>
+  <a href="/games/eternal-lattice/ledger.html"><b>Eternal ladder</b><span>Rating</span></a>
+  <a href="/games/stock-market-masters/ledger.html"><b>TOP Cashout</b><span>Net worth</span></a>
+  <a href="/games/lattice-golf/ledger.html"><b>Golf hall</b><span>Rounds</span></a>
   <a href="/games/haven-rally/ledger.html"><b>Rally hall</b><span>Heats + endless</span></a>
 </nav>
 
-<section class="portal-halls" data-games-halls>
-  <p class="kicker">Δ9Φ963 · live halls</p>
-  <h2>Shared ledgers</h2>
-  <p class="portal-lead">Shared <a href="/games/board.html">live board</a> — Hugging Face snapshots every inscribe to arcade.json. Set a name, finish a match, the line shows for every player. Empty is honest.</p>
-  <p class="meta" data-board-stamp>Loading arcade.json…</p>
-  <div class="hall-grid">
-    <article class="hall" data-hall="marines">
-      <header><p class="gcard-kicker">public</p><h3>Lattice Marines</h3></header>
-      <p class="hall-meta">Loading eternal AI wins…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/lattice-marines/ledger.html">Full ledger</a>
-    </article>
-    <article class="hall" data-hall="smm">
-      <header><p class="gcard-kicker">public</p><h3>Stock Market Masters</h3></header>
-      <p class="hall-meta">Loading cashouts…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/stock-market-masters/ledger.html">TOP Cashout</a>
-    </article>
-    <article class="hall" data-hall="rally">
-      <header><p class="gcard-kicker">public</p><h3>Haven Rally</h3></header>
-      <p class="hall-meta">Loading heats…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/haven-rally/ledger.html">Live hall</a>
-    </article>
-    <article class="hall" data-hall="golf">
-      <header><p class="gcard-kicker">public</p><h3>Lattice Golf</h3></header>
-      <p class="hall-meta">Loading rounds…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/lattice-golf/ledger.html">Live hall</a>
-    </article>
-    <article class="hall" data-hall="swarm">
-      <header><p class="gcard-kicker">public</p><h3>Lattice Swarm</h3></header>
-      <p class="hall-meta">Loading best scores…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/lattice-swarm/ledger.html">Live hall</a>
-    </article>
-    <article class="hall" data-hall="eternal">
-      <header><p class="gcard-kicker">public</p><h3>Eternal Lattice</h3></header>
-      <p class="hall-meta">Loading ladder…</p>
-      <ol class="hall-rows"></ol>
-      <a class="btn" href="/games/eternal-lattice/ledger.html">Live ladder</a>
-    </article>
-  </div>
-</section>
-
+<section class="portal-play">
+  <p class="kicker">Δ9Φ963 · play</p>
+  <h2>Live titles</h2>
+  <p class="portal-lead">Pick a room. Halls sit under the catalog so you can play first, then check the book.</p>
 <div class="gfilters" data-games-filters role="toolbar" aria-label="Filter games">
   <button type="button" data-filter="all" aria-pressed="true">All</button>
   <button type="button" data-filter="strategy">Strategy</button>
@@ -292,6 +251,52 @@
     </article>
   </div>
 </div>
+</section>
+
+<section class="portal-halls" data-games-halls>
+  <p class="kicker">Δ9Φ963 · live halls</p>
+  <h2>Shared ledgers</h2>
+  <p class="portal-lead">Shared <a href="/games/board.html">live board</a> — Hugging Face snapshots every inscribe to arcade.json. Set a name, finish a match, the line shows for every player. Empty is honest.</p>
+  <p class="meta" data-board-stamp>Loading arcade.json…</p>
+  <div class="hall-grid">
+    <article class="hall" data-hall="marines">
+      <header><p class="gcard-kicker">public</p><h3>Lattice Marines</h3></header>
+      <p class="hall-meta">Loading eternal AI wins…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-marines/ledger.html">Full ledger</a>
+    </article>
+    <article class="hall" data-hall="smm">
+      <header><p class="gcard-kicker">public</p><h3>Stock Market Masters</h3></header>
+      <p class="hall-meta">Loading cashouts…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/stock-market-masters/ledger.html">TOP Cashout</a>
+    </article>
+    <article class="hall" data-hall="rally">
+      <header><p class="gcard-kicker">public</p><h3>Haven Rally</h3></header>
+      <p class="hall-meta">Loading heats…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/haven-rally/ledger.html">Live hall</a>
+    </article>
+    <article class="hall" data-hall="golf">
+      <header><p class="gcard-kicker">public</p><h3>Lattice Golf</h3></header>
+      <p class="hall-meta">Loading rounds…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-golf/ledger.html">Live hall</a>
+    </article>
+    <article class="hall" data-hall="swarm">
+      <header><p class="gcard-kicker">public</p><h3>Lattice Swarm</h3></header>
+      <p class="hall-meta">Loading best scores…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-swarm/ledger.html">Live hall</a>
+    </article>
+    <article class="hall" data-hall="eternal">
+      <header><p class="gcard-kicker">public</p><h3>Eternal Lattice</h3></header>
+      <p class="hall-meta">Loading ladder…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/eternal-lattice/ledger.html">Live ladder</a>
+    </article>
+  </div>
+</section>
 
 <div class="ad-slot" aria-label="Advertisement">
   <div class="ad-label">Advertisement</div>

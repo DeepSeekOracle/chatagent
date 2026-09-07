@@ -375,11 +375,14 @@ body.arcade-portal .gmod-stage::after {
 .hub-rail a:hover { border-color: #fbbf24; }
 body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
 
+.portal-play,
 .portal-halls {
   position: relative;
   z-index: 2;
-  margin: 2.2rem 0 0;
+  margin: 1.6rem 0 0;
 }
+.portal-halls { margin-top: 2.4rem; }
+.portal-play > .kicker,
 .portal-halls > .kicker {
   font-family: "IBM Plex Mono", monospace;
   letter-spacing: .22em;
@@ -388,6 +391,7 @@ body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
   font-size: .72rem;
   margin: 0 0 .35rem;
 }
+.portal-play > h2,
 .portal-halls > h2 {
   font-family: Syne, sans-serif;
   font-size: clamp(1.5rem, 3vw, 2.1rem);
