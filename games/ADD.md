@@ -13,12 +13,7 @@ The arcade is driven by `catalog.json`. HTML pages that list titles read that fi
    - `featured`: `true` to also show on the homepage
    - `order`: lower numbers first
 4. Add `<loc>https://chatagent.ca/games/<slug>/</loc>` to `sitemap.xml` (and the eternalhaven sitemap if mirrored).
-5. On the game page, add a way back to the arcade:
-
-```html
-<link rel="stylesheet" href="/games/hub.css">
-<a class="games-exit" href="/games/">All games</a>
-```
+5. On the game page, put **All games** in the header, footer, or title menu — not a floating overlay. HTML5 titles: `<a class="games-mini" href="/games/">All games</a>` in the header plus a footer/menu link. Bundled (Vite) titles: a `.games-chrome` bar in `index.html` plus `/games/hub.css`.
 
 6. Mirror the folder + catalog to eternalhaven when the title ships on both hosts.
 7. Leave `slot-next` in the catalog (or replace it) so the arcade always shows an open slot.

@@ -69,20 +69,35 @@
 .home .gcard h2, .home .gcard h3 { color: var(--gold, #e0b36a); }
 .home .gcard p { color: #ddd4c8; }
 
-.games-exit {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
-  z-index: 9999;
+.games-chrome {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 12px;
+  background: #080e16;
+  border-bottom: 1px solid #1e3a4a;
   font: 700 12px/1 system-ui, sans-serif;
   letter-spacing: .1em;
   text-transform: uppercase;
-  color: #f3ece3;
-  background: rgba(8, 10, 16, .78);
-  border: 1px solid rgba(255,255,255,.2);
-  padding: .48rem .75rem;
-  border-radius: 999px;
-  text-decoration: none;
-  backdrop-filter: blur(8px);
+  z-index: 20;
 }
-.games-exit:hover { color: #fbbf24; border-color: #fbbf24; }
+.games-chrome a {
+  color: #fbbf24;
+  text-decoration: none;
+}
+.games-chrome a:hover { color: #5eead4; }
+.games-chrome .games-chrome-home { color: #e8eef5; margin-left: auto; font-weight: 800; }
+body:has(> .games-chrome) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  height: 100%;
+  margin: 0;
+}
+body:has(> .games-chrome) #root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto !important;
+}

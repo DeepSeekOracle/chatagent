@@ -26,12 +26,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./game.css?v=15">
-<link rel="stylesheet" href="/games/hub.css">
+<link rel="stylesheet" href="/games/hub.css?v=2">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: Apex Mk I, lattice circuits, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/apex-hero.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
 </head>
 <body>
 <audio id="radioEl" preload="none"></audio>
-<a class="games-exit" href="/games/">All games</a>
 <div id="boot" class="boot">
   <p class="kicker">Δ9Φ963 · chatagent.ca</p>
   <h1>Haven Rally</h1>
@@ -41,7 +40,7 @@
 <div id="app" class="app hidden">
   <header class="top">
     <a class="brand" href="/">chatagent.ca</a>
-    <a class="games-mini" href="/games/">Games</a>
+    <a class="games-mini" href="/games/">All games</a>
     <div class="phase-pill" id="lapPill">LAP 1/3</div>
     <div class="hud-meta" id="hudMeta"></div>
     <span class="grow"></span>
@@ -203,6 +202,7 @@
       <span class="radio-title-inline" id="radioTitle">Idle</span>
     </div>
     <span class="grow" id="dockStatus">Hold W.</span>
+    <a class="games-mini" href="/games/">All games</a>
     <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Donate</a>
     <button type="button" class="btn" id="btnMenu">Menu</button>
   </footer>
