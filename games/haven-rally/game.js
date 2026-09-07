@@ -289,7 +289,7 @@
   }
 
   function makeTrack(spec) {
-    const pts = chaikin(spec.ctrl.slice(), 2);
+    const pts = chaikin(spec.ctrl.slice(), 2, true);
     const samples = densifyPath(pts, 6, true);
     const len = pathLen(samples, true);
     return {
@@ -422,16 +422,26 @@
     return chaikin(pts, 3);
   }
 
-  function chaikin(pts, rounds) {
+  function chaikin(pts, rounds, closed) {
     let p = pts, r, i, out, a, b;
     for (r = 0; r < rounds; r++) {
-      out = [p[0]];
-      for (i = 0; i < p.length - 1; i++) {
-        a = p[i]; b = p[i + 1];
-        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
-        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+      out = [];
+      if (closed) {
+        for (i = 0; i < p.length; i++) {
+          a = p[i];
+          b = p[(i + 1) % p.length];
+          out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+          out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+        }
+      } else {
+        out = [p[0]];
+        for (i = 0; i < p.length - 1; i++) {
+          a = p[i]; b = p[i + 1];
+          out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+          out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+        }
+        out.push(p[p.length - 1]);
       }
-      out.push(p[p.length - 1]);
       p = out;
     }
     return p;
@@ -575,7 +585,9 @@
     G.ai = null;
     G.lap = 0;
     G.lastS = 0;
-    G.gates = [false, false, false];
+    G.gates = (tr.sectors || [0, 0, 0]).map(function () { return false; });
+    const flashOff = $("countFlash");
+    if (flashOff) flashOff.classList.add("hidden");
     G.splits = [];
     G.rec = [];
     G.lastLap = null;
@@ -652,7 +664,7 @@
     };
     G.lap = 0;
     G.lastS = x0;
-    G.gates = [false, false, false];
+    G.gates = [];
     G.splits = [];
     G.rec = [];
     G.ghost = null;
@@ -927,7 +939,7 @@
       const dir = proj.lat >= 0 ? 1 : -1;
       G.car.x -= (-proj.hy) * dir * extra;
       G.car.y -= proj.hx * dir * extra;
-      G.car.speed *= 0.78;
+      G.car.speed *= Math.max(0.22, 1 - 1.7 * dt);
       const trackH = Math.atan2(proj.hy, proj.hx);
       G.car.h += wrapDelta(trackH - G.car.h, Math.PI * 2) * 0.08;
       G.car.vh += wrapDelta(trackH - G.car.vh, Math.PI * 2) * 0.18;
@@ -1158,9 +1170,9 @@
         (G.phase === "count" ? "countdown" : G.phase) + "</p><p>Lap time <b>" + fmt(elapsed) + "</b></p>";
     }
     if ($("secCard")) {
-      $("secCard").innerHTML = G.gates.map(function (g, i) {
+      $("secCard").innerHTML = (G.gates || []).map(function (g, i) {
         return "S" + (i + 1) + " " + (g ? "■" : "□");
-      }).join(" · ");
+      }).join(" · ") || "—";
     }
     if ($("ghostCard")) {
       $("ghostCard").innerHTML = G.ghost
@@ -1280,7 +1292,7 @@
     if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 16000) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
     }
-    G.track.sectors.forEach(function (frac, i) {
+    (G.track.sectors || []).forEach(function (frac, i) {
       const target = frac * proj.len;
       if (!G.gates[i] && crossed(G.lastS, proj.s, target, proj.len)) {
         G.gates[i] = true;
@@ -1289,7 +1301,7 @@
       }
     });
     if (G.track.kind === "ridge") {
-      if (!G._ridgeDone && proj.s >= proj.len * 0.982 && G.lastS < proj.len * 0.982) {
+      if (!G._ridgeDone && proj.s >= proj.len * 0.982) {
         G._ridgeDone = true;
         G.lap = 1;
         const lapMs = elapsed - (G.lapStartMs || 0);
@@ -1479,7 +1491,10 @@
   function menu() {
     G.mode = "menu";
     G.phase = "idle";
+    G.keys = {};
     showDragUi(false);
+    const flash = $("countFlash");
+    if (flash) flash.classList.add("hidden");
     if (window.HavenCar) HavenCar.closeStudio();
     $("app").classList.add("hidden");
     $("boot").classList.add("hidden");

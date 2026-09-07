@@ -197,6 +197,21 @@
     };
   }
 
+  function idxAtFrac(pts, closed, frac) {
+    var segs = closed ? pts.length : Math.max(0, pts.length - 1);
+    var total = 0, i, d, acc = 0, want;
+    for (i = 0; i < segs; i++) {
+      total += Math.hypot(pts[(i + 1) % pts.length].x - pts[i].x, pts[(i + 1) % pts.length].y - pts[i].y);
+    }
+    want = clamp(frac, 0, 0.999) * total;
+    for (i = 0; i < segs; i++) {
+      d = Math.hypot(pts[(i + 1) % pts.length].x - pts[i].x, pts[(i + 1) % pts.length].y - pts[i].y);
+      if (acc + d >= want) return i;
+      acc += d;
+    }
+    return Math.max(0, pts.length - 2);
+  }
+
   function addGantry(p, q, width, col) {
     var s = sideAt(p, q, 0);
     var postM = new T.MeshStandardMaterial({ color: 0x111827 });
@@ -371,8 +386,8 @@
     var gCols = [0x5eead4, 0xfbbf24, 0xc084fc];
     var gi, gidx;
     for (gi = 0; gi < secs.length; gi++) {
-      gidx = Math.min(track.pts.length - 2, Math.max(2, (secs[gi] * (track.pts.length - 1)) | 0));
-      addGantry(track.pts[gidx], track.pts[gidx + 1], track.width, gCols[gi % gCols.length]);
+      gidx = idxAtFrac(track.pts, closed, secs[gi]);
+      addGantry(track.pts[gidx], track.pts[Math.min(track.pts.length - 1, gidx + 1)], track.width, gCols[gi % gCols.length]);
     }
   }
 
@@ -551,8 +566,19 @@
   function rebuild(track) {
     if (trackRoot) {
       scene.remove(trackRoot);
-      trackRoot.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+      trackRoot.traverse(function (o) {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) {
+          var mats = o.material.length ? o.material : [o.material];
+          mats.forEach(function (m) {
+            if (!m) return;
+            if (m.map) m.map.dispose();
+            m.dispose();
+          });
+        }
+      });
     }
+    treeLights = null;
     trackRoot = new T.Group();
     scene.add(trackRoot);
     if (track.kind === "drag") {
@@ -770,7 +796,7 @@
     renderer.toneMappingExposure = 1.12;
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0x87a8c4, 0.006);
-    camera = new T.PerspectiveCamera(52, 1, 0.35, 18000);
+    camera = new T.PerspectiveCamera(52, 1, 0.35, 32000);
     clock = new T.Clock();
     hemi = new T.HemisphereLight(0xdce8ff, 0x2a3a28, 0.7);
     scene.add(hemi);
@@ -778,7 +804,15 @@
     sun.position.set(-40, 80, 20);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.bias = -0.0008;
+    sun.shadow.camera.left = -80;
+    sun.shadow.camera.right = 80;
+    sun.shadow.camera.top = 80;
+    sun.shadow.camera.bottom = -80;
+    sun.shadow.camera.near = 8;
+    sun.shadow.camera.far = 280;
     scene.add(sun);
+    scene.add(sun.target);
     scene.add(new T.AmbientLight(0x6688aa, 0.25));
     if (global.HavenCar && HavenCar.bakeEnv) envMap = HavenCar.bakeEnv(T, renderer);
     resize();
@@ -883,6 +917,10 @@
             ch.scale.setScalar(0.4 + (s.sparks || 0) * 0.8);
           }
         }
+      }
+      if (sun) {
+        sun.position.set(c.x - 42, 58, c.y + 24);
+        sun.target.position.set(c.x, 0, c.y);
       }
       var fx = Math.cos(c.h), fz = Math.sin(c.h);
       var rx = -fz, rz = fx;
