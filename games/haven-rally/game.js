@@ -30,13 +30,43 @@
     brakeMu: 1.58,
     turn: 2.05,
     boost: 1.1,
+    boostTank: 1,
+    body: "apex",
     eta: 0.88,
     upgHp: 0,
     upgTq: 0
   };
-  const CRAFTS = [Object.assign({}, DEFAULT_CRAFT)];
+  const BOXCUT = {
+    id: "boxcut", name: "Boxcut Mk I", tag: "Short-box race truck",
+    src: "./assets/boxcut-plate.jpg", hero: "./assets/boxcut-hero.jpg",
+    lore: "Haven short-box. C10 short-fleetside stance, original lattice. Heavier, more boost tank, a bit more bite in the corners. Top end gives Apex the highway.",
+    color: "#8b1e1e",
+    massKg: 1520,
+    hp: 405,
+    torque: 495,
+    idle: 850,
+    redline: 6800,
+    tqRpm: 3600,
+    hpRpm: 6000,
+    gears: DEFAULT_GEARS.slice(),
+    finalDrive: 3.90,
+    wheelRadius: 0.35,
+    drive: "rwd",
+    cd: 0.62,
+    area: 2.55,
+    crr: 0.017,
+    mu: 1.40,
+    brakeMu: 1.52,
+    turn: 2.22,
+    boost: 1.28,
+    boostTank: 1.42,
+    body: "boxcut",
+    eta: 0.86,
+    upgHp: 0,
+    upgTq: 0
+  };
+  const CRAFTS = [Object.assign({}, DEFAULT_CRAFT), Object.assign({}, BOXCUT)];
   const LOCKED_BAYS = [
-    { name: "Bay 02", tag: "Soon" },
     { name: "Bay 03", tag: "Soon" }
   ];
   const LANE_W = 4.4;
@@ -83,6 +113,8 @@
     c.hp = (c.hp || 0) + (c.upgHp || 0);
     c.torque = (c.torque || 0) + (c.upgTq || 0);
     c.drive = c.drive === "fwd" || c.drive === "awd" ? c.drive : "rwd";
+    c.boostTank = c.boostTank > 0 ? c.boostTank : 1;
+    c.body = c.body || c.id || "apex";
     return c;
   }
   function craftOf(id) {
@@ -580,7 +612,7 @@
     if (G.combo > G.bestCombo) G.bestCombo = G.combo;
     const pts = 100 * G.mult;
     G.score += pts;
-    G.car.boost = Math.min(1, (G.car.boost || 0) + 0.11);
+    G.car.boost = Math.min((G.craft && G.craft.boostTank) || 1, (G.car.boost || 0) + 0.11);
     G.multPulse = 1;
     arcadePop("+" + pts, "pts");
     arcadePop("x" + G.combo + "  +" + (G.combo * COMBO_MPH) + " MPH", "mult");
@@ -808,7 +840,7 @@
     G.car = {
       x: a.x + (-(b.y - a.y) / tlen) * lat0,
       y: a.y + ((b.x - a.x) / tlen) * lat0,
-      h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
+      h: h, vh: h, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
     };
     G.ai = null;
     G.lap = 0;
@@ -888,7 +920,7 @@
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
-    G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
+    G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
     const c = G.craft;
     G.ai = {
       x: x0, y: lane, h: 0, speed: 0, boost: 1,
@@ -1126,12 +1158,13 @@
     const spd01 = clamp(spd / (vmaxEst + 6), 0, 1);
     const steerRate = (2.15 + 1.35 * (c.turn / 2.4)) * (1.12 - 0.58 * spd01);
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * steerRate, 0, 1);
+    const tank = c.boostTank || 1;
     const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
     const proj0 = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     const ridge = G.track && G.track.kind === "ridge";
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * (ridge ? 0.5 : 0.42));
-    else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
+    else if (on0) G.car.boost = Math.min(tank, G.car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
     stepPowertrain(c, G.car, dt, {
       throttle: throttle,
       brake: brake,
@@ -1356,7 +1389,10 @@
     if ($("rhShift")) $("rhShift").classList.toggle("flash", flash);
     if ($("rhThr")) $("rhThr").style.width = Math.round((G.car.thr || 0) * 100) + "%";
     if ($("rhBrk")) $("rhBrk").style.width = Math.round((G.car.brk || 0) * 100) + "%";
-    if ($("rhBoost")) $("rhBoost").style.width = Math.round((G.car.boost || 0) * 100) + "%";
+    if ($("rhBoost")) {
+      const tank = (G.craft && G.craft.boostTank) || 1;
+      $("rhBoost").style.width = Math.round(clamp((G.car.boost || 0) / tank, 0, 1) * 100) + "%";
+    }
     if ($("arcadeHud")) {
       const on = !!(G.track && G.track.kind === "ridge" && G.mode === "race");
       $("arcadeHud").classList.toggle("hidden", !on);
@@ -1657,7 +1693,9 @@
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
         gun: { on: G.gunOn, tracers: G.tracers || [] },
         burnout: burnout,
-        boostOn: boostOn
+        boostOn: boostOn,
+        body: (G.craft && G.craft.body) || "apex",
+        paint: parseInt(String((G.craft && G.craft.color) || "#165e66").replace("#", ""), 16)
       });
       return;
     }
@@ -1783,10 +1821,10 @@
           "<canvas id='garageCanvas'></canvas>" +
           "<img class='garage-fallback' id='garageFallback' src='" + (c.hero || c.src) + "' alt='" + c.name + "'>" +
           "<div class='garage-stage-fade'></div>" +
-          "<p class='garage-hint'>Drag to orbit · Apex Mk I is the base chassis</p>" +
+          "<p class='garage-hint'>Drag to orbit · two bays live</p>" +
         "</div>" +
         "<div class='title-panel'>" +
-          "<p class='kicker'>Garage · bay 01 live</p>" +
+          "<p class='kicker'>Garage · two bays live</p>" +
           "<h1>" + c.name + "</h1>" +
           "<p class='title-tag'>" + c.tag + "</p>" +
           "<p class='lore'>" + c.lore + "</p>" +
@@ -1797,12 +1835,14 @@
             statRow("Torque", c.torque, 750) +
             statRow("Grip μ", c.mu, 2) +
             statRow("Turn", c.turn, 2.6) +
-            statRow("Boost", c.boost, 1.6) +
+            statRow("Boost", c.boostTank || c.boost, 1.8) +
           "</div>" +
           "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
           "<div class='cast-grid garage-bays'>" +
-            "<button type='button' class='cast on' data-cast='" + c.id + "'>" +
-              "<img src='" + c.src + "' alt='" + c.name + "'><b>" + c.name + "</b><span>" + c.tag + "</span></button>" +
+            CRAFTS.map(function (cr) {
+              return "<button type='button' class='cast" + (cr.id === c.id ? " on" : "") + "' data-cast='" + cr.id + "'>" +
+                "<img src='" + cr.src + "' alt='" + cr.name + "'><b>" + cr.name + "</b><span>" + cr.tag + "</span></button>";
+            }).join("") +
             LOCKED_BAYS.map(function (b) {
               return "<button type='button' class='cast locked' disabled><span class='cast-soon'>Locked</span><b>" + b.name + "</b><span>" + b.tag + "</span></button>";
             }).join("") +
@@ -1819,7 +1859,7 @@
     const cv = $("garageCanvas");
     const fb = $("garageFallback");
     const paint = parseInt(String(c.color).replace("#", ""), 16);
-    const ok3 = cv && window.THREE && window.HavenCar && HavenCar.openStudio(cv, { paint: paint });
+    const ok3 = cv && window.THREE && window.HavenCar && HavenCar.openStudio(cv, { paint: paint, body: c.body || c.id });
     if (ok3) {
       requestAnimationFrame(function () {
         HavenCar.resizeStudio();
@@ -1847,7 +1887,7 @@
     const c = craftOf(G.save.craft);
     showSheet(
       "<div class='title-screen'>" +
-        "<div class='title-art'><img src='./assets/apex-hero.jpg' alt='Apex Mk I'><div class='title-art-fade'></div></div>" +
+        "<div class='title-art'><img src='" + (c.hero || c.src) + "' alt='" + c.name + "'><div class='title-art-fade'></div></div>" +
         "<div class='title-panel'>" +
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
@@ -1860,11 +1900,11 @@
           "<p class='kicker' style='margin-top:.75rem'>Chassis</p>" +
           "<div class='garage-chip'>" +
             "<img src='" + c.src + "' alt='" + c.name + "'>" +
-            "<div><b>" + c.name + "</b><span>" + c.tag + " · base model</span></div>" +
+            "<div><b>" + c.name + "</b><span>" + c.tag + (c.id === "apex" ? " · GT" : " · truck") + "</span></div>" +
             "<button type='button' class='btn gold' data-go='garage'>Garage</button>" +
           "</div>" +
           "<div class='mode-grid'>" +
-            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Studio turntable. One bay live — more crafts later.</span></button>" +
+            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Studio turntable. Apex GT and Boxcut short-box live.</span></button>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
@@ -1890,6 +1930,7 @@
           el.classList.toggle("on", el.getAttribute("data-cast") === G.save.craft);
         });
         G.craft = craftOf(G.save.craft);
+        if (G._sheet === "garage") garage();
         return;
       }
       if (e.target.closest("#menuRadio")) {

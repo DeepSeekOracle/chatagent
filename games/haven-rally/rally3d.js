@@ -7,6 +7,7 @@
   var sun, hemi, canvasEl, running = false;
   var trackRoot = null;
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
+  var carKind = "", carPaint = null;
   var trafficPool = [];
   var tracerPool = [];
   var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9 };
@@ -533,9 +534,9 @@
     trackRoot.add(sand);
   }
 
-  function makeCar(color, ghost) {
+  function makeCar(color, ghost, body) {
     if (global.HavenCar && HavenCar.build) {
-      return HavenCar.build(T, { paint: color, ghost: ghost, envMap: envMap });
+      return HavenCar.build(T, { paint: color, ghost: ghost, envMap: envMap, body: body });
     }
     var g = new T.Group();
     var body = new T.Mesh(
@@ -729,13 +730,35 @@
     dressCourse(track, closed);
   }
 
-  function ensureActors() {
+  function disposeObj(o) {
+    if (!o) return;
+    scene.remove(o);
+    o.traverse(function (ch) {
+      if (ch.geometry) ch.geometry.dispose();
+      if (ch.material) {
+        var mats = ch.material.length ? ch.material : [ch.material];
+        mats.forEach(function (m) { if (m) m.dispose(); });
+      }
+    });
+  }
+
+  function ensureActors(body, paint) {
+    body = body || "apex";
+    paint = paint != null ? paint : 0x165e66;
+    if (carMesh && (carKind !== body || carPaint !== paint)) {
+      disposeObj(carMesh);
+      carMesh = null;
+    }
     if (!carMesh) {
-      carMesh = makeCar(0x165e66, false);
+      carMesh = makeCar(paint, false, body);
+      carKind = body;
+      carPaint = paint;
       scene.add(carMesh);
-      ghostMesh = makeCar(0xc084fc, true);
-      ghostMesh.visible = false;
-      scene.add(ghostMesh);
+      if (!ghostMesh) {
+        ghostMesh = makeCar(0xc084fc, true, body);
+        ghostMesh.visible = false;
+        scene.add(ghostMesh);
+      }
     }
     if (!aiMesh) {
       aiMesh = makeCar(0xb45309, false);
@@ -1016,7 +1039,7 @@
     },
     setState: function (s) {
       if (!ok() || !s || !s.car) return;
-      ensureActors();
+      ensureActors(s.body, s.paint);
       var c = s.car;
       carMesh.position.set(c.x, 0.02, c.y);
       carMesh.rotation.y = -c.h - Math.PI / 2;

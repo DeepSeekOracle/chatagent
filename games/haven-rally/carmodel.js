@@ -190,7 +190,9 @@
     return out;
   }
 
-  function makeWheel(T, mats, y, x, z, steer) {
+  function makeWheel(T, mats, y, x, z, steer, rad) {
+    rad = rad || 0.34;
+    var sc = rad / 0.34;
     var root = new T.Group();
     root.position.set(x, y, z);
     if (steer) root.userData.steer = true;
@@ -198,39 +200,281 @@
     spin.userData.spin = true;
     root.add(spin);
 
-    var tire = new T.Mesh(new T.CylinderGeometry(0.34, 0.34, 0.24, 48), mats.rubber);
+    var tire = new T.Mesh(new T.CylinderGeometry(rad, rad, 0.24 * sc + 0.02, 48), mats.rubber);
     tire.rotation.z = Math.PI / 2;
     tire.castShadow = true;
     spin.add(tire);
-    var sidewall = new T.Mesh(new T.CylinderGeometry(0.335, 0.27, 0.18, 40), mats.rubberSoft);
+    var sidewall = new T.Mesh(new T.CylinderGeometry(rad * 0.985, rad * 0.79, 0.18 * sc, 40), mats.rubberSoft);
     sidewall.rotation.z = Math.PI / 2;
     spin.add(sidewall);
-    var lip = new T.Mesh(new T.CylinderGeometry(0.27, 0.27, 0.045, 36), mats.chrome);
+    var lip = new T.Mesh(new T.CylinderGeometry(rad * 0.79, rad * 0.79, 0.045, 36), mats.chrome);
     lip.rotation.z = Math.PI / 2;
-    lip.position.x = x > 0 ? 0.09 : -0.09;
+    lip.position.x = x > 0 ? 0.09 * sc : -0.09 * sc;
     spin.add(lip);
-    var disc = new T.Mesh(new T.CylinderGeometry(0.21, 0.21, 0.028, 36), mats.disc);
+    var disc = new T.Mesh(new T.CylinderGeometry(rad * 0.62, rad * 0.62, 0.028, 36), mats.disc);
     disc.rotation.z = Math.PI / 2;
     spin.add(disc);
-    var hub = new T.Mesh(new T.CylinderGeometry(0.065, 0.065, 0.11, 16), mats.chrome);
+    var hub = new T.Mesh(new T.CylinderGeometry(0.065 * sc, 0.065 * sc, 0.11, 16), mats.chrome);
     hub.rotation.z = Math.PI / 2;
     spin.add(hub);
     var si, a, spoke;
     for (si = 0; si < 5; si++) {
       a = (si / 5) * Math.PI * 2;
-      spoke = new T.Mesh(new T.BoxGeometry(0.032, 0.17, 0.038), mats.chrome);
+      spoke = new T.Mesh(new T.BoxGeometry(0.032, 0.17 * sc, 0.038), mats.chrome);
       spoke.rotation.x = a;
-      spoke.position.set(0, Math.cos(a) * 0.12, Math.sin(a) * 0.12);
+      spoke.position.set(0, Math.cos(a) * 0.12 * sc, Math.sin(a) * 0.12 * sc);
       spin.add(spoke);
     }
     var cal = new T.Mesh(new T.BoxGeometry(0.06, 0.1, 0.15), mats.gold);
-    cal.position.set(x > 0 ? 0.1 : -0.1, 0.16, 0);
+    cal.position.set(x > 0 ? 0.1 : -0.1, 0.16 * sc, 0);
     root.add(cal);
     return root;
   }
 
+  function addBoostFlamesAt(g, T, ghost, y, z, spread) {
+    spread = spread == null ? 0.28 : spread;
+    function one(sign) {
+      var flameMat = new T.MeshBasicMaterial({
+        color: 0xff5a12, transparent: true, opacity: 0,
+        blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide
+      });
+      var coreMat = new T.MeshBasicMaterial({
+        color: 0xffe08a, transparent: true, opacity: 0,
+        blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide
+      });
+      var flame = new T.Mesh(new T.ConeGeometry(0.075, 0.48, 7, 1, true), flameMat);
+      flame.rotation.x = -Math.PI / 2;
+      flame.position.set(spread * sign, y, z + 0.26);
+      flame.userData.boostFx = true;
+      var core = new T.Mesh(new T.ConeGeometry(0.038, 0.28, 6, 1, true), coreMat);
+      core.rotation.x = -Math.PI / 2;
+      core.position.set(spread * sign, y, z + 0.18);
+      core.userData.boostFx = true;
+      g.add(flame, core);
+      if (!ghost) {
+        var lite = new T.PointLight(0xff6a18, 0, 9, 2);
+        lite.position.set(spread * sign, y + 0.02, z + 0.14);
+        lite.userData.boostFx = true;
+        g.add(lite);
+      }
+    }
+    one(-1);
+    one(1);
+  }
+
+  function paintMats(T, paintCol, envMap, ghost) {
+    var carbon = carbonTex(T);
+    var lat = latticeTex(T);
+    return {
+      paint: mat(T, {
+        color: paintCol, metalness: 0.78, roughness: 0.16, clearcoat: 1,
+        clearcoatRoughness: 0.07, sheen: 0.45, sheenColor: new T.Color(0x7eeae0),
+        envMap: envMap, envMapIntensity: 1.3
+      }, ghost),
+      dark: mat(T, { color: 0x0b0d12, metalness: 0.4, roughness: 0.45, envMap: envMap }, ghost),
+      carbon: mat(T, { color: 0x222, metalness: 0.55, roughness: 0.38, map: carbon, envMap: envMap }, ghost),
+      glass: mat(T, {
+        color: 0x081018, metalness: 0.12, roughness: 0.035, transparent: true,
+        opacity: ghost ? 0.16 : 0.42, envMap: envMap, envMapIntensity: 1.7
+      }, false),
+      chrome: mat(T, { color: 0x9aa3ad, metalness: 1, roughness: 0.12, envMap: envMap }, ghost),
+      gold: mat(T, { color: 0xfbbf24, metalness: 0.92, roughness: 0.2, envMap: envMap }, ghost),
+      rubber: mat(T, { color: 0x111111, metalness: 0.05, roughness: 0.92 }, ghost),
+      rubberSoft: mat(T, { color: 0x1a1a1a, metalness: 0.04, roughness: 0.86 }, ghost),
+      disc: mat(T, { color: 0x6b7280, metalness: 0.85, roughness: 0.28, envMap: envMap }, ghost),
+      lattice: mat(T, { color: 0x1f2937, metalness: 0.5, roughness: 0.4, map: lat, envMap: envMap }, ghost),
+      liner: mat(T, { color: 0x1a1512, metalness: 0.08, roughness: 0.92 }, ghost),
+      light: new T.MeshStandardMaterial({
+        color: 0xdffcff, emissive: 0x5eead4, emissiveIntensity: ghost ? 0.4 : 3.6,
+        roughness: 0.12, metalness: 0.15, transparent: ghost, opacity: ghost ? 0.3 : 1
+      }),
+      head: new T.MeshStandardMaterial({
+        color: 0xfff4d4, emissive: 0xffe7b0, emissiveIntensity: ghost ? 0.35 : 3.4,
+        roughness: 0.16, metalness: 0.18, transparent: ghost, opacity: ghost ? 0.3 : 1
+      }),
+      tail: new T.MeshStandardMaterial({
+        color: 0x3b0000, emissive: 0xff2211, emissiveIntensity: ghost ? 0.18 : 0.5,
+        roughness: 0.28, transparent: ghost, opacity: ghost ? 0.3 : 1
+      })
+    };
+  }
+
+  function buildTruck(T, opts) {
+    var ghost = !!opts.ghost;
+    var paintCol = opts.paint != null ? opts.paint : 0x8b1e1e;
+    var envMap = opts.envMap || null;
+    var g = new T.Group();
+    var mats = paintMats(T, paintCol, envMap, ghost);
+
+    var ctrl = [
+      { z: -2.48, w: 0.22, y0: 0.22, y1: 0.38 },
+      { z: -2.32, w: 0.72, y0: 0.16, y1: 0.52 },
+      { z: -2.12, w: 1.02, y0: 0.14, y1: 0.62 },
+      { z: -1.92, w: 1.08, y0: 0.14, y1: 0.68, well: 0.15 },
+      { z: -1.58, w: 1.10, y0: 0.15, y1: 0.70, well: 0.85 },
+      { z: -1.32, w: 1.10, y0: 0.15, y1: 0.72, well: 1 },
+      { z: -1.08, w: 1.08, y0: 0.16, y1: 0.74, well: 0.55 },
+      { z: -0.82, w: 1.04, y0: 0.16, y1: 0.78, yr: 1.08, wr: 0.78 },
+      { z: -0.42, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.36, wr: 0.72 },
+      { z: 0.02, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.40, wr: 0.70 },
+      { z: 0.42, w: 1.02, y0: 0.16, y1: 0.80, yr: 1.36, wr: 0.70 },
+      { z: 0.68, w: 1.04, y0: 0.16, y1: 0.78, yr: 1.18, wr: 0.74 },
+      { z: 0.88, w: 1.06, y0: 0.17, y1: 0.62 },
+      { z: 1.12, w: 1.08, y0: 0.17, y1: 0.60, well: 0.2 },
+      { z: 1.38, w: 1.12, y0: 0.17, y1: 0.60, well: 0.85 },
+      { z: 1.58, w: 1.14, y0: 0.18, y1: 0.60, well: 1 },
+      { z: 1.82, w: 1.12, y0: 0.18, y1: 0.60, well: 0.7 },
+      { z: 2.08, w: 1.06, y0: 0.18, y1: 0.62, well: 0.12 },
+      { z: 2.32, w: 1.00, y0: 0.20, y1: 0.64 },
+      { z: 2.48, w: 0.92, y0: 0.22, y1: 0.62 }
+    ];
+    var slices = densify(ctrl, 0.05);
+    var body = new T.Mesh(loft(T, slices, ringOf, RING), mats.paint);
+    body.castShadow = !ghost;
+    body.receiveShadow = true;
+    g.add(body);
+
+    var glassCtrl = slices.filter(function (s) { return s.yr != null && s.yr > s.y1 + 0.18; });
+    if (glassCtrl.length > 2) {
+      var cabin = new T.Mesh(loft(T, glassCtrl, glassRing, 8), mats.glass);
+      cabin.renderOrder = 2;
+      g.add(cabin);
+    }
+    var rearWin = new T.Mesh(new T.PlaneGeometry(1.05, 0.42), mats.glass);
+    rearWin.position.set(0, 1.12, 0.72);
+    g.add(rearWin);
+
+    var noseCap = new T.Mesh(capGeometry(T, slices[0]), mats.chrome);
+    g.add(noseCap);
+
+    var bumper = new T.Mesh(new T.BoxGeometry(2.12, 0.13, 0.22), mats.chrome);
+    bumper.position.set(0, 0.28, -2.42);
+    g.add(bumper);
+    var ovL = new T.Mesh(new T.BoxGeometry(0.08, 0.22, 0.16), mats.chrome);
+    var ovR = ovL.clone();
+    ovL.position.set(-0.78, 0.34, -2.48);
+    ovR.position.set(0.78, 0.34, -2.48);
+    g.add(ovL, ovR);
+
+    var splitter = new T.Mesh(new T.BoxGeometry(2.05, 0.04, 0.38), mats.carbon);
+    splitter.position.set(0, 0.14, -2.28);
+    g.add(splitter);
+
+    var grill = new T.Mesh(new T.BoxGeometry(0.92, 0.36, 0.08), mats.lattice);
+    grill.position.set(0, 0.50, -2.26);
+    g.add(grill);
+    var bar = new T.Mesh(new T.BoxGeometry(0.98, 0.03, 0.04), mats.chrome);
+    bar.position.set(0, 0.50, -2.30);
+    g.add(bar);
+
+    function lamp(x, y, z, r) {
+      var m = new T.Mesh(new T.SphereGeometry(r, 16, 12), mats.head);
+      m.position.set(x, y, z);
+      m.scale.set(1.05, 1.05, 0.55);
+      m.userData.head = true;
+      g.add(m);
+    }
+    lamp(-0.62, 0.50, -2.32, 0.11);
+    lamp(0.62, 0.50, -2.32, 0.11);
+    lamp(-0.78, 0.42, -2.30, 0.045);
+    lamp(0.78, 0.42, -2.30, 0.045);
+
+    var bulge = new T.Mesh(new T.BoxGeometry(0.62, 0.07, 1.05), mats.paint);
+    bulge.position.set(0, 0.80, -1.22);
+    g.add(bulge);
+
+    var bed = new T.Mesh(new T.BoxGeometry(1.88, 0.05, 1.52), mats.liner);
+    bed.position.set(0, 0.44, 1.58);
+    g.add(bed);
+    var gate = new T.Mesh(new T.BoxGeometry(1.92, 0.52, 0.08), mats.paint);
+    gate.position.set(0, 0.66, 2.40);
+    g.add(gate);
+    var gateBar = new T.Mesh(new T.BoxGeometry(1.4, 0.06, 0.04), mats.gold);
+    gateBar.position.set(0, 0.66, 2.45);
+    g.add(gateBar);
+    var railL = new T.Mesh(new T.BoxGeometry(0.05, 0.08, 1.5), mats.chrome);
+    var railR = railL.clone();
+    railL.position.set(-0.94, 0.72, 1.58);
+    railR.position.set(0.94, 0.72, 1.58);
+    g.add(railL, railR);
+
+    var hoop = new T.Mesh(new T.TorusGeometry(0.82, 0.035, 8, 20, Math.PI), mats.chrome);
+    hoop.rotation.z = Math.PI / 2;
+    hoop.position.set(0, 1.05, 0.92);
+    g.add(hoop);
+    var hoopPostL = new T.Mesh(new T.CylinderGeometry(0.032, 0.032, 0.7, 8), mats.chrome);
+    var hoopPostR = hoopPostL.clone();
+    hoopPostL.position.set(-0.82, 0.85, 0.92);
+    hoopPostR.position.set(0.82, 0.85, 0.92);
+    g.add(hoopPostL, hoopPostR);
+    var lightBar = new T.Mesh(new T.BoxGeometry(1.55, 0.06, 0.08), mats.dark);
+    lightBar.position.set(0, 1.82, 0.92);
+    g.add(lightBar);
+    var li, pod;
+    for (li = -2; li <= 2; li++) {
+      pod = new T.Mesh(new T.BoxGeometry(0.16, 0.08, 0.1), mats.head);
+      pod.position.set(li * 0.28, 1.82, 0.86);
+      pod.userData.head = true;
+      g.add(pod);
+    }
+
+    function tail(sign) {
+      var t = new T.Mesh(new T.BoxGeometry(0.12, 0.38, 0.06), mats.tail);
+      t.position.set(0.88 * sign, 0.62, 2.44);
+      t.userData.brake = true;
+      g.add(t);
+    }
+    tail(-1);
+    tail(1);
+
+    var rearBump = new T.Mesh(new T.BoxGeometry(1.95, 0.1, 0.16), mats.chrome);
+    rearBump.position.set(0, 0.26, 2.50);
+    g.add(rearBump);
+
+    var stripeL = new T.Mesh(new T.BoxGeometry(0.04, 0.035, 3.6), mats.gold);
+    var stripeR = stripeL.clone();
+    stripeL.position.set(-1.06, 0.70, 0.05);
+    stripeR.position.set(1.06, 0.70, 0.05);
+    g.add(stripeL, stripeR);
+
+    var stepL = new T.Mesh(new T.BoxGeometry(0.22, 0.04, 1.15), mats.chrome);
+    var stepR = stepL.clone();
+    stepL.position.set(-1.12, 0.22, -0.15);
+    stepR.position.set(1.12, 0.22, -0.15);
+    g.add(stepL, stepR);
+
+    var mArm = new T.Mesh(new T.BoxGeometry(0.22, 0.035, 0.035), mats.dark);
+    mArm.position.set(-1.05, 0.92, -0.55);
+    var mGlass = new T.Mesh(new T.BoxGeometry(0.16, 0.1, 0.03), mats.chrome);
+    mGlass.position.set(-1.20, 0.92, -0.55);
+    g.add(mArm, mGlass);
+    var mArmR = mArm.clone(); mArmR.position.x *= -1;
+    var mGlassR = mGlass.clone(); mGlassR.position.x *= -1;
+    g.add(mArmR, mGlassR);
+
+    var exhaustL = new T.Mesh(new T.CylinderGeometry(0.045, 0.045, 0.16, 12), mats.chrome);
+    exhaustL.rotation.x = Math.PI / 2;
+    exhaustL.position.set(-0.34, 0.22, 2.52);
+    var exhaustR = exhaustL.clone();
+    exhaustR.position.x = 0.34;
+    g.add(exhaustL, exhaustR);
+    addBoostFlamesAt(g, T, ghost, 0.22, 2.52, 0.34);
+
+    var badge = new T.Mesh(new T.CircleGeometry(0.07, 18), mats.gold);
+    badge.position.set(0, 0.62, -2.34);
+    g.add(badge);
+
+    g.add(makeWheel(T, mats, 0.38, -0.92, -1.32, true, 0.36));
+    g.add(makeWheel(T, mats, 0.38, 0.92, -1.32, true, 0.36));
+    g.add(makeWheel(T, mats, 0.41, -0.96, 1.55, false, 0.39));
+    g.add(makeWheel(T, mats, 0.41, 0.96, 1.55, false, 0.39));
+    g.userData.body = "boxcut";
+    return g;
+  }
+
   function build(T, opts) {
     opts = opts || {};
+    if (opts.body === "boxcut") return buildTruck(T, opts);
     var ghost = !!opts.ghost;
     var paintCol = opts.paint != null ? opts.paint : 0x165e66;
     var envMap = opts.envMap || null;
@@ -541,14 +785,15 @@
     studio.raf = requestAnimationFrame(studioLoop);
     var dt = Math.min(0.05, studio.clock.getDelta());
     if (!studio.drag) studio.yaw += dt * 0.28;
-    var r = 6.6;
+    var truck = !!(studio.car && studio.car.userData.body === "boxcut");
+    var r = truck ? 7.5 : 6.6;
     var cp = Math.cos(studio.pitch), sp = Math.sin(studio.pitch);
     studio.camera.position.set(
       Math.sin(studio.yaw) * cp * r,
-      1.15 + sp * r * 0.85,
+      (truck ? 1.35 : 1.15) + sp * r * 0.85,
       Math.cos(studio.yaw) * cp * r
     );
-    studio.camera.lookAt(0, 0.42, 0);
+    studio.camera.lookAt(0, truck ? 0.58 : 0.42, truck ? 0.12 : 0);
     if (studio.car) {
       studio.car.traverse(function (ch) {
         if (ch.userData.spin) ch.rotation.x += dt * 1.15;
@@ -609,12 +854,12 @@
     ring.position.y = 0.02;
     studio.scene.add(ring);
 
-    studio.car = build(T, { paint: opts.paint, envMap: env, ghost: false });
+    studio.car = build(T, { paint: opts.paint, envMap: env, ghost: false, body: opts.body });
     studio.scene.add(studio.car);
     var hl = new T.PointLight(0x9ff5ea, 2.4, 8, 2);
-    hl.position.set(0, 0.45, -2.1);
+    hl.position.set(0, 0.55, opts.body === "boxcut" ? -2.3 : -2.1);
     studio.car.add(hl);
-    studio.yaw = 0.72;
+    studio.yaw = opts.body === "boxcut" ? 0.85 : 0.72;
     studio.pitch = 0.18;
 
     canvas.style.touchAction = "none";
