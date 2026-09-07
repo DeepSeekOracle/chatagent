@@ -81,6 +81,21 @@
     return g;
   }
 
+  function offsetPath(path, lat, closed) {
+    var out = [], i, prev, next, tx, tz, len, px, pz;
+    for (i = 0; i < path.length; i++) {
+      prev = path[(i - 1 + path.length) % path.length];
+      next = path[(i + 1) % path.length];
+      if (!closed && i === 0) prev = path[0];
+      if (!closed && i === path.length - 1) next = path[i];
+      tx = next.x - prev.x; tz = next.y - prev.y;
+      len = Math.hypot(tx, tz) || 1;
+      px = -tz / len; pz = tx / len;
+      out.push({ x: path[i].x + px * lat, y: path[i].y + pz * lat });
+    }
+    return out;
+  }
+
   function themeOf(id) {
     if (id === "coral-coast") return { sky: 0x7ec4ee, fog: 0xb8dcee, ground: 0x2a6a4a, road: 0x3a3a42, dusk: false };
     if (id === "singularity-ring") return { sky: 0x140c28, fog: 0x241848, ground: 0x12101c, road: 0x2a2440, dusk: true };
@@ -115,31 +130,34 @@
     ground.position.set(total * 0.5, -0.4, 0);
     ground.receiveShadow = true;
     trackRoot.add(ground);
+    var laneW = track.laneW || 4.4;
+    var half = track.width || laneW * 1.5;
     var strip = new T.Mesh(
-      new T.BoxGeometry(total + 8, 0.14, 18),
+      new T.BoxGeometry(total + 8, 0.14, half * 2 + 4),
       new T.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.78, metalness: 0.08 })
     );
     strip.position.set(total * 0.5, 0.02, 0);
     strip.receiveShadow = true;
     trackRoot.add(strip);
-    var laneL = new T.Mesh(
-      new T.BoxGeometry(total + 6, 0.02, 6.4),
-      new T.MeshStandardMaterial({ color: 0x32343a, roughness: 0.7 })
-    );
-    laneL.position.set(total * 0.5, 0.1, -2.2);
-    trackRoot.add(laneL);
-    var laneR = laneL.clone();
-    laneR.position.z = 2.2;
-    trackRoot.add(laneR);
+    var laneMat = new T.MeshStandardMaterial({ color: 0x32343a, roughness: 0.7 });
+    var li, laneMesh;
+    for (li = -1; li <= 1; li++) {
+      laneMesh = new T.Mesh(new T.BoxGeometry(total + 6, 0.02, laneW - 0.25), laneMat);
+      laneMesh.position.set(total * 0.5, 0.1, li * laneW);
+      trackRoot.add(laneMesh);
+    }
     function stripe(x, w, z, col) {
-      var s = new T.Mesh(new T.BoxGeometry(w, 0.04, 0.18), new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.2 }));
+      var s = new T.Mesh(new T.BoxGeometry(w, 0.04, 0.16), new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.2 }));
       s.position.set(x, 0.14, z);
       trackRoot.add(s);
     }
     var d;
-    for (d = 8; d < total; d += 8) stripe(d, 2.2, 0, 0xf8fafc);
+    for (d = 8; d < total; d += 8) {
+      stripe(d, 2.2, -laneW * 0.5, 0xf8fafc);
+      stripe(d, 2.2, laneW * 0.5, 0xf8fafc);
+    }
     var startLine = new T.Mesh(
-      new T.BoxGeometry(0.45, 0.06, 14),
+      new T.BoxGeometry(0.45, 0.06, half * 2 + 0.4),
       new T.MeshStandardMaterial({ color: 0xf8fafc, emissive: 0x8899aa, emissiveIntensity: 0.25 })
     );
     startLine.position.set(startX, 0.16, 0);
@@ -152,7 +170,7 @@
       var x = startX + ft / 3;
       if (x > finishX + 1) return;
       var mk = new T.Mesh(
-        new T.BoxGeometry(0.2, 0.04, 16),
+        new T.BoxGeometry(0.2, 0.04, half * 2 + 1.2),
         new T.MeshStandardMaterial({ color: 0x5eead4, emissive: 0x134e4a })
       );
       mk.position.set(x, 0.15, 0);
@@ -160,9 +178,9 @@
     });
     var wallMat = new T.MeshStandardMaterial({ color: 0xc4c4c4, roughness: 0.55 });
     var wallA = new T.Mesh(new T.BoxGeometry(total + 10, 1.1, 0.35), wallMat);
-    wallA.position.set(total * 0.5, 0.55, -9.2);
+    wallA.position.set(total * 0.5, 0.55, -(half + 2.8));
     var wallB = wallA.clone();
-    wallB.position.z = 9.2;
+    wallB.position.z = half + 2.8;
     trackRoot.add(wallA, wallB);
     var i, pole, lamp;
     var nFlood = 0;
@@ -275,11 +293,13 @@
     );
     road.receiveShadow = true;
     trackRoot.add(road);
-    var line = new T.Mesh(
-      ribbon(track.pts, 0.18, 0.1, true),
-      new T.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x664400, roughness: 0.4 })
-    );
-    trackRoot.add(line);
+    var laneW = track.laneW || (track.width * 2 / 3);
+    var paint = new T.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.55, emissive: 0x334155, emissiveIntensity: 0.12 });
+    var edge = new T.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.45, emissive: 0x664400, emissiveIntensity: 0.2 });
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, laneW * 0.5, true), 0.07, 0.11, true), paint));
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, -laneW * 0.5, true), 0.07, 0.11, true), paint));
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, track.width - 0.12, true), 0.09, 0.115, true), edge));
+    trackRoot.add(new T.Mesh(ribbon(offsetPath(track.pts, -(track.width - 0.12), true), 0.09, 0.115, true), edge));
     var start = track.pts[0];
     var n1 = track.pts[1];
     var ang = Math.atan2(n1.y - start.y, n1.x - start.x);

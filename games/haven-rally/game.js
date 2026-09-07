@@ -14,6 +14,9 @@
     { name: "Bay 02", tag: "Soon" },
     { name: "Bay 03", tag: "Soon" }
   ];
+  const LANE_W = 4.4;
+  const TRACK_LANES = 3;
+  const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
 
   function mulberry(seed) {
     let t = seed >>> 0;
@@ -212,7 +215,9 @@
       name: spec.name,
       theme: spec.theme || spec.id,
       lore: spec.lore || "",
-      width: spec.width,
+      width: TRACK_HALF,
+      laneW: LANE_W,
+      lanes: TRACK_LANES,
       laps: spec.laps || 3,
       pts: pts,
       samples: samples,
@@ -237,8 +242,10 @@
       name: spec.name,
       theme: "drag-strip",
       lore: spec.lore,
-      width: 9.2,
-      lane: 2.2,
+      width: TRACK_HALF,
+      laneW: LANE_W,
+      lanes: TRACK_LANES,
+      lane: LANE_W,
       laps: 1,
       pts: pts,
       samples: samples,
@@ -263,17 +270,17 @@
   }
 
   const PINE = makeTrack({
-    id: "pine-coil", name: "Pine Coil", theme: "pine-coil", width: 7.2, laps: 3,
+    id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 3,
     lore: "Parkland esses. Hold Reed or slide Mira.",
     ctrl: loopFromPolar(10, 92, 22, mulberry(19), 0.2)
   });
   const CORAL = makeTrack({
-    id: "coral-coast", name: "Coral Coast", theme: "coral-coast", width: 8.4, laps: 3,
+    id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 3,
     lore: "Long straights. Boost on the coast, don't overcook the hairpin.",
     ctrl: loopFromPolar(8, 110, 28, mulberry(41), 0.6)
   });
   const STAR = makeTrack({
-    id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", width: 6.2, laps: 3,
+    id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 3,
     lore: "Night and tight. Kai's boost is a trap if you miss the apex.",
     ctrl: loopFromPolar(12, 78, 16, mulberry(73), 1.1)
   });
@@ -294,7 +301,7 @@
     const rng = mulberry(seed >>> 0);
     const n = 8 + ((rng() * 5) | 0);
     return makeTrack({
-      id: "endless", name: "Endless coil", theme: "endless", width: 6.4 + rng() * 2.2, laps: 2,
+      id: "endless", name: "Endless coil", theme: "endless", laps: 2,
       lore: "Seeded loop. Two laps. Beat the ghost or make one.",
       ctrl: loopFromPolar(n, 70 + rng() * 40, 14 + rng() * 18, rng, rng() * 2)
     });

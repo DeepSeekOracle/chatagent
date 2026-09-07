@@ -58,7 +58,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <h2>3. Physics (math first)</h2>
   <p>World <code>x,z</code> yards. Heading radians. Speed yards/sec. Craft stats: <code>acc</code>, <code>vmax</code>, <code>turn</code>, <code>grip</code>, <code>boost</code>.</p>
   <p>Throttle adds <code>acc</code>. Brake force is <code>acc × (1.45 + 0.9 grip)</code> so the chassis stats set stopping distance. Steer input is smoothed; yaw authority scales with <code>turn</code> and falls with speed. Velocity heading <code>vh</code> chases nose heading at a rate from <code>grip</code> — the car points one way and slides another. Left Shift (e-brake) drops lateral grip, adds yaw in the steer direction, and lets you hold a slide; counter-steer (steer against the slip) catches it. Off the ribbon: grip × 0.3. Right Shift boosts acc while the meter lasts; meter recharges on-track only.</p>
-  <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Sectors fire when <code>s</code> crosses their fraction.</p>
+  <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is three lanes: half-width <code>1.5 × 4.4 yd</code>, painted dividers at ±½ lane. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Circuits</h2>
   <table>
