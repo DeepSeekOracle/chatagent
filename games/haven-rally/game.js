@@ -321,7 +321,7 @@
     track: null,
     craft: CRAFTS[0],
     phase: "idle",
-    car: { x: 0, y: 0, h: 0, speed: 0, steer: 0, boost: 1 },
+    car: { x: 0, y: 0, h: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 },
     ai: null,
     tree: { phase: "off" },
     keys: {},
@@ -336,6 +336,12 @@
     sparks: 0,
     log: [],
     bestMs: null,
+    lastLap: null,
+    bestLap: null,
+    lapStartMs: 0,
+    lapTimes: [],
+    hudSpd: 0,
+    hudRpm: 800,
     _sheet: ""
   };
 
@@ -393,13 +399,19 @@
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
-    G.car = { x: a.x, y: a.y, h: h, speed: 0, steer: 0, boost: 1 };
+    G.car = { x: a.x, y: a.y, h: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
     G.ai = null;
     G.lap = 0;
     G.lastS = 0;
     G.gates = [false, false, false];
     G.splits = [];
     G.rec = [];
+    G.lastLap = null;
+    G.bestLap = null;
+    G.lapStartMs = 0;
+    G.lapTimes = [];
+    G.hudSpd = 0;
+    G.hudRpm = 800;
     G.phase = opt("countdown") ? "count" : "race";
     G.countN = 3;
     G.countT = performance.now();
@@ -457,7 +469,7 @@
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
-    G.car = { x: x0, y: -lane, h: 0, speed: 0, steer: 0, boost: 1 };
+    G.car = { x: x0, y: -lane, h: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
     const c = G.craft;
     G.ai = {
       x: x0, y: lane, h: 0, speed: 0, boost: 1,
@@ -472,6 +484,14 @@
     G.rec = [];
     G.ghost = null;
     G.bestMs = null;
+    (G.save.rounds || []).forEach(function (r) {
+      if (r.trackId === tr.id && r.ms && !r.foul && (G.bestMs == null || r.ms < G.bestMs)) G.bestMs = r.ms;
+    });
+    G.lastLap = null;
+    G.bestLap = G.bestMs;
+    G.lapStartMs = 0;
+    G.hudSpd = 0;
+    G.hudRpm = 800;
     G._last = 0;
     G.t0 = 0;
     G.sparks = 0;
@@ -666,6 +686,8 @@
     const throttle = (k.KeyW || k.ArrowUp) ? 1 : 0;
     const brake = (k.KeyS || k.ArrowDown || k.Space) ? 1 : 0;
     const ebrake = !!k.ShiftLeft;
+    G.car.thr = throttle;
+    G.car.brk = brake || (ebrake ? 1 : 0);
     let steerIn = 0;
     if (k.KeyA || k.ArrowLeft) steerIn -= 1;
     if (k.KeyD || k.ArrowRight) steerIn += 1;
@@ -681,6 +703,7 @@
     const vmax = c.vmax * (boostOn ? 1.18 : 1);
     const acc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * 52 - (ebrake ? 36 : 0) - G.car.speed * 0.55;
     G.car.speed = clamp(G.car.speed + acc * dt, -18, vmax);
+    cycleGear(dt);
     const turn = G.car.steer * c.turn * (0.35 + 0.65 * (1 - Math.abs(G.car.speed) / (vmax + 8)));
     const want = turn * (Math.abs(G.car.speed) / 18) * (ebrake ? 1.65 : 1);
     const yawCap = grip * (ebrake ? 4.4 : 2.8);
@@ -710,10 +733,128 @@
     return proj;
   }
 
+  function cycleGear(dt) {
+    const car = G.car;
+    const ratios = [0, 3.35, 2.18, 1.58, 1.22, 0.98, 0.8];
+    if (car.gear == null) car.gear = 1;
+    if (car.shiftT == null) car.shiftT = 0;
+    if (car.shiftT > 0) {
+      car.shiftT -= dt;
+      car.rpm = Math.max(900, (car.rpm || 900) * (1 - dt * 2.2));
+      return;
+    }
+    if (car.speed < -1.8) car.gear = -1;
+    else if (Math.abs(car.speed) < 1.15 && !car.thr) car.gear = 0;
+    else if (car.gear <= 0 && car.thr) {
+      car.gear = 1;
+      car.shiftT = 0.09;
+    }
+    const g = car.gear < 1 ? 1 : car.gear;
+    const ratio = ratios[g] || ratios[1];
+    let rpm = Math.abs(car.speed) * ratio * 82 + (car.thr ? 380 : 0);
+    rpm = clamp(rpm, car.thr ? 1050 : 800, 8200);
+    if (car.gear > 0 && car.gear < 6 && rpm > 6900) {
+      car.gear += 1;
+      car.shiftT = 0.12;
+      rpm *= 0.6;
+    } else if (car.gear > 1 && rpm < 2250 && car.thr < 1) {
+      car.gear -= 1;
+      car.shiftT = 0.08;
+      rpm = Math.min(6400, rpm * 1.28);
+    }
+    if (car.gear === -1) rpm = clamp(Math.abs(car.speed) * 3.1 * 82, 900, 5000);
+    car.rpm = rpm;
+  }
+
+  function gearLabel(g) {
+    if (g < 0) return "R";
+    if (!g) return "N";
+    return String(g);
+  }
+
+  function fmtDelta(ms) {
+    if (ms == null || !isFinite(ms)) return "DELTA —";
+    const s = ms / 1000;
+    const sign = s >= 0 ? "+" : "−";
+    return "DELTA " + sign + Math.abs(s).toFixed(3);
+  }
+
   function crossed(prev, now, target, total) {
     if (total < 8) return false;
     if (prev <= now) return prev <= target && now > target;
     return prev <= target || now > target;
+  }
+
+  function paintRaceHud(now) {
+    const racing = G.phase === "race";
+    const elapsed = racing && G.t0 ? now - G.t0 : 0;
+    const lapMs = racing ? elapsed - (G.lapStartMs || 0) : 0;
+    const drag = G.track && G.track.kind === "drag";
+    const laps = G.track ? G.laps : 3;
+    const lapN = Math.min(laps, (G.lap || 0) + 1);
+    if ($("rhLap")) $("rhLap").textContent = drag ? (G.track.feet + "′") : (lapN + "/" + laps);
+    if ($("rhLapT")) $("rhLapT").textContent = fmt(drag ? elapsed : lapMs);
+    if ($("rhSess")) $("rhSess").textContent = fmt(elapsed);
+    if ($("rhBest")) $("rhBest").textContent = fmt(G.bestLap);
+    if ($("rhLast")) $("rhLast").textContent = fmt(G.lastLap);
+    const beat = G.bestMs;
+    if ($("rhBeat")) $("rhBeat").textContent = fmt(beat);
+    const len = G.track && G.track.len ? G.track.len : 1;
+    let prog = 0;
+    if (drag && G.track) prog = clamp((G.car.x - G.track.startX) / Math.max(1, G.track.finishX - G.track.startX), 0, 1);
+    else prog = clamp((G.lastS || 0) / len, 0, 1);
+    if ($("rhProg")) $("rhProg").style.width = Math.round(prog * 100) + "%";
+    const deltaEl = $("rhDelta");
+    if (deltaEl) {
+      let d = null;
+      if (drag && beat && racing && prog > 0.04) d = elapsed / prog - beat;
+      else if (G.bestLap && racing && prog > 0.06) d = lapMs / prog - G.bestLap;
+      else if (beat && racing && laps) d = elapsed - beat * ((G.lap + prog) / laps);
+      deltaEl.textContent = d == null ? "DELTA —" : fmtDelta(d);
+      deltaEl.classList.toggle("up", d != null && d < -8);
+      deltaEl.classList.toggle("down", d != null && d > 12);
+    }
+    let pos = "P1";
+    if (drag && G.ai) pos = G.ai.x > G.car.x + 1.2 ? "P2" : "P1";
+    else if (racing && G.ghost && G.ghost.samples && G.track) {
+      const gh = ghostAt(elapsed);
+      if (gh) {
+        const gs = project(gh, G.track.samples, null, G.track.closed !== false).s;
+        pos = gs > (G.lastS || 0) + 3 ? "P2" : "P1";
+      }
+    }
+    if ($("rhPos")) $("rhPos").textContent = pos;
+    const mph = Math.abs(G.car.speed || 0) * 2.04545;
+    G.hudSpd += (mph - (G.hudSpd || 0)) * 0.22;
+    G.hudRpm += ((G.car.rpm || 800) - (G.hudRpm || 800)) * 0.28;
+    if ($("rhSpd")) $("rhSpd").textContent = String(Math.round(Math.max(0, G.hudSpd)));
+    if ($("rhRpm")) $("rhRpm").textContent = String(Math.round(G.hudRpm)).padStart(4, "0");
+    const gearEl = $("rhGear");
+    if (gearEl) {
+      gearEl.textContent = gearLabel(G.car.gear);
+      gearEl.classList.toggle("shift", (G.car.shiftT || 0) > 0);
+    }
+    const rpmN = clamp((G.hudRpm || 0) / 8000, 0, 1);
+    if ($("rhNeedle")) $("rhNeedle").setAttribute("transform", "rotate(" + (-120 + rpmN * 240).toFixed(1) + " 120 128)");
+    if ($("rhArc")) $("rhArc").style.strokeDashoffset = String((289 * (1 - rpmN)).toFixed(1));
+    const leds = document.querySelectorAll("#rhShift i");
+    const nOn = Math.round(rpmN * 7);
+    const flash = rpmN > 0.92 && Math.floor(now / 70) % 2 === 0;
+    leds.forEach(function (el, i) { el.classList.toggle("on", i < nOn); });
+    if ($("rhShift")) $("rhShift").classList.toggle("flash", flash);
+    if ($("rhThr")) $("rhThr").style.width = Math.round((G.car.thr || 0) * 100) + "%";
+    if ($("rhBrk")) $("rhBrk").style.width = Math.round((G.car.brk || 0) * 100) + "%";
+    if ($("rhBoost")) $("rhBoost").style.width = Math.round((G.car.boost || 0) * 100) + "%";
+    if ($("rhSectors")) {
+      if (drag) {
+        const st = G.tree || {};
+        $("rhSectors").textContent = "60' " + fmt(st.ft60) + " · TRAP " + (st.trapMph != null ? Math.round(st.trapMph) + " mph" : "—");
+      } else {
+        $("rhSectors").textContent = (G.gates || [false, false, false]).map(function (g, i) {
+          return "S" + (i + 1) + " " + (g ? "■" : "□");
+        }).join(" · ");
+      }
+    }
   }
 
   function heatHud(now) {
@@ -755,6 +896,7 @@
           (G.phase === "tree" ? "Tree…" : (st.foul ? "Red light" : "On the power"));
       }
       if ($("hint") && G.phase === "drag_idle") $("hint").textContent = "Drive to the tree · F stages both lanes and runs the lights";
+      paintRaceHud(now);
       return;
     }
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
@@ -781,6 +923,7 @@
         : "No ghost for this craft yet.";
     }
     if ($("dockStatus")) $("dockStatus").textContent = G.phase === "count" ? "Lights…" : (G.sparks > 0.4 ? "Drifting" : "On line");
+    paintRaceHud(now);
   }
 
   function ghostAt(elapsed) {
@@ -886,6 +1029,14 @@
     if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
       G.lap += 1;
       G.gates = [false, false, false];
+      const lapMs = elapsed - (G.lapStartMs || 0);
+      G.lastLap = lapMs;
+      G.lapTimes.unshift(lapMs);
+      if (G.bestLap == null || lapMs < G.bestLap) {
+        G.bestLap = lapMs;
+        log("Best lap · " + fmt(lapMs));
+      }
+      G.lapStartMs = elapsed;
       log("Lap " + G.lap + " · " + fmt(elapsed));
       if (G.lap >= G.laps) {
         finishHeat(elapsed);
