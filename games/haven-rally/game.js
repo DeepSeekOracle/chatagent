@@ -321,7 +321,7 @@
     track: null,
     craft: CRAFTS[0],
     phase: "idle",
-    car: { x: 0, y: 0, h: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 },
+    car: { x: 0, y: 0, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 },
     ai: null,
     tree: { phase: "off" },
     keys: {},
@@ -399,7 +399,7 @@
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
-    G.car = { x: a.x, y: a.y, h: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
+    G.car = { x: a.x, y: a.y, h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
     G.ai = null;
     G.lap = 0;
     G.lastS = 0;
@@ -469,7 +469,7 @@
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
-    G.car = { x: x0, y: -lane, h: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
+    G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
     const c = G.craft;
     G.ai = {
       x: x0, y: lane, h: 0, speed: 0, boost: 1,
@@ -649,6 +649,7 @@
       G.car.x = tr.startX;
       G.car.y = -tr.lane;
       G.car.h = 0;
+      G.car.vh = 0;
     }
     if (G.phase === "race" && st.greenAt && !st.launched && throttle) {
       st.launched = true;
@@ -692,33 +693,47 @@
     if (k.KeyA || k.ArrowLeft) steerIn -= 1;
     if (k.KeyD || k.ArrowRight) steerIn += 1;
     if (opt("invertSteer")) steerIn *= -1;
-    G.car.steer += (steerIn - G.car.steer) * clamp(dt * 8, 0, 1);
+    const spd = Math.abs(G.car.speed);
+    const spd01 = clamp(spd / (c.vmax + 6), 0, 1);
+    const steerRate = (2.15 + 1.35 * (c.turn / 2.4)) * (1.12 - 0.58 * spd01);
+    G.car.steer += (steerIn - G.car.steer) * clamp(dt * steerRate, 0, 1);
     const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
     const proj0 = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
     else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
-    let grip = c.grip * (on0 ? 1 : 0.32);
-    if (ebrake) grip *= 0.26;
     const vmax = c.vmax * (boostOn ? 1.18 : 1);
-    const acc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * 52 - (ebrake ? 36 : 0) - G.car.speed * 0.55;
-    G.car.speed = clamp(G.car.speed + acc * dt, -18, vmax);
+    const brakePow = c.acc * (1.45 + 0.9 * c.grip);
+    const ebrakePow = c.acc * 0.42 * c.grip;
+    let longAcc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * brakePow - (ebrake ? ebrakePow : 0) - G.car.speed * 0.26;
+    G.car.speed += longAcc * dt;
+    if (brake && throttle === 0 && G.car.speed < 0 && G.car.speed > -6) G.car.speed = 0;
+    G.car.speed = clamp(G.car.speed, -14, vmax);
     cycleGear(dt);
-    const turn = G.car.steer * c.turn * (0.35 + 0.65 * (1 - Math.abs(G.car.speed) / (vmax + 8)));
-    const want = turn * (Math.abs(G.car.speed) / 18) * (ebrake ? 1.65 : 1);
-    const yawCap = grip * (ebrake ? 4.4 : 2.8);
-    const limited = clamp(want, -yawCap, yawCap);
-    G.car.h += limited * dt;
-    if (ebrake && Math.abs(G.car.speed) > 16) {
-      G.car.speed *= (1 - 0.42 * dt);
-      G.sparks = Math.max(G.sparks, 0.85);
+    if (G.car.vh == null) G.car.vh = G.car.h;
+    const turnAuth = c.turn * 0.62 * (1.08 - 0.58 * spd01);
+    let yaw = G.car.steer * turnAuth;
+    if (ebrake && spd > 9) {
+      yaw += G.car.steer * (0.95 + 0.7 * c.turn) * (0.35 + 0.65 * spd01);
     }
-    if (Math.abs(want) > Math.abs(limited) + 0.15 && Math.abs(G.car.speed) > 28) {
-      G.car.speed *= (1 - 0.55 * dt);
-      G.sparks = 1;
-    } else if (!ebrake) G.sparks *= 0.9;
-    G.car.x += Math.cos(G.car.h) * G.car.speed * dt;
-    G.car.y += Math.sin(G.car.h) * G.car.speed * dt;
+    yaw = clamp(yaw, -2.05, 2.05);
+    G.car.h += yaw * dt;
+    let latGrip = c.grip * (on0 ? 1 : 0.3);
+    if (ebrake && spd > 10) latGrip *= 0.16;
+    else latGrip *= 0.82 + 0.18 * (1 - spd01);
+    const slip = wrapDelta(G.car.h - G.car.vh, Math.PI * 2);
+    const counter = (G.car.steer * slip) < -0.04;
+    let align = latGrip * (ebrake ? 4.2 : 8.4);
+    if (ebrake && counter) align *= 1.85;
+    else if (ebrake && Math.abs(G.car.steer) > 0.25) align *= 0.62;
+    G.car.vh += slip * clamp(align * dt, 0, 1);
+    const slipAbs = Math.abs(wrapDelta(G.car.h - G.car.vh, Math.PI * 2));
+    if (slipAbs > 0.16 && spd > 12) {
+      G.sparks = clamp(slipAbs * 1.5, 0, 1);
+      if (ebrake) G.car.speed *= (1 - 0.12 * dt);
+    } else G.sparks *= 0.88;
+    G.car.x += Math.cos(G.car.vh) * G.car.speed * dt;
+    G.car.y += Math.sin(G.car.vh) * G.car.speed * dt;
     let proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     const hw = G.track.width;
     if (Math.abs(proj.lat) > hw) {
@@ -726,8 +741,10 @@
       const dir = proj.lat >= 0 ? 1 : -1;
       G.car.x -= (-proj.hy) * dir * extra;
       G.car.y -= proj.hx * dir * extra;
-      G.car.speed *= 0.7;
-      G.car.h += wrapDelta(Math.atan2(proj.hy, proj.hx) - G.car.h, Math.PI * 2) * 0.12;
+      G.car.speed *= 0.78;
+      const trackH = Math.atan2(proj.hy, proj.hx);
+      G.car.h += wrapDelta(trackH - G.car.h, Math.PI * 2) * 0.08;
+      G.car.vh += wrapDelta(trackH - G.car.vh, Math.PI * 2) * 0.18;
       proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
     }
     return proj;
