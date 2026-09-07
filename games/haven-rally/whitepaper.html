@@ -56,8 +56,11 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Dock <b>Options</b> (and the title card) open the configuration sheet. Race clock freezes while any overlay is open.</p>
 
   <h2>3. Physics (math first)</h2>
-  <p>World <code>x,z</code> yards. Heading radians. Speed yards/sec. Craft stats: <code>acc</code>, <code>vmax</code>, <code>turn</code>, <code>grip</code>, <code>boost</code>.</p>
-  <p>Throttle adds <code>acc</code>. Brake force is <code>acc × (1.45 + 0.9 grip)</code> so the chassis stats set stopping distance. Steer input is smoothed; yaw authority scales with <code>turn</code> and falls with speed. Velocity heading <code>vh</code> chases nose heading at a rate from <code>grip</code> — the car points one way and slides another. Left Shift (e-brake) drops lateral grip, adds yaw in the steer direction, and lets you hold a slide; counter-steer (steer against the slip) catches it. Slip on-track charges the boost meter. Right Shift spends it. Off the ribbon: grip × 0.3.</p>
+  <p>World yards; engine SI. Every craft is <code>craftNorm</code>’d so new cars only need stats. Apex Mk I is the baseline.</p>
+  <p><b>Engine.</b> Torque curve (N·m) peaks at <code>tqRpm</code> from <code>torque</code> lb-ft. Fuel cut at <code>redline</code>. Wheel force <code>T × gear × final × η / r</code>. Top speed is aero: <code>v³ = P / (½ ρ Cd A)</code>.</p>
+  <p><b>Gears.</b> RPM locked to road speed × ratio except during a 0.12 s shift (clutch open). Auto upshift ~93% redline, downshift when RPM would sit under the torque peak.</p>
+  <p><b>Drive.</b> <code>rwd</code> / <code>fwd</code> / <code>awd</code> sets which axle gets torque. Traction <code>μ N_driven</code> with weight shift. If drive force exceeds that, <code>wheelSlip</code> rises: RWD yaws (spin), FWD pushes wide, AWD holds longer. Future HP upgrades without extra μ will spin.</p>
+  <p><b>Brake.</b> <code>brakeMu × mass × g × 0.72</code>. E-brake is extra rear μ and a slide. Lateral: <code>vh</code> chases heading at a rate from μ. On-track slip charges boost; Right Shift spends it.</p>
   <p>Nearest-segment project onto the densified loop gives along-track <code>s</code> and signed lateral. <code>|lat| &gt; width</code> is off-track. Every course is three lanes: half-width <code>1.5 × 4.4 yd</code>, painted dividers at ±½ lane. Sectors fire when <code>s</code> crosses their fraction.</p>
 
   <h2>4. Circuits</h2>
@@ -74,10 +77,14 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Drag is a linear strip, not a closed loop. Sportsman tree: pre-stage, stage, three ambers at 0.5 s, then green. Leave before green is a red-light foul. F restages both cars on the line and starts the tree. AI launches on its reaction time (rare red-light).</p>
 
   <h2>5. Crafts</h2>
-  <p>One live chassis: <b>Apex Mk I</b> (Lattice GT). Procedural PBR model in <code>carmodel.js</code> — lofted body, clearcoat paint, five-spoke rims, gold wing, cyan DRLs. Garage is a studio turntable; Bay 02 and 03 stay locked until more models land. Old saves on Mira/Reed/Kai map to Apex.</p>
+  <p>One live chassis: <b>Apex Mk I</b>. Same powertrain for every future bay: set HP, torque, mass, drive, μ, gears — performance follows. Bay 02/03 locked. Old Mira/Reed/Kai saves map to Apex.</p>
   <table>
-    <tr><th>Id</th><th>Role</th></tr>
-    <tr><td>apex</td><td>Base chassis. Balanced accel / grip / boost. The game is built around this mesh.</td></tr>
+    <tr><th>Stat</th><th>Apex Mk I</th></tr>
+    <tr><td>Layout</td><td>RWD · 6-speed · 1380 kg</td></tr>
+    <tr><td>Power / torque</td><td>470 hp @ 7200 · 420 lb-ft @ 4200 · redline 7800</td></tr>
+    <tr><td>Gears × final</td><td>3.91 2.48 1.78 1.36 1.10 0.89 × 3.73</td></tr>
+    <tr><td>Aero / tires</td><td>Cd 0.52 · A 2.1 m² · μ 1.32 · brake μ 1.58</td></tr>
+    <tr><td>Upgrades (later)</td><td><code>upgHp</code> / <code>upgTq</code> add to the engine; extra power without μ = wheelspin</td></tr>
   </table>
 
   <h2>6. Ghost + ledger</h2>

@@ -2,14 +2,38 @@
 (function () {
   "use strict";
   const SAVE_KEY = "lygo-haven-rally-v1";
-  const CRAFTS = [
-    {
-      id: "apex", name: "Apex Mk I", tag: "Lattice GT",
-      src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
-      lore: "Base chassis. Pearl teal, gold wing, cyan DRLs. More bays open as the game grows.",
-      acc: 34, vmax: 88, turn: 2.05, grip: 0.95, boost: 1.1, color: "#165e66"
-    }
-  ];
+  const YD = 0.9144;
+  const G0 = 9.81;
+  const RHO = 1.225;
+  const DEFAULT_GEARS = [3.91, 2.48, 1.78, 1.36, 1.10, 0.89];
+  const DEFAULT_CRAFT = {
+    id: "apex", name: "Apex Mk I", tag: "Lattice GT",
+    src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
+    lore: "Base chassis. RWD GT. Slide charges boost. Future bays use the same powertrain math.",
+    color: "#165e66",
+    massKg: 1380,
+    hp: 470,
+    torque: 420,
+    idle: 900,
+    redline: 7800,
+    tqRpm: 4200,
+    hpRpm: 7200,
+    gears: DEFAULT_GEARS.slice(),
+    finalDrive: 3.73,
+    wheelRadius: 0.33,
+    drive: "rwd",
+    cd: 0.52,
+    area: 2.1,
+    crr: 0.015,
+    mu: 1.32,
+    brakeMu: 1.58,
+    turn: 2.05,
+    boost: 1.1,
+    eta: 0.88,
+    upgHp: 0,
+    upgTq: 0
+  };
+  const CRAFTS = [Object.assign({}, DEFAULT_CRAFT)];
   const LOCKED_BAYS = [
     { name: "Bay 02", tag: "Soon" },
     { name: "Bay 03", tag: "Soon" }
@@ -36,7 +60,40 @@
     const r = s - m * 60;
     return m + ":" + r.toFixed(3).padStart(6, "0");
   }
-  function craftOf(id) { return CRAFTS.find(function (c) { return c.id === id; }) || CRAFTS[0]; }
+  function craftNorm(raw) {
+    const c = Object.assign({}, DEFAULT_CRAFT, raw || {});
+    c.gears = (c.gears && c.gears.length) ? c.gears.slice() : DEFAULT_GEARS.slice();
+    c.hp = (c.hp || 0) + (c.upgHp || 0);
+    c.torque = (c.torque || 0) + (c.upgTq || 0);
+    c.drive = c.drive === "fwd" || c.drive === "awd" ? c.drive : "rwd";
+    return c;
+  }
+  function craftOf(id) {
+    return craftNorm(CRAFTS.find(function (c) { return c.id === id; }) || CRAFTS[0]);
+  }
+  function driveFrac(c) {
+    if (c.drive === "fwd") return { f: 1, r: 0 };
+    if (c.drive === "awd") return { f: 0.4, r: 0.6 };
+    return { f: 0, r: 1 };
+  }
+  function engineTorqueNm(c, rpm) {
+    const peak = c.torque * 1.35582;
+    if (rpm >= c.redline) return peak * 0.12;
+    if (rpm <= c.idle * 0.6) return peak * 0.2 * (rpm / (c.idle * 0.6));
+    const s = 2100;
+    const bell = Math.exp(-Math.pow((rpm - c.tqRpm) / s, 2));
+    return peak * (0.42 + 0.58 * bell);
+  }
+  function roadRpm(c, speedYd, gearIndex) {
+    const v = Math.abs(speedYd) * YD;
+    const ratio = (c.gears[gearIndex] || c.gears[0]) * c.finalDrive;
+    return (v / c.wheelRadius) * ratio * 60 / (Math.PI * 2);
+  }
+  function topSpeedYd(c) {
+    const P = Math.max(1, c.hp) * 745.7;
+    const k = 0.5 * RHO * c.cd * c.area;
+    return Math.pow(P / Math.max(k, 0.05), 1 / 3) / YD;
+  }
 
   const OPTIONS = [
     { key: "ghost", group: "Race", type: "toggle", label: "Show ghost", hint: "Best heat for this circuit + craft rides with you.", def: true },
@@ -393,7 +450,7 @@
     track: null,
     craft: CRAFTS[0],
     phase: "idle",
-    car: { x: 0, y: 0, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 },
+    car: { x: 0, y: 0, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 },
     ai: null,
     tree: { phase: "off" },
     keys: {},
@@ -471,7 +528,7 @@
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
-    G.car = { x: a.x, y: a.y, h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
+    G.car = { x: a.x, y: a.y, h: h, vh: h, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
     G.ai = null;
     G.lap = 0;
     G.lastS = 0;
@@ -542,12 +599,12 @@
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
-    G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0 };
+    G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
     const c = G.craft;
     G.ai = {
       x: x0, y: lane, h: 0, speed: 0, boost: 1,
-      acc: c.acc * (0.94 + Math.random() * 0.1),
-      vmax: c.vmax * (0.97 + Math.random() * 0.07),
+      acc: (c.mu * G0 * 0.5) / YD * (0.92 + Math.random() * 0.1),
+      vmax: topSpeedYd(c) * (0.96 + Math.random() * 0.07),
       boostMul: c.boost
     };
     G.lap = 0;
@@ -767,7 +824,8 @@
     if (k.KeyD || k.ArrowRight) steerIn += 1;
     if (opt("invertSteer")) steerIn *= -1;
     const spd = Math.abs(G.car.speed);
-    const spd01 = clamp(spd / (c.vmax + 6), 0, 1);
+    const vmaxEst = topSpeedYd(c);
+    const spd01 = clamp(spd / (vmaxEst + 6), 0, 1);
     const steerRate = (2.15 + 1.35 * (c.turn / 2.4)) * (1.12 - 0.58 * spd01);
     G.car.steer += (steerIn - G.car.steer) * clamp(dt * steerRate, 0, 1);
     const boostOn = !!k.ShiftRight && G.car.boost > 0.04 && !ebrake;
@@ -775,23 +833,25 @@
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     if (boostOn) G.car.boost = Math.max(0, G.car.boost - dt * 0.42);
     else if (on0) G.car.boost = Math.min(1, G.car.boost + dt * 0.18 * c.boost);
-    const vmax = c.vmax * (boostOn ? 1.18 : 1);
-    const brakePow = c.acc * (1.45 + 0.9 * c.grip);
-    const ebrakePow = c.acc * 0.42 * c.grip;
-    let longAcc = c.acc * throttle * (boostOn ? 1.45 : 1) - brake * brakePow - (ebrake ? ebrakePow : 0) - G.car.speed * 0.26;
-    G.car.speed += longAcc * dt;
-    if (brake && throttle === 0 && G.car.speed < 0 && G.car.speed > -6) G.car.speed = 0;
-    G.car.speed = clamp(G.car.speed, -14, vmax);
-    cycleGear(dt);
+    stepPowertrain(c, G.car, dt, {
+      throttle: throttle,
+      brake: brake,
+      ebrake: ebrake,
+      boostOn: boostOn,
+      onTrack: on0
+    });
     if (G.car.vh == null) G.car.vh = G.car.h;
     const turnAuth = c.turn * 0.62 * (1.08 - 0.58 * spd01);
     let yaw = G.car.steer * turnAuth;
     if (ebrake && spd > 9) {
       yaw += G.car.steer * (0.95 + 0.7 * c.turn) * (0.35 + 0.65 * spd01);
     }
+    const wslip = G.car.wheelSlip || 0;
+    if (wslip > 0.28 && c.drive === "rwd") yaw += G.car.steer * wslip * 1.15;
+    if (wslip > 0.28 && c.drive === "fwd") yaw *= (1 - 0.5 * wslip);
     yaw = clamp(yaw, -2.05, 2.05);
     G.car.h += yaw * dt;
-    let latGrip = c.grip * (on0 ? 1 : 0.3);
+    let latGrip = (c.mu * 0.74) * (on0 ? 1 : 0.3);
     if (ebrake && spd > 10) latGrip *= 0.16;
     else latGrip *= 0.82 + 0.18 * (1 - spd01);
     const slip = wrapDelta(G.car.h - G.car.vh, Math.PI * 2);
@@ -802,10 +862,10 @@
     G.car.vh += slip * clamp(align * dt, 0, 1);
     const slipAbs = Math.abs(wrapDelta(G.car.h - G.car.vh, Math.PI * 2));
     if (slipAbs > 0.16 && spd > 12) {
-      G.sparks = clamp(slipAbs * 1.5, 0, 1);
+      G.sparks = Math.max(G.sparks, clamp(slipAbs * 1.5, 0, 1));
       if (ebrake) G.car.speed *= (1 - 0.12 * dt);
       if (on0 && !boostOn) G.car.boost = Math.min(1, G.car.boost + dt * 0.42 * c.boost * clamp(slipAbs, 0, 0.8));
-    } else G.sparks *= 0.88;
+    } else if ((G.car.wheelSlip || 0) < 0.25) G.sparks *= 0.88;
     G.car.x += Math.cos(G.car.vh) * G.car.speed * dt;
     G.car.y += Math.sin(G.car.vh) * G.car.speed * dt;
     let proj = project(G.car, G.track.samples, G.lastS, G.track.closed !== false);
@@ -824,37 +884,71 @@
     return proj;
   }
 
-  function cycleGear(dt) {
-    const car = G.car;
-    const ratios = [0, 3.35, 2.18, 1.58, 1.22, 0.98, 0.8];
+  function stepPowertrain(c, car, dt, inp) {
+    const gears = c.gears;
+    const nG = gears.length;
     if (car.gear == null) car.gear = 1;
     if (car.shiftT == null) car.shiftT = 0;
-    if (car.shiftT > 0) {
-      car.shiftT -= dt;
-      car.rpm = Math.max(900, (car.rpm || 900) * (1 - dt * 2.2));
-      return;
-    }
-    if (car.speed < -1.8) car.gear = -1;
-    else if (Math.abs(car.speed) < 1.15 && !car.thr) car.gear = 0;
-    else if (car.gear <= 0 && car.thr) {
+    if (car.wheelSlip == null) car.wheelSlip = 0;
+    const vMs = car.speed * YD;
+    const vAbs = Math.abs(vMs);
+    if (car.shiftT > 0) car.shiftT -= dt;
+    if (vMs < -1.6) car.gear = -1;
+    else if (vAbs < 0.9 && !inp.throttle) car.gear = 0;
+    else if (car.gear <= 0 && inp.throttle) {
       car.gear = 1;
-      car.shiftT = 0.09;
+      car.shiftT = 0.1;
     }
-    const g = car.gear < 1 ? 1 : car.gear;
-    const ratio = ratios[g] || ratios[1];
-    let rpm = Math.abs(car.speed) * ratio * 82 + (car.thr ? 380 : 0);
-    rpm = clamp(rpm, car.thr ? 1050 : 800, 8200);
-    if (car.gear > 0 && car.gear < 6 && rpm > 6900) {
-      car.gear += 1;
-      car.shiftT = 0.12;
-      rpm *= 0.6;
-    } else if (car.gear > 1 && rpm < 2250 && car.thr < 1) {
-      car.gear -= 1;
-      car.shiftT = 0.08;
-      rpm = Math.min(6400, rpm * 1.28);
+    let gIdx = car.gear < 1 ? 0 : car.gear - 1;
+    if (gIdx > nG - 1) gIdx = nG - 1;
+    const clutch = (car.gear === 0 || car.shiftT > 0) ? 0 : 1;
+    const ratio = clutch === 0 ? 0 : (car.gear < 0 ? -gears[0] * 0.82 : gears[gIdx]) * c.finalDrive;
+    let rpm = c.idle;
+    if (ratio !== 0) rpm = (vAbs / c.wheelRadius) * Math.abs(ratio) * 60 / (Math.PI * 2);
+    if (vAbs < 2.4 && inp.throttle && clutch) rpm = Math.max(rpm, c.idle + inp.throttle * (c.tqRpm - c.idle) * 0.92);
+    rpm = rpm + car.wheelSlip * (c.redline - rpm) * 0.85;
+    rpm = clamp(rpm, c.idle * 0.7, c.redline + 200);
+    if (car.shiftT <= 0 && car.gear > 0) {
+      if (rpm > c.redline * 0.93 && car.gear < nG) {
+        car.gear += 1;
+        car.shiftT = 0.12;
+      } else if (rpm < Math.max(c.idle + 900, c.tqRpm * 0.48) && car.gear > 1 && inp.throttle < 0.55) {
+        const low = roadRpm(c, car.speed, car.gear - 2);
+        if (low < c.redline * 0.88) {
+          car.gear -= 1;
+          car.shiftT = 0.09;
+        }
+      }
     }
-    if (car.gear === -1) rpm = clamp(Math.abs(car.speed) * 3.1 * 82, 900, 5000);
+    const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + 0.32 * c.boost : 1);
+    let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
+    const axEst = car.speed >= 0 ? 1 : -1;
+    const df = driveFrac(c);
+    const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
+    const frontLoad = 1 - rearLoad;
+    const drivenN = c.massKg * G0 * (df.r * rearLoad + df.f * frontLoad);
+    const surf = inp.onTrack ? 1 : 0.32;
+    const Fmax = Math.max(400, c.mu * drivenN * surf);
+    const want = Math.abs(Fdrive);
+    if (want > Fmax && clutch && inp.throttle > 0.2) {
+      car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
+      Fdrive = Math.sign(Fdrive) * Fmax * (1 - 0.35 * car.wheelSlip);
+      G.sparks = Math.max(G.sparks || 0, 0.4 + car.wheelSlip * 0.7);
+    } else {
+      car.wheelSlip = Math.max(0, car.wheelSlip - dt * 1.8);
+    }
+    const Fdrag = 0.5 * RHO * c.cd * c.area * vMs * vMs * (vMs >= 0 ? 1 : -1);
+    const Froll = c.crr * c.massKg * G0 * (vAbs < 0.15 ? 0 : (vMs >= 0 ? 1 : -1));
+    const Fbrk = inp.brake * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
+    const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
+    let Fnet = Fdrive - Fdrag - Froll;
+    if (vAbs > 0.25 || inp.brake || inp.ebrake) Fnet -= Fbrk * (vAbs > 0.25 ? 1 : 0) + Feb;
+    const a = Fnet / c.massKg;
+    car.speed += (a / YD) * dt;
+    if (inp.brake && !inp.throttle && car.speed < 0 && car.speed > -5) car.speed = 0;
+    if (!inp.throttle && Math.abs(car.speed) < 0.35) car.speed = 0;
     car.rpm = rpm;
+    car.wheelSlip = car.wheelSlip || 0;
   }
 
   function gearLabel(g) {
@@ -928,7 +1022,8 @@
       gearEl.textContent = gearLabel(G.car.gear);
       gearEl.classList.toggle("shift", (G.car.shiftT || 0) > 0);
     }
-    const rpmN = clamp((G.hudRpm || 0) / 8000, 0, 1);
+    const red = (G.craft && G.craft.redline) || 7800;
+    const rpmN = clamp((G.hudRpm || 0) / red, 0, 1);
     if ($("rhNeedle")) $("rhNeedle").setAttribute("transform", "rotate(" + (-120 + rpmN * 240).toFixed(1) + " 120 128)");
     if ($("rhArc")) $("rhArc").style.strokeDashoffset = String((289 * (1 - rpmN)).toFixed(1));
     const leds = document.querySelectorAll("#rhShift i");
@@ -1243,11 +1338,13 @@
           "<p class='title-tag'>" + c.tag + "</p>" +
           "<p class='lore'>" + c.lore + "</p>" +
           "<div class='stat-block'>" +
-            statRow("Accel", c.acc, 42) +
-            statRow("Vmax", c.vmax, 100) +
+            "<p class='lore'>" + String(c.drive || "rwd").toUpperCase() + " · " + c.hp + " hp · " + c.torque + " lb-ft · " +
+            c.massKg + " kg · " + (c.gears && c.gears.length) + "-spd</p>" +
+            statRow("Power", c.hp, 850) +
+            statRow("Torque", c.torque, 750) +
+            statRow("Grip μ", c.mu, 2) +
             statRow("Turn", c.turn, 2.6) +
-            statRow("Grip", c.grip, 1.3) +
-            statRow("Boost", c.boost, 1.5) +
+            statRow("Boost", c.boost, 1.6) +
           "</div>" +
           "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
           "<div class='cast-grid garage-bays'>" +
