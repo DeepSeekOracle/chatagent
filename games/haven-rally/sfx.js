@@ -5,6 +5,12 @@
   var tireGain, tireFilt, tireSrc;
   var ambGain, ambFilt, ambLfo, ambSrc;
   var noiseBuf = null, started = false, lastGear = 1, lastShiftAt = 0, lastGunAt = 0;
+  var voGain = null, voBuf = {}, voDuckUntil = 0;
+  var VO_IDS = [
+    "first-blood", "double-kill", "multi-kill", "mega-kill", "ultra-kill",
+    "monster-kill", "ludicrous-kill", "killing-spree", "rampage", "dominating",
+    "unstoppable", "godlike", "wicked-sick", "beyond-godlike", "shut-down"
+  ];
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
@@ -106,7 +112,50 @@
 
     started = true;
     if (ctx.state === "suspended") ctx.resume();
+    loadVo();
     return true;
+  }
+
+  function loadVo() {
+    if (!ctx || voGain) return;
+    voGain = ctx.createGain();
+    voGain.gain.value = 1.05;
+    voGain.connect(master);
+    VO_IDS.forEach(function (id) {
+      fetch("./assets/vo/" + id + ".ogg").then(function (r) { return r.arrayBuffer(); }).then(function (ab) {
+        return ctx.decodeAudioData(ab);
+      }).then(function (buf) { voBuf[id] = buf; }).catch(function () { /* missing line */ });
+    });
+  }
+
+  function announce(id) {
+    if (!id) return;
+    boot();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume();
+    var t = ctx.currentTime;
+    if (voBuf[id] && voGain) {
+      var src = ctx.createBufferSource();
+      src.buffer = voBuf[id];
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(1.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + Math.max(0.35, voBuf[id].duration + 0.05));
+      src.connect(g);
+      g.connect(voGain);
+      src.start(t);
+      voDuckUntil = t + 1.15;
+      if (engGain) {
+        engGain.gain.setTargetAtTime(0.012, t, 0.03);
+      }
+      return;
+    }
+    if (global.speechSynthesis) {
+      var u = new SpeechSynthesisUtterance(String(id).replace(/-/g, " "));
+      u.rate = 0.88;
+      u.pitch = 0.55;
+      u.volume = 1;
+      try { global.speechSynthesis.cancel(); global.speechSynthesis.speak(u); } catch (e) { /* */ }
+    }
   }
 
   function clunk() {
@@ -153,6 +202,7 @@
     engFilt.frequency.setTargetAtTime(380 + rpm * 0.42 + thr * 500, now, 0.05);
     var engVol = racing ? (0.035 + thr * 0.2 + clamp((rpm - 900) / 8000, 0, 1) * 0.08) : 0;
     if (gear === 0) engVol *= 0.45;
+    if (now < voDuckUntil) engVol *= 0.28;
     engGain.gain.setTargetAtTime(engVol, now, 0.06);
     exhaust.gain.setTargetAtTime(racing ? (0.03 + thr * 0.07) : 0, now, 0.08);
 
@@ -194,5 +244,5 @@
     global.addEventListener(ev, arm, { once: true, passive: true });
   });
 
-  global.HavenSfx = { boot: boot, tick: tick, arm: arm };
+  global.HavenSfx = { boot: boot, tick: tick, arm: arm, announce: announce };
 })(window);

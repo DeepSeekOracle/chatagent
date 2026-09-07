@@ -214,6 +214,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 }
 .arc-pop.pts { color: #fff8e8; font-size: 1.6rem; top: 48%; }
 .arc-pop.mult { color: #5eead4; font-size: 2.8rem; top: 36%; }
+.arc-pop.vo {
+  color: #fff8e8; font-size: clamp(1.8rem, 5vw, 3.2rem); top: 30%;
+  letter-spacing: .12em; text-shadow: 0 0 28px #ff4d6daa, 0 0 18px #fbbf24, 0 4px 12px #000;
+  animation: arc-float 1.15s ease-out forwards;
+}
 .arc-pop.break { color: #f87171; font-size: 1.35rem; top: 54%; letter-spacing: .12em; }
 @keyframes arc-pop-mult {
   0% { transform: scale(.35) rotate(-12deg); }

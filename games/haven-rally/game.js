@@ -602,7 +602,7 @@
     el.className = "arc-pop" + (kind ? " " + kind : "");
     el.textContent = text;
     host.appendChild(el);
-    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 780);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "vo" ? 1400 : 780);
   }
   function wreckTraffic(car) {
     if (!car || !car.alive) return;
@@ -619,7 +619,12 @@
     G.multPulse = 1;
     arcadePop("+" + pts, "pts");
     arcadePop("x" + G.combo + "  +" + (G.combo * COMBO_MPH) + " MPH", "mult");
-    log("Wreck · +" + pts + " · x" + G.combo + " · vmax +" + (G.combo * COMBO_MPH) + " mph");
+    const call = comboCallout(G.combo, G.kills);
+    if (call) {
+      arcadePop(call.label, "vo");
+      if (window.HavenSfx && HavenSfx.announce) HavenSfx.announce(call.id);
+    }
+    log("Wreck · +" + pts + " · x" + G.combo + (call ? " · " + call.label : "") + " · vmax +" + (G.combo * COMBO_MPH) + " mph");
     const el = $("arcMult");
     if (el) {
       el.classList.remove("pop");
@@ -664,8 +669,26 @@
       }
     }
   }
+  function comboCallout(n, kills) {
+    if (kills === 1) return { id: "first-blood", label: "FIRST BLOOD" };
+    if (n === 2) return { id: "double-kill", label: "DOUBLE KILL" };
+    if (n === 3) return { id: "multi-kill", label: "MULTI KILL" };
+    if (n === 4) return { id: "mega-kill", label: "MEGA KILL" };
+    if (n === 5) return { id: "ultra-kill", label: "ULTRA KILL" };
+    if (n === 6) return { id: "monster-kill", label: "MONSTER KILL" };
+    if (n === 7) return { id: "ludicrous-kill", label: "LUDICROUS KILL" };
+    if (n === 8) return { id: "killing-spree", label: "KILLING SPREE" };
+    if (n === 9) return { id: "rampage", label: "RAMPAGE" };
+    if (n === 10) return { id: "dominating", label: "DOMINATING" };
+    if (n === 12) return { id: "unstoppable", label: "UNSTOPPABLE" };
+    if (n === 15) return { id: "godlike", label: "GODLIKE" };
+    if (n === 18) return { id: "wicked-sick", label: "WICKED SICK" };
+    if (n >= 20 && n % 5 === 0) return { id: "beyond-godlike", label: "BEYOND GODLIKE" };
+    return null;
+  }
   function breakCombo(why) {
     if ((G.combo || 0) <= 0) return;
+    if (G.combo >= 3 && window.HavenSfx && HavenSfx.announce) HavenSfx.announce("shut-down");
     arcadePop("COMBO BREAK", "break");
     log("Combo break · " + why + " · was x" + G.combo);
     G.combo = 0;
