@@ -1262,7 +1262,7 @@
   }
 
   function beginTree(now) {
-    const foulAi = Math.random() < 0.035;
+    const foulAi = Math.random() < 0.008;
     return {
       t0: now,
       phase: "ready",
@@ -1270,7 +1270,7 @@
       rt: null,
       launched: false,
       aiFoul: foulAi,
-      aiRt: foulAi ? -(0.02 + Math.random() * 0.08) : (0.072 + Math.random() * 0.155),
+      aiRt: foulAi ? -(0.012 + Math.random() * 0.04) : (0.016 + Math.random() * 0.034),
       aiGoAt: 0,
       greenAt: 0,
       playerDone: false,
@@ -1289,12 +1289,12 @@
     const x0 = runTree ? tr.startX : tr.startX - 22;
     G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
     const c = G.craft;
-    G.ai = {
-      x: x0, y: lane, h: 0, speed: 0, boost: 1,
-      acc: (c.mu * G0 * 0.5) / YD * (0.92 + Math.random() * 0.1),
-      vmax: topSpeedYd(c) * (0.96 + Math.random() * 0.07),
-      boostMul: c.boost
-    };
+    G.ai = blankCar({ x: x0, y: lane, h: 0 }, c.boostTank);
+    G.ai.y = lane;
+    G.ai.h = 0;
+    G.ai.vh = 0;
+    G.ai.skill = 0.9 + Math.random() * 0.1;
+    G.ai.name = "Lane 2";
     G.lap = 0;
     G.lastS = x0;
     G.gates = [];
@@ -1367,22 +1367,39 @@
 
   function stepAi(dt, now) {
     const ai = G.ai;
-    if (!ai) return;
+    if (!ai || !G.craft) return;
     const st = G.tree || {};
     const go = G.phase === "race" && st.greenAt && now >= (st.aiGoAt || st.greenAt);
-    if (!go || ai.done) {
-      if (!go) { ai.speed = 0; }
-      ai.x += Math.cos(ai.h) * ai.speed * dt;
+    const lane = G.track.lane;
+    if (!go || st.aiDone) {
+      if (!go) ai.speed = 0;
+      else ai.x += ai.speed * dt;
+      ai.h = 0;
+      ai.vh = 0;
+      ai.y = lane;
       return;
     }
-    const boostOn = ai.boost > 0.05;
-    if (boostOn) ai.boost = Math.max(0, ai.boost - dt * 0.38);
-    const vmax = ai.vmax * (boostOn ? 1.16 : 1);
-    const acc = ai.acc * (boostOn ? 1.4 : 1) - ai.speed * 0.5;
-    ai.speed = clamp(ai.speed + acc * dt, 0, vmax);
+    const c = G.craft;
+    const skill = ai.skill || 1;
+    const launchedAgo = (now - (st.aiGoAt || st.greenAt)) / 1000;
+    const dumpBoost = launchedAgo >= (skill > 0.96 ? 0 : 0.05);
+    const boostOn = dumpBoost && ai.boost > 0.04;
+    if (boostOn) ai.boost = Math.max(0, ai.boost - dt * 0.42);
+    stepPowertrain(c, ai, dt, {
+      throttle: 1,
+      brake: 0,
+      ebrake: false,
+      boostOn: boostOn,
+      onTrack: true,
+      fx: false,
+      ignoreCombo: true,
+      manual: false
+    });
     ai.h = 0;
-    ai.y += (G.track.lane - ai.y) * clamp(dt * 6, 0, 1);
+    ai.vh = 0;
+    ai.y = lane;
     ai.x += ai.speed * dt;
+    ai.boostOn = boostOn;
   }
 
   function finishDrag() {
@@ -2647,7 +2664,7 @@
       "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
-      "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
+      "<li>Drag: F at the tree stages both lanes. Lane 2 runs your chassis, shifts on the limiter, and dumps boost. Leave before green is a red-light foul. Beat the tree and the trap.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
@@ -2775,9 +2792,9 @@
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='custom'><b>Custom race</b><span>Choose laps. Roll a seed. A new closed four-lane circuit every time — or the same one if you keep the seed.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score posts to the live hall.</span></button>" +
-            "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
-            "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
-            "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Lane 2 is heads-up on your chassis. F runs the tree.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>1000-foot trap vs a limiter AI in your car.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Sportsman tree. Beat Lane 2 on the stripe.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
             "<button type='button' class='mode-card' data-go='controls'><b>Controls</b><span>Keys, pad, manual, cameras.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public heats and endless scores. Names only.</span></a>" +
