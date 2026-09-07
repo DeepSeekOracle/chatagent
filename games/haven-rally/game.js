@@ -297,14 +297,79 @@
     lore: "Classic quarter-mile. 1320 ft. Full sportsman tree vs AI."
   });
 
-  function randomTrack(seed) {
+  const RIDGE_NAMES = ["Seaside 765", "Harborline", "Ridge City Run", "Sunset Drive", "Coast Highway", "Neon Bypass"];
+
+  function ridgeCtrl(seed) {
     const rng = mulberry(seed >>> 0);
-    const n = 8 + ((rng() * 5) | 0);
-    return makeTrack({
-      id: "endless", name: "Endless coil", theme: "endless", laps: 2,
-      lore: "Seeded loop. Two laps. Beat the ghost or make one.",
-      ctrl: loopFromPolar(n, 70 + rng() * 40, 14 + rng() * 18, rng, rng() * 2)
-    });
+    const st = { x: 0, y: 0, h: 0 };
+    const pts = [{ x: 0, y: 0 }];
+    function add(dist, dH) {
+      const steps = Math.max(3, Math.ceil(dist / 10));
+      let k;
+      for (k = 1; k <= steps; k++) {
+        st.h += dH / steps;
+        st.x += Math.cos(st.h) * (dist / steps);
+        st.y += Math.sin(st.h) * (dist / steps);
+        pts.push({ x: st.x, y: st.y });
+      }
+    }
+    add(90 + rng() * 40, 0);
+    let n = 0;
+    while (pathLen(pts, false) < 3800 && n < 36) {
+      n += 1;
+      const roll = rng();
+      const dir = rng() < 0.5 ? -1 : 1;
+      if (roll < 0.2) add(170 + rng() * 240, (rng() - 0.5) * 0.1);
+      else if (roll < 0.4) add(110 + rng() * 90, dir * (0.5 + rng() * 0.75));
+      else if (roll < 0.55) {
+        add(48 + rng() * 18, dir * 0.42);
+        add(52 + rng() * 18, -dir * 0.88);
+        add(48 + rng() * 18, dir * 0.42);
+      } else if (roll < 0.68) {
+        add(36, dir * 0.35);
+        add(62 + rng() * 20, dir * (2.15 + rng() * 0.45));
+        add(40, dir * 0.3);
+      } else if (roll < 0.82) {
+        add(80 + rng() * 40, dir * 0.48);
+        add(70 + rng() * 30, dir * 0.32);
+      } else {
+        add(70 + rng() * 40, 0);
+        add(42, dir * (0.5 + rng() * 0.25));
+      }
+      st.h += wrapDelta(0 - st.h, Math.PI * 2) * 0.1;
+    }
+    add(160 + rng() * 80, wrapDelta(0 - st.h, Math.PI * 2) * 0.35);
+    add(80, 0);
+    return pts;
+  }
+
+  function makeRidgeTrack(seed) {
+    seed = seed >>> 0;
+    const pts = ridgeCtrl(seed);
+    const samples = densifyPath(pts, 5, false);
+    const len = pathLen(samples, false);
+    const name = RIDGE_NAMES[seed % RIDGE_NAMES.length];
+    return {
+      id: "ridge-" + seed.toString(16),
+      name: name,
+      theme: "endless",
+      lore: "Ridge-style start-to-finish. Long highway, esses, hairpins. One run.",
+      width: TRACK_HALF,
+      laneW: LANE_W,
+      lanes: TRACK_LANES,
+      laps: 1,
+      pts: pts,
+      samples: samples,
+      len: len,
+      closed: false,
+      kind: "ridge",
+      sectors: [0.22, 0.48, 0.74],
+      seed: seed
+    };
+  }
+
+  function randomTrack(seed) {
+    return makeRidgeTrack(seed);
   }
 
   function defaultSave() {
@@ -419,6 +484,7 @@
     G.lapTimes = [];
     G.hudSpd = 0;
     G.hudRpm = 800;
+    G._ridgeDone = false;
     G.phase = opt("countdown") ? "count" : "race";
     G.countN = 3;
     G.countT = performance.now();
@@ -431,7 +497,7 @@
     paintPilot();
     showDragUi(false);
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
-    log(tr.name + " · " + G.craft.name + " · " + tr.laps + " laps");
+    log(tr.name + " · " + G.craft.name + " · " + (tr.kind === "ridge" ? Math.round(tr.len) + " yd to FINISH" : tr.laps + " laps"));
     $("app").classList.remove("hidden");
     hideOverlay();
     canvas.focus();
@@ -814,9 +880,12 @@
     const elapsed = racing && G.t0 ? now - G.t0 : 0;
     const lapMs = racing ? elapsed - (G.lapStartMs || 0) : 0;
     const drag = G.track && G.track.kind === "drag";
+    const ridge = G.track && G.track.kind === "ridge";
     const laps = G.track ? G.laps : 3;
     const lapN = Math.min(laps, (G.lap || 0) + 1);
-    if ($("rhLap")) $("rhLap").textContent = drag ? (G.track.feet + "′") : (lapN + "/" + laps);
+    if ($("rhLap")) {
+      $("rhLap").textContent = drag ? (G.track.feet + "′") : (ridge ? "RUN" : (lapN + "/" + laps));
+    }
     if ($("rhLapT")) $("rhLapT").textContent = fmt(drag ? elapsed : lapMs);
     if ($("rhSess")) $("rhSess").textContent = fmt(elapsed);
     if ($("rhBest")) $("rhBest").textContent = fmt(G.bestLap);
@@ -1039,7 +1108,7 @@
     G._last = now;
     const proj = stepCar(dt);
     const elapsed = now - G.t0;
-    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 2400) {
+    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 4800) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
     }
     G.track.sectors.forEach(function (frac, i) {
@@ -1047,10 +1116,19 @@
       if (!G.gates[i] && crossed(G.lastS, proj.s, target, proj.len)) {
         G.gates[i] = true;
         G.splits.push(elapsed);
-        log("Sector " + (i + 1) + " · " + fmt(elapsed));
+        log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
       }
     });
-    if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
+    if (G.track.kind === "ridge") {
+      if (!G._ridgeDone && proj.s >= proj.len * 0.982 && G.lastS < proj.len * 0.982) {
+        G._ridgeDone = true;
+        G.lap = 1;
+        const lapMs = elapsed - (G.lapStartMs || 0);
+        G.lastLap = lapMs;
+        if (G.bestLap == null || lapMs < G.bestLap) G.bestLap = lapMs;
+        finishHeat(elapsed);
+      }
+    } else if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
       G.lap += 1;
       G.gates = [false, false, false];
       const lapMs = elapsed - (G.lapStartMs || 0);
@@ -1097,7 +1175,7 @@
       if (i === 0) c.moveTo(p.x * scale, p.y * scale);
       else c.lineTo(p.x * scale, p.y * scale);
     });
-    c.closePath();
+    if (G.track.closed !== false) c.closePath();
     c.stroke();
     c.strokeStyle = "#334";
     c.lineWidth = G.track.width * 2 * scale;
@@ -1130,7 +1208,7 @@
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
-      "<li>Hit sectors in order, then the start line. Three laps (two on endless).</li>" +
+      "<li>Circuits: hit sectors, then the start line. Three laps. Endless ridge is one long start-to-finish run — checkpoints, then FINISH.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
       "<p class='lore'><a href='./whitepaper.html'>Whitepaper</a> is the spec.</p>" +
@@ -1233,7 +1311,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless coil</b><span>Seeded loop. Two laps. Make a ghost.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless ridge</b><span>Ridge Racer-style start-to-finish. New long highway every run.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
