@@ -42,7 +42,7 @@
     var genre = (g.genre || []).join(" · ");
     return (
       '<article class="gcard' + (coming ? " is-coming" : "") + '" data-id="' + esc(g.id) + '" data-genre="' + esc((g.genre || []).join(" ")) + '">' +
-        coverHtml(g) +
+        '<div class="gmod-stage">' + coverHtml(g) + "</div>" +
         '<div class="gcard-body">' +
           '<p class="gcard-kicker">' + esc(genre || (coming ? "upcoming" : "game")) + "</p>" +
           "<h2>" + esc(g.title) + "</h2>" +
@@ -135,7 +135,55 @@
     root.innerHTML = html;
   }
 
+  function bootPortalFx() {
+    var c = document.getElementById("portalCanvas");
+    if (!c || !c.getContext) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var ctx = c.getContext("2d");
+    var pts = [];
+    var i, w, h, dpr;
+    function resize() {
+      dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      w = c.clientWidth || window.innerWidth;
+      h = c.clientHeight || window.innerHeight;
+      c.width = Math.floor(w * dpr);
+      c.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function spawn() {
+      pts = [];
+      for (i = 0; i < 48; i++) {
+        pts.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          v: 0.15 + Math.random() * 0.45,
+          r: 0.6 + Math.random() * 1.8,
+          a: 0.12 + Math.random() * 0.28,
+          gold: Math.random() < 0.28
+        });
+      }
+    }
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      for (i = 0; i < pts.length; i++) {
+        var p = pts[i];
+        p.y -= p.v;
+        if (p.y < -4) { p.y = h + 4; p.x = Math.random() * w; }
+        ctx.beginPath();
+        ctx.fillStyle = p.gold ? "rgba(251,191,36," + p.a + ")" : "rgba(94,234,212," + p.a + ")";
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      requestAnimationFrame(tick);
+    }
+    resize();
+    spawn();
+    window.addEventListener("resize", function () { resize(); spawn(); });
+    requestAnimationFrame(tick);
+  }
+
   function boot() {
+    bootPortalFx();
     fetch(CATALOG, { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {

@@ -7,7 +7,7 @@
 <meta name="description" content="Play Lattice Marines, Lattice Swarm, Eternal Lattice, Stock Market Masters, Lattice Golf, and Haven Rally free in the browser. No account, no install. HTML5 arcade on chatagent.ca.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-<meta name="theme-color" content="#120e0a">
+<meta name="theme-color" content="#070b12">
 <link rel="canonical" href="https://chatagent.ca/games/">
 <link rel="image_src" href="https://chatagent.ca/games/og.jpg">
 <link rel="alternate" type="application/json" href="https://chatagent.ca/games/catalog.json" title="Games catalog">
@@ -32,8 +32,11 @@
 <meta name="twitter:description" content="Free HTML5 arcade on chatagent.ca. No account. Marines, Swarm, Eternal Lattice, Stock Market Masters, Lattice Golf, Haven Rally.">
 <meta name="twitter:image" content="https://chatagent.ca/games/og.jpg">
 <meta name="twitter:image:alt" content="chatagent.ca games arcade: strategy, cards, golf, rally">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/games/hub.css?v=2">
+<link rel="stylesheet" href="/games/hub.css?v=3">
 <script type="application/ld+json" id="games-jsonld">
 {
   "@context": "https://schema.org",
@@ -95,7 +98,12 @@
 }
 </script>
 </head>
-<body>
+<body class="arcade-portal">
+<div class="portal-fx" aria-hidden="true">
+  <canvas id="portalCanvas"></canvas>
+  <div class="portal-grid"></div>
+  <div class="portal-scan"></div>
+</div>
 
 <header class="site">
   <div class="wrap nav">
@@ -115,12 +123,15 @@
 
 <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> · <span aria-current="page">Games</span></nav>
 <article class="card" data-games-catalog>
-<h1 style="margin-top:0;font-size:1.75rem;color:var(--accent2)">Games</h1>
-<p class="meta">Free HTML5 arcade · chatagent.ca · no account · updated September 2026</p>
-<p>Six live browser games on this site: <a href="/games/lattice-marines/">Lattice Marines</a> (isometric island war), <a href="/games/lattice-swarm/">Lattice Swarm</a> (hex-grid command), <a href="/games/eternal-lattice/">Eternal Lattice</a> (Δ9 champion cards), <a href="/games/stock-market-masters/">Stock Market Masters</a> (play-money quotation floor), <a href="/games/lattice-golf/">Lattice Golf</a> (2.5D marker golf), and <a href="/games/haven-rally/">Haven Rally</a> (time-trial GT). No install and no account. Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> tips keep hosting up. Monetized Excavationpro catalog: <a href="https://ffm.to/eovnvo9">ffm.to/eovnvo9</a> (Spotify, Apple Music, YouTube Music). New titles join this page from the <a href="/games/catalog.json">games catalog</a>.</p>
+<div class="portal-hero">
+  <p class="kicker">Δ9Φ963 · studio arcade</p>
+  <h1>GAMES <em>PORTAL</em></h1>
+  <p class="portal-lead">This floor is a studio, not a storefront. Six live HTML5 rooms hang on one lattice: war, hex command, champion cards, a quotation pit, golf, rally. <strong>You bring attention. The modules return play.</strong> No account. No install. Energy stays in the browser — ghosts, ledgers, and high scores live here, not on a login wall. Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a> keeps the lights on. Stream the house catalog: <a href="https://ffm.to/eovnvo9">ffm.to/eovnvo9</a>. New rooms plug in from the <a href="/games/catalog.json">games catalog</a>.</p>
+</div>
+<p class="meta">chatagent.ca · six live titles · updated September 2026</p>
 
 <div class="stat-row">
-  <div class="stat"><b data-games-count>6</b><span>live titles</span></div>
+  <div class="stat"><b data-games-count>6</b><span>live modules</span></div>
   <div class="stat"><b>0</b><span>account required</span></div>
   <div class="stat"><b>HTML5</b><span>no install</span></div>
 </div>
@@ -137,7 +148,7 @@
 <div class="games-arcade">
   <div class="ggrid" data-games-grid>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/lattice-marines/assets/og.jpg" alt="Lattice Marines island fortress" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/lattice-marines/assets/og.jpg" alt="Lattice Marines island fortress" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">strategy · isometric</p>
         <h2>Lattice Marines</h2>
@@ -149,7 +160,7 @@
       </div>
     </article>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/lattice-swarm/og.jpg" alt="Lattice Swarm hex command" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/lattice-swarm/og.jpg" alt="Lattice Swarm hex command" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">strategy · hex</p>
         <h2>Lattice Swarm</h2>
@@ -161,7 +172,7 @@
       </div>
     </article>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/eternal-lattice/og.jpg" alt="Eternal Lattice playmat" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/eternal-lattice/og.jpg" alt="Eternal Lattice playmat" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">cards · campaign</p>
         <h2>Eternal Lattice</h2>
@@ -173,7 +184,7 @@
       </div>
     </article>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/stock-market-masters/assets/og.jpg" alt="Stock Market Masters trading floor" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/stock-market-masters/assets/og.jpg" alt="Stock Market Masters trading floor" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">strategy · market</p>
         <h2>Stock Market Masters</h2>
@@ -185,7 +196,7 @@
       </div>
     </article>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/lattice-golf/assets/og.jpg" alt="Lattice Golf twilight course" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/lattice-golf/assets/og.jpg" alt="Lattice Golf twilight course" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">sports · golf</p>
         <h2>Lattice Golf</h2>
@@ -197,7 +208,7 @@
       </div>
     </article>
     <article class="gcard">
-      <img class="gcard-cover" src="/games/haven-rally/assets/apex-hero.jpg" alt="Haven Rally Apex Mk I studio shot" width="640" height="336">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/haven-rally/assets/apex-hero.jpg" alt="Haven Rally Apex Mk I studio shot" width="640" height="336"></div>
       <div class="gcard-body">
         <p class="gcard-kicker">racing · sports</p>
         <h2>Haven Rally</h2>
@@ -209,7 +220,7 @@
       </div>
     </article>
     <article class="gcard is-coming">
-      <div class="gcard-cover gcard-cover-empty" aria-hidden="true"></div>
+      <div class="gmod-stage"><div class="gcard-cover gcard-cover-empty" aria-hidden="true"></div></div>
       <div class="gcard-body">
         <p class="gcard-kicker">upcoming</p>
         <h2>More games coming</h2>
@@ -244,6 +255,6 @@
   </div>
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
-<script src="/games/hub.js" defer></script>
+<script src="/games/hub.js?v=2" defer></script>
 </body>
 </html>
