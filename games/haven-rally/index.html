@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=8">
+<link rel="stylesheet" href="./game.css?v=9">
 <link rel="stylesheet" href="/games/hub.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: Apex Mk I, lattice circuits, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/apex-hero.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
 </head>
@@ -52,6 +52,8 @@
       <canvas id="circuit" tabindex="0" aria-label="Rally circuit"></canvas>
       <div class="count-flash hidden" id="countFlash">3</div>
       <div id="dragTree" class="drag-tree hidden" aria-label="Christmas tree">
+        <p class="tree-banner" id="treeBanner">READY</p>
+        <div class="tree-cols">
         <div class="tree-col">
           <span class="tree-bulb yellow sm" data-bulb="pre"></span>
           <span class="tree-bulb yellow sm" data-bulb="stage"></span>
@@ -69,6 +71,7 @@
           <span class="tree-bulb amber" data-bulb="a3"></span>
           <span class="tree-bulb green" data-bulb="green"></span>
           <span class="tree-bulb red" data-bulb="redR"></span>
+        </div>
         </div>
       </div>
       <div id="dragHud" class="drag-hud hidden">RT — · ET — · AI —</div>
@@ -177,6 +180,6 @@
 <script src="./sfx.js?v=1"></script>
 <script src="./carmodel.js?v=3"></script>
 <script src="./rally3d.js?v=10"></script>
-<script src="./game.js?v=16"></script>
+<script src="./game.js?v=17"></script>
 </body>
 </html>

@@ -577,7 +577,7 @@
     const foulAi = Math.random() < 0.035;
     return {
       t0: now,
-      phase: "pre",
+      phase: "ready",
       foul: false,
       rt: null,
       launched: false,
@@ -635,7 +635,7 @@
     if (runTree) {
       G.phase = "tree";
       G.tree = beginTree(performance.now());
-      log("Staged · sportsman tree · " + tr.feet + " ft");
+      log("Staged · READY · wait for the tree · " + tr.feet + " ft");
     } else {
       G.phase = "drag_idle";
       G.tree = { phase: "off", foul: false };
@@ -660,6 +660,7 @@
   function paintTreeDom(st) {
     const el = $("dragTree");
     if (!el) return;
+    el.classList.toggle("is-ready", st && st.phase === "ready");
     const L = treeLights(st);
     el.querySelectorAll("[data-bulb]").forEach(function (b) {
       const id = b.getAttribute("data-bulb");
@@ -752,11 +753,12 @@
     }
     if (G.phase === "tree") {
       const t = (now - st.t0) / 1000;
-      if (t < 0.4) st.phase = "pre";
-      else if (t < 0.9) st.phase = "stage";
-      else if (t < 1.4) st.phase = "a1";
-      else if (t < 1.9) st.phase = "a2";
-      else if (t < 2.4) st.phase = "a3";
+      if (t < 2.15) st.phase = "ready";
+      else if (t < 2.6) st.phase = "pre";
+      else if (t < 3.1) st.phase = "stage";
+      else if (t < 3.6) st.phase = "a1";
+      else if (t < 4.1) st.phase = "a2";
+      else if (t < 4.6) st.phase = "a3";
       else if (st.phase !== "green" && st.phase !== "red") {
         st.phase = st.foul ? "red" : "green";
         st.greenAt = now;
@@ -765,7 +767,14 @@
         G.t0 = now;
         log(st.foul ? "Red-light start." : "Green.");
       }
-      if (throttle && t < 2.4 && st.phase !== "green") {
+      const flash = $("countFlash");
+      if (flash) {
+        if (st.phase === "ready") {
+          flash.classList.remove("hidden");
+          flash.textContent = "READY";
+        } else if (flash.textContent === "READY") flash.classList.add("hidden");
+      }
+      if (throttle && (st.phase === "a1" || st.phase === "a2" || st.phase === "a3")) {
         st.foul = true;
       }
     }
@@ -1063,7 +1072,7 @@
       if ($("boostFill")) $("boostFill").style.width = Math.round(G.car.boost * 100) + "%";
       if ($("heatCard")) {
         $("heatCard").innerHTML = "<p><b>" + G.track.name + "</b></p><p>" +
-          (G.phase === "drag_idle" ? "Roll to the tree · press F" : G.phase === "tree" ? "Tree · hold" : G.phase) +
+          (G.phase === "drag_idle" ? "Roll to the tree · press F" : (G.tree && G.tree.phase === "ready") ? "READY · wait for the tree" : G.phase === "tree" ? "Tree · hold" : G.phase) +
           "</p><p>60' <b>" + fmt(st.ft60) + "</b></p>";
       }
       if ($("secCard")) {
