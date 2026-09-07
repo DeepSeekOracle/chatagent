@@ -740,20 +740,21 @@
       aiMesh.visible = false;
       scene.add(aiMesh);
     }
-    if (sparkGroup) return;
-    sparkGroup = new T.Group();
-    var si, sm;
-    for (si = 0; si < 28; si++) {
-      sm = new T.Mesh(
-        new T.BoxGeometry(0.05, 0.05, 0.05),
-        new T.MeshBasicMaterial({ color: si % 2 ? 0xfbbf24 : 0x5eead4 })
-      );
-      sparkGroup.add(sm);
+    if (!sparkGroup) {
+      sparkGroup = new T.Group();
+      var si, sm;
+      for (si = 0; si < 28; si++) {
+        sm = new T.Mesh(
+          new T.BoxGeometry(0.05, 0.05, 0.05),
+          new T.MeshBasicMaterial({ color: si % 2 ? 0xfbbf24 : 0x5eead4 })
+        );
+        sparkGroup.add(sm);
+      }
+      sparkGroup.visible = false;
+      scene.add(sparkGroup);
     }
-    sparkGroup.visible = false;
-    scene.add(sparkGroup);
     attachGuns(carMesh);
-    ensureTraffic(24);
+    ensureTraffic(64);
     ensureTracers(12);
   }
 
@@ -776,10 +777,10 @@
   function makeTrafficCar(color) {
     var g = new T.Group();
     var body = new T.Mesh(
-      new T.BoxGeometry(1.65, 0.46, 3.05),
-      new T.MeshStandardMaterial({ color: color, roughness: 0.45, metalness: 0.32 })
+      new T.BoxGeometry(1.85, 0.52, 3.35),
+      new T.MeshStandardMaterial({ color: color, roughness: 0.42, metalness: 0.28, emissive: color, emissiveIntensity: 0.12 })
     );
-    body.position.y = 0.4;
+    body.position.y = 0.46;
     g.add(body);
     var cabin = new T.Mesh(
       new T.BoxGeometry(1.35, 0.3, 1.25),
@@ -801,6 +802,8 @@
       var cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314];
       var m = makeTrafficCar(cols[trafficPool.length % cols.length]);
       m.visible = false;
+      m.frustumCulled = false;
+      m.scale.setScalar(1.15);
       scene.add(m);
       trafficPool.push(m);
     }
@@ -828,6 +831,10 @@
         continue;
       }
       m.visible = true;
+      if (t.color && m.children[0] && m.children[0].material && m.children[0].material.color) {
+        m.children[0].material.color.setHex(t.color);
+        if (m.children[0].material.emissive) m.children[0].material.emissive.setHex(t.color);
+      }
       m.position.set(t.x, t.alive ? 0.02 : 0.02 + (1 - t.wreck) * 0.4, t.y);
       m.rotation.y = -t.h - Math.PI / 2;
       m.rotation.z = t.alive ? 0 : (1 - t.wreck) * 0.8;

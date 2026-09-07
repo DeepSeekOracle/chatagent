@@ -507,27 +507,35 @@
   }
   function spawnTraffic(track) {
     const rng = mulberry((track.seed || 1) ^ 0x91c3e);
-    const n = 24;
     const cars = [];
-    let i, s, lane, pose;
-    for (i = 0; i < n; i++) {
-      s = track.len * (0.055 + (i + rng() * 0.55) / n * 0.9);
-      lane = (rng() * TRACK_LANES) | 0;
-      if (i < 3) lane = (lane + 2) % TRACK_LANES;
-      pose = poseAtS(track, s, laneLat(lane));
-      cars.push({
-        id: i,
-        s: s,
-        lane: lane,
-        speed: 16 + rng() * 26,
-        hp: 1,
-        alive: true,
-        wreck: 0,
-        x: pose.x,
-        y: pose.y,
-        h: pose.h,
-        color: [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314][i % 6]
-      });
+    const cols = [0xb45309, 0x1d4ed8, 0x0f766e, 0x7c3aed, 0xb91c1c, 0x365314];
+    let s = 28 + rng() * 12;
+    let i = 0;
+    while (s < track.len - 90 && i < 64) {
+      const pack = rng() < 0.28 ? 2 : 1;
+      let p, lane, pose, along;
+      for (p = 0; p < pack && i < 64; p++) {
+        lane = (rng() * TRACK_LANES) | 0;
+        if (i < 2) lane = i === 0 ? 2 : 0;
+        along = s + p * (8 + rng() * 6);
+        pose = poseAtS(track, along, laneLat(lane));
+        cars.push({
+          id: i,
+          s: along,
+          lane: lane,
+          speed: 14 + rng() * 22,
+          hp: 1,
+          alive: true,
+          wreck: 0,
+          hitT: 0,
+          x: pose.x,
+          y: pose.y,
+          h: pose.h,
+          color: cols[i % cols.length]
+        });
+        i += 1;
+      }
+      s += s < 420 ? (36 + rng() * 28) : s < 1600 ? (70 + rng() * 50) : (130 + rng() * 90);
     }
     return cars;
   }
@@ -806,7 +814,10 @@
     G.hudRpm = 800;
     G._ridgeDone = false;
     resetArcade();
-    if (tr.kind === "ridge") G.traffic = spawnTraffic(tr);
+    if (tr.kind === "ridge") {
+      G.traffic = spawnTraffic(tr);
+      log("Traffic · " + G.traffic.length + " cars on the highway");
+    }
     if ($("arcadeHud")) $("arcadeHud").classList.toggle("hidden", tr.kind !== "ridge");
     G.phase = opt("countdown") ? "count" : "race";
     G.countN = 3;
