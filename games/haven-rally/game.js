@@ -41,6 +41,7 @@
   const LANE_W = 4.4;
   const TRACK_LANES = 3;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
+  const CAM_NAMES = ["Chase", "Close", "Hood", "Bumper", "Cockpit", "TV"];
 
   function mulberry(seed) {
     let t = seed >>> 0;
@@ -114,6 +115,7 @@
     { key: "ghost", group: "Race", type: "toggle", label: "Show ghost", hint: "Best heat for this circuit + craft rides with you.", def: true },
     { key: "countdown", group: "Race", type: "toggle", label: "Countdown lights", hint: "3–2–1 before green.", def: true },
     { key: "invertSteer", group: "Controls", type: "toggle", label: "Invert steer", hint: "Swap A/D and the arrow keys.", def: false },
+    { key: "camView", group: "Camera", type: "range", label: "Camera", hint: "C cycles views.", min: 0, max: 5, step: 1, def: 0 },
     { key: "camDist", group: "Camera", type: "range", label: "Chase distance", min: 0.7, max: 1.7, step: 0.05, def: 1 },
     { key: "camHeight", group: "Camera", type: "range", label: "Chase height", min: 0.7, max: 1.8, step: 0.05, def: 1 },
     { key: "showPilot", group: "HUD", type: "toggle", label: "Pilot plate", def: true },
@@ -149,7 +151,11 @@
     if ($("pilotPlate")) $("pilotPlate").classList.toggle("hidden", !opt("showPilot"));
     if ($("hint")) $("hint").classList.toggle("hidden", !opt("showHint"));
     if (window.Rally3D && Rally3D.setCam) {
-      Rally3D.setCam({ dist: Number(opt("camDist")) || 1, height: Number(opt("camHeight")) || 1 });
+      Rally3D.setCam({
+        dist: Number(opt("camDist")) || 1,
+        height: Number(opt("camHeight")) || 1,
+        view: Math.round(Number(opt("camView")) || 0)
+      });
     }
     if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
   }
@@ -163,7 +169,8 @@
         (on ? "On" : "Off") + "</button>";
     } else if (s.type === "range") {
       const v = Number(opt(s.key));
-      right = "<label class='opt-range'><span data-opt-val='" + s.key + "'>" + v.toFixed(2) + "</span>" +
+      const shown = s.key === "camView" ? (CAM_NAMES[Math.round(v)] || String(v)) : v.toFixed(2);
+      right = "<label class='opt-range'><span data-opt-val='" + s.key + "'>" + shown + "</span>" +
         "<input type='range' data-opt='" + s.key + "' min='" + s.min + "' max='" + s.max +
         "' step='" + s.step + "' value='" + v + "'></label>";
     } else {
@@ -220,7 +227,7 @@
           const n = Number(el.value);
           setOpt(key, n);
           const valEl = ov.querySelector("[data-opt-val='" + key + "']");
-          if (valEl) valEl.textContent = n.toFixed(2);
+          if (valEl) valEl.textContent = spec.key === "camView" ? (CAM_NAMES[Math.round(n)] || String(n)) : n.toFixed(2);
         };
       }
     });
@@ -379,56 +386,67 @@
     const st = { x: 0, y: 0, h: 0 };
     const pts = [{ x: 0, y: 0 }];
     function add(dist, dH) {
-      const steps = Math.max(3, Math.ceil(dist / 10));
-      let k;
-      for (k = 1; k <= steps; k++) {
-        st.h += dH / steps;
-        st.x += Math.cos(st.h) * (dist / steps);
-        st.y += Math.sin(st.h) * (dist / steps);
-        pts.push({ x: st.x, y: st.y });
-      }
+      st.h += dH;
+      st.x += Math.cos(st.h) * dist;
+      st.y += Math.sin(st.h) * dist;
+      pts.push({ x: st.x, y: st.y });
     }
-    add(90 + rng() * 40, 0);
+    add(320 + rng() * 80, 0);
     let n = 0;
-    while (pathLen(pts, false) < 3800 && n < 36) {
+    while (pathLen(pts, false) < 28000 && n < 220) {
       n += 1;
       const roll = rng();
       const dir = rng() < 0.5 ? -1 : 1;
-      if (roll < 0.2) add(170 + rng() * 240, (rng() - 0.5) * 0.1);
-      else if (roll < 0.4) add(110 + rng() * 90, dir * (0.5 + rng() * 0.75));
-      else if (roll < 0.55) {
-        add(48 + rng() * 18, dir * 0.42);
-        add(52 + rng() * 18, -dir * 0.88);
-        add(48 + rng() * 18, dir * 0.42);
-      } else if (roll < 0.68) {
-        add(36, dir * 0.35);
-        add(62 + rng() * 20, dir * (2.15 + rng() * 0.45));
-        add(40, dir * 0.3);
-      } else if (roll < 0.82) {
-        add(80 + rng() * 40, dir * 0.48);
-        add(70 + rng() * 30, dir * 0.32);
+      if (roll < 0.36) add(560 + rng() * 820, (rng() - 0.5) * 0.06);
+      else if (roll < 0.54) add(260 + rng() * 200, dir * (0.2 + rng() * 0.26));
+      else if (roll < 0.68) {
+        add(110, dir * 0.16);
+        add(140, -dir * 0.32);
+        add(110, dir * 0.16);
+      } else if (roll < 0.78) {
+        add(90, dir * 0.18);
+        add(160 + rng() * 40, dir * (0.52 + rng() * 0.2));
+        add(90, dir * 0.14);
+      } else if (roll < 0.9) {
+        add(200 + rng() * 90, dir * 0.24);
+        add(180 + rng() * 70, dir * 0.16);
       } else {
-        add(70 + rng() * 40, 0);
-        add(42, dir * (0.5 + rng() * 0.25));
+        add(180 + rng() * 90, 0);
+        add(100, dir * (0.24 + rng() * 0.12));
       }
-      st.h += wrapDelta(0 - st.h, Math.PI * 2) * 0.1;
+      st.h += wrapDelta(0 - st.h, Math.PI * 2) * 0.05;
     }
-    add(160 + rng() * 80, wrapDelta(0 - st.h, Math.PI * 2) * 0.35);
-    add(80, 0);
-    return pts;
+    add(360, wrapDelta(0 - st.h, Math.PI * 2) * 0.2);
+    add(200, 0);
+    return chaikin(pts, 3);
+  }
+
+  function chaikin(pts, rounds) {
+    let p = pts, r, i, out, a, b;
+    for (r = 0; r < rounds; r++) {
+      out = [p[0]];
+      for (i = 0; i < p.length - 1; i++) {
+        a = p[i]; b = p[i + 1];
+        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
+        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+      }
+      out.push(p[p.length - 1]);
+      p = out;
+    }
+    return p;
   }
 
   function makeRidgeTrack(seed) {
     seed = seed >>> 0;
     const pts = ridgeCtrl(seed);
-    const samples = densifyPath(pts, 5, false);
+    const samples = densifyPath(pts, 8, false);
     const len = pathLen(samples, false);
     const name = RUN_NAMES[seed % RUN_NAMES.length];
     return {
       id: "ridge-" + seed.toString(16),
       name: name,
       theme: "endless",
-      lore: "One long start-to-finish highway. Straights, esses, hairpins, a tunnel. Slide to charge boost.",
+      lore: "One long start-to-finish highway — ~16 miles of straights, esses, a hairpin, a tunnel. Slide to charge boost.",
       width: TRACK_HALF,
       laneW: LANE_W,
       lanes: TRACK_LANES,
@@ -1248,7 +1266,7 @@
     G._last = now;
     const proj = stepCar(dt);
     const elapsed = now - G.t0;
-    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 4800) {
+    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 16000) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
     }
     G.track.sectors.forEach(function (frac, i) {
@@ -1302,9 +1320,11 @@
     const c = ctx;
     c.fillStyle = "#071018";
     c.fillRect(0, 0, w, h);
-    const scale = 2.1;
+    const view = Math.round(Number(opt("camView")) || 0);
+    const scales = [2.1, 2.85, 3.7, 4.4, 5.2, 1.15];
+    const scale = scales[view] || 2.1;
     c.save();
-    c.translate(w / 2, h * 0.62);
+    c.translate(w / 2, h * (view === 5 ? 0.5 : 0.62));
     c.rotate(-G.car.h + Math.PI / 2);
     c.translate(-G.car.x * scale, -G.car.y * scale);
     c.strokeStyle = "#1a3a28";
@@ -1345,7 +1365,7 @@
   function help() {
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
-      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts.</li>" +
+      "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts. C cycles camera (Chase, Close, Hood, Bumper, Cockpit, TV).</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
       "<li>Stay on the ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Circuits: three laps, sectors, then the line. Endless run is one long start-to-finish highway — checkpoints, then FINISH.</li>" +
@@ -1438,7 +1458,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
-          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost · R restart</p>" +
+          "<p class='lore'>W throttle · Space brake · L-Shift drift · R-Shift boost · C camera · R restart</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
@@ -1454,7 +1474,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New start-to-finish highway every time. Checkpoints, tunnel, FINISH.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>New ~16-mile start-to-finish highway. Checkpoints, tunnel, FINISH.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
@@ -1515,6 +1535,12 @@
     if ((e.key === "f" || e.key === "F") && G.track && G.track.kind === "drag") {
       e.preventDefault();
       spawnDrag(true);
+    }
+    if (e.key === "c" || e.key === "C") {
+      e.preventDefault();
+      const n = (Math.round(Number(opt("camView")) || 0) + 1) % CAM_NAMES.length;
+      setOpt("camView", n);
+      log("Camera · " + CAM_NAMES[n]);
     }
     if (e.key === " " || e.key === "Enter") e.preventDefault();
   });

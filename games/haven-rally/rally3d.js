@@ -9,7 +9,8 @@
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
-  var camTune = { dist: 1, height: 1 };
+  var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
+  var lastView = -1;
   var envMap = null;
   var lastSpeed = 0;
 
@@ -34,38 +35,72 @@
     return t;
   }
 
-  function densify(path, step) {
+  function densify(path, step, closed) {
     var out = [];
-    for (var i = 0; i < path.length; i++) {
-      var a = path[i], b = path[(i + 1) % path.length];
-      var len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      var n = Math.max(1, Math.ceil(len / step));
-      for (var k = 0; k < n; k++) {
-        var t = k / n;
+    var nSeg = closed ? path.length : Math.max(0, path.length - 1);
+    var i, a, b, len, n, k, t;
+    for (i = 0; i < nSeg; i++) {
+      a = path[i];
+      b = path[(i + 1) % path.length];
+      len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      n = Math.max(1, Math.ceil(len / step));
+      for (k = 0; k < n; k++) {
+        t = k / n;
         out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
       }
+    }
+    if (!closed && path.length) out.push(path[path.length - 1]);
+    return out;
+  }
+
+  function unitPerps(pts, closed) {
+    var out = [], i, prev, next, tx, tz, len, px, pz, lx = 0, lz = 1;
+    for (i = 0; i < pts.length; i++) {
+      prev = pts[(i - 1 + pts.length) % pts.length];
+      next = pts[(i + 1) % pts.length];
+      if (!closed && i === 0) prev = pts[0];
+      if (!closed && i === pts.length - 1) next = pts[i];
+      tx = next.x - prev.x;
+      tz = next.y - prev.y;
+      len = Math.hypot(tx, tz) || 1;
+      px = -tz / len;
+      pz = tx / len;
+      if (i > 0 && px * lx + pz * lz < 0) {
+        px = -px;
+        pz = -pz;
+      }
+      lx = px;
+      lz = pz;
+      out.push({ x: px, y: pz });
     }
     return out;
   }
 
+  function miterOff(perp, prev, maxS) {
+    if (!prev) return perp;
+    var mx = perp.x + prev.x, mz = perp.y + prev.y;
+    var ml = Math.hypot(mx, mz);
+    if (ml < 1e-5) return perp;
+    mx /= ml;
+    mz /= ml;
+    var s = 1 / Math.max(perp.x * mx + perp.y * mz, 0.42);
+    if (s > maxS) s = maxS;
+    return { x: mx * s, y: mz * s };
+  }
+
   function ribbon(path, width, y, closed) {
-    var pts = densify(path, 6);
-    if (!closed && path.length) pts.push(path[path.length - 1]);
+    var pts = densify(path, closed ? 6 : 8, closed);
+    var nrms = unitPerps(pts, closed);
     var pos = [], uv = [], idx = [], acc = 0;
-    for (var i = 0; i < pts.length; i++) {
-      var prev = pts[(i - 1 + pts.length) % pts.length];
-      var next = pts[(i + 1) % pts.length];
-      if (!closed && i === 0) prev = pts[0];
-      if (!closed && i === pts.length - 1) next = pts[i];
-      var tx = next.x - prev.x, tz = next.y - prev.y;
-      var len = Math.hypot(tx, tz) || 1;
-      var px = -tz / len, pz = tx / len;
+    var i, m, b;
+    for (i = 0; i < pts.length; i++) {
+      m = miterOff(nrms[i], i ? nrms[i - 1] : null, 1.85);
       if (i > 0) acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
-      pos.push(pts[i].x + px * width, y, pts[i].y + pz * width);
-      pos.push(pts[i].x - px * width, y, pts[i].y - pz * width);
+      pos.push(pts[i].x + m.x * width, y, pts[i].y + m.y * width);
+      pos.push(pts[i].x - m.x * width, y, pts[i].y - m.y * width);
       uv.push(0, acc * 0.04, 1, acc * 0.04);
       if (i > 0) {
-        var b = (i - 1) * 2;
+        b = (i - 1) * 2;
         idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3);
       }
     }
@@ -82,16 +117,11 @@
   }
 
   function offsetPath(path, lat, closed) {
-    var out = [], i, prev, next, tx, tz, len, px, pz;
+    var nrms = unitPerps(path, closed);
+    var out = [], i, m;
     for (i = 0; i < path.length; i++) {
-      prev = path[(i - 1 + path.length) % path.length];
-      next = path[(i + 1) % path.length];
-      if (!closed && i === 0) prev = path[0];
-      if (!closed && i === path.length - 1) next = path[i];
-      tx = next.x - prev.x; tz = next.y - prev.y;
-      len = Math.hypot(tx, tz) || 1;
-      px = -tz / len; pz = tx / len;
-      out.push({ x: path[i].x + px * lat, y: path[i].y + pz * lat });
+      m = miterOff(nrms[i], i ? nrms[i - 1] : null, 1.7);
+      out.push({ x: path[i].x + m.x * lat, y: path[i].y + m.y * lat });
     }
     return out;
   }
@@ -156,7 +186,7 @@
   }
 
   function dressCourse(track, closed) {
-    var nPalm = Math.min(closed ? 42 : 88, Math.max(12, (track.pts.length / 3) | 0));
+    var nPalm = Math.min(closed ? 42 : 140, Math.max(12, (track.pts.length / 4) | 0));
     var palmT = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.2, 5.4, 5), new T.MeshStandardMaterial({ color: 0x6b4423 }), nPalm);
     var palmC = new T.InstancedMesh(new T.ConeGeometry(1.8, 1.6, 6), new T.MeshStandardMaterial({ color: 0x1f7a3a, flatShading: true }), nPalm);
     var dummy = new T.Object3D();
@@ -168,8 +198,8 @@
       tx = q.x - p.x; tz = q.y - p.y;
       len = Math.hypot(tx, tz) || 1;
       side = i % 2 ? 1 : -1;
-      x = p.x + (-tz / len) * (track.width + 9 + (i % 4)) * side;
-      z = p.y + (tx / len) * (track.width + 9 + (i % 4)) * side;
+      x = p.x + (-tz / len) * (track.width + 12 + (i % 4)) * side;
+      z = p.y + (tx / len) * (track.width + 12 + (i % 4)) * side;
       dummy.position.set(x, 2.7, z);
       dummy.scale.set(1, 1 + (i % 3) * 0.12, 1);
       dummy.updateMatrix();
@@ -194,8 +224,8 @@
       tx = q.x - p.x; tz = q.y - p.y;
       len = Math.hypot(tx, tz) || 1;
       side = bi % 2 ? 1 : -1;
-      x = p.x + (-tz / len) * (track.width + 11) * side;
-      z = p.y + (tx / len) * (track.width + 11) * side;
+      x = p.x + (-tz / len) * (track.width + 14) * side;
+      z = p.y + (tx / len) * (track.width + 14) * side;
       lab = labels[bi % labels.length];
       board = new T.Mesh(
         new T.PlaneGeometry(8.5, 4.2),
@@ -209,27 +239,33 @@
     }
     var th = themeOf(track.theme);
     if (th.sea) {
-      var water = new T.Mesh(
-        new T.CircleGeometry(320, 40),
-        new T.MeshStandardMaterial({ color: 0x157a9a, metalness: 0.55, roughness: 0.18, envMap: envMap, envMapIntensity: 0.8 })
-      );
-      water.rotation.x = -Math.PI / 2;
-      water.position.set(track.pts[0].x + 220, -0.28, track.pts[0].y + 160);
-      trackRoot.add(water);
+      var wmat = new T.MeshStandardMaterial({ color: 0x157a9a, metalness: 0.55, roughness: 0.18, envMap: envMap, envMapIntensity: 0.8 });
+      var wi, wp, wq, wtx, wtz, wlen, water;
+      var wn = closed ? 1 : 5;
+      for (wi = 0; wi < wn; wi++) {
+        wp = track.pts[Math.min(track.pts.length - 2, ((wi + 0.15) / wn * track.pts.length) | 0)];
+        wq = track.pts[Math.min(track.pts.length - 1, (((wi + 0.15) / wn * track.pts.length) | 0) + 1)];
+        wtx = wq.x - wp.x; wtz = wq.y - wp.y;
+        wlen = Math.hypot(wtx, wtz) || 1;
+        water = new T.Mesh(new T.CircleGeometry(closed ? 320 : 220, 36), wmat);
+        water.rotation.x = -Math.PI / 2;
+        water.position.set(wp.x + (-wtz / wlen) * 90, -0.28, wp.y + (wtx / wlen) * 90);
+        trackRoot.add(water);
+      }
     }
     if (th.city) {
       var bmat = [
         new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 }),
         new T.MeshStandardMaterial({ color: 0x334155, roughness: 0.45, emissive: 0x221133, emissiveIntensity: 0.35 })
       ];
-      var bn = Math.min(28, (track.pts.length / 12) | 0);
+      var bn = Math.min(closed ? 28 : 48, Math.max(8, (track.pts.length / 14) | 0));
       for (bi = 0; bi < bn; bi++) {
         p = track.pts[Math.min(track.pts.length - 2, bi * Math.max(6, (track.pts.length / bn) | 0))];
         q = track.pts[Math.min(track.pts.length - 1, bi * Math.max(6, (track.pts.length / bn) | 0) + 1)];
         tx = q.x - p.x; tz = q.y - p.y;
         len = Math.hypot(tx, tz) || 1;
-        x = p.x + (-tz / len) * (track.width + 16 + (bi % 5));
-        z = p.y + (tx / len) * (track.width + 16 + (bi % 5));
+        x = p.x + (-tz / len) * (track.width + 24 + (bi % 5));
+        z = p.y + (tx / len) * (track.width + 24 + (bi % 5));
         var ht = 8 + (bi % 7) * 2.4;
         var blk = new T.Mesh(new T.BoxGeometry(5 + (bi % 3), ht, 5 + (bi % 2)), bmat[bi % 2]);
         blk.position.set(x, ht * 0.5, z);
@@ -419,7 +455,7 @@
     var closed = track.closed !== false;
     var th = themeOf(track.theme);
     applyTheme(th);
-    scene.fog.density = closed ? (th.dusk ? 0.0038 : 0.0028) : 0.0016;
+    scene.fog.density = closed ? (th.dusk ? 0.0038 : 0.0028) : 0.00105;
     var minx = 1e9, maxx = -1e9, minz = 1e9, maxz = -1e9, bi;
     for (bi = 0; bi < track.pts.length; bi++) {
       if (track.pts[bi].x < minx) minx = track.pts[bi].x;
@@ -488,28 +524,52 @@
       banner.position.set(end.x, 7.1, end.y);
       banner.rotation.y = -fang;
       trackRoot.add(postL, postR, banner);
-      var t0 = (track.pts.length * 0.36) | 0;
-      var t1 = Math.min(track.pts.length - 2, t0 + 12);
-      var ta = track.pts[t0], tb = track.pts[t1];
+      var wantTun = 88;
+      var t0 = (track.pts.length * 0.34) | 0;
+      var t1 = Math.min(track.pts.length - 2, t0 + 8);
+      var bestScore = -1, si, sj, sacc, sturn, a, b, c, h1, h2, dh;
+      for (si = Math.max(8, (track.pts.length * 0.18) | 0); si < track.pts.length * 0.78; si++) {
+        sacc = 0;
+        sturn = 0;
+        for (sj = si; sj < track.pts.length - 2 && sacc < wantTun; sj++) {
+          a = track.pts[sj];
+          b = track.pts[sj + 1];
+          c = track.pts[sj + 2];
+          sacc += Math.hypot(b.x - a.x, b.y - a.y);
+          h1 = Math.atan2(b.y - a.y, b.x - a.x);
+          h2 = Math.atan2(c.y - b.y, c.x - b.x);
+          dh = h2 - h1;
+          if (dh > Math.PI) dh -= Math.PI * 2;
+          if (dh < -Math.PI) dh += Math.PI * 2;
+          sturn += Math.abs(dh);
+        }
+        if (sacc < wantTun * 0.7) continue;
+        if (sacc / (1 + sturn * 10) > bestScore) {
+          bestScore = sacc / (1 + sturn * 10);
+          t0 = si;
+          t1 = sj;
+        }
+      }
+      var ta = track.pts[t0], tb = track.pts[Math.min(track.pts.length - 1, t1)];
       var tdx = tb.x - ta.x, tdz = tb.y - ta.y;
-      var tlen = Math.hypot(tdx, tdz) || 1;
+      var tlen = Math.min(96, Math.hypot(tdx, tdz) || 1);
       var tang = Math.atan2(tdz, tdx);
       var tcx = (ta.x + tb.x) * 0.5, tcz = (ta.y + tb.y) * 0.5;
-      var tpx = -tdz / tlen, tpz = tdx / tlen;
+      var tpx = -tdz / (Math.hypot(tdx, tdz) || 1), tpz = tdx / (Math.hypot(tdx, tdz) || 1);
       var tunMat = new T.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
       var wL = new T.Mesh(new T.BoxGeometry(tlen, 5.2, 0.7), tunMat);
       var wR = wL.clone();
-      wL.position.set(tcx + tpx * (track.width + 0.6), 2.6, tcz + tpz * (track.width + 0.6));
-      wR.position.set(tcx - tpx * (track.width + 0.6), 2.6, tcz - tpz * (track.width + 0.6));
+      wL.position.set(tcx + tpx * (track.width + 0.85), 2.6, tcz + tpz * (track.width + 0.85));
+      wR.position.set(tcx - tpx * (track.width + 0.85), 2.6, tcz - tpz * (track.width + 0.85));
       wL.rotation.y = -tang;
       wR.rotation.y = -tang;
-      var roof = new T.Mesh(new T.BoxGeometry(tlen, 0.45, track.width * 2 + 2.2), tunMat);
+      var roof = new T.Mesh(new T.BoxGeometry(tlen, 0.45, track.width * 2 + 2.6), tunMat);
       roof.position.set(tcx, 5.3, tcz);
       roof.rotation.y = -tang;
       trackRoot.add(wL, wR, roof);
     }
     var dummy = new T.Object3D();
-    var nTree = Math.min(closed ? 90 : 160, track.pts.length);
+    var nTree = Math.min(closed ? 90 : 220, Math.max(24, (track.pts.length / 6) | 0));
     var trunk = new T.InstancedMesh(new T.CylinderGeometry(0.18, 0.28, 2.4, 5), new T.MeshStandardMaterial({ color: 0x4a331c }), nTree);
     var crown = new T.InstancedMesh(new T.ConeGeometry(1.4, 3.2, 6), new T.MeshStandardMaterial({ color: 0x1a5c32, flatShading: true }), nTree);
     trunk.castShadow = crown.castShadow = true;
@@ -519,8 +579,8 @@
       var tx = q.x - p.x, tz = q.y - p.y;
       var len = Math.hypot(tx, tz) || 1;
       var side = i % 2 ? 1 : -1;
-      var x = p.x + (-tz / len) * (track.width + 7 + (i % 5)) * side;
-      var z = p.y + (tx / len) * (track.width + 7 + (i % 5)) * side;
+      var x = p.x + (-tz / len) * (track.width + 11 + (i % 5)) * side;
+      var z = p.y + (tx / len) * (track.width + 11 + (i % 5)) * side;
       dummy.position.set(x, 1.2, z);
       dummy.scale.set(1, 1 + (i % 4) * 0.08, 1);
       dummy.updateMatrix();
@@ -567,10 +627,14 @@
     if (!running) return;
     requestAnimationFrame(loop);
     var dt = Math.min(0.05, clock.getDelta());
-    var k = 1 - Math.pow(0.0004, dt);
+    var k = 1 - Math.pow(camTune.lag || 0.0004, dt);
     camera.position.x += (cam.x - camera.position.x) * k;
     camera.position.y += (cam.y - camera.position.y) * k;
     camera.position.z += (cam.z - camera.position.z) * k;
+    if (Math.abs(camera.fov - camTune.fov) > 0.15) {
+      camera.fov += (camTune.fov - camera.fov) * Math.min(1, k * 1.6);
+      camera.updateProjectionMatrix();
+    }
     camera.lookAt(look.x, look.y, look.z);
     if (carMesh) {
       var spin = Math.abs(lastSpeed) * 0.85;
@@ -603,7 +667,7 @@
     renderer.toneMappingExposure = 1.12;
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0x87a8c4, 0.006);
-    camera = new T.PerspectiveCamera(52, 1, 0.8, 8000);
+    camera = new T.PerspectiveCamera(52, 1, 0.35, 18000);
     clock = new T.Clock();
     hemi = new T.HemisphereLight(0xdce8ff, 0x2a3a28, 0.7);
     scene.add(hemi);
@@ -634,6 +698,7 @@
       if (!tune) return;
       if (tune.dist != null) camTune.dist = tune.dist;
       if (tune.height != null) camTune.height = tune.height;
+      if (tune.view != null) camTune.view = Math.max(0, Math.min(5, tune.view | 0));
     },
     setTree: function (st) {
       if (!treeLights || !st) return;
@@ -694,13 +759,79 @@
           }
         }
       }
-      var back = (12.4 + (c.speed || 0) * 0.04) * (camTune.dist || 1);
-      cam.x = c.x - Math.cos(c.h) * back;
-      cam.z = c.y - Math.sin(c.h) * back;
-      cam.y = (5.4 + (c.speed || 0) * 0.012) * (camTune.height || 1);
-      look.x = c.x + Math.cos(c.h) * 8;
-      look.z = c.y + Math.sin(c.h) * 8;
-      look.y = 0.8;
+      var fx = Math.cos(c.h), fz = Math.sin(c.h);
+      var rx = -fz, rz = fx;
+      var spd = c.speed || 0;
+      var d = camTune.dist || 1;
+      var ht = camTune.height || 1;
+      var view = camTune.view | 0;
+      var back, side;
+      if (view === 1) {
+        back = (7.1 + spd * 0.022) * d;
+        cam.x = c.x - fx * back;
+        cam.z = c.y - fz * back;
+        cam.y = (2.85 + spd * 0.008) * ht;
+        look.x = c.x + fx * 7;
+        look.z = c.y + fz * 7;
+        look.y = 0.7;
+        camTune.fov = 60;
+        camTune.lag = 8e-7;
+      } else if (view === 2) {
+        cam.x = c.x + fx * 0.55;
+        cam.z = c.y + fz * 0.55;
+        cam.y = 1.12 * ht;
+        look.x = c.x + fx * 28;
+        look.z = c.y + fz * 28;
+        look.y = 0.55;
+        camTune.fov = 72;
+        camTune.lag = 1e-12;
+      } else if (view === 3) {
+        cam.x = c.x - fx * 2.35;
+        cam.z = c.y - fz * 2.35;
+        cam.y = 0.62 * ht;
+        look.x = c.x + fx * 16;
+        look.z = c.y + fz * 16;
+        look.y = 0.45;
+        camTune.fov = 70;
+        camTune.lag = 1e-12;
+      } else if (view === 4) {
+        cam.x = c.x + fx * 0.12 + rx * 0.18;
+        cam.z = c.y + fz * 0.12 + rz * 0.18;
+        cam.y = 1.02;
+        look.x = c.x + fx * 22;
+        look.z = c.y + fz * 22;
+        look.y = 0.85;
+        camTune.fov = 78;
+        camTune.lag = 1e-14;
+      } else if (view === 5) {
+        back = 16 * d;
+        side = 11 * d;
+        cam.x = c.x - fx * back + rx * side;
+        cam.z = c.y - fz * back + rz * side;
+        cam.y = 13.5 * ht;
+        look.x = c.x + fx * 4;
+        look.z = c.y + fz * 4;
+        look.y = 0.6;
+        camTune.fov = 46;
+        camTune.lag = 0.012;
+      } else {
+        back = (12.4 + spd * 0.04) * d;
+        cam.x = c.x - fx * back;
+        cam.z = c.y - fz * back;
+        cam.y = (5.4 + spd * 0.012) * ht;
+        look.x = c.x + fx * 8;
+        look.z = c.y + fz * 8;
+        look.y = 0.8;
+        camTune.fov = 52;
+        camTune.lag = 0.0004;
+      }
+      if (carMesh) carMesh.visible = view !== 4;
+      if (view !== lastView) {
+        lastView = view;
+        camera.position.set(cam.x, cam.y, cam.z);
+        camera.fov = camTune.fov;
+        camera.updateProjectionMatrix();
+      }
     }
   };
 })(window);
