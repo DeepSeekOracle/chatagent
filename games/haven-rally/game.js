@@ -395,18 +395,18 @@
   }
 
   const PINE = makeTrack({
-    id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 3,
-    lore: "Golden-hour parkland highway. Four lanes, chain the esses, slide to fill boost.",
+    id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 24,
+    lore: "Golden-hour parkland highway. 24-lap heat. Four lanes, chain the esses, slide to fill boost.",
     ctrl: loopFromPolar(14, 280, 78, mulberry(19), 0.2, 0.72)
   });
   const CORAL = makeTrack({
-    id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 3,
-    lore: "Sunset coast highway. Four lanes, long straights, then don't overcook the hairpin.",
+    id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 20,
+    lore: "Sunset coast highway. 20-lap heat. Four lanes, long straights, then don't overcook the hairpin.",
     ctrl: loopFromPolar(12, 360, 110, mulberry(41), 0.6, 0.52)
   });
   const STAR = makeTrack({
-    id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 3,
-    lore: "Night city ring. Four lanes of neon. Boost on the slide, don't miss the apex.",
+    id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 30,
+    lore: "Night city ring. 30-lap heat. Four lanes of neon. Boost on the slide, don't miss the apex.",
     ctrl: loopFromPolar(16, 250, 52, mulberry(73), 1.1, 0.74)
   });
   const DRAG_EIGHTH = makeDragTrack({
@@ -1665,7 +1665,7 @@
       stepGuns(dt);
     }
     const elapsed = now - G.t0;
-    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 16000) {
+    if ((G.rec.length < 2 || elapsed / 1000 - G.rec[G.rec.length - 1].t > 0.05) && G.rec.length < 60000) {
       G.rec.push({ t: elapsed / 1000, x: G.car.x, y: G.car.y, h: G.car.h });
     }
     (G.track.sectors || []).forEach(function (frac, i) {
@@ -1934,9 +1934,9 @@
           "</div>" +
           "<div class='mode-grid'>" +
             "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Studio turntable. Apex GT and Boxcut short-box live.</span></button>" +
-            "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil</b><span>" + PINE.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast</b><span>" + CORAL.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring</b><span>" + STAR.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil · " + PINE.laps + " laps</b><span>" + PINE.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score stays in this browser.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
