@@ -60,6 +60,21 @@
     const r = s - m * 60;
     return m + ":" + r.toFixed(3).padStart(6, "0");
   }
+  function speedVal(yds) {
+    const v = Math.abs(yds || 0);
+    return opt("metric") ? v * 3.29184 : v * 2.04545;
+  }
+  function speedUnit() {
+    return opt("metric") ? "km/h" : "mph";
+  }
+  function fmtSpeed(yds) {
+    return Math.round(speedVal(yds)) + " " + speedUnit();
+  }
+  function fmtSpeedMph(mph) {
+    if (mph == null || !isFinite(mph)) return "—";
+    if (opt("metric")) return Math.round(mph * 1.60934) + " km/h";
+    return Math.round(mph) + " mph";
+  }
   function craftNorm(raw) {
     const c = Object.assign({}, DEFAULT_CRAFT, raw || {});
     c.gears = (c.gears && c.gears.length) ? c.gears.slice() : DEFAULT_GEARS.slice();
@@ -103,6 +118,7 @@
     { key: "camHeight", group: "Camera", type: "range", label: "Chase height", min: 0.7, max: 1.8, step: 0.05, def: 1 },
     { key: "showPilot", group: "HUD", type: "toggle", label: "Pilot plate", def: true },
     { key: "showHint", group: "HUD", type: "toggle", label: "On-track hint", def: true },
+    { key: "metric", group: "HUD", type: "toggle", label: "Speed in km/h", hint: "Off: mph (US). On: km/h (Canada).", def: false },
     { key: "reduceFx", group: "Graphics", type: "toggle", label: "Reduce effects", hint: "Hides drift sparks and underglow.", def: false },
     { key: "assist", group: "Controls", type: "soon", label: "Steering assist", hint: "Coming with the handling pack." },
     { key: "abs", group: "Controls", type: "soon", label: "Brake assist", hint: "Coming with the handling pack." },
@@ -126,6 +142,7 @@
     if (!G.save.options) G.save.options = defaultOptions();
     G.save.options[key] = val;
     writeSave(G.save);
+    if (key === "metric") G.hudSpd = speedVal(G.car.speed || 0);
     applyOptions();
   }
   function applyOptions() {
@@ -134,6 +151,7 @@
     if (window.Rally3D && Rally3D.setCam) {
       Rally3D.setCam({ dist: Number(opt("camDist")) || 1, height: Number(opt("camHeight")) || 1 });
     }
+    if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
   }
   function optRowHtml(s) {
     const hint = s.hint ? "<p class='lore'>" + s.hint + "</p>" : "";
@@ -724,7 +742,7 @@
     showSheet(
       "<p class='kicker'>Drag · " + G.track.feet + " ft</p><h2>" + title + "</h2>" +
       "<p class='lore'>You RT <b>" + (st.rt != null ? (st.rt / 1000).toFixed(3) + "s" : "—") + "</b> · ET <b>" + fmt(pMs) + "</b>" +
-      (st.trapMph != null ? " · " + Math.round(st.trapMph) + " mph" : "") + "</p>" +
+      (st.trapMph != null ? " · " + fmtSpeedMph(st.trapMph) : "") + "</p>" +
       "<p class='lore'>AI RT <b>" + (st.aiFoul ? "foul" : (st.aiRt != null ? st.aiRt.toFixed(3) + "s" : "—")) +
       "</b> · ET <b>" + fmt(aMs) + "</b></p>" +
       donateHtml() +
@@ -802,7 +820,7 @@
         st.playerDone = true;
         st.playerMs = now - G.t0;
         st.trapMph = Math.abs(G.car.speed) * 2.04545;
-        log("Trap · " + fmt(st.playerMs) + " · " + Math.round(st.trapMph) + " mph");
+        log("Trap · " + fmt(st.playerMs) + " · " + fmtSpeedMph(st.trapMph));
       }
       if (G.ai && !st.aiDone && G.ai.x >= tr.finishX) {
         st.aiDone = true;
@@ -1021,10 +1039,11 @@
       }
     }
     if ($("rhPos")) $("rhPos").textContent = pos;
-    const mph = Math.abs(G.car.speed || 0) * 2.04545;
-    G.hudSpd += (mph - (G.hudSpd || 0)) * 0.22;
+    const disp = speedVal(G.car.speed || 0);
+    G.hudSpd += (disp - (G.hudSpd || 0)) * 0.22;
     G.hudRpm += ((G.car.rpm || 800) - (G.hudRpm || 800)) * 0.28;
     if ($("rhSpd")) $("rhSpd").textContent = String(Math.round(Math.max(0, G.hudSpd)));
+    if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
     if ($("rhRpm")) $("rhRpm").textContent = String(Math.round(G.hudRpm)).padStart(4, "0");
     const gearEl = $("rhGear");
     if (gearEl) {
@@ -1046,7 +1065,7 @@
     if ($("rhSectors")) {
       if (drag) {
         const st = G.tree || {};
-        $("rhSectors").textContent = "60' " + fmt(st.ft60) + " · TRAP " + (st.trapMph != null ? Math.round(st.trapMph) + " mph" : "—");
+        $("rhSectors").textContent = "60' " + fmt(st.ft60) + " · TRAP " + (st.trapMph != null ? fmtSpeedMph(st.trapMph) : "—");
       } else {
         $("rhSectors").textContent = (G.gates || [false, false, false]).map(function (g, i) {
           return "S" + (i + 1) + " " + (g ? "■" : "□");
@@ -1066,8 +1085,7 @@
           "<span>ET <b>" + fmt(st.playerMs != null ? st.playerMs : elapsed) + "</b></span>";
       }
       if ($("speedo")) {
-        const mph = Math.abs(G.car.speed) * 2.04545;
-        $("speedo").innerHTML = Math.round(mph) + "<small>MPH</small>";
+        $("speedo").innerHTML = Math.round(speedVal(G.car.speed)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
       }
       if ($("boostFill")) $("boostFill").style.width = Math.round(G.car.boost * 100) + "%";
       if ($("heatCard")) {
