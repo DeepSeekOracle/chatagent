@@ -417,7 +417,8 @@
       len: len,
       closed: true,
       kind: "circuit",
-      sectors: [0.28, 0.55, 0.82]
+      sectors: [0.28, 0.55, 0.82],
+      seed: spec.seed || null
     };
   }
 
@@ -457,7 +458,7 @@
     const sq = squash == null ? 0.7 : squash;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + (spin || 0);
-      const r = radius + Math.sin(a * 2.2) * jitter * 0.45 + (rng() * 2 - 1) * jitter;
+      const r = Math.max(radius * 0.38, 90, radius + Math.sin(a * 2.2) * jitter * 0.45 + Math.sin(a * 5.1) * jitter * 0.16 + (rng() * 2 - 1) * jitter);
       pts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r * sq });
     }
     return pts;
@@ -492,6 +493,50 @@
   });
 
   const RUN_NAMES = ["Gold Hour Coast", "Lattice Bypass", "Neon Harbor", "Coral Overpass", "Apex Line", "Haven Run"];
+  const CUSTOM_NAMES = ["Seed Coil", "Haven Loop", "Lattice Ring", "Whisper Oval", "Mercy Circuit", "Night Fold"];
+  const CUSTOM_THEMES = ["pine-coil", "coral-coast", "singularity-ring"];
+
+  function parseSeed(raw) {
+    const s = String(raw || "").trim();
+    if (!s) return (Date.now() ^ ((Math.random() * 0x100000000) | 0)) >>> 0;
+    if (/^[0-9]+$/.test(s)) return (parseInt(s, 10) || 1) >>> 0;
+    if (/^[0-9a-f]+$/i.test(s)) return (parseInt(s, 16) || 1) >>> 0;
+    let h = 2166136261;
+    let i;
+    for (i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+  function clampLaps(n) {
+    const v = Math.round(Number(n) || 12);
+    return v < 1 ? 1 : v > 60 ? 60 : v;
+  }
+  function makeCustomCircuit(seed, laps) {
+    seed = seed >>> 0;
+    laps = clampLaps(laps);
+    const rng = mulberry(seed);
+    const n = 10 + ((rng() * 8) | 0);
+    const radius = 220 + rng() * 190;
+    const jitter = Math.min(radius * 0.52, 42 + rng() * 88);
+    const squash = 0.48 + rng() * 0.34;
+    const spin = rng() * Math.PI * 2;
+    const theme = CUSTOM_THEMES[seed % CUSTOM_THEMES.length];
+    const name = CUSTOM_NAMES[seed % CUSTOM_NAMES.length];
+    const hex = seed.toString(16).padStart(8, "0");
+    const tr = makeTrack({
+      id: "custom-" + hex,
+      name: name,
+      theme: theme,
+      laps: laps,
+      lore: "Custom seed " + hex + ". " + laps + "-lap heat. Four lanes, generated closed highway.",
+      ctrl: loopFromPolar(n, radius, jitter, rng, spin, squash),
+      seed: seed
+    });
+    tr.custom = true;
+    return tr;
+  }
 
   function ridgeCtrl(seed) {
     const rng = mulberry(seed >>> 0);
@@ -819,7 +864,8 @@
   function defaultSave() {
     return {
       name: "", craft: "apex", ghosts: {}, rounds: [], options: defaultOptions(),
-      arcade: { bestScore: 0, bestCombo: 0, runs: [] }
+      arcade: { bestScore: 0, bestCombo: 0, runs: [] },
+      custom: { laps: 12, seed: "" }
     };
   }
   function loadSave() {
@@ -827,6 +873,7 @@
       const s = Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}"));
       s.options = Object.assign(defaultOptions(), s.options || {});
       s.arcade = Object.assign({ bestScore: 0, bestCombo: 0, runs: [] }, s.arcade || {});
+      s.custom = Object.assign({ laps: 12, seed: "" }, s.custom || {});
       if (!Array.isArray(s.arcade.runs)) s.arcade.runs = [];
       if (!CRAFTS.some(function (c) { return c.id === s.craft; })) s.craft = "apex";
       return s;
@@ -1041,6 +1088,68 @@
       "<div class='modes'><button type='button' class='btn' data-go='title'>Back</button></div>"
     );
     G._sheet = "field";
+  }
+
+  function customMenu() {
+    if (!G.save.custom) G.save.custom = { laps: 12, seed: "" };
+    let seed = parseSeed(G.save.custom.seed);
+    let laps = clampLaps(G.save.custom.laps);
+    let track = makeCustomCircuit(seed, laps);
+    function paint() {
+      const mi = (track.len / 1760);
+      if ($("custLapsVal")) $("custLapsVal").textContent = String(track.laps);
+      if ($("custSeed")) $("custSeed").value = (track.seed >>> 0).toString(16).padStart(8, "0");
+      if ($("custStat")) {
+        $("custStat").innerHTML = "<b>" + track.name + "</b> · seed <code>" +
+          (track.seed >>> 0).toString(16).padStart(8, "0") + "</code><br>" +
+          Math.round(track.len) + " yd / lap · " + mi.toFixed(2) + " mi · " +
+          track.laps + " laps · ~" + Math.round(mi * track.laps) + " mi heat · " +
+          (track.theme === "pine-coil" ? "parkland" : track.theme === "coral-coast" ? "coast" : "night city");
+      }
+    }
+    function readForm() {
+      laps = clampLaps($("custLaps") && $("custLaps").value);
+      seed = parseSeed($("custSeed") && $("custSeed").value);
+      track = makeCustomCircuit(seed, laps);
+      G.save.custom = { laps: laps, seed: (seed >>> 0).toString(16) };
+      writeSave(G.save);
+      G.pendingTrack = track;
+      paint();
+    }
+    showSheet(
+      "<p class='kicker'>Custom race</p><h2>Seed the ribbon</h2>" +
+      "<p class='lore'>Pick laps. Roll a seed (or type one). The lattice builds a closed four-lane circuit from that number — same seed is the same track.</p>" +
+      "<label>Laps <b id='custLapsVal'>" + laps + "</b></label>" +
+      "<input id='custLaps' class='cust-range' type='range' min='1' max='60' step='1' value='" + laps + "'>" +
+      "<label style='margin-top:.65rem;display:block'>Seed</label>" +
+      "<input class='name' id='custSeed' maxlength='16' spellcheck='false' value='" + (seed >>> 0).toString(16).padStart(8, "0") + "'>" +
+      "<p class='lore' id='custStat' style='margin-top:.55rem'></p>" +
+      "<div class='modes'>" +
+        "<button type='button' class='btn' id='custRoll'>Roll seed</button>" +
+        "<button type='button' class='btn gold' id='custGo'>Choose grid</button>" +
+      "</div>" +
+      "<div class='modes'><button type='button' class='btn' data-go='title'>Back</button></div>"
+    );
+    G._sheet = "custom";
+    G.pendingTrack = track;
+    paint();
+    if ($("custLaps")) $("custLaps").oninput = readForm;
+    if ($("custSeed")) $("custSeed").onchange = readForm;
+    if ($("custRoll")) {
+      $("custRoll").onclick = function (ev) {
+        if (ev) ev.stopPropagation();
+        if ($("custSeed")) $("custSeed").value = "";
+        G.save.custom.seed = "";
+        readForm();
+      };
+    }
+    if ($("custGo")) {
+      $("custGo").onclick = function (ev) {
+        if (ev) ev.stopPropagation();
+        readForm();
+        if (track) pickField(track);
+      };
+    }
   }
 
   function showDragUi(on) {
@@ -2448,6 +2557,7 @@
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil · " + PINE.laps + " laps</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
+            "<button type='button' class='mode-card' data-go='custom'><b>Custom race</b><span>Choose laps. Roll a seed. A new closed four-lane circuit every time — or the same one if you keep the seed.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score stays in this browser.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
@@ -2493,6 +2603,7 @@
       if (go === "options") { optionsMenu(); return; }
       if (go === "garage") { garage(); return; }
       if (go === "confirmCraft" || go === "title") { menu(); return; }
+      if (go === "custom") { customMenu(); return; }
       if (go === "pine") pickField(PINE);
       if (go === "coral") pickField(CORAL);
       if (go === "star") pickField(STAR);
@@ -2507,7 +2618,7 @@
     if (e.target && e.target.tagName === "INPUT") return;
     if (e.key === "Escape") {
       if (overlayOpen() && G.mode !== "menu") { hideOverlay(); return; }
-      if (overlayOpen() && (G._sheet === "options" || G._sheet === "garage")) { menu(); return; }
+      if (overlayOpen() && (G._sheet === "options" || G._sheet === "garage" || G._sheet === "custom")) { menu(); return; }
       menu();
       return;
     }

@@ -312,6 +312,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   width: 100%; background: #0b121c; color: var(--text); border: 1px solid var(--line);
   border-radius: 8px; padding: .5rem .6rem; font: inherit; margin-top: .25rem;
 }
+.cust-range { width: 100%; margin: .35rem 0 .2rem; accent-color: #fbbf24; }
+.sheet code { font-family: "IBM Plex Mono", monospace; color: var(--gold); font-size: .86em; }
 .donate-row { display: flex; flex-wrap: wrap; gap: .45rem; margin: .85rem 0 0; }
 .donate-row a {
   display: inline-flex; align-items: center;
