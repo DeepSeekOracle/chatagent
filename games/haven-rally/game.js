@@ -340,6 +340,7 @@
       "<p class='lore'>Saved with the local ledger. New settings drop in as extra rows — this sheet is the fill-as-we-go panel.</p>" +
       body +
       "<div class='modes'><button type='button' class='btn gold' id='optBack'>Back</button>" +
+      "<button type='button' class='btn' id='optControls'>Controls</button>" +
       "<button type='button' class='btn' id='optReset'>Reset defaults</button></div>",
       false,
       "sheet-opts"
@@ -355,6 +356,7 @@
       applyOptions();
       optionsMenu();
     };
+    if ($("optControls")) $("optControls").onclick = function () { help("options"); };
     const ov = $("overlay");
     ov.querySelectorAll("[data-opt]").forEach(function (el) {
       const key = el.getAttribute("data-opt");
@@ -2637,9 +2639,10 @@
     c.restore();
   }
 
-  function help() {
+  function help(from) {
+    G._helpFrom = from || (G.mode === "menu" ? "menu" : "hud");
     showSheet(
-      "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
+      "<p class='kicker'>Controls</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
       "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
@@ -2651,9 +2654,13 @@
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
       "<p class='lore'><a href='./whitepaper.html'>Whitepaper</a> is the spec.</p>" +
-      "<button class='btn gold' id='hk'>Back to grid</button>"
+      "<button class='btn gold' id='hk'>Back</button>"
     );
-    $("hk").onclick = hideOverlay;
+    $("hk").onclick = function () {
+      if (G._helpFrom === "options") optionsMenu();
+      else if (G._helpFrom === "menu" || G.mode === "menu") menu();
+      else hideOverlay();
+    };
   }
 
   function statRow(label, val, max) {
@@ -2772,14 +2779,16 @@
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
+            "<button type='button' class='mode-card' data-go='controls'><b>Controls</b><span>Keys, pad, manual, cameras.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public heats and endless scores. Names only.</span></a>" +
             "<a class='mode-card' href='./whitepaper.html'><b>Whitepaper</b><span>Physics, circuits, out of scope.</span></a>" +
           "</div>" +
           donateHtml() +
-          "<p class='lore' style='margin-top:.8rem'><a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
+          "<p class='lore' style='margin-top:.8rem'><button type='button' class='btn' id='menuControls'>Controls</button> · <a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
         "</div></div>",
       true
     );
+    if ($("menuControls")) $("menuControls").onclick = function (e) { e.stopPropagation(); help("menu"); };
     $("overlay").onclick = function (e) {
       const pick = e.target.closest("[data-cast]");
       if (pick) {
@@ -2810,6 +2819,7 @@
       if (nm) { G.save.name = nm; writeSave(G.save); }
       const go = b.getAttribute("data-go");
       if (go === "options") { optionsMenu(); return; }
+      if (go === "controls") { help("menu"); return; }
       if (go === "garage") { garage(); return; }
       if (go === "confirmCraft" || go === "title") { menu(); return; }
       if (go === "custom") { customMenu(); return; }
