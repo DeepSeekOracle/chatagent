@@ -1,0 +1,68 @@
+{
+  "updated": "2026-09-06",
+  "hub": "https://chatagent.ca/games/",
+  "space": "https://deepseekoracle-lattice-marines-ledger.hf.space",
+  "note": "Public halls. Names and match metadata only. No accounts. Empty is honest.",
+  "games": [
+    {
+      "id": "lattice-marines",
+      "play": "/games/lattice-marines/",
+      "ledger": "/games/lattice-marines/ledger.html",
+      "feeds": [
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/ledger.json",
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/ledger.json",
+        "/games/lattice-marines/ledger.json"
+      ]
+    },
+    {
+      "id": "stock-market-masters",
+      "play": "/games/stock-market-masters/",
+      "ledger": "/games/stock-market-masters/ledger.html",
+      "feeds": [
+        "https://huggingface.co/datasets/DeepSeekOracle/stock-market-masters-cashouts/resolve/main/ledger.json",
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/smm/ledger.json",
+        "/games/stock-market-masters/ledger.json"
+      ]
+    },
+    {
+      "id": "haven-rally",
+      "play": "/games/haven-rally/",
+      "ledger": "/games/haven-rally/ledger.html",
+      "feeds": [
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/rally/ledger.json",
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/haven-rally.json",
+        "/games/haven-rally/ledger.json"
+      ]
+    },
+    {
+      "id": "lattice-golf",
+      "play": "/games/lattice-golf/",
+      "ledger": "/games/lattice-golf/ledger.html",
+      "feeds": [
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/golf/ledger.json",
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/lattice-golf.json",
+        "/games/lattice-golf/ledger.json"
+      ]
+    },
+    {
+      "id": "lattice-swarm",
+      "play": "/games/lattice-swarm/",
+      "ledger": "/games/lattice-swarm/ledger.html",
+      "feeds": [
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/swarm/ledger.json",
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/lattice-swarm.json",
+        "/games/lattice-swarm/ledger.json"
+      ]
+    },
+    {
+      "id": "eternal-lattice",
+      "play": "/games/eternal-lattice/",
+      "ledger": "/games/eternal-lattice/ledger.html",
+      "feeds": [
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/eternal/ledger.json",
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/eternal-lattice.json",
+        "/games/eternal-lattice/ledger.json"
+      ]
+    }
+  ]
+}

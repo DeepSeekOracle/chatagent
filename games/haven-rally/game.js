@@ -1347,6 +1347,23 @@
     });
     G.save.rounds = G.save.rounds.slice(0, 40);
     writeSave(G.save);
+    if (window.ArcadeLedger && pMs) {
+      ArcadeLedger.rally({
+        name: (G.save.name || "Operator").slice(0, 18),
+        event: "drag",
+        track: String(G.track.name || "Drag").slice(0, 40),
+        trackId: String(G.track.id || "drag").slice(0, 32),
+        craft: String(G.craft.name || "Apex Mk I").slice(0, 32),
+        ms: Math.round(pMs),
+        score: 0,
+        kills: 0,
+        combo: 1,
+        laps: 0,
+        field: "solo",
+        foul: !!st.foul,
+        date: new Date().toISOString().slice(0, 10)
+      });
+    }
     const title = st.foul ? "Red light" : (win ? "Lane 1 wins" : "Lane 2 wins");
     log(title + " · ET " + fmt(pMs) + " vs " + fmt(aMs));
     showSheet(
@@ -1356,7 +1373,7 @@
       "<p class='lore'>AI RT <b>" + (st.aiFoul ? "foul" : (st.aiRt != null ? st.aiRt.toFixed(3) + "s" : "—")) +
       "</b> · ET <b>" + fmt(aMs) + "</b></p>" +
       donateHtml() +
-      "<div class='modes'><button class='btn gold' id='again'>Restage (F)</button><button class='btn' id='toMenu'>Menu</button></div>"
+      "<div class='modes'><button class='btn gold' id='again'>Restage (F)</button><button class='btn' id='toMenu'>Menu</button><a class='btn' href='./ledger.html'>Live hall</a></div>"
     );
     $("again").onclick = function () { spawnDrag(true); };
     $("toMenu").onclick = menu;
@@ -2168,6 +2185,25 @@
       G.save.arcade.runs = G.save.arcade.runs.slice(0, 20);
     }
     writeSave(G.save);
+    if (window.ArcadeLedger) {
+      const ev = G.track.kind === "ridge" ? "arcade" : "heat";
+      if (ev === "arcade" ? (G.score || 0) > 0 : (ms || 0) > 0) {
+        ArcadeLedger.rally({
+          name: (G.save.name || "Operator").slice(0, 18),
+          event: ev,
+          track: String(G.track.name || "Heat").slice(0, 40),
+          trackId: String(G.track.id || "heat").slice(0, 32),
+          craft: String(G.craft.name || "Apex Mk I").slice(0, 32),
+          ms: Math.round(ms || 0),
+          score: ev === "arcade" ? Math.round(G.score || 0) : 0,
+          kills: ev === "arcade" ? Math.round(G.kills || 0) : 0,
+          combo: ev === "arcade" ? Math.round(G.bestCombo || 1) : 1,
+          laps: Math.round(G.laps || 0),
+          field: String(G.field || "solo").slice(0, 16),
+          date: new Date().toISOString().slice(0, 10)
+        });
+      }
+    }
     log((beat ? "New ghost. " : "Heat closed. ") + fmt(ms) + (G.track.kind === "ridge" ? " · " + (G.score || 0) + " pts" : ""));
     const arcadeLine = G.track.kind === "ridge"
       ? "<p class='lore arc-result'>" + (G.score || 0) + " pts · " + (G.kills || 0) + " wrecks · x" + (G.bestCombo || 1) +
@@ -2185,7 +2221,7 @@
       board +
       arcadeLine +
       donateHtml() +
-      "<div class='modes'><button class='btn gold' id='again'>Replay</button><button class='btn' id='toMenu'>Menu</button></div>"
+      "<div class='modes'><button class='btn gold' id='again'>Replay</button><button class='btn' id='toMenu'>Menu</button><a class='btn' href='./ledger.html'>Live hall</a></div>"
     );
     $("again").onclick = function () { spawnOnGrid(); };
     $("toMenu").onclick = menu;
@@ -2610,12 +2646,12 @@
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='custom'><b>Custom race</b><span>Choose laps. Roll a seed. A new closed four-lane circuit every time — or the same one if you keep the seed.</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score stays in this browser.</span></button>" +
+            "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score posts to the live hall.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Short strip vs AI. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>NHRA 1000-foot trap vs AI.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Full sportsman tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
-            "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of heats.</span></a>" +
+            "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public heats and endless scores. Names only.</span></a>" +
             "<a class='mode-card' href='./whitepaper.html'><b>Whitepaper</b><span>Physics, circuits, out of scope.</span></a>" +
           "</div>" +
           donateHtml() +
@@ -2714,6 +2750,7 @@
   $("boot").classList.add("hidden");
   G.craft = craftOf(G.save.craft);
   applyOptions();
+  if (window.ArcadeLedger) ArcadeLedger.boot();
   menu();
   requestAnimationFrame(tick);
 })();

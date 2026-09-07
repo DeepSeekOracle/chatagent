@@ -245,46 +245,60 @@
       );
     });
 
-    (function () {
-      var s = lsJson("lygo-haven-rally-v1") || {};
-      var arcade = s.arcade || {};
-      var heats = (s.rounds || []).slice(0, 8);
-      var runs = (arcade.runs || []).slice().sort(function (a, b) { return (b.score || 0) - (a.score || 0); }).slice(0, 4);
-      var rows = heats.map(function (r) {
-        return {
-          name: r.name || "Operator",
-          score: r.score != null ? (r.score + " pts") : fmtMs(r.ms),
-          meta: [r.track, r.craft, r.score != null ? fmtMs(r.ms) : ""].filter(Boolean).join(" · ")
-        };
+    bestJson([
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/rally/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/haven-rally.json",
+      "/games/haven-rally/ledger.json"
+    ], function (j) { return (j && j.rows) || []; }).then(function (data) {
+      var rows = ((data && data.rows) || []).slice();
+      var q = lsJson("lygo-haven-rally-ledger-q") || [];
+      var local = lsJson("lygo-haven-rally-v1") || {};
+      rows = rows.concat(q).concat(local.rounds || []).concat((local.arcade && local.arcade.runs) || []);
+      var seen = {};
+      rows = rows.filter(function (r) {
+        var k = (r.name || "") + "|" + (r.event || "") + "|" + (r.score || 0) + "|" + (r.ms || 0) + "|" + (r.track || "");
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
       });
-      if (arcade.bestScore) {
-        rows.unshift({
-          name: "Endless best",
-          score: String(arcade.bestScore) + " pts",
-          meta: "chain x" + (arcade.bestCombo || 1)
-        });
-      }
-      runs.forEach(function (r) {
-        rows.push({
-          name: r.name || "Operator",
-          score: (r.score || 0) + " pts",
-          meta: (r.kills || 0) + " wrecks · x" + (r.combo || 1)
-        });
-      });
+      var arcade = rows.filter(function (r) { return r.event === "arcade" || r.score; })
+        .sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+      var heats = rows.filter(function (r) { return r.event !== "arcade" && !r.score; })
+        .sort(function (a, b) { return (a.ms || 1e12) - (b.ms || 1e12); });
+      var show = arcade.slice(0, 6).map(function (r) {
+        return { name: r.name || "Operator", score: (r.score || 0) + " pts", meta: [r.track, r.craft].filter(Boolean).join(" · ") };
+      }).concat(heats.slice(0, 6).map(function (r) {
+        return { name: r.name || "Operator", score: fmtMs(r.ms), meta: [r.track, r.craft].filter(Boolean).join(" · ") };
+      }));
       paintHall(
         "rally",
-        rows.length ? (rows.length + " lines on this browser") : "No heats on this device yet.",
-        rows.slice(0, 12)
+        show.length ? (rows.length + " lines · public book") : "No heats yet.",
+        show.slice(0, 12)
       );
-    })();
+    });
 
-    (function () {
-      var s = lsJson("lygo-lattice-golf-v1") || {};
-      var rounds = s.rounds || [];
+    bestJson([
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/golf/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/lattice-golf.json",
+      "/games/lattice-golf/ledger.json"
+    ], function (j) { return (j && j.rounds) || []; }).then(function (data) {
+      var rows = ((data && data.rounds) || []).slice();
+      var q = lsJson("lygo-lattice-golf-ledger-q") || [];
+      var local = lsJson("lygo-lattice-golf-v1") || {};
+      rows = rows.concat(q).concat(local.rounds || []);
+      var seen = {};
+      rows = rows.filter(function (r) {
+        var k = (r.name || "") + "|" + (r.total || "") + "|" + (r.vsPar || "") + "|" + (r.course || "");
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      }).sort(function (a, b) {
+        return (a.vsPar == null ? 99 : a.vsPar) - (b.vsPar == null ? 99 : b.vsPar);
+      });
       paintHall(
         "golf",
-        rounds.length ? (rounds.length + " rounds on this browser") : "No rounds on this device yet.",
-        rounds.slice(0, 12).map(function (r) {
+        rows.length ? (rows.length + " rounds · public book") : "No rounds yet.",
+        rows.slice(0, 12).map(function (r) {
           return {
             name: r.name || "Operator",
             score: (r.total != null ? r.total : "—") + " · " + vsPar(r.vsPar),
@@ -292,7 +306,65 @@
           };
         })
       );
-    })();
+    });
+
+    bestJson([
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/swarm/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/lattice-swarm.json",
+      "/games/lattice-swarm/ledger.json"
+    ], function (j) { return (j && j.scores) || []; }).then(function (data) {
+      var rows = ((data && data.scores) || []).slice();
+      var q = lsJson("lygo-swarm-ledger-q") || [];
+      var local = lsJson("lattice-swarm-v1") || {};
+      if (local.bestScore) rows.push({ name: "This browser", score: local.bestScore });
+      rows = rows.concat(q);
+      var seen = {};
+      rows = rows.filter(function (r) {
+        var k = (r.name || "") + "|" + (r.score || 0);
+        if (seen[k] || !(r.score > 0)) return false;
+        seen[k] = 1;
+        return true;
+      }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+      paintHall(
+        "swarm",
+        rows.length ? (rows.length + " scores · public book") : "No scores yet.",
+        rows.slice(0, 12).map(function (r) {
+          return { name: r.name || "Operator", score: String(r.score), meta: r.date || "" };
+        })
+      );
+    });
+
+    bestJson([
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/eternal/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/eternal-lattice.json",
+      "/games/eternal-lattice/ledger.json"
+    ], function (j) { return (j && j.ladder) || []; }).then(function (data) {
+      var rows = ((data && data.ladder) || []).slice();
+      var q = lsJson("lygo-eternal-ledger-q") || [];
+      var local = lsJson("lygo-eternal-lattice-v1") || {};
+      rows = rows.concat(q).concat(local.leaderboard || []);
+      if (local.playerName && local.games) {
+        rows.push({ name: local.playerName, rating: local.rating, wins: local.wins, losses: local.losses });
+      }
+      var seen = {};
+      rows = rows.filter(function (r) {
+        var k = (r.name || "") + "|" + (r.rating || 0) + "|" + (r.wins || 0);
+        if (!r.name || seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      }).sort(function (a, b) { return (b.rating || 0) - (a.rating || 0); });
+      paintHall(
+        "eternal",
+        rows.length ? (rows.length + " sealed names · public book") : "No sealed names yet.",
+        rows.slice(0, 12).map(function (r) {
+          return {
+            name: r.name,
+            score: String(r.rating || 1000) + " rt",
+            meta: (r.wins || 0) + "W / " + (r.losses || 0) + "L"
+          };
+        })
+      );
+    });
   }
 
   function bootPortalFx() {
@@ -358,6 +430,7 @@
       .catch(function () {
         if (document.querySelector("[data-games-halls]")) renderHalls();
       });
+    if (window.ArcadeLedger) ArcadeLedger.boot();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

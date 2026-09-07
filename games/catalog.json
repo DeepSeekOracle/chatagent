@@ -37,7 +37,7 @@
       "genre": ["strategy", "hex"],
       "players": "1",
       "links": [
-        { "label": "Hub + demo", "href": "/lygo-apps.html" }
+        { "label": "Live hall", "href": "/games/lattice-swarm/ledger.html" }
       ]
     },
     {
@@ -73,7 +73,7 @@
       "genre": ["cards", "campaign"],
       "players": "1",
       "links": [
-        { "label": "About", "href": "/lygo-eternal-lattice.html" }
+        { "label": "Live ladder", "href": "/games/eternal-lattice/ledger.html" }
       ]
     },
     {
@@ -81,7 +81,7 @@
       "slug": "lattice-golf",
       "title": "Lattice Golf",
       "tagline": "Marker, club, wind",
-      "blurb": "2.5D course: plant a marker, read the wind pip, watch the ball fly. Pine Haven, Coral Lattice, Singularity Nine, endless, campaign vs AI. Local ledger.",
+      "blurb": "2.5D course: plant a marker, read the wind pip, watch the ball fly. Pine Haven, Coral Lattice, Singularity Nine, endless, campaign vs AI. Live hall.",
       "status": "live",
       "featured": true,
       "order": 5,
@@ -91,7 +91,7 @@
       "genre": ["sports", "golf"],
       "players": "1",
       "links": [
-        { "label": "Local ledger", "href": "/games/lattice-golf/ledger.html" }
+        { "label": "Live hall", "href": "/games/lattice-golf/ledger.html" }
       ]
     },
     {
@@ -99,7 +99,7 @@
       "slug": "haven-rally",
       "title": "Haven Rally",
       "tagline": "Beat the ghost",
-      "blurb": "Time-trial lattice racer plus a full drag facility: 1/8 mile, 1000 ft, and 1/4 mile vs AI, Christmas tree, F to restage. Apex Mk I, ghost, local ledger.",
+      "blurb": "Time-trial lattice racer plus a full drag facility: 1/8 mile, 1000 ft, and 1/4 mile vs AI, Christmas tree, F to restage. Apex Mk I, ghost, live hall.",
       "cover": "/games/haven-rally/assets/apex-hero.jpg",
       "coverAlt": "Haven Rally Apex Mk I studio shot",
       "status": "live",
@@ -109,7 +109,7 @@
       "genre": ["racing", "sports"],
       "players": "1 vs ghost",
       "links": [
-        { "label": "Local ledger", "href": "/games/haven-rally/ledger.html" },
+        { "label": "Live hall", "href": "/games/haven-rally/ledger.html" },
         { "label": "Whitepaper", "href": "/games/haven-rally/whitepaper.html" }
       ]
     },

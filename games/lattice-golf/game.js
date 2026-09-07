@@ -1734,6 +1734,21 @@
     });
     G.save.rounds = G.save.rounds.slice(0, 30);
     writeSave(G.save);
+    if (window.ArcadeLedger) {
+      ArcadeLedger.golf({
+        name: (G.save.name || "Operator").slice(0, 18),
+        event: "round",
+        course: String((G.course && G.course.name) || "Endless").slice(0, 40),
+        courseId: String((G.course && G.course.id) || "endless").slice(0, 32),
+        mode: String(G.mode || "9").slice(0, 16),
+        holes: G.card.length,
+        par: G.card.reduce(function (n, h) { return n + h.par; }, 0),
+        total: t,
+        vsPar: v,
+        golfer: golferOf(G.save.golfer).name.slice(0, 24),
+        date: new Date().toISOString().slice(0, 10)
+      });
+    }
     let extra = "";
     if (G.campaign) {
       let ai = 0;
@@ -1746,7 +1761,7 @@
     showSheet(
       "<p class='kicker'>Round closed</p><h2>" + t + " strokes · " + vsLabel(v) + "</h2>" +
       extra + scorecardHtml(true) +
-      "<div class='modes'><button class='btn gold' id='again'>Play again</button><button class='btn' id='scCopy'>Copy card</button><button class='btn' id='toMenu'>Menu</button></div>",
+      "<div class='modes'><button class='btn gold' id='again'>Play again</button><button class='btn' id='scCopy'>Copy card</button><button class='btn' id='toMenu'>Menu</button><a class='btn' href='./ledger.html'>Live hall</a></div>",
       false,
       true
     );
@@ -2209,7 +2224,7 @@
     if (!G.card.length) {
       showSheet(
         "<p class='kicker'>Endless</p><h2>No holes closed</h2>" +
-        "<p class='lore'>Finish at least one hole, then End walk posts the card to this browser’s ledger.</p>" +
+        "<p class='lore'>Finish at least one hole, then End walk posts the card to the live hall.</p>" +
         "<button class='btn gold' id='keepWalk'>Keep walking</button>"
       );
       $("keepWalk").onclick = hideOverlay;
@@ -2219,7 +2234,7 @@
     const v = vsPar(G.card);
     showSheet(
       "<p class='kicker'>End the walk</p><h2>" + G.card.length + " holes · " + t + " strokes · " + vsLabel(v) + "</h2>" +
-      "<p class='lore'>The hole you are on now is not counted. Posting writes this card to the local ledger.</p>" +
+      "<p class='lore'>The hole you are on now is not counted. Posting writes this card to the live hall.</p>" +
       scorecardHtml() +
       "<div class='modes'><button class='btn gold' id='postWalk'>Post card</button><button class='btn' id='keepWalk'>Keep walking</button></div>",
       false,
@@ -2302,7 +2317,7 @@
             "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End walk to post the card.</span></button>" +
             "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
-            "<a class='mode-card' href='./ledger.html'><b>Local ledger</b><span>This browser’s hall of rounds.</span></a>" +
+            "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public rounds. Names and totals only.</span></a>" +
           "</div>" +
           donateHtml() +
           "<p class='lore' style='margin-top:.8rem'><a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
@@ -2470,6 +2485,7 @@
     renderHoleCard();
     draw();
   }
+  if (window.ArcadeLedger) ArcadeLedger.boot();
   if ($("btnMulligan")) $("btnMulligan").onclick = useMulligan;
   $("btnHelp").onclick = help;
   $("btnCard").onclick = cardSheet;

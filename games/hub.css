@@ -346,6 +346,35 @@ body.arcade-portal .gmod-stage::after {
   pointer-events: none;
 }
 
+.hub-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: .55rem;
+  margin: 1.2rem 0 0;
+}
+.hub-rail a {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  padding: .7rem .8rem;
+  border: 1px solid #1e3a4a;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #121a26, #0c121c);
+  color: #e8eef5;
+  text-decoration: none;
+}
+.hub-rail a b {
+  font-family: Syne, sans-serif;
+  color: #fff8e8;
+  font-size: .95rem;
+}
+.hub-rail a span {
+  color: #94a3b8;
+  font-size: .75rem;
+}
+.hub-rail a:hover { border-color: #fbbf24; }
+body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
+
 .portal-halls {
   position: relative;
   z-index: 2;

@@ -16,7 +16,13 @@ Public JSON API. **AI wins only.** Commander name + match metadata are appended 
 
 - Hall of records: [chatagent.ca/games/lattice-marines/ledger.html](https://chatagent.ca/games/lattice-marines/ledger.html)
 - Play: [chatagent.ca/games/lattice-marines/](https://chatagent.ca/games/lattice-marines/)
-- `GET /ledger.json` · `POST /submit`
+- `GET /ledger.json` · `POST /submit` — Marines AI wins
+- `GET /smm/ledger.json` · `POST /smm/submit` — Stock Market cashouts
+- `GET /rally/ledger.json` · `POST /rally/submit` — Haven Rally heats
+- `GET /golf/ledger.json` · `POST /golf/submit` — Lattice Golf rounds
+- `GET /swarm/ledger.json` · `POST /swarm/submit` — Lattice Swarm scores
+- `GET /eternal/ledger.json` · `POST /eternal/submit` — Eternal Lattice ladder
 - `GET /witness/feed.json` — LYGO Public Witness live RESOURCE overlay (public GET aggregator; failed sources stay named SHADOW)
+- Hub: [chatagent.ca/games/](https://chatagent.ca/games/)
 
 Hot-seat and losses are rejected. No secrets in the game client — the Space secret writes the dataset.

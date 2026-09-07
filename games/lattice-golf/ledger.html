@@ -3,105 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lattice Golf — Local ledger | eternalhaven.ca</title>
-<meta name="description" content="Local Lattice Golf scorecard hall. Rounds stay on this browser. Human remains publisher.">
-<meta name="theme-color" content="#07140c">
-<meta name="robots" content="index, follow">
-<link rel="canonical" href="https://eternalhaven.ca/games/lattice-golf/ledger.html">
+<title>Lattice Golf — Live hall | chatagent.ca</title>
+<meta name="description" content="Live Lattice Golf hall. Public rounds: names, totals, vs par. Empty beats a fake board.">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-golf/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Eternal Haven">
-<meta property="og:url" content="https://eternalhaven.ca/games/lattice-golf/ledger.html">
-<meta property="og:title" content="Lattice Golf — Local ledger">
-<meta property="og:description" content="This browser’s hall of Lattice Golf rounds. Empty until you close a card.">
-<meta property="og:image" content="https://eternalhaven.ca/games/lattice-golf/assets/og.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@Excavationpro">
-<meta name="twitter:creator" content="@Excavationpro">
-<meta name="twitter:title" content="Lattice Golf — Local ledger">
-<meta name="twitter:description" content="Local hall of rounds. No fake global board.">
-<meta name="twitter:image" content="https://eternalhaven.ca/games/lattice-golf/assets/og.jpg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/games/hub.css">
+<link rel="stylesheet" href="/games/hub.css?v=5">
 <style>
 body { margin:0; background:#07140c; color:#e8f5ec; font-family:"Source Sans 3",system-ui,sans-serif; }
 .wrap { max-width:820px; margin:0 auto; padding:1.4rem 1.1rem 3rem; }
 .kicker { letter-spacing:.2em; text-transform:uppercase; color:#5eead4; font-size:.72rem; }
 h1 { font-family:Syne,sans-serif; }
 a { color:#5eead4; }
-table { width:100%; border-collapse:collapse; font-size:.9rem; }
-th,td { border-bottom:1px solid #1e4a32; padding:.45rem .3rem; text-align:left; }
-th { color:#94a3b8; font-weight:600; font-size:.75rem; letter-spacing:.08em; text-transform:uppercase; }
 .row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
 .btn { display:inline-flex; padding:.5rem .8rem; border:1px solid #1e4a32; border-radius:8px; text-decoration:none; color:#e8f5ec; }
 .muted { color:#94a3b8; }
-.hidden { display:none; }
 .round {
   width:100%; text-align:left; background:#0c1c12; color:#e8f5ec; border:1px solid #1e4a32;
-  border-radius:10px; padding:.7rem .8rem; margin:.4rem 0 0; cursor:pointer; font:inherit;
+  border-radius:10px; padding:.7rem .8rem; margin:.4rem 0 0; font:inherit;
 }
-.round:hover { border-color:#fbbf24; }
 .rtop { display:flex; justify-content:space-between; gap:.6rem; flex-wrap:wrap; }
 .rtop b { font-family:Syne,sans-serif; }
-.rtop span, .rmeta { color:#94a3b8; font-size:.82rem; }
+.rmeta { color:#94a3b8; font-size:.82rem; }
 .rmeta b { color:#fbbf24; }
-.holes { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.4rem; padding:.55rem 0 1rem; }
-.holes.hidden { display:none; }
-.hcell { background:#102418; border:1px solid #1e4a32; border-radius:8px; padding:.45rem .5rem; font-size:.78rem; }
-.hcell b { color:#fbbf24; display:block; }
-.hcell span { display:block; color:#94a3b8; }
-.hcell strong { color:#5eead4; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <p class="kicker">Δ9Φ963 · local only</p>
+  <p class="kicker">Δ9Φ963 · live hall</p>
   <h1>Lattice Golf ledger</h1>
-  <p class="muted">This hall is this browser. No network write. Empty beats a fake global board.</p>
+  <p class="muted">Public rounds. Set a name on the title screen. Totals only on the wire — hole cards stay in this browser.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
-    <a class="btn" href="/games/">All games</a>
+    <a class="btn" href="/games/">Hub</a>
     <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">PayPal</a>
   </div>
-  <p class="muted" id="lead">Click a round to open the hole-by-hole card. Older rounds may only have totals.</p>
+  <p class="muted" id="srcMeta">Loading live hall…</p>
   <div id="hall"></div>
 </div>
 <script>
 (function(){
   function vs(n){ if (n==null || n===0) return "E"; return n>0 ? "+"+n : String(n); }
   function esc(s){ return String(s||"").replace(/[<>]/g,""); }
-  try {
-    var s = JSON.parse(localStorage.getItem("lygo-lattice-golf-v1") || "{}");
-    var rows = s.rounds || [];
+  var FEEDS = [
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/golf/ledger.json",
+    "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/lattice-golf.json",
+    "./ledger.json"
+  ];
+  async function pull(){
+    var rows = [];
+    var src = "this browser";
+    for (var i=0;i<FEEDS.length;i++){
+      try {
+        var r = await fetch(FEEDS[i], { cache:"no-store" });
+        if (!r.ok) continue;
+        var data = await r.json();
+        if (data && Array.isArray(data.rounds)) {
+          rows = data.rounds.slice();
+          src = FEEDS[i].replace(/^https?:\/\//,"");
+          break;
+        }
+      } catch(e) {}
+    }
+    try {
+      var s = JSON.parse(localStorage.getItem("lygo-lattice-golf-v1") || "{}");
+      var q = JSON.parse(localStorage.getItem("lygo-lattice-golf-ledger-q") || "[]");
+      rows = rows.concat(s.rounds || []).concat(q);
+    } catch(e) {}
+    var seen = {};
+    rows = rows.filter(function(r){
+      var k = [r.name, r.course, r.total, r.vsPar, r.date||r.at||""].join("|");
+      if (seen[k]) return false;
+      seen[k] = 1;
+      return true;
+    }).sort(function(a,b){
+      var av = a.vsPar, bv = b.vsPar;
+      if (av==null) av = 99; if (bv==null) bv = 99;
+      return av - bv || (a.total||99) - (b.total||99);
+    });
+    document.getElementById("srcMeta").textContent = rows.length + " rounds · " + src;
     var hall = document.getElementById("hall");
     if (!rows.length) {
-      hall.innerHTML = "<p class='muted'>No rounds on this device yet.</p>";
+      hall.innerHTML = "<p class='muted'>No rounds yet. Close a card to cut the first line.</p>";
       return;
     }
-    hall.innerHTML = rows.map(function(r, i){
-      var d = r.at ? new Date(r.at).toLocaleString() : "—";
-      var v = vs(r.vsPar);
-      var holes = (r.card || []).map(function(h, n){
-        var rel = (h.vsPar != null) ? h.vsPar : (h.strokes - h.par);
-        return "<div class='hcell'><b>"+(h.hole||n+1)+"</b><span>"+esc(h.name||"")+"</span><span>par "+h.par+(h.yards?" · "+h.yards+" yd":"")+"</span><strong>"+h.strokes+" · "+vs(rel)+"</strong></div>";
-      }).join("");
-      return "<button type='button' class='round' data-i='"+i+"'>" +
-        "<div class='rtop'><b>"+esc(r.course||r.mode)+"</b><span>"+d+"</span></div>" +
-        "<div class='rmeta'>"+esc(r.name||"Operator")+" · "+(r.holes||"?")+" holes" +
-        (r.par ? " · par "+r.par : "") +
-        (r.yards ? " · "+r.yards+" yd" : "") +
-        " · <b>"+(r.total||"—")+" · "+v+"</b></div></button>" +
-        "<div class='holes hidden' id='h"+i+"'>"+(holes || "<p class='muted'>This round was saved before hole metadata.</p>")+"</div>";
+    hall.innerHTML = rows.map(function(r){
+      return "<div class='round'><div class='rtop'><b>"+esc(r.course||r.mode)+"</b><span>"+esc(r.date||"")+"</span></div>"+
+        "<div class='rmeta'>"+esc(r.name||"Operator")+" · "+(r.holes||"?")+" holes"+
+        (r.par ? " · par "+r.par : "")+
+        " · <b>"+(r.total||"—")+" · "+vs(r.vsPar)+"</b></div></div>";
     }).join("");
-    hall.addEventListener("click", function(e){
-      var b = e.target.closest(".round");
-      if (!b) return;
-      var panel = document.getElementById("h"+b.getAttribute("data-i"));
-      if (panel) panel.classList.toggle("hidden");
-    });
-  } catch (e) {}
+  }
+  pull();
 })();
 </script>
 </body>
