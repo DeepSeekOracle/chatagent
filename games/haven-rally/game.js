@@ -245,7 +245,7 @@
   const OPTIONS = [
     { key: "ghost", group: "Race", type: "toggle", label: "Show ghost", hint: "Best heat for this circuit + craft rides with you.", def: true },
     { key: "countdown", group: "Race", type: "toggle", label: "Countdown lights", hint: "3–2–1 before green.", def: true },
-    { key: "manual", group: "Controls", type: "toggle", label: "Manual transmission", hint: "↑ upshift · ↓ downshift. Split: P1 Q/E, P2 O/P. Pad: D-pad up/down. Off is auto.", def: true },
+    { key: "manual", group: "Controls", type: "toggle", label: "Manual transmission", hint: "Z toggles. Auto is default. On: ↑ upshift · ↓ downshift. Split: P1 Q/E, P2 O/P. Pad: D-pad up/down.", def: false },
     { key: "invertSteer", group: "Controls", type: "toggle", label: "Invert steer", hint: "Swap A/D and the arrow keys.", def: false },
     { key: "camView", group: "Camera", type: "range", label: "Camera", hint: "C cycles views.", min: 0, max: 5, step: 1, def: 0 },
     { key: "camDist", group: "Camera", type: "range", label: "Chase distance", min: 0.7, max: 1.7, step: 0.05, def: 1 },
@@ -2641,7 +2641,7 @@
     showSheet(
       "<p class='kicker'>How to play</p><h2>Haven Rally</h2>" +
       "<ol class='lore'><li>W throttle, Space or S brake, A D steer. Left Shift is e-brake / drift. Right Shift boosts while the gold bar lasts — on Endless it also fires the front guns. Empty bar = no boost, no guns. C cycles camera. V cycles P2 camera in split.</li>" +
-      "<li>Manual is on by default: ↑ upshift, ↓ downshift (through N and R). Options can switch back to auto. Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
+      "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes and runs a sportsman Christmas tree vs AI. Leave before green is a red-light foul.</li>" +
@@ -2750,7 +2750,7 @@
           "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
           "<h1>HAVEN RALLY</h1>" +
           "<p class='title-tag'>Slide the corner. Charge the boost. Beat the ghost.</p>" +
-          "<p class='lore'>W throttle · Space brake · A D steer · ↑↓ shift (manual) · L-Shift drift · R-Shift boost/guns · C camera</p>" +
+          "<p class='lore'>W throttle · Space brake · A D steer · Z manual · L-Shift drift · R-Shift boost/guns · C camera</p>" +
           "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
@@ -2837,6 +2837,12 @@
     if ((e.key === "f" || e.key === "F") && G.track && G.track.kind === "drag") {
       e.preventDefault();
       spawnDrag(true);
+    }
+    if (e.key === "z" || e.key === "Z") {
+      e.preventDefault();
+      const on = !opt("manual");
+      setOpt("manual", on);
+      log(on ? "Manual · ↑ upshift · ↓ downshift" : "Auto");
     }
     if (e.key === "c" || e.key === "C") {
       e.preventDefault();
