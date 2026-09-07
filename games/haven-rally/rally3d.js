@@ -1266,8 +1266,9 @@
   }
 
   function poseChase(outCam, outLook, tune, c) {
-    if (!c) return;
-    var fx = Math.cos(c.h), fz = Math.sin(c.h);
+    if (!c || !outCam || !outLook || !tune) return;
+    var h = isFinite(c.h) ? c.h : 0;
+    var fx = Math.cos(h), fz = Math.sin(h);
     var rx = -fz, rz = fx;
     var spd = c.speed || 0;
     var d = tune.dist || 1;
@@ -1328,7 +1329,13 @@
       snapChase(camObj, camState, lookState, tune);
       return;
     }
-    var k = 1 - Math.pow(tune.lag || 0.0004, dt);
+    if (!lookState || !isFinite(camState.x) || !isFinite(dt) || dt <= 0) {
+      snapChase(camObj, camState, lookState, tune);
+      return;
+    }
+    var lag = tune.lag || 0.0004;
+    if (!(lag > 0) || lag >= 1) lag = 0.0004;
+    var k = 1 - Math.pow(lag, dt);
     camObj.position.x += (camState.x - camObj.position.x) * k;
     camObj.position.y += (camState.y - camObj.position.y) * k;
     camObj.position.z += (camState.z - camObj.position.z) * k;

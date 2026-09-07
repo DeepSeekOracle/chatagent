@@ -30,10 +30,15 @@
     vol: 0.5,
     bag: [],
     userPaused: false,
-    unlockArmed: false
+    unlockArmed: false,
+    fails: 0
   };
 
-  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function clamp(v, a, b) {
+    v = Number(v);
+    if (!isFinite(v)) return a;
+    return v < a ? a : v > b ? b : v;
+  }
 
   function loadPref() {
     try {
@@ -176,28 +181,33 @@
   }
 
   function next() {
+    if (!st.tracks.length) return;
     if (!st.bag.length) refill();
     const i = st.bag.pop();
     loadIndex(i == null ? Math.floor(Math.random() * st.tracks.length) : i);
-    if (st.playing) el().play().catch(() => {});
+    const a = el();
+    if (st.playing && a) a.play().catch(function () {});
   }
 
   function play() {
     if (!st.tracks.length) return;
     st.userPaused = false;
     const a = el();
+    if (!a) return;
     if (!a.src) next();
     if (!a.src) return;
     a.volume = st.vol;
     a.muted = st.muted;
-    a.play().then(function () { st.playing = true; paint(); }).catch(function (err) {
+    a.play().then(function () {
+      st.playing = true;
+      st.fails = 0;
+      paint();
+    }).catch(function (err) {
       if (err && err.name === "NotAllowedError") {
         st.playing = false;
         paint();
         armUnlock();
-        return;
       }
-      next();
     });
   }
 
@@ -243,8 +253,14 @@
     if (a) {
       a.volume = st.vol;
       a.muted = st.muted;
-      a.addEventListener("ended", () => { st.playing = true; next(); });
-      a.addEventListener("error", () => { if (st.playing) next(); });
+      a.addEventListener("ended", () => { st.fails = 0; st.playing = true; next(); });
+      a.addEventListener("error", () => {
+        if (st.userPaused) return;
+        if (st.fails > 12) { st.playing = false; paint(); return; }
+        st.fails += 1;
+        st.playing = true;
+        next();
+      });
     }
     loadPlaylists().then(function () {
       paint();

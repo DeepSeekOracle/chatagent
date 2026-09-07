@@ -233,6 +233,8 @@
     c.gears = (c.gears && c.gears.length) ? c.gears.slice() : DEFAULT_GEARS.slice();
     c.hp = (c.hp || 0) + (c.upgHp || 0);
     c.torque = (c.torque || 0) + (c.upgTq || 0);
+    c.upgHp = 0;
+    c.upgTq = 0;
     c.drive = c.drive === "fwd" || c.drive === "awd" ? c.drive : "rwd";
     c.boostTank = c.boostTank > 0 ? c.boostTank : 1;
     c.boostPower = c.boostPower > 0 ? c.boostPower : 1;
@@ -960,16 +962,18 @@
     const tr = G.track;
     if (!tr || tr.kind !== "ridge" || G.phase !== "race") return;
     if (G.multPulse > 0) G.multPulse = Math.max(0, G.multPulse - dt * 3);
-    const boostOn = !!(G.car && G.car.boostOn) || (!!G.keys.ShiftRight && G.car.boost > 0.04 && !G.keys.ShiftLeft);
+    const car = G.car;
+    if (!car) return;
+    const boostOn = !!car.boostOn || (!!G.keys.ShiftRight && car.boost > 0.04 && !G.keys.ShiftLeft);
     if (!boostOn) return;
     const g = activeGun();
     G.gunOn = true;
     G.gunKind = g.kind || "mg";
     G.gunCool -= dt;
-    const fx = Math.cos(G.car.h), fy = Math.sin(G.car.h);
+    const fx = Math.cos(car.h), fy = Math.sin(car.h);
     const rx = -fy, ry = fx;
     const nose = g.kind === "cannon" ? 2.55 : (g.kind === "needle" ? 1.95 : 2.3);
-    const ox = G.car.x + fx * nose, oy = G.car.y + fy * nose;
+    const ox = car.x + fx * nose, oy = car.y + fy * nose;
     const range = g.range || 52;
     const cone = g.kind === "cannon" ? 3.4 : (g.kind === "rail" ? 2.15 : 2.5);
     const hits = [];
@@ -1408,6 +1412,15 @@
     applyOptions();
     paintPilot();
     showDragUi(true);
+    if (runTree) {
+      G.phase = "tree";
+      G.tree = beginTree(performance.now());
+      log("Staged · Lane 2 " + opp.name + " · wait for the tree · " + tr.feet + " ft");
+    } else {
+      G.phase = "drag_idle";
+      G.tree = { phase: "off", foul: false };
+      log(tr.name + " · roll to the tree · F stages and runs the lights");
+    }
     if (use3d && window.Rally3D) Rally3D.setTrack(tr);
     G._camSnap = 8;
     $("app").classList.remove("hidden");
@@ -1419,15 +1432,6 @@
       kickChaseCam();
       if (G.mode === "race") draw(performance.now());
     });
-    if (runTree) {
-      G.phase = "tree";
-      G.tree = beginTree(performance.now());
-      log("Staged · Lane 2 " + opp.name + " · wait for the tree · " + tr.feet + " ft");
-    } else {
-      G.phase = "drag_idle";
-      G.tree = { phase: "off", foul: false };
-      log(tr.name + " · roll to the tree · F stages and runs the lights");
-    }
   }
 
   function treeLights(st) {
@@ -1849,7 +1853,10 @@
   }
   function botInput(racer) {
     const tr = G.track;
-    const car = racer.car;
+    const car = racer && racer.car;
+    if (!tr || !tr.samples || !car) {
+      return { throttle: 0, brake: 0, ebrake: false, boost: false, steerIn: 0 };
+    }
     const c = racer.craft || craftOf("apex");
     const closed = tr.closed !== false;
     const proj = project(car, tr.samples, racer.lastS, closed);
@@ -1907,7 +1914,7 @@
     const straight = win.k < 0.008 || win.distTo > 36 + spd * 0.25;
     const aligned = Math.abs(err) < 0.11;
     const boost = !brake && !off && aligned && (car.boost || 0) > 0.1 &&
-      (straight && spd > 18 || (win.signed && win.distTo > 22 && spd > 24 && spd < vTgt + 4));
+      ((straight && spd > 18) || (win.distTo > 22 && spd > 24 && spd < vTgt + 4));
     const ebrake = !off && Math.abs(err) > 0.82 && spd > 26 && win.k > 0.02;
     return {
       throttle: throttle,
@@ -1956,7 +1963,7 @@
       done: false,
       finishMs: null,
       skill: spec.skill || 1,
-      laneBias: spec.laneBias || ((spec.lane - 1.5) * LANE_W * 0.55),
+      laneBias: spec.laneBias != null ? spec.laneBias : ((spec.lane - 1.5) * LANE_W * 0.55),
       rng: mulberry(spec.seed || 7),
       sparks: 0
     };
@@ -2276,7 +2283,7 @@
     if ($("rhBeat")) $("rhBeat").textContent = fmt(beat);
     const len = G.track && G.track.len ? G.track.len : 1;
     let prog = 0;
-    if (drag && G.track) prog = clamp((G.car.x - G.track.startX) / Math.max(1, G.track.finishX - G.track.startX), 0, 1);
+    if (drag && G.track && G.car) prog = clamp((G.car.x - G.track.startX) / Math.max(1, G.track.finishX - G.track.startX), 0, 1);
     else prog = clamp((G.lastS || 0) / len, 0, 1);
     if ($("rhProg")) $("rhProg").style.width = Math.round(prog * 100) + "%";
     const deltaEl = $("rhDelta");
@@ -2291,7 +2298,7 @@
     }
     let pos = "P1";
     if (G.racers && G.racers.length > 1) pos = posLabel(G.racers[0]);
-    else if (drag && G.ai) pos = G.ai.x > G.car.x + 1.2 ? "P2" : "P1";
+    else if (drag && G.ai && G.car) pos = G.ai.x > G.car.x + 1.2 ? "P2" : "P1";
     else if (racing && G.ghost && G.ghost.samples && G.track) {
       const gh = ghostAt(elapsed);
       if (gh) {
@@ -2300,19 +2307,19 @@
       }
     }
     if ($("rhPos")) $("rhPos").textContent = pos;
-    const disp = Math.max(0, speedVal(G.car.speed || 0));
+    const disp = Math.max(0, speedVal((G.car && G.car.speed) || 0));
     const dtHud = clamp(((now || 0) - (G._hudT || now || 0)) / 1000, 0.008, 0.05);
     G._hudT = now || G._hudT;
     const follow = 1 - Math.exp(-10 * dtHud);
     G.hudSpd += (disp - (G.hudSpd || 0)) * follow;
-    G.hudRpm += ((G.car.rpm || 800) - (G.hudRpm || 800)) * follow;
+    G.hudRpm += (((G.car && G.car.rpm) || 800) - (G.hudRpm || 800)) * follow;
     if ($("rhSpd")) $("rhSpd").textContent = String(Math.round(Math.max(0, G.hudSpd)));
     if ($("rhUnit")) $("rhUnit").textContent = opt("metric") ? "km/h" : "MPH";
     if ($("rhRpm")) $("rhRpm").textContent = String(Math.round(G.hudRpm)).padStart(4, "0");
     const gearEl = $("rhGear");
     if (gearEl) {
-      gearEl.textContent = gearLabel(G.car.gear);
-      gearEl.classList.toggle("shift", (G.car.shiftT || 0) > 0);
+      gearEl.textContent = gearLabel(G.car && G.car.gear);
+      gearEl.classList.toggle("shift", ((G.car && G.car.shiftT) || 0) > 0);
       gearEl.classList.toggle("mt", !!opt("manual"));
     }
     const red = (G.craft && G.craft.redline) || 7800;
@@ -2325,11 +2332,11 @@
     const flash = rpmN > 0.92 && Math.floor(now / 70) % 2 === 0;
     leds.forEach(function (el, i) { el.classList.toggle("on", i < nOn); });
     if ($("rhShift")) $("rhShift").classList.toggle("flash", flash);
-    if ($("rhThr")) $("rhThr").style.width = Math.round((G.car.thr || 0) * 100) + "%";
-    if ($("rhBrk")) $("rhBrk").style.width = Math.round((G.car.brk || 0) * 100) + "%";
+    if ($("rhThr")) $("rhThr").style.width = Math.round(((G.car && G.car.thr) || 0) * 100) + "%";
+    if ($("rhBrk")) $("rhBrk").style.width = Math.round(((G.car && G.car.brk) || 0) * 100) + "%";
     if ($("rhBoost")) {
       const tank = (G.craft && G.craft.boostTank) || 1;
-      $("rhBoost").style.width = Math.round(clamp((G.car.boost || 0) / tank, 0, 1) * 100) + "%";
+      $("rhBoost").style.width = Math.round(clamp(((G.car && G.car.boost) || 0) / tank, 0, 1) * 100) + "%";
     }
     if ($("arcadeHud")) {
       const on = !!(G.track && G.track.kind === "ridge" && G.mode === "race");
@@ -2378,7 +2385,7 @@
           "<span>ET <b>" + fmt(st.playerMs != null ? st.playerMs : elapsed) + "</b></span>";
       }
       if ($("speedo")) {
-        $("speedo").innerHTML = Math.round(speedVal(G.car.speed)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
+        $("speedo").innerHTML = Math.round(speedVal((G.car && G.car.speed) || 0)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
       }
       if ($("boostFill")) {
         const tank = (G.craft && G.craft.boostTank) || 1;
@@ -2421,7 +2428,7 @@
         "<span>Time <b>" + fmt(elapsed) + "</b></span>" +
         "<span>Best <b>" + fmt(G.bestMs) + "</b></span>";
     }
-    if ($("speedo")) $("speedo").innerHTML = Math.round(Math.abs(G.car.speed)) + "<small>YD/S</small>";
+    if ($("speedo")) $("speedo").innerHTML = Math.round(speedVal((G.car && G.car.speed) || 0)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
     if ($("boostFill")) {
       const tank = (G.craft && G.craft.boostTank) || 1;
       $("boostFill").style.width = Math.round(clamp((G.car.boost || 0) / tank, 0, 1) * 100) + "%";
@@ -3054,8 +3061,8 @@
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='custom'><b>Custom race</b><span>Choose laps. Roll a seed. A new closed four-lane circuit every time — or the same one if you keep the seed.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score posts to the live hall.</span></button>" +
-            "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Lane 2 is heads-up on your chassis. F runs the tree.</span></button>" +
-            "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>1000-foot trap vs a limiter AI in your car.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Lane 2 rolls a random live chassis. F runs the tree.</span></button>" +
+            "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>1000-foot trap vs a random live chassis on the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Sportsman tree. Beat Lane 2 on the stripe.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
             "<button type='button' class='mode-card' data-go='controls'><b>Controls</b><span>Keys, pad, manual, cameras.</span></button>" +
@@ -3129,13 +3136,17 @@
       menu();
       return;
     }
-    if (G.mode === "menu" || overlayOpen()) return;
+    if (G.mode === "menu") return;
+    if ((e.key === "f" || e.key === "F") && G.track && G.track.kind === "drag" && G.mode === "race") {
+      if (!overlayOpen() || $("again")) {
+        e.preventDefault();
+        spawnDrag(true);
+        return;
+      }
+    }
+    if (overlayOpen()) return;
     G.keys[e.code] = true;
     if (e.key === "r" || e.key === "R") { e.preventDefault(); spawnOnGrid(); }
-    if ((e.key === "f" || e.key === "F") && G.track && G.track.kind === "drag") {
-      e.preventDefault();
-      spawnDrag(true);
-    }
     if (e.key === "z" || e.key === "Z") {
       e.preventDefault();
       const on = !opt("manual");
