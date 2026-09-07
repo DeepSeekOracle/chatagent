@@ -8,6 +8,7 @@
   var trackRoot = null;
   var carMesh, ghostMesh, aiMesh, sparkGroup, treeLights;
   var carKind = "", carPaint = null;
+  var aiKind = "", aiPaint = null;
   var trafficPool = [];
   var tracerPool = [];
   var boltPool = [];
@@ -947,11 +948,7 @@
       ghostMesh.visible = false;
       scene.add(ghostMesh);
     }
-    if (!aiMesh) {
-      aiMesh = makeCar(0xb45309, false);
-      aiMesh.visible = false;
-      scene.add(aiMesh);
-    }
+    ensureAi("apex", 0xb45309);
     if (!sparkGroup) {
       sparkGroup = new T.Group();
       var si, sm;
@@ -1038,6 +1035,22 @@
     if (body === "flick") return "needle";
     if (body === "sleet") return "rail";
     return "mg";
+  }
+
+  function ensureAi(body, paint) {
+    body = body || "apex";
+    paint = paint != null ? paint : 0xb45309;
+    if (aiMesh && (aiKind !== body || aiPaint !== paint)) {
+      disposeObj(aiMesh);
+      aiMesh = null;
+    }
+    if (!aiMesh) {
+      aiMesh = makeCar(paint, false, body);
+      aiKind = body;
+      aiPaint = paint;
+      aiMesh.visible = false;
+      scene.add(aiMesh);
+    }
   }
 
   function attachGuns(root, style) {
@@ -1560,6 +1573,7 @@
           ghostMesh.rotation.y = -s.ghost.h - Math.PI / 2;
         } else ghostMesh.visible = false;
       }
+      if (s.ai) ensureAi(s.aiBody || "apex", s.aiPaint != null ? s.aiPaint : 0xb45309);
       if (aiMesh) {
         if (s.ai) {
           aiMesh.visible = true;
@@ -1599,7 +1613,12 @@
           HavenCar.setLights(ghostMesh, { head: true, brake: false, ghost: true, reduceFx: true });
         }
         if (aiMesh && aiMesh.visible) {
-          HavenCar.setLights(aiMesh, { head: true, brake: false, reduceFx: s.reduceFx });
+          HavenCar.setLights(aiMesh, {
+            head: true,
+            brake: false,
+            boost: !!(s.ai && s.ai.boostOn),
+            reduceFx: s.reduceFx
+          });
         }
       }
       smokeEmit.on = !!s.burnout && !s.reduceFx;

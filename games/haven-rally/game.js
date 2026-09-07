@@ -1114,6 +1114,7 @@
     }
     syncP1();
     G.ai = null;
+    G.aiCraft = null;
     G._firstFinish = 0;
     if (use3d && window.Rally3D && Rally3D.setSplit) Rally3D.setSplit(wantSplit);
     if ($("raceHud")) $("raceHud").classList.toggle("hidden", wantSplit);
@@ -1289,14 +1290,15 @@
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
     G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
-    const c = G.craft;
-    G.ai = blankCar({ x: x0, y: lane, h: 0 }, c.boostTank);
+    const opp = craftNorm(CRAFTS[(Math.random() * CRAFTS.length) | 0]);
+    G.aiCraft = opp;
+    G.ai = blankCar({ x: x0, y: lane, h: 0 }, opp.boostTank);
     G.ai.y = lane;
     G.ai.h = 0;
     G.ai.vh = 0;
     G.ai.skill = 0.9 + Math.random() * 0.1;
     G.ai.name = "Lane 2";
-    G.ai.shiftPlan = dragAiShiftPlan(c);
+    G.ai.shiftPlan = dragAiShiftPlan(opp);
     G.ai._over = 0;
     G.lap = 0;
     G.lastS = x0;
@@ -1326,7 +1328,7 @@
     if (runTree) {
       G.phase = "tree";
       G.tree = beginTree(performance.now());
-      log("Staged · READY · wait for the tree · " + tr.feet + " ft");
+      log("Staged · Lane 2 " + opp.name + " · wait for the tree · " + tr.feet + " ft");
     } else {
       G.phase = "drag_idle";
       G.tree = { phase: "off", foul: false };
@@ -1415,7 +1417,7 @@
       ai.y = lane;
       return;
     }
-    const c = G.craft;
+    const c = G.aiCraft || G.craft;
     const skill = ai.skill || 1;
     const launchedAgo = (now - leaveAt) / 1000;
     const dumpBoost = launchedAgo >= (skill > 0.96 ? 0 : 0.05);
@@ -1496,8 +1498,10 @@
       "<p class='kicker'>Drag · " + G.track.feet + " ft</p><h2>" + title + "</h2>" +
       "<p class='lore'>You RT <b>" + (st.rt != null ? (st.rt / 1000).toFixed(3) + "s" : "—") + "</b> · ET <b>" + fmt(pMs) + "</b>" +
       (st.trapMph != null ? " · " + fmtSpeedMph(st.trapMph) : "") + "</p>" +
-      "<p class='lore'>AI RT <b>" + (st.aiFoul ? "foul" : (st.aiRt != null ? st.aiRt.toFixed(3) + "s" : "—")) +
-      "</b> · ET <b>" + fmt(aMs) + "</b></p>" +
+      "<p class='lore'>Lane 2 <b>" + ((G.aiCraft && G.aiCraft.name) || "AI") + "</b> · RT <b>" +
+      (st.aiFoul ? "foul" : (st.aiRt != null ? st.aiRt.toFixed(3) + "s" : "—")) +
+      "</b> · ET <b>" + fmt(aMs) + "</b>" +
+      (st.aiMph != null ? " · " + fmtSpeedMph(st.aiMph) : "") + "</p>" +
       donateHtml() +
       "<div class='modes'><button class='btn gold' id='again'>Restage (F)</button><button class='btn' id='toMenu'>Menu</button><a class='btn' href='./ledger.html'>Live hall</a></div>"
     );
@@ -2212,7 +2216,8 @@
       }
       if ($("ghostCard")) {
         $("ghostCard").innerHTML = G.ai
-          ? "Lane 2 AI · RT " + (st.aiFoul ? "foul" : (st.aiRt != null && G.phase !== "drag_idle" ? st.aiRt.toFixed(3) + "s" : "—"))
+          ? "Lane 2 · " + ((G.aiCraft && G.aiCraft.name) || "AI") +
+            " · RT " + (st.aiFoul ? "foul" : (st.aiRt != null && G.phase !== "drag_idle" ? st.aiRt.toFixed(3) + "s" : "—"))
           : "No opponent.";
       }
       if ($("dragHud")) {
@@ -2224,7 +2229,9 @@
         $("dockStatus").textContent = G.phase === "drag_idle" ? "F to stage" :
           (G.phase === "tree" ? "Tree…" : (st.foul ? "Red light" : "On the power"));
       }
-      if ($("hint") && G.phase === "drag_idle") $("hint").textContent = "Drive to the tree · F stages both lanes and runs the lights";
+      if ($("hint") && G.phase === "drag_idle") {
+        $("hint").textContent = "Drive to the tree · F stages · Lane 2 is " + ((G.aiCraft && G.aiCraft.name) || "random");
+      }
       paintRaceHud(now);
       return;
     }
@@ -2590,6 +2597,8 @@
       const p2 = p2r ? p2r.car : null;
       Rally3D.setState({
         car: G.car, ghost: isFieldRace() ? null : gh, ai: G.ai, sparks: G.sparks, reduceFx: opt("reduceFx"),
+        aiBody: (G.aiCraft && G.aiCraft.body) || "apex",
+        aiPaint: parseInt(String((G.aiCraft && G.aiCraft.color) || "#b45309").replace("#", ""), 16),
         traffic: G.track && G.track.kind === "ridge" ? G.traffic : null,
         gun: {
           on: G.gunOn,
@@ -2668,7 +2677,7 @@
       c.fill();
     }
     if (G.ai) {
-      c.fillStyle = "rgba(251,191,36,.85)";
+      c.fillStyle = (G.aiCraft && G.aiCraft.color) || "rgba(251,191,36,.85)";
       c.beginPath();
       c.arc(G.ai.x * scale, G.ai.y * scale, 7, 0, Math.PI * 2);
       c.fill();
@@ -2713,7 +2722,7 @@
       "<li>Auto is normal. Z toggles manual. Then ↑ upshift, ↓ downshift (through N and R). Split: P1 Q/E, P2 O/P. Pad: D-pad up/down, RT/LT still gas and brake.</li>" +
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
-      "<li>Drag: F at the tree stages both lanes. Lane 2 runs your chassis and dumps boost, but it can red-light or miss a shift (early or late). Leave before green is a red-light foul.</li>" +
+      "<li>Drag: F at the tree stages both lanes. Lane 2 rolls a random live chassis (Apex, Boxcut, Flick, Sleet) with that car’s boost and drive bonuses. It can red-light or miss a shift.</li>" +
       "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
