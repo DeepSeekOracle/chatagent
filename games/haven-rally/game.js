@@ -140,6 +140,50 @@
     Object.assign({}, SLEET)
   ];
   const LOCKED_BAYS = [];
+  const DRIVERS = [
+    {
+      id: "mira", name: "Mira Quinn", tag: "Line cutter",
+      src: "./assets/d-mira.jpg",
+      lore: "Reads the ribbon a beat early. Smooth hands, mean exits. Stacks a quarter more speed and shove on any chassis.",
+      bonus: "+25% top speed · +25% acceleration",
+      mul: { vmax: 1.25, accel: 1.25 }
+    },
+    {
+      id: "reed", name: "Reed Hollow", tag: "Hole-shot",
+      src: "./assets/d-reed.jpg",
+      lore: "Lives in first gear. Leaves like the tree owes him money. Fifty percent more acceleration on whatever you seat him in.",
+      bonus: "+50% acceleration",
+      mul: { accel: 1.5 }
+    },
+    {
+      id: "kai", name: "Kai Park", tag: "Horizon",
+      src: "./assets/d-kai.jpg",
+      lore: "Won't lift. The trap is a suggestion. Fifty percent more top speed once the road opens.",
+      bonus: "+50% top speed",
+      mul: { vmax: 1.5 }
+    },
+    {
+      id: "vesper", name: "Vesper Kane", tag: "Bottle",
+      src: "./assets/d-vesper.jpg",
+      lore: "Tunes the charge like a second throttle. Harder boost hit, bigger tank. The gold bar lasts and bites.",
+      bonus: "+50% boost hit · +40% boost tank",
+      mul: { boostPower: 1.5, boostTank: 1.4 }
+    },
+    {
+      id: "joss", name: "Joss Hale", tag: "Gunner",
+      src: "./assets/d-joss.jpg",
+      lore: "Endless is a shooting gallery. Stronger guns, extra pierce, longer reach. Traffic comes apart.",
+      bonus: "+60% gun power · +1 pierce · +25% range",
+      mul: { gunDps: 1.6, gunPierce: 1, gunRange: 1.25 }
+    },
+    {
+      id: "nima", name: "Nima Sol", tag: "Sustain",
+      src: "./assets/d-nima.jpg",
+      lore: "Keeps the bottle full. Larger tank and a faster fill from the slide. Boost is a loop, not a panic.",
+      bonus: "+50% boost tank · +50% boost fill",
+      mul: { boostTank: 1.5, boostFill: 1.5 }
+    }
+  ];
   const LANE_W = 4.4;
   const TRACK_LANES = 4;
   const TRACK_HALF = LANE_W * TRACK_LANES * 0.5;
@@ -200,7 +244,7 @@
     return c;
   }
   function activeGun() {
-    return (G.craft && G.craft.gun) || craftOf(G.save && G.save.craft).gun;
+    return (G.craft && G.craft.gun) || liveCraft(G.save && G.save.craft, G.save && G.save.driver).gun;
   }
   function gunDps() {
     const n = G.combo || 0;
@@ -211,6 +255,27 @@
   }
   function craftOf(id) {
     return craftNorm(CRAFTS.find(function (c) { return c.id === id; }) || CRAFTS[0]);
+  }
+  function driverOf(id) {
+    return DRIVERS.find(function (d) { return d.id === id; }) || DRIVERS[0];
+  }
+  function liveCraft(craftId, driverId) {
+    const c = craftOf(craftId || (G.save && G.save.craft));
+    const d = driverOf(driverId || (G.save && G.save.driver));
+    const m = d.mul || {};
+    c.accelMul = m.accel || 1;
+    c.vmaxMul = m.vmax || 1;
+    c.boostFillMul = m.boostFill || 1;
+    c.boostTank = (c.boostTank || 1) * (m.boostTank || 1);
+    c.boostPower = (c.boostPower || 1) * (m.boostPower || 1);
+    if (c.gun) {
+      c.gun = Object.assign({}, c.gun);
+      c.gun.dps = (c.gun.dps || 2.2) * (m.gunDps || 1);
+      c.gun.pierce = (c.gun.pierce || 1) + (m.gunPierce || 0);
+      if (m.gunRange) c.gun.range = (c.gun.range || 52) * m.gunRange;
+    }
+    c.driver = d;
+    return c;
   }
   function driveFrac(c) {
     if (c.drive === "fwd") return { f: 1, r: 0 };
@@ -239,7 +304,7 @@
     return Math.pow(P / Math.max(k, 0.05), 1 / 3) / YD;
   }
   function topSpeedYd(c) {
-    return baseTopSpeedYd(c) + comboVmaxBonusYd();
+    return (baseTopSpeedYd(c) + comboVmaxBonusYd()) * ((c && c.vmaxMul) || 1);
   }
 
   const OPTIONS = [
@@ -960,7 +1025,7 @@
 
   function defaultSave() {
     return {
-      name: "", craft: "apex", ghosts: {}, rounds: [], options: defaultOptions(),
+      name: "", craft: "apex", driver: "mira", ghosts: {}, rounds: [], options: defaultOptions(),
       arcade: { bestScore: 0, bestCombo: 0, runs: [] },
       custom: { laps: 12, seed: "" }
     };
@@ -973,6 +1038,7 @@
       s.custom = Object.assign({ laps: 12, seed: "" }, s.custom || {});
       if (!Array.isArray(s.arcade.runs)) s.arcade.runs = [];
       if (!CRAFTS.some(function (c) { return c.id === s.craft; })) s.craft = "apex";
+      if (!DRIVERS.some(function (d) { return d.id === s.driver; })) s.driver = "mira";
       return s;
     } catch (e) { return defaultSave(); }
   }
@@ -1067,10 +1133,15 @@
   }
 
   function paintPilot() {
-    const c = G.craft;
-    if ($("pilotImg")) $("pilotImg").src = c.src;
-    if ($("pilotName")) $("pilotName").textContent = c.name;
-    if ($("pilotTag")) $("pilotTag").textContent = c.tag;
+    const d = driverOf(G.save && G.save.driver);
+    const c = G.craft || liveCraft();
+    if ($("pilotImg")) {
+      $("pilotImg").src = d.src;
+      $("pilotImg").alt = d.name;
+    }
+    if ($("pilotName")) $("pilotName").textContent = d.name;
+    if ($("pilotTag")) $("pilotTag").textContent = d.tag;
+    if ($("pilotCraft")) $("pilotCraft").textContent = c.name + " · " + d.bonus;
   }
 
   function spawnOnGrid() {
@@ -1083,7 +1154,7 @@
     }
     const tr = G.track;
     if (tr.kind === "ridge") G.field = "solo";
-    const p1craft = craftOf(G.save.craft);
+    const p1craft = liveCraft(G.save.craft, G.save.driver);
     const p1ix = Math.max(0, CRAFTS.findIndex(function (c) { return c.id === p1craft.id; }));
     const p2craft = craftOf(CRAFTS[(p1ix + 1) % CRAFTS.length].id);
     const wantSplit = isSplit() && tr.kind !== "ridge";
@@ -1175,7 +1246,7 @@
     G.mode = "race";
     G.track = track;
     G.laps = track.laps;
-    G.craft = craftOf(G.save.craft);
+    G.craft = liveCraft(G.save.craft, G.save.driver);
     spawnOnGrid();
   }
   function pickField(track) {
@@ -1289,6 +1360,7 @@
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
+    G.craft = liveCraft(G.save.craft, G.save.driver);
     G.car = { x: x0, y: -lane, h: 0, vh: 0, speed: 0, steer: 0, boost: (G.craft && G.craft.boostTank) || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0 };
     const opp = craftNorm(CRAFTS[(Math.random() * CRAFTS.length) | 0]);
     G.aiCraft = opp;
@@ -1842,7 +1914,7 @@
     const on0 = Math.abs(proj0.lat) <= G.track.width;
     const ridge = G.track && G.track.kind === "ridge";
     if (boostOn) car.boost = Math.max(0, car.boost - dt * (ridge ? 0.5 : 0.42));
-    else if (on0) car.boost = Math.min(tank, car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost);
+    else if (on0) car.boost = Math.min(tank, car.boost + dt * (ridge ? 0.065 : 0.18) * c.boost * (c.boostFillMul || 1));
     const fx = racer.kind === "human" && racer.slot === 0;
     const manual = !!inp.manual && racer.kind === "human";
     if (manual) {
@@ -1886,7 +1958,7 @@
       racer.sparks = clamp(slipAbs * 1.5, 0, 1);
       if (fx) G.sparks = Math.max(G.sparks, racer.sparks);
       if (ebrake) car.speed *= (1 - 0.12 * dt);
-      if (on0 && !boostOn) car.boost = Math.min(tank, car.boost + dt * 0.42 * c.boost * clamp(slipAbs, 0, 0.8));
+      if (on0 && !boostOn) car.boost = Math.min(tank, car.boost + dt * 0.42 * c.boost * (c.boostFillMul || 1) * clamp(slipAbs, 0, 0.8));
     } else if ((car.wheelSlip || 0) < 0.25) {
       racer.sparks = (racer.sparks || 0) * 0.88;
       if (fx) G.sparks *= 0.88;
@@ -1992,6 +2064,7 @@
     else if (car.gear === 3) Fdrive *= 2.72;
     else if (car.gear === 4) Fdrive *= 0.9;
     else if (car.gear >= 5) Fdrive *= 0.84;
+    Fdrive *= (c.accelMul || 1);
     const axEst = car.speed >= 0 ? 1 : -1;
     const df = driveFrac(c);
     const rearLoad = clamp(0.47 + 0.16 * clamp(-axEst * inp.throttle + inp.brake, -1, 1), 0.28, 0.72);
@@ -2004,6 +2077,7 @@
     else if (car.gear === 2) Fmax *= 1.82;
     else if (car.gear === 3) Fmax *= 1.68;
     else if (car.gear >= 4) Fmax *= 1.08;
+    Fmax *= Math.min(1.35, 0.85 + 0.15 * (c.accelMul || 1));
     const want = Math.abs(Fdrive);
     if (want > Fmax && clutch && inp.throttle > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
@@ -2023,6 +2097,8 @@
       const vBoost = 1 + BOOST_VMAX * bp;
       Fdrag /= (vBoost * vBoost);
     }
+    const vMul = c.vmaxMul || 1;
+    if (vMul > 1) Fdrag /= (vMul * vMul);
     const Froll = c.crr * c.massKg * G0 * (vAbs < 0.15 ? 0 : (vMs >= 0 ? 1 : -1));
     const Fbrk = inp.brake * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
     const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
@@ -2727,6 +2803,7 @@
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +
+      "<li>Garage: pick a chassis and a driver. Driver bonuses stack on the car — accel, top speed, boost tank, boost hit, guns. The in-run plate shows who is driving.</li>" +
       "<li>Options (title card or dock) holds ghost, camera, HUD. New rows land there as the game grows.</li></ol>" +
       "<p class='lore'><a href='./whitepaper.html'>Whitepaper</a> is the spec.</p>" +
       "<button class='btn gold' id='hk'>Back</button>"
@@ -2746,6 +2823,8 @@
   function garage() {
     if (window.HavenCar) HavenCar.closeStudio();
     const c = craftOf(G.save.craft);
+    const d = driverOf(G.save.driver);
+    const live = liveCraft(c.id, d.id);
     G.save.craft = c.id;
     writeSave(G.save);
     showSheet(
@@ -2754,22 +2833,28 @@
           "<canvas id='garageCanvas'></canvas>" +
           "<img class='garage-fallback' id='garageFallback' src='" + (c.hero || c.src) + "' alt='" + c.name + "'>" +
           "<div class='garage-stage-fade'></div>" +
-          "<p class='garage-hint'>Drag to orbit · four bays live</p>" +
+          "<p class='garage-hint'>Drag to orbit · pick a bay and a driver</p>" +
         "</div>" +
         "<div class='title-panel'>" +
-          "<p class='kicker'>Garage · four bays live</p>" +
+          "<p class='kicker'>Garage · chassis + driver</p>" +
           "<h1>" + c.name + "</h1>" +
-          "<p class='title-tag'>" + c.tag + "</p>" +
+          "<p class='title-tag'>" + c.tag + " · " + d.name + "</p>" +
           "<p class='lore'>" + c.lore + "</p>" +
+          "<p class='lore'><b>" + d.name + "</b> — " + d.lore + "</p>" +
+          "<p class='lore' style='color:#fbbf24'>" + d.bonus + " stacked on this car.</p>" +
           "<div class='stat-block'>" +
-            "<p class='lore'>" + String(c.drive || "rwd").toUpperCase() + " · " + c.hp + " hp · " + c.torque + " lb-ft · " +
-            c.massKg + " kg · " + (c.gears && c.gears.length) + "-spd</p>" +
+            "<p class='lore'>" + String(live.drive || "rwd").toUpperCase() +
+            " · tank " + live.boostTank.toFixed(2) +
+            " · boost ×" + live.boostPower.toFixed(2) +
+            " · accel ×" + (live.accelMul || 1).toFixed(2) +
+            " · vmax ×" + (live.vmaxMul || 1).toFixed(2) + "</p>" +
             statRow("Power", c.hp, 850) +
             statRow("Torque", c.torque, 750) +
             statRow("Grip μ", c.mu, 2) +
             statRow("Turn", c.turn, 2.6) +
-            statRow("Boost", c.boostTank || c.boost, 2) +
-            "<p class='lore' style='margin-top:.35rem'>Endless gun · <b>" + ((c.gun && c.gun.name) || "Lattice MG") + "</b></p>" +
+            statRow("Boost tank", live.boostTank, 3) +
+            "<p class='lore' style='margin-top:.35rem'>Endless gun · <b>" + ((live.gun && live.gun.name) || "Lattice MG") +
+            "</b> · dps " + (live.gun && live.gun.dps ? live.gun.dps.toFixed(1) : "—") + "</p>" +
           "</div>" +
           "<p class='kicker' style='margin-top:.85rem'>Bays</p>" +
           "<div class='cast-grid garage-bays'>" +
@@ -2777,12 +2862,16 @@
               return "<button type='button' class='cast" + (cr.id === c.id ? " on" : "") + "' data-cast='" + cr.id + "'>" +
                 "<img src='" + cr.src + "' alt='" + cr.name + "'><b>" + cr.name + "</b><span>" + cr.tag + "</span></button>";
             }).join("") +
-            LOCKED_BAYS.map(function (b) {
-              return "<button type='button' class='cast locked' disabled><span class='cast-soon'>Locked</span><b>" + b.name + "</b><span>" + b.tag + "</span></button>";
+          "</div>" +
+          "<p class='kicker' style='margin-top:.85rem'>Drivers</p>" +
+          "<div class='cast-grid garage-drivers'>" +
+            DRIVERS.map(function (dr) {
+              return "<button type='button' class='cast" + (dr.id === d.id ? " on" : "") + "' data-driver='" + dr.id + "'>" +
+                "<img src='" + dr.src + "' alt='" + dr.name + "'><b>" + dr.name + "</b><span>" + dr.bonus + "</span></button>";
             }).join("") +
           "</div>" +
           "<div class='modes'>" +
-            "<button type='button' class='btn gold' data-go='confirmCraft'>Lock in chassis</button>" +
+            "<button type='button' class='btn gold' data-go='confirmCraft'>Lock in pair</button>" +
             "<button type='button' class='btn' data-go='title'>Back</button>" +
           "</div>" +
           donateHtml() +
@@ -2825,6 +2914,7 @@
     $("boot").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
     const c = craftOf(G.save.craft);
+    const d = driverOf(G.save.driver);
     showSheet(
       "<div class='title-screen'>" +
         "<div class='title-art'><img src='" + (c.hero || c.src) + "' alt='" + c.name + "'><div class='title-art-fade'></div></div>" +
@@ -2837,14 +2927,16 @@
           "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
           "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
           "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
-          "<p class='kicker' style='margin-top:.75rem'>Chassis</p>" +
+          "<p class='kicker' style='margin-top:.75rem'>Pair</p>" +
           "<div class='garage-chip'>" +
+            "<img src='" + d.src + "' alt='" + d.name + "'>" +
+            "<div><b>" + d.name + "</b><span>" + d.bonus + "</span></div>" +
             "<img src='" + c.src + "' alt='" + c.name + "'>" +
-            "<div><b>" + c.name + "</b><span>" + c.tag + (c.id === "apex" ? " · GT" : " · truck") + "</span></div>" +
+            "<div><b>" + c.name + "</b><span>" + c.tag + "</span></div>" +
             "<button type='button' class='btn gold' data-go='garage'>Garage</button>" +
           "</div>" +
           "<div class='mode-grid'>" +
-            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Four live bays. Apex, Boxcut, Flick hatch, Sleet AWD.</span></button>" +
+            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Pick a chassis and a driver. Bonuses stack.</span></button>" +
             "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil · " + PINE.laps + " laps</b><span>" + PINE.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
@@ -2869,10 +2961,15 @@
       if (pick) {
         G.save.craft = pick.getAttribute("data-cast");
         writeSave(G.save);
-        document.querySelectorAll(".cast").forEach(function (el) {
-          el.classList.toggle("on", el.getAttribute("data-cast") === G.save.craft);
-        });
-        G.craft = craftOf(G.save.craft);
+        G.craft = liveCraft(G.save.craft, G.save.driver);
+        if (G._sheet === "garage") garage();
+        return;
+      }
+      const drv = e.target.closest("[data-driver]");
+      if (drv) {
+        G.save.driver = drv.getAttribute("data-driver");
+        writeSave(G.save);
+        G.craft = liveCraft(G.save.craft, G.save.driver);
         if (G._sheet === "garage") garage();
         return;
       }
@@ -2960,7 +3057,7 @@
   });
 
   $("boot").classList.add("hidden");
-  G.craft = craftOf(G.save.craft);
+  G.craft = liveCraft(G.save.craft, G.save.driver);
   applyOptions();
   if (window.ArcadeLedger) ArcadeLedger.boot();
   menu();
