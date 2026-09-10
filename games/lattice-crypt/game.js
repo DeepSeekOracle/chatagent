@@ -700,27 +700,87 @@
     });
     say(u.name + " — " + u.spec);
   }
+  function markUpgradeSel() {
+    const cards = document.querySelectorAll("[data-up]");
+    cards.forEach((el) => el.classList.toggle("on", +el.getAttribute("data-up") === (G._upSel || 0)));
+  }
+  function confirmSurviveUp(i) {
+    if (!G || !G._ups || G._upLock) return;
+    const u = G._ups[i];
+    if (!u) return;
+    G._upLock = true;
+    applySurviveUp(u);
+    G._ups = null;
+    G._upLock = false;
+    hideOverlay();
+    overlayMode = null;
+    $("overlay").onclick = null;
+    if (G.pendingLvl > 0) offerSurviveUp();
+  }
+  function pollUpgradePick() {
+    if (!G || !G._ups) return;
+    const n = G._ups.length;
+    if (G._upSel == null) G._upSel = 0;
+    let dir = 0, ok = false;
+    if (keyEdge.ArrowLeft || keyEdge.KeyA || keyEdge.KeyQ) dir = -1;
+    if (keyEdge.ArrowRight || keyEdge.KeyD || keyEdge.KeyE) dir = 1;
+    if (keyEdge.Digit1 || keyEdge.Numpad1) { confirmSurviveUp(0); keyEdge = {}; return; }
+    if (keyEdge.Digit2 || keyEdge.Numpad2) { confirmSurviveUp(1); keyEdge = {}; return; }
+    if (keyEdge.Digit3 || keyEdge.Numpad3) { confirmSurviveUp(2); keyEdge = {}; return; }
+    if (keyEdge.Enter || keyEdge.KeyJ || keyEdge.Space || keyEdge.Numpad0) ok = true;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let anyHold = false;
+    for (let i = 0; i < pads.length; i++) {
+      const pad = pads[i];
+      if (!pad) continue;
+      const ax = pad.axes[0] || 0;
+      const left = ax < -0.55 || (pad.buttons[14] && pad.buttons[14].pressed);
+      const right = ax > 0.55 || (pad.buttons[15] && pad.buttons[15].pressed);
+      const confirm = (pad.buttons[0] && pad.buttons[0].pressed) ||
+        (pad.buttons[7] && pad.buttons[7].pressed) ||
+        (pad.buttons[9] && pad.buttons[9].pressed);
+      if (left || right || confirm) anyHold = true;
+      if (G._upHold) continue;
+      if (left && !G._upPadL) dir = -1;
+      if (right && !G._upPadR) dir = 1;
+      G._upPadL = left;
+      G._upPadR = right;
+      if (confirm) ok = true;
+    }
+    if (G._upHold) {
+      if (!anyHold && !keys.Enter && !keys.KeyJ && !keys.Space && !keys.Numpad0) G._upHold = false;
+      keyEdge = {};
+      return;
+    }
+    if (dir) {
+      G._upSel = (G._upSel + dir + n) % n;
+      markUpgradeSel();
+      beep("pick");
+    }
+    if (ok) confirmSurviveUp(G._upSel);
+    keyEdge = {};
+  }
   function offerSurviveUp() {
     const picks = rollSurviveUps();
     G._ups = picks;
+    G._upSel = 0;
+    G._upHold = true;
+    G._upPadL = true;
+    G._upPadR = true;
+    G._upLock = false;
     G.pendingLvl--;
     overlayMode = "sheet";
     showSheet(
       "<p class='kicker'>The lattice grows</p><h2>Level " + G.lvl + "</h2>" +
-      "<p class='lore'>Pick one. Stacks keep. Wave " + surviveWave() + ".</p>" +
+      "<p class='lore'>Pick one. Stacks keep. Wave " + surviveWave() + ". Stick / D-pad to choose, A to take. 1–3 or Enter.</p>" +
       "<div class='mode-grid'>" + picks.map((u, i) =>
-        "<button type='button' class='mode-card' data-up='" + i + "'><b>" + u.name + "</b><span>" + u.spec + "</span></button>"
+        "<button type='button' class='mode-card" + (i === 0 ? " on" : "") + "' data-up='" + i + "'><b>" + u.name + "</b><span>" + u.spec + "</span></button>"
       ).join("") + "</div>"
     );
     $("overlay").onclick = function (e) {
       const b = e.target.closest("[data-up]");
       if (!b || !G._ups) return;
-      applySurviveUp(G._ups[+b.getAttribute("data-up")]);
-      G._ups = null;
-      hideOverlay();
-      overlayMode = null;
-      $("overlay").onclick = null;
-      if (G.pendingLvl > 0) offerSurviveUp();
+      confirmSurviveUp(+b.getAttribute("data-up"));
     };
   }
 
@@ -1036,6 +1096,32 @@
   function blocked(lv, x, y) {
     const t = tileAt(lv, x, y);
     return t === "wall" || t === "door" || t === "exit_lock";
+  }
+  function firstWallOnSeg(x0, y0, x1, y1) {
+    const lv = G.level;
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const steps = Math.max(1, Math.ceil(dist * 12));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      if (blocked(lv, x, y) && tileAt(lv, x, y) !== "door_open") return { x, y };
+    }
+    return null;
+  }
+  function hasLos(x0, y0, x1, y1) {
+    const lv = G.level;
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const steps = Math.max(1, Math.ceil(dist * 10));
+    const sx = Math.floor(x0), sy = Math.floor(y0);
+    const tx = Math.floor(x1), ty = Math.floor(y1);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      const gx = Math.floor(x), gy = Math.floor(y);
+      if ((gx === sx && gy === sy) || (gx === tx && gy === ty)) continue;
+      if (blocked(lv, x, y) && tileAt(lv, x, y) !== "door_open") return false;
+    }
+    return true;
   }
   function shadeHidden(f) {
     return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
@@ -1746,13 +1832,13 @@
         }
         if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
       }
-      if (def.shoot && f.t > 1.1 && bd < 9) {
+      if (def.shoot && f.t > 1.1 && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", trail: [{ x: f.x, y: f.y }] });
+        G.shots.push({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
-      if (def.lob && f.t > 1.4) {
+      if (def.lob && f.t > 1.4 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", trail: [{ x: f.x, y: f.y }] });
+        G.shots.push({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
     });
     lv.foes = lv.foes.filter((f) => {
@@ -1771,12 +1857,13 @@
       s.trail = s.trail || [];
       s.trail.push({ x: s.x, y: s.y });
       if (s.trail.length > (s.wep === "needle" ? 12 : 8)) s.trail.shift();
-      const inWall = blocked(lv, s.x, s.y) && tileAt(lv, s.x, s.y) !== "door_open";
-      if (!inWall) s.air = true;
-      if (!s.lob && inWall && (s.air || s.grace <= 0)) {
+      const wallHit = (s.foe || !s.lob) ? firstWallOnSeg(s.px || s.x, s.py || s.y, s.x, s.y) : null;
+      if (!wallHit) s.air = true;
+      if (wallHit && (s.air || (s.grace || 0) <= 0)) {
         if (!s.foe && ((s.owner && s.owner.reflect > 0) || s.echo) && !s.bounced) {
-          s.vx *= -1; s.vy *= -1; s.bounced = true; s.x += s.vx * dt; s.y += s.vy * dt;
+          s.vx *= -1; s.vy *= -1; s.bounced = true; s.x = (s.px || s.x); s.y = (s.py || s.y);
         } else {
+          s.x = wallHit.x; s.y = wallHit.y;
           smashItem(s);
           G.fx.push({ x: s.x, y: s.y, life: 0.16, kind: "hit", wep: wepKey(s) });
           s.life = 0; return;
@@ -1785,6 +1872,7 @@
       if (s.foe) {
         liveP.forEach((p) => {
           if (p.veil > 0) return;
+          if (firstWallOnSeg(s.px || s.x, s.py || s.y, p.x, p.y)) return;
           if (distSeg(p.x, p.y, s.px || s.x, s.py || s.y, s.x, s.y) < 0.46) {
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
@@ -2264,7 +2352,7 @@
     showSheet("<h2>How to play</h2><ol class='lore'>" +
       "<li>Health ticks down. Smash <b>nexuses</b> or the floor fills. Find the cyan exit.</li>" +
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
-      "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Space / Enter credit a fallen warden.</li>" +
+      "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is one huge crypt: waves, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
@@ -2279,6 +2367,7 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (overlayMode !== "menu" && overlayMode !== "sheet") update(dt);
+    else if (G && G._ups) pollUpgradePick();
     draw();
     requestAnimationFrame(loop);
   }

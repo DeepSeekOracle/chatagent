@@ -129,7 +129,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   text-align: left; width: 100%; background: #10141ccc; border: 1px solid var(--line);
   border-radius: 12px; padding: .65rem .75rem; cursor: pointer; color: var(--text); font-family: inherit;
 }
-.mode-card:hover { border-color: var(--gold); }
+.mode-card:hover, .mode-card.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 .mode-card b { display: block; font-family: Syne, sans-serif; }
 .mode-card span { display: block; color: var(--mute); font-size: .78rem; margin-top: .12rem; }
 .sheet {
