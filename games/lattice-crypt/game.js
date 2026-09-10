@@ -820,6 +820,14 @@
       emit("onWaveStart", { w: w });
       feel("wave");
       G._spawnQ = (G._spawnQ || 0) + 40 + Math.min(180, w * 14);
+      G.score += 50 + w * 10;
+      if (w % 5 === 0) {
+        G.players.forEach(function (p) {
+          if (!p.dead) p.hp = Math.min(p.max, p.hp + Math.round(p.max * 0.12));
+        });
+        hallMark("wave");
+        say("Wave " + w + " sealed — hall takes the mark. A sip for holding.");
+      }
     }
     const cap = surviveCap(w);
     G.spawnT -= dt;
@@ -866,7 +874,7 @@
   function onSurviveKill(f) {
     G.kills = (G.kills || 0) + 1;
     G.score += 6 + surviveWave() * 2;
-    G.xp += 1 + ((surviveWave() / 5) | 0);
+    G.xp += 1 + ((surviveWave() / 5) | 0) + (((G.lvl || 1) / 8) | 0);
     if (Math.random() < 0.07 && G.level.items.length < 90) {
       dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
     }
@@ -1202,6 +1210,41 @@
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
   function surviveXpNeed(lv) { return 10 + lv * 6; }
+  function threatIndex() {
+    if (!G) return 0;
+    if (G.mode === "survive") {
+      const L = Math.max(1, G.lvl || 1);
+      const W = surviveWave();
+      return Math.max(0, (L - 1) + 0.55 * (W - 1));
+    }
+    return Math.max(0, G.floor || 0);
+  }
+  function hpScale() {
+    const t = threatIndex();
+    return 1 + 0.11 * t + (0.007 * t * t) / (t + 14);
+  }
+  function spdScale() {
+    return Math.min(1.38, 1 + 0.012 * threatIndex());
+  }
+  function dmgScale() {
+    const t = threatIndex();
+    return 1 + 0.055 * t + (0.0035 * t * t) / (t + 18);
+  }
+  function hallMark(kind) {
+    if (!G || !window.ArcadeLedger) return;
+    const posted = Math.max(0, (G.score / Math.max(1, G.credits)) | 0);
+    ArcadeLedger.crypt({
+      name: (persist.name || "Warden").slice(0, 18),
+      score: posted,
+      raw: G.score,
+      floor: G.mode === "survive" ? surviveWave() : (G.floor + 1),
+      credits: G.credits,
+      mode: G.mode,
+      lvl: G.lvl || 1,
+      mark: kind || "run",
+      date: new Date().toISOString().slice(0, 10)
+    });
+  }
 
   function genSurvive(seed) {
     const R = rng(seed ^ 0x51A11);
@@ -1414,10 +1457,18 @@
     const d = FOE[kind] || FOE.brute;
     const k = FOE[kind] ? kind : "brute";
     let hp = k === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank);
-    if (G && G.mode === "survive") {
-      const w = surviveWave();
-      hp = k === "drain" ? 40 + w * 6 : (d.super ? Math.round(90 + w * 24) : (d.boss ? Math.round(16 + w * 9) : Math.max(1, Math.round(1 + w * 1.15))));
-      rank = 1 + Math.min(8, (w / 4) | 0);
+    if (G) {
+      if (G.mode === "survive") {
+        const w = surviveWave();
+        const L = Math.max(1, G.lvl || 1);
+        const wavePart = k === "drain" ? 40 + w * 6 : (d.super ? 88 + w * 20 : (d.boss ? 14 + w * 8 : 1 + w * 0.95));
+        const lvlPart = 1 + 0.10 * (L - 1);
+        hp = Math.max(1, Math.round(wavePart * lvlPart * (1 + 0.004 * threatIndex())));
+        rank = 1 + Math.min(8, (w / 4) | 0);
+      } else {
+        hp = Math.max(1, Math.round(hp * hpScale()));
+        if (k === "drain") hp = Math.round(70 + (G.floor || 0) * 7 * hpScale());
+      }
     }
     const f = window.CryptStudio && CryptStudio.pool.foe ? CryptStudio.pool.foe.alloc() : {};
     f.kind = k; f.rank = rank; f.x = x; f.y = y;
@@ -2441,14 +2492,7 @@
       if (G.mode === "survive") persist.surviveBest = Math.max(persist.surviveBest || 0, G.score);
       savePersist();
       const posted = Math.max(0, (G.score / Math.max(1, G.credits)) | 0);
-      const waveOrFloor = G.mode === "survive" ? surviveWave() : G.floor + 1;
-      if (window.ArcadeLedger) {
-        ArcadeLedger.crypt({
-          name: (persist.name || "Warden").slice(0, 18),
-          score: posted, raw: G.score, floor: waveOrFloor, credits: G.credits,
-          date: new Date().toISOString().slice(0, 10)
-        });
-      }
+      hallMark("run");
       const rec = G.mode === "survive"
         ? "Wave " + surviveWave() + " · " + (G.kills || 0) + " kills · lv " + G.lvl
         : "Floor " + (G.floor + 1) + " · hall " + posted;
@@ -2507,7 +2551,7 @@
         if (bd < 3.2) { mx = -mx; my = -my; }
         else if (bd < 5.2) { mx = -my; my = mx; }
       }
-      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15) * spdMul, dt, ghost);
+      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15) * spdMul * spdScale(), dt, ghost);
       if (!ghost) unstick(f);
       else if (blocked(lv, f.x, f.y)) unstick(f);
       if (def.heal) {
@@ -2519,7 +2563,7 @@
       const hitR = def.boss ? 0.72 : 0.48;
       if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
-        const dmg = Math.max(2, def.dmg * (G.mode === "survive" ? (1 + surviveWave() * 0.09) : f.rank) - arm);
+        const dmg = Math.max(2, def.dmg * (G.mode === "survive" ? dmgScale() : (f.rank * dmgScale())) - arm);
         const iframe = (tgt.hurtT || 0) > 0.12;
         const surviveIframe = G.mode === "survive" && (tgt.hurtT || 0) > 0;
         if (f.kind === "drain") tgt.hp -= dmg * dt * 6.5;
@@ -2840,13 +2884,7 @@
     persist.campaignBest = Math.max(persist.campaignBest || 0, G.score);
     savePersist();
     const posted = Math.max(0, (G.score / Math.max(1, G.credits)) | 0);
-    if (window.ArcadeLedger) {
-      ArcadeLedger.crypt({
-        name: (persist.name || "Warden").slice(0, 18),
-        score: posted, raw: G.score, floor: G.floor + 1, credits: G.credits,
-        date: new Date().toISOString().slice(0, 10)
-      });
-    }
+    hallMark("win");
     showSheet(
       "<p class='kicker'>The lock opens</p><h2>First Descent complete</h2>" +
       "<p class='lore'>Four names held the door. Score " + G.score + " · hall " + posted + " · credits " + G.credits + ".</p>" +
@@ -2859,15 +2897,21 @@
 
   function nextFloor() {
     if (G.mode === "survive") return;
-    G.score += 80 + G.players.filter((p) => !p.dead).reduce((n, p) => n + Math.min(40, (p.hp / 20) | 0), 0);
     if (G.mode === "campaign" && window.LatticeCampaign && G.floor + 1 >= window.LatticeCampaign.LEN) {
       say("Floor " + (G.floor + 1) + " sealed.");
       winCampaign();
       return;
     }
-    say("Floor " + (G.floor + 1) + " sealed.");
+    const live = G.players.filter((p) => !p.dead);
+    const sip = live.reduce((n, p) => n + Math.min(50, (p.hp / 14) | 0), 0);
+    const bonus = 140 + G.floor * 22 + sip;
+    G.score += bonus;
+    live.forEach((p) => { p.hp = Math.min(p.max, p.hp + Math.round(p.max * 0.1)); });
+    hallMark("floor");
+    say("Floor " + (G.floor + 1) + " sealed · +" + bonus + " hall · a sip and a relic at the door.");
     feel("exit");
     loadFloor(G.floor + 1);
+    dropItemNear(G.level.start.x, G.level.start.y, rollLoot());
   }
 
   function credit() {
@@ -3521,7 +3565,8 @@
       "<button class='btn' id='menuRadio'>Radio</button></div>" +
       "<div class='donate-row'><a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
       "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener'>Patreon</a></div>" +
-      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='/games/'>All games</a> · <a href='./whitepaper.html'>Whitepaper</a></p></div></div>",
+      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='./ledger.html'>Live hall</a> · <a href='/games/'>Hub</a></p>" +
+      "<p class='hall-peek' id='hallPeek'>Hall loading…</p></div></div>",
       true
     );
     $("overlay").onclick = function (e) {
@@ -3546,6 +3591,36 @@
     if (mo) mo.onclick = (e) => { e.stopPropagation(); options("menu"); };
     const mr = $("menuRadio");
     if (mr) mr.onclick = (e) => { e.stopPropagation(); if (window.LatticeRadio) LatticeRadio.play(); };
+    paintHallPeek();
+  }
+  function paintHallPeek() {
+    const el = $("hallPeek");
+    if (!el) return;
+    const feeds = [
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/crypt/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json"
+    ];
+    (async function () {
+      let rows = [];
+      try {
+        const q = JSON.parse(localStorage.getItem("lygo-lattice-crypt-ledger-q") || "[]");
+        rows = rows.concat(q);
+      } catch (e) {}
+      for (let i = 0; i < feeds.length; i++) {
+        try {
+          const r = await fetch(feeds[i], { cache: "no-store" });
+          if (!r.ok) continue;
+          const data = await r.json();
+          const list = data.rounds || data.runs || (data.books && data.books["lattice-crypt"] && (data.books["lattice-crypt"].rows || data.books["lattice-crypt"].runs)) || (Array.isArray(data) ? data : []);
+          if (list && list.length) { rows = rows.concat(list); break; }
+        } catch (e) {}
+      }
+      rows.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+      const top = rows.slice(0, 3);
+      el.innerHTML = top.length
+        ? ("LIVE HALL · " + top.map(function (r, i) { return (i + 1) + ". " + String(r.name || "Warden").replace(/[<>]/g, "") + " " + (r.score || 0); }).join(" · "))
+        : "LIVE HALL · empty (honest). Finish a floor or wave to inscribe.";
+    })();
   }
 
   function help() {

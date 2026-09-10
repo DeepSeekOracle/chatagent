@@ -11,7 +11,8 @@
   function recKey(rec) {
     return [
       rec.game, rec.event, rec.name, rec.score, rec.ms, rec.total, rec.vsPar,
-      rec.rating, rec.wins, rec.date, rec.trackId || rec.courseId || ""
+      rec.rating, rec.wins, rec.date, rec.floor || "", rec.mark || "", rec.mode || "",
+      rec.trackId || rec.courseId || ""
     ].join("|");
   }
   function enqueue(qk, rec) {
@@ -84,11 +85,17 @@
     },
     boot: function () {
       var url = SPACE + "/arcade/submit";
-      flush("lygo-haven-rally-ledger-q", url);
-      flush("lygo-lattice-golf-ledger-q", url);
-      flush("lygo-swarm-ledger-q", url);
-      flush("lygo-eternal-ledger-q", url);
-      flush("lygo-lattice-crypt-ledger-q", url);
+      function pulse() {
+        flush("lygo-haven-rally-ledger-q", url);
+        flush("lygo-lattice-golf-ledger-q", url);
+        flush("lygo-swarm-ledger-q", url);
+        flush("lygo-eternal-ledger-q", url);
+        flush("lygo-lattice-crypt-ledger-q", url);
+      }
+      pulse();
+      if (!w._arcadeLedgerPulse) {
+        w._arcadeLedgerPulse = setInterval(pulse, 45000);
+      }
     }
   };
 })(window);

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-06",
+  "updated": "2026-09-10",
   "hub": "https://chatagent.ca/games/",
   "board": "https://chatagent.ca/games/board.html",
   "space": "https://deepseekoracle-lattice-marines-ledger.hf.space",
@@ -62,7 +62,9 @@
       "play": "/games/lattice-crypt/",
       "ledger": "/games/lattice-crypt/ledger.html",
       "feeds": [
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
         "https://deepseekoracle-lattice-marines-ledger.hf.space/crypt/ledger.json",
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
         "/games/lattice-crypt/ledger.json"
       ]
     },

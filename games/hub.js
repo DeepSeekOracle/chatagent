@@ -198,6 +198,7 @@
     if (Array.isArray(book.rounds)) return book.rounds;
     if (Array.isArray(book.scores)) return book.scores;
     if (Array.isArray(book.ladder)) return book.ladder;
+    if (Array.isArray(book.runs)) return book.runs;
     return [];
   }
 
@@ -260,6 +261,12 @@
     etern = etern.filter(function (r) { return !!r.name; }).sort(function (a, b) { return (b.rating || 0) - (a.rating || 0); });
     paintHall("eternal", etern.length ? (stamp + etern.length + " sealed names") : "No sealed names yet.", etern.slice(0, 12).map(function (r) {
       return { name: r.name, score: String(r.rating || 1000) + " rt", meta: (r.wins || 0) + "W / " + (r.losses || 0) + "L" };
+    }));
+
+    var crypt = bookRows(books["lattice-crypt"]).concat(lsJson("lygo-lattice-crypt-ledger-q") || []);
+    crypt = crypt.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    paintHall("crypt", crypt.length ? (stamp + crypt.length + " runs") : "No crypt runs yet.", crypt.slice(0, 12).map(function (r) {
+      return { name: r.name || "Warden", score: String(r.score), meta: [r.mode, r.floor != null ? "f/w " + r.floor : "", r.date || ""].filter(Boolean).join(" · ") };
     }));
   }
 
@@ -435,6 +442,41 @@
             score: String(r.rating || 1000) + " rt",
             meta: (r.wins || 0) + "W / " + (r.losses || 0) + "L"
           };
+        })
+      );
+    });
+
+    bestJson([
+      "https://deepseekoracle-lattice-marines-ledger.hf.space/crypt/ledger.json",
+      "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
+      "/games/lattice-crypt/ledger.json"
+    ], function (j) {
+      if (!j) return [];
+      if (Array.isArray(j.runs)) return j.runs;
+      if (Array.isArray(j.rounds)) return j.rounds;
+      if (j.books && j.books["lattice-crypt"]) return bookRows(j.books["lattice-crypt"]);
+      return [];
+    }).then(function (data) {
+      var rows = [];
+      if (data) {
+        if (Array.isArray(data.runs)) rows = data.runs.slice();
+        else if (Array.isArray(data.rounds)) rows = data.rounds.slice();
+        else if (data.books && data.books["lattice-crypt"]) rows = bookRows(data.books["lattice-crypt"]).slice();
+      }
+      var q = lsJson("lygo-lattice-crypt-ledger-q") || [];
+      rows = rows.concat(q).filter(function (r) { return (r.score || 0) > 0; });
+      var seen = {};
+      rows = rows.filter(function (r) {
+        var k = (r.name || "") + "|" + (r.score || 0) + "|" + (r.floor || "") + "|" + (r.date || "");
+        if (seen[k]) return false;
+        seen[k] = 1;
+        return true;
+      }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+      paintHall(
+        "crypt",
+        rows.length ? (rows.length + " runs · public book") : "No crypt runs yet.",
+        rows.slice(0, 12).map(function (r) {
+          return { name: r.name || "Warden", score: String(r.score), meta: [r.mode, r.floor != null ? "f/w " + r.floor : "", r.date || ""].filter(Boolean).join(" · ") };
         })
       );
     });

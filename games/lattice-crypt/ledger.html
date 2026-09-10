@@ -41,7 +41,9 @@ a { color:#5eead4; }
 (function(){
   function esc(s){ return String(s||"").replace(/[<>]/g,""); }
   var FEEDS = [
+    "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
     "https://deepseekoracle-lattice-marines-ledger.hf.space/crypt/ledger.json",
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
     "./ledger.json"
   ];
   async function pull(){
@@ -52,8 +54,8 @@ a { color:#5eead4; }
         var r = await fetch(FEEDS[i], { cache:"no-store" });
         if (!r.ok) continue;
         var data = await r.json();
-        var list = data.rounds || data.runs || (Array.isArray(data) ? data : []);
-        if (list.length) { rows = list.slice(); src = FEEDS[i].replace(/^https?:\/\//,""); break; }
+        var list = data.rounds || data.runs || (data.books && data.books["lattice-crypt"] && (data.books["lattice-crypt"].rows || data.books["lattice-crypt"].runs)) || (Array.isArray(data) ? data : []);
+        if (list && list.length) { rows = list.slice(); src = FEEDS[i].replace(/^https?:\/\//,""); break; }
       } catch(e) {}
     }
     try {
@@ -70,6 +72,7 @@ a { color:#5eead4; }
     }).join("") || "<p class='muted'>No runs yet.</p>";
   }
   pull();
+  setInterval(pull, 40000);
 })();
 </script>
 </body>

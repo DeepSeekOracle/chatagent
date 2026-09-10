@@ -516,6 +516,10 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
 }
 .donate-row { display: flex; flex-wrap: wrap; gap: .45rem; margin: .7rem 0 0; }
 .donate-row a { text-decoration: none; font: 700 .78rem Syne, sans-serif; padding: .5rem .75rem; border-radius: 8px; }
+.hall-peek {
+  font: 600 .72rem "IBM Plex Mono", monospace; color: var(--gold);
+  letter-spacing: .04em; margin: .45rem 0 0; min-height: 1.2em;
+}
 .donate-paypal { background: #0070ba; color: #fff !important; }
 .donate-patreon { background: #f96854; color: #111 !important; }
 .lore { font-size: .82rem; color: var(--mute); line-height: 1.5; }
