@@ -25,7 +25,7 @@ must(game.indexOf("function blit") >= 0, "pre-scale blit");
 must(studio.indexOf("createStereoPanner") >= 0, "spatial SFX");
 must(studio.indexOf("drumOsc") >= 0, "drum stem");
 must(game.indexOf("999999999") >= 0, "score cap");
-must(game.indexOf("Math.min(300") >= 0, "300 foe cap");
+must(game.indexOf("Math.min(1000") >= 0, "1000 foe cap");
 must(game.indexOf("visibilitychange") >= 0, "tab pause");
 must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {

@@ -95,10 +95,10 @@
   }
 
   const pool = {
-    shot: makePool(resetShot, 320),
+    shot: makePool(resetShot, 640),
     particle: makePool(resetPart, 420),
     floater: makePool(resetFloat, 96),
-    foe: makePool(resetFoe, 320)
+    foe: makePool(resetFoe, 1100)
   };
   const particles = [];
   const floaters = [];

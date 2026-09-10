@@ -59,7 +59,7 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
   "paintTileCache", "blit(", "cryptBg", "createStereoPanner"].forEach(function (k) {
   if (game.indexOf(k) < 0 && src.indexOf(k) < 0) throw new Error("missing " + k);
 });
-if (game.indexOf("Math.min(300") < 0) throw new Error("cap not 300");
+if (game.indexOf("Math.min(1000") < 0) throw new Error("cap not 1000");
 const foe = S.pool.foe.alloc();
 S.pool.foe.free(foe);
 const bornF = S.counts().foesBorn;

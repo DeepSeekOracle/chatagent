@@ -672,16 +672,27 @@
     const pool = w >= 5 ? KINDS_HOT : KINDS;
     return pool[(Math.random() * pool.length) | 0];
   }
-  function spawnSurviveAround(kind, boss) {
+  function spawnSurviveAround(kind, boss, n) {
+    n = Math.max(1, n || 1);
     const live = G.players.find((p) => !p.dead) || G.players[0];
-    if (!live) return false;
+    if (!live) return 0;
+    const cap = surviveCap(surviveWave());
     const vw = Math.max(16, (canvas.clientWidth / TILE) * 0.58);
     const vh = Math.max(12, (canvas.clientHeight / TILE) * 0.58);
     const ring = Math.max(vw, vh) + 2;
-    for (let t = 0; t < 16; t++) {
-      const ang = Math.random() * 6.28;
-      const dist = ring + Math.random() * 12;
-      let x = live.x + Math.cos(ang) * dist, y = live.y + Math.sin(ang) * dist;
+    let made = 0, base = null;
+    for (let t = 0; t < 36 && made < n; t++) {
+      if (G.level.foes.length >= cap) break;
+      let x, y;
+      if (base && made > 0) {
+        x = base.x + (Math.random() - 0.5) * 4.5;
+        y = base.y + (Math.random() - 0.5) * 4.5;
+      } else {
+        const ang = Math.random() * 6.28;
+        const dist = ring + Math.random() * 18;
+        x = live.x + Math.cos(ang) * dist;
+        y = live.y + Math.sin(ang) * dist;
+      }
       x = Math.max(4, Math.min(G.level.W - 5, x));
       y = Math.max(4, Math.min(G.level.H - 5, y));
       const tx = Math.floor(x), ty = Math.floor(y);
@@ -689,16 +700,17 @@
       if (G.level.tiles[ty] && G.level.tiles[ty][tx] === "floor") p = { x: tx + 0.5, y: ty + 0.5 };
       else p = nearestWalk(G.level, x, y);
       if (blocked(G.level, p.x, p.y)) continue;
-      if (Math.hypot(p.x - live.x, p.y - live.y) < 12) continue;
+      if (Math.hypot(p.x - live.x, p.y - live.y) < 11) continue;
       const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
       const f = makeFoe(kind, rank, p.x, p.y);
       if (boss) f.boss = true;
       G.level.foes.push(f);
-      return true;
+      if (!base) base = { x: p.x, y: p.y };
+      made++;
     }
-    return false;
+    return made;
   }
-  function surviveCap(w) { return Math.min(300, 36 + w * 12); }
+  function surviveCap(w) { return Math.min(1000, 90 + w * 48); }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
     const w = surviveWave();
@@ -706,31 +718,34 @@
       emit("onWaveComplete", { w: G.wave });
       G.wave = w;
       G._wavePulse = 1;
-      say("Wave " + w + " — the pour thickens.");
+      say("Wave " + w + " — the lattice floods.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
       feel("wave");
+      G._spawnQ = (G._spawnQ || 0) + 40 + Math.min(180, w * 14);
     }
     const cap = surviveCap(w);
     G.spawnT -= dt;
-    const gap = Math.max(0.05, 0.2 - w * 0.006);
+    const gap = Math.max(0.04, 0.11 - w * 0.004);
     if (G.spawnT <= 0 && G.level.foes.length < cap) {
       G.spawnT = gap;
-      const n = 4 + Math.min(16, (w * 0.9) | 0);
-      for (let i = 0; i < n; i++) {
-        if (G.level.foes.length >= cap) break;
-        spawnSurviveAround(surviveKind(w), false);
-      }
+      const n = 12 + Math.min(52, (w * 3.2) | 0);
+      spawnSurviveAround(surviveKind(w), false, n);
     }
-    G.hordeT = (G.hordeT == null ? 7 : G.hordeT) - dt;
+    G.hordeT = (G.hordeT == null ? 4.5 : G.hordeT) - dt;
     if (G.hordeT <= 0) {
-      G.hordeT = Math.max(5.5, 13 - w * 0.22);
-      const pack = 10 + Math.min(28, w * 2);
-      say("A pour — " + pack + " more.");
-      for (let i = 0; i < pack; i++) {
-        if (G.level.foes.length >= cap) break;
-        spawnSurviveAround(surviveKind(w), false);
-      }
+      G.hordeT = Math.max(2.8, 7.5 - w * 0.2);
+      const pack = 48 + Math.min(220, w * 16);
+      G._spawnQ = (G._spawnQ || 0) + pack;
+      say("A flood — " + pack + " more.");
+    }
+    let drain = 0;
+    while ((G._spawnQ || 0) > 0 && G.level.foes.length < cap && drain < 56) {
+      const k = surviveKind(w);
+      const got = spawnSurviveAround(k, false, Math.min(8, G._spawnQ));
+      if (!got) break;
+      G._spawnQ = Math.max(0, G._spawnQ - got);
+      drain += got;
     }
     if (w >= 5 && w % 5 === 0 && G.bossAt !== w) {
       G.bossAt = w;
@@ -1370,7 +1385,8 @@
     if (G.mode === "campaign") say("Campaign — WASD, J fire, smash nexuses, find the cyan exit.");
     else if (G.mode === "survive") {
       say("Survival — auto-fire is on. Move. Stack. Don't stop.");
-      for (let i = 0; i < 22; i++) spawnSurviveAround(surviveKind(1), false);
+      for (let i = 0; i < 8; i++) spawnSurviveAround(surviveKind(1), false, 12);
+      G._spawnQ = 40;
     }
     else say("Endless — WASD, J fire. The crypt does not end.");
     if (opts.coop) {
@@ -2289,7 +2305,7 @@
         Math.max(0.18, G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, (G.floor + 3) / 18)),
         {
           danger: p0 ? 1 - (p0.hp / Math.max(1, p0.max)) : 0,
-          horde: Math.min(1, lv.foes.length / 300),
+          horde: Math.min(1, lv.foes.length / 1000),
           boss: lv.foes.some((f) => f.boss && f.hp > 0)
         }
       );
