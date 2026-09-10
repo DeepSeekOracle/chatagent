@@ -3737,7 +3737,7 @@
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
-      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Floods of minions. Stack arms or drown. Bosses every five waves.</span></button>" +
+      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Start small — the lattice grows with you. Stack arms or drown.</span></button>" +
       "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Campaign with a second warden. Pads and keyboards, up to four.</span></button>" +
       "</div><div class='modes' style='margin-top:.6rem'><button class='btn gold' id='menuOpt'>Options</button>" +
       "<button class='btn' id='menuRadio'>Radio</button></div>" +
@@ -3807,7 +3807,7 @@
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
-      "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
+      "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): fog-band hordes that grow with your level, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li><b>Tab</b> character sheet — model, stats, arms, spell, bag. Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +

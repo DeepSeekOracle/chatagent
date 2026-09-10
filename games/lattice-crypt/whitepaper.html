@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lattice Crypt — Whitepaper v1.4 | chatagent.ca</title>
-<meta name="description" content="Design canon for Lattice Crypt: thirteen Accord jobs, Lightfather, named specials, eight realms, vials, nexuses, local co-op.">
+<title>Lattice Crypt — Whitepaper v1.5 | chatagent.ca</title>
+<meta name="description" content="Design canon for Lattice Crypt: thirteen Accord jobs, Lightfather, Survival ramp, fog-band hordes, live hall.">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-crypt/whitepaper.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -28,20 +28,21 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 <body>
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · design canon</p>
-  <h1>Lattice Crypt v1.4</h1>
-  <p>Accord co-op dungeon crawl in this browser. Thirteen jobs with bios, named specials, Brave and Faith. Lightfather the Architect is playable from the hall. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
+  <h1>Lattice Crypt v1.5</h1>
+  <p>Accord co-op dungeon crawl in this browser. Thirteen jobs with bios, named specials, Brave and Faith. Lightfather the Architect is playable from the hall. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Fog of war. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="/games/">Arcade</a>
     <a class="btn" href="./ledger.html">Ledger</a>
     <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro">PayPal</a>
+    <a class="btn" href="https://www.patreon.com/Excavationpro">Patreon</a>
   </div>
 
   <h2>1. Loop</h2>
   <p><b>Campaign — First Descent</b> is 24 hand-built floors across eight realms. Every third floor is a <b>seal</b>: the cyan exit stays dim until every nexus on that floor is smashed. Difficulty steps: more nexuses, higher rank, blight, gates, thieves, then the Drain. Finish the 24th floor and the lock opens — you may walk into Endless from there.</p>
   <p><b>Endless</b> is the old forever-crypt: seeded rooms, treasure every eighth, rank that keeps climbing, no last floor. The hall ranks score per credit.</p>
-  <p><b>Survival</b> is a continent of stone — a 256×224 open crypt with ruin walls (no exit). Hordes pour from off-screen like a Brotato arena: live cap climbs past 200, burst packs, extra named guardians from wave 15. Waves tick every 28 seconds. Kills grant XP; each level offers three stacking upgrades (Might, Haste, Iron, Heart, Core, Pierce, Volley, Pull, Stride, Resonance, a new arm, or a melee auto: Cleave / Orbit / Aura). Every armed weapon fires at once; picking the same arm again stacks it. Studio HUD shows wave, score, XP, health, arms, and stacked relics. Auto-shoot starts on. Hall score posts as a <code>run</code> with wave written in the floor field.</p>
-  <p>Health ticks down every second. Smash nexuses. Keys open doors. Vials are smart bombs. Insert a credit (Space / Start) when a warden falls. <b>Auto-shoot</b> (menu tick or L in play) fires for you; aim still follows the last move.</p>
+  <p><b>Survival</b> is a continent of stone — a 256×224 open crypt with ruin walls (no exit). Foes spawn in the fog band just outside sight, not on top of you. Density, HP, kinds, and contact damage follow a <b>level-first, wave-second</b> ramp: start with a small pack of weak fodder; the lattice grows with you. Live cap = <code>14 + (L−1)×7 + (W−1)×2.4</code> (hard cap 380). Pulse and horde size climb the same way. Waves tick every 28 seconds. Kills grant XP; each level offers three stacking upgrades (stats, well gifts, or a new arm). Every armed weapon fires at once; picking the same arm again stacks it. Studio HUD shows wave, score, XP, health, arms, and stacked relics. Auto-shoot starts on. Hall score posts as a <code>run</code> with wave written in the floor field.</p>
+  <p>Wardens start at <b>200 HP</b> and gain <b>+10 max</b> on each level (Survival) or floor (campaign/endless). Health still ticks down. Smash nexuses. Keys open doors. Vials are smart bombs. Insert a credit (Space / Start) when a warden falls. <b>Auto-shoot</b> (Options or L) fires for you; aim still follows the last move. <b>Tab</b> opens the character sheet (model, arms, bag). <b>P</b> pauses. Options holds radio volume, SFX, and binds.</p>
 
   <h2>2. Wardens</h2>
   <p>Click a portrait on the title to read the bio, named special, and attributes. <b>Brave</b> (0–100) scales bump damage. <b>Faith</b> (0–100) scales vial power. Armor reduces incoming hits. Magic scales vial damage. Speed is tiles per second. Shot is projectile damage. Melee is bump damage. One shot on screen per warden unless a Shot Codex is held.</p>
@@ -74,8 +75,10 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td>Shade</td><td>Flickers</td><td>Invulnerable while faded. Wait the beat.</td></tr>
     <tr><td>Thief</td><td>Spawns at the start</td><td>Steals one vial on touch. Hunt them.</td></tr>
     <tr><td>The Drain</td><td>Walks walls</td><td>Only a vial kills it. Else it sips 200 and leaves.</td></tr>
+    <tr><td>Burst / Spawnling / Mend</td><td>Explode, split, heal</td><td>Survival specials after level 5–6.</td></tr>
+    <tr><td>Stitch / Echoer / Veilkin / Knot / Choir</td><td>Slow, shoot, ghost, root, hymn</td><td>Accord jobs of the fog. Random muts (haste, tough, blink…) after level 3.</td></tr>
   </table>
-  <p>Most foes come from <b>nexuses</b> in three ranks. Rank sets hit points of both the nexus and what it pours. Smash the nexus first.</p>
+  <p>Most foes come from <b>nexuses</b> in three ranks. Rank sets hit points of both the nexus and what it pours. Smash the nexus first. Super bosses (Unspooler, Tithe-King, Name-Eater) walk Survival at later waves and drop rare–legendary arms.</p>
 
   <h2>4. Relics</h2>
   <ul>
@@ -117,7 +120,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Foe + nexus + chest + floor clear bonus. Health remaining at exit is a small bonus. Credits used divide the posted score on the live hall. Local best stays in this browser.</p>
 
   <h2>10. Shell</h2>
-  <p>Title menu, How to play, radio (Excavationpro listen portal), PayPal.me/ExcavationPro, All games, live hall via arcade-ledger <code>game: lattice-crypt</code>. Pixel atlases are original (items 32×32 two-frame bob/glow, tiles, foes, heroes). Portraits and menu art are original key art.</p>
+  <p>Title menu, How to play, Options, radio (Excavationpro listen portal), PayPal.me/ExcavationPro + Patreon, All games, live hall via arcade-ledger <code>game: lattice-crypt</code>. Pixel atlases are original (items 32×32 two-frame bob/glow, tiles, foes, heroes). Portraits and menu art are original key art. No licensed marks. Empty halls stay empty.</p>
 </div>
 </body>
 </html>

@@ -31,7 +31,8 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=45") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=46") >= 0, "cache-bust");
+must(game.indexOf("Brotato") < 0 && html.indexOf("Brotato") < 0, "haven-original copy");
 must(game.indexOf("strokeRect(Math.round(dx)") < 0, "no foe square frame");
 must(game.indexOf("Start small. The lattice grows with you.") >= 0, "survive start dump");
 must(game.indexOf("0.48 + 0.035") >= 0 && game.indexOf("0.28 * (w - 1)") >= 0, "survive dmg+hp curve");

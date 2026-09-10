@@ -67,6 +67,10 @@ Entry: `index.html` → `radio.js`, `arcade-ledger.js`, `campaign.js`, `studio.j
 
 ## Release readiness
 Live: https://chatagent.ca/games/lattice-crypt/  
-Cache: `game.js?v=29` `studio.js?v=6` `game.css?v=13`
+Cache: `game.js?v=46` `studio.js?v=8` `game.css?v=18` `creatures.png?v=2`  
+Hall: Hugging Face `arcade.json` book `lattice-crypt` (Space writer). Hub + board `data-hall="crypt"`.  
+Copy: Jobs of the Accord. Lightfather playable. PayPal.me/ExcavationPro + Patreon. No licensed marks.
 
-**Confidence: 94/100.** 60 FPS @ 300 foes is engineered (grid + LOD + 60Hz + tile cache), not timed on a 2020 laptop in this pass.
+**Phase close (2026-09-10).** Survival level-first ramp, fog-band spawn, 200 HP +10/level, well cards, new foe jobs + muts, square-frame cleanup. Next work waits for the next update phase.
+
+**Confidence: 94/100.** 60 FPS @ dense Survival is engineered (grid + LOD + 60Hz + tile cache + cap 380).
