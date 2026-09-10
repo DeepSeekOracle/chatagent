@@ -30,4 +30,22 @@ Entry: `index.html` → `radio.js`, `arcade-ledger.js`, `campaign.js`, `studio.j
 - Foe archetypes mapped onto existing atlas (no new exploder/splitter sprites this pass).
 
 ## Controls added
-F3 FPS · M mute SFX
+F3 FPS · M mute SFX · P pause · F11 fullscreen
+
+## Pass 2 debug (launch)
+- 13 arms (Seek/Chain/Barrage/Nova) with FX aliases so missing atlas cells do not blank bolts.
+- Burst / spawnling / mend jobs reuse brute/wraith/shade frames.
+- Pause layer hidden on new run, menu, and cleanup. Help will not stack on pause. Credit/fire blocked while paused.
+- Mute restores synth bed. Menu ducks music.
+- 40× pool restart smoke + string checks for new kinds.
+
+## Pass 3 debug (official launch)
+- Pooled chain bolts reset `_chained` so jumps work after recycle.
+- Chain child spawns offset + grace so it does not immediately re-hit the same foe.
+- `loadFloor` frees the shot pool (was leaking live counts every floor).
+- Key-repeat no longer toggles P / M / F3 / F11 / L / Esc or spams credit.
+- Deuteranopia filter is CSS-only (no missing `#cb-deut` SVG).
+- Reduced motion ducks the synth bed. Color filter "default" clears `data-cb`.
+- Juice frozen while paused.
+
+Confidence after official debug: **78/100**. Still one canvas, no Playwright visual lab.

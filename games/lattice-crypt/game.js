@@ -61,6 +61,9 @@
     hurler: { hp: 1, dmg: 10, speed: 1.1, melee: true, lob: true, pts: 14 },
     shade: { hp: 2, dmg: 11, speed: 1.6, melee: true, flicker: true, pts: 16 },
     thief: { hp: 2, dmg: 4, speed: 2.4, melee: true, steal: true, pts: 50 },
+    burst: { hp: 2, dmg: 8, speed: 1.65, melee: true, explode: true, pts: 18, spr: "brute" },
+    spawnling: { hp: 1, dmg: 6, speed: 2.05, melee: true, split: true, pts: 14, spr: "wraith" },
+    mend: { hp: 2, dmg: 5, speed: 1.15, melee: true, heal: true, pts: 16, spr: "shade" },
     drain: { hp: 99, dmg: 4, speed: 1.35, melee: true, drain: true, ghost: true, pts: 250 },
     gate: { hp: 28, dmg: 16, speed: 0.85, melee: true, pts: 400, boss: true },
     crown: { hp: 30, dmg: 15, speed: 0.9, melee: true, lob: true, pts: 450, boss: true },
@@ -157,10 +160,10 @@
     "coin", "coin", "coin", "gem", "boot", "lens", "magnet", "fury", "thorns", "moss", "echo",
     "core", "heart", "iron", "phial", "crystal", "spark", "seed", "scroll", "lantern", "dice",
     "bomb", "frostorb", "hymnstone", "quiver",
-    "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura",
+    "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura", "seek", "chain", "barrage", "nova",
     "feast", "elixir", "chalice", "tome", "ring", "moon", "sun", "storm", "crown", "soul", "anvil", "weave"
   ];
-  const CHEST_DROP = ["fan", "needle", "cinder", "core", "heart", "cleave", "orbit", "aura", "comet", "halo", "elixir", "crown", "chalice", "tome", "ring", "crystal", "phial", "iron"];
+  const CHEST_DROP = ["fan", "needle", "cinder", "core", "heart", "cleave", "orbit", "aura", "comet", "halo", "seek", "chain", "barrage", "nova", "elixir", "crown", "chalice", "tome", "ring", "crystal", "phial", "iron"];
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
     fan: { name: "Fan", cap: 3, spd: 11, life: 0.55, cool: 0.2, dmg: -1, spread: 0.38 },
@@ -170,10 +173,15 @@
     halo: { name: "Halo", cap: 2, spd: 12, life: 1.15, cool: 0.22, dmg: 0, halo: true },
     cleave: { name: "Cleave", melee: true, cool: 0.42, dmg: 2, range: 1.5 },
     orbit: { name: "Orbit", melee: true, cool: 0, dmg: 2 },
-    aura: { name: "Aura", melee: true, cool: 0, dmg: 3 }
+    aura: { name: "Aura", melee: true, cool: 0, dmg: 3 },
+    seek: { name: "Seek", cap: 2, spd: 9.5, life: 1.35, cool: 0.24, dmg: 1, seek: true },
+    chain: { name: "Chain", cap: 2, spd: 13, life: 0.9, cool: 0.2, dmg: 0, chain: true, pierce: 1 },
+    barrage: { name: "Barrage", cap: 4, spd: 13, life: 0.45, cool: 0.1, dmg: -1 },
+    nova: { name: "Nova", cap: 1, spd: 8, life: 0.7, cool: 0.36, dmg: 2, nova: true }
   };
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
+  const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend"];
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("crypt");
@@ -188,6 +196,8 @@
     s.grace = init.grace || 0; s.hero = init.hero || "kael"; s.wep = init.wep || "shard";
     s.foe = !!init.foe; s.bounced = false; s.pierce = init.pierce || 0; s.lob = !!init.lob;
     s.flame = init.flame || 0; s.echo = !!init.echo; s.air = !!init.air;
+    s.seek = !!init.seek; s.chain = !!init.chain; s.nova = !!init.nova;
+    s._chained = false;
     s.trail = init.trail || [{ x: s.x, y: s.y }];
     s.isActive = true;
     G.shots.push(s);
@@ -211,7 +221,11 @@
     hurler: { size: 24, col: "#94a3b8", glow: "rgba(148,163,184,0.35)" },
     cleave: { size: 26, col: "#f87171", glow: "rgba(248,113,113,0.4)" },
     orbit: { size: 22, col: "#e2e8f0", glow: "rgba(226,232,240,0.35)" },
-    aura: { size: 24, col: "#4ade80", glow: "rgba(74,222,128,0.35)" }
+    aura: { size: 24, col: "#4ade80", glow: "rgba(74,222,128,0.35)" },
+    seek: { size: 26, col: "#c4b5fd", glow: "rgba(196,181,253,0.4)" },
+    chain: { size: 30, col: "#67e8f9", glow: "rgba(103,232,249,0.4)" },
+    barrage: { size: 22, col: "#fdba74", glow: "rgba(253,186,116,0.38)" },
+    nova: { size: 30, col: "#f472b6", glow: "rgba(244,114,182,0.4)" }
   };
   const BOSS_LOOT = {
     gate: ["core", "heart", "ward"],
@@ -238,6 +252,8 @@
     HEROES.forEach((h) => {
       if (h.unlock === 0 && persist.unlocked.indexOf(h.id) < 0) persist.unlocked.push(h.id);
     });
+    if (persist.cb) document.documentElement.setAttribute("data-cb", persist.cb);
+    else document.documentElement.removeAttribute("data-cb");
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -351,7 +367,8 @@
     ctx.save();
     ctx.translate(cx, cy + bob);
     if (spec.spin) ctx.rotate(t * (spec.spin === 2 ? 3.6 : 1.8));
-    drawItemSpr(it.kind + "_" + fr, -16, -16, 32);
+    const vis = { seek: "comet", chain: "needle", barrage: "fan", nova: "pulse" };
+    drawItemSpr((vis[it.kind] || it.kind) + "_" + fr, -16, -16, 32);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
   }
@@ -407,7 +424,8 @@
     if (wep === "halo") ctx.rotate(G.t * 7);
     else if (wep === "cinder") ctx.rotate(G.t * 5);
     else if (wep !== "imp") ctx.rotate(ang);
-    drawFxSpr("bolt_" + wep + "_" + fr, -sz / 2, -sz / 2, sz);
+    const fxW = { seek: "comet", chain: "needle", barrage: "fan", nova: "cinder", cleave: "shard", orbit: "shard", aura: "shard" };
+    drawFxSpr("bolt_" + (fxW[wep] || wep) + "_" + fr, -sz / 2, -sz / 2, sz);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
   }
@@ -624,8 +642,12 @@
 
   function surviveKind(w) {
     if (w > 10 && Math.random() < 0.08) return "thief";
+    if (w > 8 && Math.random() < 0.12) return "burst";
+    if (w > 6 && Math.random() < 0.12) return "spawnling";
+    if (w > 7 && Math.random() < 0.1) return "mend";
     if (w > 6 && Math.random() < 0.14) return "shade";
-    return KINDS[(Math.random() * KINDS.length) | 0];
+    const pool = w >= 5 ? KINDS_HOT : KINDS;
+    return pool[(Math.random() * pool.length) | 0];
   }
   function spawnSurviveAround(kind, boss) {
     const live = G.players.find((p) => !p.dead) || G.players[0];
@@ -946,7 +968,11 @@
     { id: "halo", name: "Halo", spec: "Arm or stack the orbiting wards." },
     { id: "cleave", name: "Cleave", spec: "Short-range auto slash. Stacks range." },
     { id: "orbit", name: "Orbit", spec: "Spinning blades. Stacks more blades." },
-    { id: "aura", name: "Aura", spec: "Hurt anything in arm's reach. Stacks." }
+    { id: "aura", name: "Aura", spec: "Hurt anything in arm's reach. Stacks." },
+    { id: "seek", name: "Seek", spec: "Arm or stack homing bolts." },
+    { id: "chain", name: "Chain", spec: "Arm or stack jumping arcs." },
+    { id: "barrage", name: "Barrage", spec: "Arm or stack a rapid stream." },
+    { id: "nova", name: "Nova", spec: "Arm or stack bursting shells." }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
 
@@ -1157,7 +1183,8 @@
       kind: k, rank, x, y,
       hp, max: hp,
       boss: !!d.boss,
-      vx: 0, vy: 0, t: 0, hurt: 0, flicker: 0, stun: 0
+      explode: !!d.explode, split: !!d.split, heal: !!d.heal, spr: d.spr || k,
+      vx: 0, vy: 0, t: 0, hurt: 0, flicker: 0, stun: 0, isActive: true
     };
   }
 
@@ -1209,6 +1236,7 @@
     }
     keys = {}; keyEdge = {};
     announce = { t: "", life: 0 };
+    const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
   }
   function newRun(opts) {
     opts = opts || {};
@@ -1231,6 +1259,7 @@
     loadFloor(0);
     overlayMode = null;
     hideOverlay();
+    const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
     $("app").classList.remove("hidden");
     $("app").classList.toggle("survive-mode", G.mode === "survive");
     const sh = $("studioHud");
@@ -1287,7 +1316,9 @@
       const p = nearestWalk(G.level, it.x + 0.5, it.y + 0.5);
       it.x = Math.floor(p.x); it.y = Math.floor(p.y);
     });
+    if (window.CryptStudio && G.shots) G.shots.forEach((s) => CryptStudio.pool.shot.free(s));
     G.shots = [];
+    G.fx = [];
     G.thiefT = 24 + (Math.random() * 16);
     if (G.mode === "campaign") {
       $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
@@ -1460,6 +1491,7 @@
       dmg: shotDmg(p, w) + Math.max(0, lv - 1), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
       hero: p.hero.id, wep: id,
       pierce: (w.pierce || 0) + (p.pierce || 0) + Math.max(0, lv - 1) + (p.echo > 0 ? 1 : 0), lob: !!w.lob, flame: w.flame || 0, echo: p.echo > 0,
+      seek: !!w.seek, chain: !!w.chain, nova: !!w.nova,
       trail: [{ x: sx, y: sy }]
     });
     emit("onFire", { p: p, wep: id });
@@ -1914,6 +1946,12 @@
       tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
       if (!ghost) unstick(f);
       else if (blocked(lv, f.x, f.y)) unstick(f);
+      if (def.heal) {
+        lv.foes.forEach((o) => {
+          if (o === f || o.hp <= 0) return;
+          if (Math.hypot(o.x - f.x, o.y - f.y) < 2.4) o.hp = Math.min(o.max, o.hp + dt * 1.4);
+        });
+      }
       const hitR = def.boss ? 0.72 : 0.48;
       if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
@@ -1960,6 +1998,7 @@
         pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
     });
+    const born = [];
     lv.foes = lv.foes.filter((f) => {
       if (f.hp > 0) return true;
       f.isActive = false;
@@ -1972,16 +2011,43 @@
           CryptStudio.shake(2);
         }
       }
+      if (f.explode) {
+        blastFoes(f.x, f.y, 2.1, 7);
+        if (window.CryptStudio) CryptStudio.burst(f.x, f.y, "#fb923c", 14);
+      }
+      if (f.split && !f._splitDone) {
+        f._splitDone = true;
+        for (let i = 0; i < 2; i++) {
+          const n = makeFoe("wraith", 1, f.x + (i ? 0.35 : -0.35), f.y);
+          n.split = false; n.hp = 1; n.max = 1;
+          born.push(n);
+        }
+      }
       if (f.boss) dropBoss(f);
       if (G.mode === "survive") onSurviveKill(f);
       G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
       return false;
     });
+    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 64;
+    born.forEach((n) => { if (lv.foes.length < capNow) lv.foes.push(n); });
 
     G.shots.forEach((s) => {
       s.life -= dt;
       s.px = s.x; s.py = s.y;
       s.x += s.vx * dt; s.y += s.vy * dt;
+      if (s.seek && !s.foe && lv.foes.length) {
+        let best = null, bd = 9;
+        lv.foes.forEach((f) => {
+          const d = Math.hypot(f.x - s.x, f.y - s.y);
+          if (d < bd) { bd = d; best = f; }
+        });
+        if (best) {
+          const ang = Math.atan2(best.y - s.y, best.x - s.x);
+          const spd = Math.hypot(s.vx, s.vy) || 10;
+          s.vx = s.vx * 0.8 + Math.cos(ang) * spd * 0.2;
+          s.vy = s.vy * 0.8 + Math.sin(ang) * spd * 0.2;
+        }
+      }
       s.grace = Math.max(0, (s.grace || 0) - dt);
       s.trail = s.trail || [];
       s.trail.push({ x: s.x, y: s.y });
@@ -2024,6 +2090,24 @@
               hitFoe(f, s.dmg, false); beep("hit");
               G.fx.push({ x: s.x, y: s.y, life: 0.22, kind: "hit", wep: wepKey(s) });
               if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
+              if (s.chain && !s._chained) {
+                s._chained = true;
+                let nx = null, nd = 3.4;
+                lv.foes.forEach((o) => {
+                  if (o === f || o.hp <= 0) return;
+                  const d = Math.hypot(o.x - f.x, o.y - f.y);
+                  if (d < nd) { nd = d; nx = o; }
+                });
+                if (nx) {
+                  const ang = Math.atan2(nx.y - f.y, nx.x - f.x);
+                  pushShot({
+                    x: f.x + Math.cos(ang) * 0.55, y: f.y + Math.sin(ang) * 0.55,
+                    vx: Math.cos(ang) * 14, vy: Math.sin(ang) * 14,
+                    dmg: Math.max(1, s.dmg - 1), owner: s.owner, life: 0.35, maxLife: 0.35,
+                    hero: s.hero, wep: s.wep, pierce: 0, chain: false, grace: 0.05
+                  });
+                }
+              }
               if (s.pierce > 0) s.pierce--; else s.life = 0;
             }
           });
@@ -2031,6 +2115,7 @@
         if (s.life > 0) smashItem(s);
       }
       if (s.life <= 0 && s.flame) G.fx.push({ x: s.x, y: s.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
+      if (s.life <= 0 && s.nova) blastFoes(s.x, s.y, 1.85, Math.max(2, s.dmg));
     });
     G.shots = G.shots.filter((s) => {
       if (s.life > 0) return true;
@@ -2045,6 +2130,8 @@
     });
     G.fx = G.fx.filter((f) => { f.life -= dt; return f.life > 0; });
     pollJoin();
+    G.score = Math.min(999999999, G.score);
+    if (window.CryptStudio) CryptStudio.musicTick(G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, G.floor / 16));
     G._hudT = (G._hudT || 0) + dt;
     if (G._hudT > 0.1) { G._hudT = 0; paintHud(); }
     keyEdge = {};
@@ -2172,6 +2259,7 @@
 
   function credit() {
     if (!G || G.over) return;
+    if (overlayMode === "pause" || overlayMode === "menu") return;
     const down = G.players.find((p) => p.dead);
     if (!down) {
       if (G.players.length < 4) {
@@ -2273,7 +2361,7 @@
       const boss = FOE[f.kind] && FOE[f.kind].boss;
       const sz = boss ? 64 : 48;
       const dx = f.x * TILE - sz / 2 - cam.x, dy = f.y * TILE - sz / 2 - cam.y;
-      drawFoeSpr("foe_" + f.kind + "_" + fr, dx, dy, sz);
+      drawFoeSpr("foe_" + (f.spr || f.kind) + "_" + fr, dx, dy, sz);
       if (f.rank >= 3 && !boss && G.mode !== "survive") {
         ctx.strokeStyle = "#fbbf24";
         ctx.lineWidth = 1;
@@ -2499,6 +2587,8 @@
   function menu() {
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
+    const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
+    if (window.CryptStudio) CryptStudio.musicTick(0);
     $("app").classList.add("hidden");
     $("app").classList.remove("survive-mode");
     const sh = $("studioHud");
@@ -2516,6 +2606,9 @@
       }).join("") +
       "</div>" + heroSheet(heroOf(persist.hero)) +
       "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
+      "<label class='auto-lab'><input type='checkbox' id='redBox'" + (window.CryptStudio && CryptStudio.reduced ? " checked" : "") + "> Reduced motion</label>" +
+      "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed</label>" +
+      "<label class='auto-lab'>Color <select id='cbSel'><option value=''>default</option><option value='deut'>deuteranopia</option><option value='prot'>protanopia</option><option value='trit'>tritanopia</option></select></label>" +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
@@ -2550,6 +2643,22 @@
     if (mr) mr.onclick = (e) => { e.stopPropagation(); const p = $("radioPlay"); if (p) p.click(); };
     const ab = $("autoBox");
     if (ab) ab.onclick = (e) => e.stopPropagation();
+    const rb = $("redBox");
+    if (rb) rb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setReduced(rb.checked); };
+    const mb = $("musBox");
+    if (mb) mb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusic(mb.checked); };
+    const cb = $("cbSel");
+    if (cb) {
+      cb.onclick = (e) => e.stopPropagation();
+      cb.onchange = (e) => {
+        e.stopPropagation();
+        persist.cb = cb.value || "";
+        if (persist.cb) document.documentElement.setAttribute("data-cb", persist.cb);
+        else document.documentElement.removeAttribute("data-cb");
+        savePersist();
+      };
+      if (persist.cb) cb.value = persist.cb;
+    }
   }
 
   function help() {
@@ -2561,7 +2670,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
-      "<li>Auto-shoot (menu or L) keeps firing. Help pauses. <b>F3</b> FPS. <b>M</b> mute SFX. Hits shake, numbers pop, synth SFX.</li></ol>" +
+      "<li>Auto-shoot (menu or L) keeps firing. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute SFX. <b>F11</b> fullscreen. Reduced motion and color filters on the menu.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -2571,9 +2680,9 @@
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (window.CryptStudio) CryptStudio.fpsTick(dt);
-    if (window.CryptStudio) CryptStudio.juiceTick(dt);
+    if (window.CryptStudio && overlayMode !== "pause") CryptStudio.juiceTick(dt);
     const frozen = window.CryptStudio && CryptStudio.juice.hitstop > 0;
-    if (!frozen && overlayMode !== "menu" && overlayMode !== "sheet") update(dt);
+    if (!frozen && overlayMode !== "menu" && overlayMode !== "sheet" && overlayMode !== "pause") update(dt);
     else if (G && G._ups) pollUpgradePick();
     draw();
     requestAnimationFrame(loop);
@@ -2583,30 +2692,39 @@
     if (!keys[e.code]) keyEdge[e.code] = true;
     keys[e.code] = true;
     if (e.code === "F3") {
-      if (window.CryptStudio) CryptStudio.fps.show = !CryptStudio.fps.show;
+      if (keyEdge.F3 && window.CryptStudio) CryptStudio.fps.show = !CryptStudio.fps.show;
       return;
     }
     if (e.code === "KeyM" && overlayMode !== "menu") {
-      if (window.CryptStudio) {
+      if (keyEdge.KeyM && window.CryptStudio) {
         CryptStudio.setMute(!CryptStudio.muted);
         say(CryptStudio.muted ? "SFX mute." : "SFX on.");
       }
       return;
     }
-    if (e.code === "Escape") {
-      if (G && G._ups) return;
-      menu();
+    if (e.code === "KeyP" && G && !G.over && overlayMode !== "menu" && !G._ups) {
+      if (keyEdge.KeyP) togglePause();
       return;
     }
-    if (overlayMode === "menu" || overlayMode === "sheet") return;
+    if (e.code === "F11") {
+      e.preventDefault();
+      if (keyEdge.F11) toggleFull();
+      return;
+    }
+    if (e.code === "Escape") {
+      if (G && G._ups) return;
+      if (keyEdge.Escape) menu();
+      return;
+    }
+    if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause") return;
     if (PLAY_CODES.has(e.code)) e.preventDefault();
-    if (e.code === "KeyL" && G) {
+    if (e.code === "KeyL" && G && keyEdge.KeyL) {
       G.surviveAuto = false;
       persist.autoShot = !persist.autoShot; savePersist(); paintHud();
       say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off.");
       return;
     }
-    if ((e.code === "Space" || e.code === "Enter") && G) {
+    if ((e.code === "Space" || e.code === "Enter") && G && keyEdge[e.code]) {
       if (e.code === "Space" && !G.players.some((p) => p.dead)) return;
       credit();
     }
@@ -2614,15 +2732,40 @@
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
   window.addEventListener("blur", () => { keys = {}; keyEdge = {}; });
 
+  function togglePause() {
+    if (!G || G.over) return;
+    const layer = $("pauseLayer");
+    if (overlayMode === "pause") {
+      overlayMode = null;
+      if (layer) layer.classList.add("hidden");
+      return;
+    }
+    if (overlayMode != null) return;
+    overlayMode = "pause";
+    if (layer) layer.classList.remove("hidden");
+  }
+  function toggleFull() {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) el.requestFullscreen();
+    } else if (document.exitFullscreen) document.exitFullscreen();
+  }
   function toggleAuto() {
     if (G) G.surviveAuto = false;
     persist.autoShot = !persist.autoShot; savePersist();
     if (G) { paintHud(); say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off."); }
   }
-  $("btnHelp").onclick = () => { if (G && G._ups) return; help(); };
+  $("btnHelp").onclick = () => {
+    if (G && G._ups) return;
+    if (overlayMode === "pause") togglePause();
+    help();
+  };
   $("btnMenu").onclick = () => { if (G && G._ups) return; menu(); };
   $("btnCredit").onclick = () => { if (G) credit(); };
   if ($("btnAuto")) $("btnAuto").onclick = toggleAuto;
+  if ($("btnFull")) $("btnFull").onclick = toggleFull;
+  const pr = $("btnResume"); if (pr) pr.onclick = () => togglePause();
+  const pm = $("btnPauseMenu"); if (pm) pm.onclick = () => { const l = $("pauseLayer"); if (l) l.classList.add("hidden"); menu(); };
 
   window.LatticeCrypt = {
     get: () => G,

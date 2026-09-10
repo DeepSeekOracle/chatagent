@@ -162,6 +162,16 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .btn:hover { border-color: var(--cyan); transform: scale(1.03); }
 .btn:active { transform: scale(0.96); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+.pause-layer {
+  position: fixed; inset: 0; z-index: 18; display: grid; place-content: center; text-align: center;
+  background: #07080ecc; backdrop-filter: blur(6px);
+}
+.pause-layer.hidden { display: none !important; }
+.pause-layer h2 { font-family: Syne, sans-serif; margin: .2rem 0 .8rem; }
+html[data-cb="deut"] { filter: hue-rotate(28deg) saturate(.72); }
+html[data-cb="prot"] { filter: hue-rotate(-20deg) saturate(.85); }
+html[data-cb="trit"] { filter: hue-rotate(25deg) saturate(.9); }
+html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
 .btn.gold { background: var(--gold); color: #111; border-color: var(--gold); }
 .btn.ghost { background: transparent; }
 .overlay {

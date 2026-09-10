@@ -8,10 +8,12 @@
   let restarts = 0;
   let reduced = false;
   let muted = false;
+  let musicOn = true;
   try {
     const a = JSON.parse(localStorage.getItem(SAVE_AUDIO) || "{}");
     muted = !!a.muted;
     reduced = !!a.reduced;
+    if (a.music === false) musicOn = false;
   } catch (_) {}
 
   function on(ev, fn) {
@@ -66,7 +68,9 @@
     s.dmg = 0; s.life = 0; s.maxLife = 0; s.grace = 0;
     s.owner = null; s.hero = ""; s.wep = "shard"; s.foe = false;
     s.bounced = false; s.pierce = 0; s.lob = false; s.flame = 0; s.echo = false;
-    s.air = false; s.trail = [];
+    s.air = false; s.seek = false; s.chain = false; s.nova = false;
+    s._chained = false;
+    s.trail = [];
   }
   function resetPart(p) {
     p.x = p.y = p.vx = p.vy = 0;
@@ -127,6 +131,9 @@
       juice.sy = (Math.random() - 0.5) * 2 * juice.sMag;
     } else { juice.sMag = 0; juice.sx = 0; juice.sy = 0; }
     juice.flash = Math.max(0, juice.flash - dt * 4);
+    if (fps.value < 48 && particles.length > 90) {
+      while (particles.length > 90) pool.particle.free(particles.pop());
+    }
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i];
       p.life -= dt; p.x += p.vx * dt * 18; p.y += p.vy * dt * 18;
@@ -248,13 +255,58 @@
     emit("cleanup", { restarts: restarts });
   }
 
+  let musicGain = null, musicOsc = null, musicLfo = null;
+  function setMusic(on) {
+    musicOn = !!on;
+    if (!musicOn && musicGain && actx) {
+      try { musicGain.gain.setTargetAtTime(0.0001, actx.currentTime, 0.2); } catch (_) {}
+    }
+    saveAudio();
+  }
+  function musicTick(intensity) {
+    if (muted || !musicOn || reduced) return;
+    resumeAudio();
+    if (!actx) return;
+    try {
+      if (!musicOsc) {
+        musicOsc = actx.createOscillator();
+        musicLfo = actx.createOscillator();
+        musicGain = actx.createGain();
+        const f = actx.createBiquadFilter();
+        f.type = "lowpass"; f.frequency.value = 420;
+        musicOsc.type = "triangle"; musicOsc.frequency.value = 110;
+        musicLfo.type = "sine"; musicLfo.frequency.value = 0.35;
+        const lfoG = actx.createGain(); lfoG.gain.value = 18;
+        musicLfo.connect(lfoG); lfoG.connect(musicOsc.frequency);
+        musicOsc.connect(f); f.connect(musicGain); musicGain.connect(actx.destination);
+        musicGain.gain.value = 0.018;
+        musicOsc.start(); musicLfo.start();
+      }
+      const i = Math.max(0, Math.min(1, intensity || 0));
+      musicOsc.frequency.setTargetAtTime(96 + i * 80, actx.currentTime, 0.4);
+      musicGain.gain.setTargetAtTime(muted ? 0.0001 : (0.012 + i * 0.02), actx.currentTime, 0.3);
+    } catch (_) {}
+  }
+  function saveAudio() {
+    try { localStorage.setItem(SAVE_AUDIO, JSON.stringify({ muted: muted, reduced: reduced, music: musicOn })); } catch (_) {}
+  }
   function setMute(v) {
     muted = !!v;
-    try { localStorage.setItem(SAVE_AUDIO, JSON.stringify({ muted: muted, reduced: reduced })); } catch (_) {}
+    if (musicGain && actx) {
+      try {
+        musicGain.gain.setTargetAtTime(muted || !musicOn ? 0.0001 : 0.018, actx.currentTime, 0.15);
+      } catch (_) {}
+    }
+    saveAudio();
   }
   function setReduced(v) {
     reduced = !!v;
-    try { localStorage.setItem(SAVE_AUDIO, JSON.stringify({ muted: muted, reduced: reduced })); } catch (_) {}
+    if (musicGain && actx) {
+      try {
+        musicGain.gain.setTargetAtTime(muted || !musicOn || reduced ? 0.0001 : 0.018, actx.currentTime, 0.15);
+      } catch (_) {}
+    }
+    saveAudio();
   }
 
   root.CryptStudio = {
@@ -263,8 +315,10 @@
     shake: shake, hitstop: hitstop, burst: burst, floater: floater,
     juiceTick: juiceTick, juiceDraw: juiceDraw,
     sfx: sfx, resumeAudio: resumeAudio, setMute: setMute, setReduced: setReduced,
+    setMusic: setMusic, musicTick: musicTick,
     get muted() { return muted; },
     get reduced() { return reduced; },
+    get music() { return musicOn; },
     fps: fps, fpsTick: fpsTick, fpsDraw: fpsDraw,
     cleanup: cleanup, counts: counts,
     get restarts() { return restarts; }
