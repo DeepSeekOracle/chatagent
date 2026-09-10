@@ -208,6 +208,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   display: grid !important; opacity: 0; pointer-events: none; visibility: hidden;
 }
 .pause-layer h2 { font-family: Syne, sans-serif; margin: .2rem 0 .8rem; }
+.pause-layer .modes { display: flex; flex-wrap: wrap; justify-content: center; grid-template-columns: unset; }
 html[data-cb="deut"] { filter: hue-rotate(28deg) saturate(.72); }
 html[data-cb="prot"] { filter: hue-rotate(-20deg) saturate(.85); }
 html[data-cb="trit"] { filter: hue-rotate(25deg) saturate(.9); }
@@ -294,6 +295,19 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
 }
 .radio-title-inline { font-family: "IBM Plex Mono", monospace; font-size: .68rem; color: var(--mute);
   max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.radio-vol {
+  display: inline-flex; align-items: center; gap: .28rem;
+  font: 650 .62rem "IBM Plex Mono", monospace; color: var(--mute);
+}
+.radio-vol input[type="range"], .auto-lab input[type="range"] {
+  width: 88px; accent-color: var(--gold); cursor: pointer;
+}
+.auto-lab input[type="range"] { width: min(220px, 52vw); }
+.options-screen {
+  max-width: 520px; margin: 0 auto; min-height: 100vh; padding: clamp(1.1rem, 3vw, 2rem);
+  display: flex; flex-direction: column; justify-content: center;
+}
+.options-screen h2 { font-family: Syne, sans-serif; margin: .1rem 0 .35rem; }
 .donate-row { display: flex; flex-wrap: wrap; gap: .45rem; margin: .7rem 0 0; }
 .donate-row a { text-decoration: none; font: 700 .78rem Syne, sans-serif; padding: .5rem .75rem; border-radius: 8px; }
 .donate-paypal { background: #0070ba; color: #fff !important; }

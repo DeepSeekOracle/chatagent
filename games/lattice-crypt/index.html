@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=13">
+<link rel="stylesheet" href="./game.css?v=14">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 </head>
 <body>
@@ -89,6 +89,10 @@
       <button type="button" id="radioPlay">Radio</button>
       <button type="button" id="radioNext">Next</button>
       <button type="button" id="radioMute">Mute</button>
+      <label class="radio-vol" title="Radio volume">
+        <span>Vol</span>
+        <input type="range" data-radio-vol min="0" max="100" value="55" aria-label="Radio volume">
+      </label>
       <span class="radio-title-inline" id="radioTitle">Idle</span>
     </div>
     <span class="grow" id="dockStatus">Fire · vial · exit</span>
@@ -102,14 +106,15 @@
   <h2>Hold the door.</h2>
   <div class="modes">
     <button type="button" class="btn gold" id="btnResume">Resume (P)</button>
+    <button type="button" class="btn" id="btnPauseOpt">Options</button>
     <button type="button" class="btn" id="btnPauseMenu">Menu</button>
   </div>
 </div>
 <div id="overlay" class="overlay"></div>
-<script src="./radio.js?v=2"></script>
+<script src="./radio.js?v=3"></script>
 <script src="/games/arcade-ledger.js?v=2"></script>
 <script src="./campaign.js?v=6"></script>
 <script src="./studio.js?v=8"></script>
-<script src="./game.js?v=31"></script>
+<script src="./game.js?v=32"></script>
 </body>
 </html>

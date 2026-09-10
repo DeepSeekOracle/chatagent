@@ -2835,6 +2835,104 @@
       "<dt>Faith</dt><dd>" + attrBar(h.faith, 100) + h.faith + "</dd>" +
       "</dl></div>";
   }
+  let optionsFrom = "menu";
+  function bindCode(id) {
+    const map = p1Map();
+    const code = id === "fire" ? map.fire[0] : (id === "mag" ? map.mag[0] : (id === "cycle" ? map.cycle[0] : map[id]));
+    return String(code || "").replace("Key", "").replace("Digit", "");
+  }
+  function wireOptions() {
+    const stop = (el, fn) => {
+      if (!el) return;
+      el.onclick = (e) => { e.stopPropagation(); if (fn) fn(e); };
+    };
+    stop($("autoBox"), () => { persist.autoShot = !!$("autoBox").checked; savePersist(); });
+    stop($("redBox"), () => { if (window.CryptStudio) CryptStudio.setReduced($("redBox").checked); });
+    stop($("musBox"), () => { if (window.CryptStudio) CryptStudio.setMusic($("musBox").checked); });
+    const sv = $("sfxVol");
+    if (sv) {
+      sv.onclick = (e) => e.stopPropagation();
+      sv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setSfxVol(sv.value / 100); };
+    }
+    const mv = $("musVol");
+    if (mv) {
+      mv.onclick = (e) => e.stopPropagation();
+      mv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusicVol(mv.value / 100); };
+    }
+    if (window.LatticeRadio) {
+      document.querySelectorAll("[data-radio-vol]").forEach(LatticeRadio.bindVol);
+    }
+    document.querySelectorAll("[data-bind]").forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        bindWait = btn.getAttribute("data-bind");
+        btn.textContent = btn.getAttribute("data-bind") + ": …";
+      };
+    });
+    const cb = $("cbSel");
+    if (cb) {
+      cb.onclick = (e) => e.stopPropagation();
+      cb.onchange = (e) => {
+        e.stopPropagation();
+        persist.cb = cb.value || "";
+        if (persist.cb) document.documentElement.setAttribute("data-cb", persist.cb);
+        else document.documentElement.removeAttribute("data-cb");
+        savePersist();
+      };
+      if (persist.cb) cb.value = persist.cb;
+    }
+    stop($("optFull"), () => toggleFull());
+    stop($("optMute"), () => {
+      if (!window.CryptStudio) return;
+      CryptStudio.setMute(!CryptStudio.muted);
+      $("optMute").textContent = CryptStudio.muted ? "Unmute SFX" : "Mute SFX";
+    });
+    const back = $("optBack");
+    if (back) back.onclick = (e) => { e.stopPropagation(); closeOptions(); };
+  }
+  function optionsHtml() {
+    const radioV = window.LatticeRadio ? Math.round(LatticeRadio.vol() * 100) : 55;
+    return "<div class='options-screen'>" +
+      "<p class='kicker'>Δ9Φ963</p><h2>Options</h2>" +
+      "<p class='lore'>Play, audio, display, and P1 keys. Radio volume lives here and on the dock.</p>" +
+      "<p class='kicker'>Play</p>" +
+      "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
+      "<p class='kicker'>Audio</p>" +
+      "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed (in-run only)</label>" +
+      "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
+      "<label class='auto-lab'>Bed <input type='range' id='musVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.musicVol : 1) * 100) + "'></label>" +
+      "<label class='auto-lab'>Radio <input type='range' data-radio-vol min='0' max='100' value='" + radioV + "'></label>" +
+      "<div class='modes' style='margin:.35rem 0 .6rem'><button type='button' class='btn' id='optMute'>" + (window.CryptStudio && CryptStudio.muted ? "Unmute SFX" : "Mute SFX") + "</button></div>" +
+      "<p class='kicker'>Display</p>" +
+      "<label class='auto-lab'><input type='checkbox' id='redBox'" + (window.CryptStudio && CryptStudio.reduced ? " checked" : "") + "> Reduced motion</label>" +
+      "<label class='auto-lab'>Color <select id='cbSel'><option value=''>default</option><option value='deut'>deuteranopia</option><option value='prot'>protanopia</option><option value='trit'>tritanopia</option></select></label>" +
+      "<div class='modes' style='margin:.35rem 0 .6rem'><button type='button' class='btn' id='optFull'>Fullscreen</button></div>" +
+      "<p class='kicker'>P1 keys — click then press</p>" +
+      "<div class='bind-row'>" +
+      ["up","down","left","right","fire","mag","cycle"].map(function (id) {
+        return "<button type='button' class='btn ghost bind-btn' data-bind='" + id + "' aria-label='Rebind " + id + "'>" + id + ": " + bindCode(id) + "</button>";
+      }).join("") + "</div>" +
+      "<div class='modes'><button type='button' class='btn gold' id='optBack'>Back</button></div></div>";
+  }
+  function options(from) {
+    optionsFrom = from || (G && !G.over && overlayMode !== "menu" ? "pause" : "menu");
+    const pl = $("pauseLayer");
+    if (pl) pl.classList.add("hidden");
+    showSheet(optionsHtml(), true);
+    overlayMode = "options";
+    $("overlay").onclick = function (e) { e.stopPropagation(); };
+    wireOptions();
+  }
+  function closeOptions() {
+    if (optionsFrom === "pause" && G && !G.over) {
+      hideOverlay();
+      overlayMode = "pause";
+      const pl = $("pauseLayer");
+      if (pl) pl.classList.remove("hidden");
+      return;
+    }
+    menu();
+  }
   function menu() {
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
@@ -2858,29 +2956,16 @@
           "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +
       "</div>" + heroSheet(heroOf(persist.hero)) +
-      "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
-      "<label class='auto-lab'><input type='checkbox' id='redBox'" + (window.CryptStudio && CryptStudio.reduced ? " checked" : "") + "> Reduced motion</label>" +
-      "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed</label>" +
-      "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
-      "<label class='auto-lab'>Bed <input type='range' id='musVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.musicVol : 1) * 100) + "'></label>" +
-      "<label class='auto-lab'>Color <select id='cbSel'><option value=''>default</option><option value='deut'>deuteranopia</option><option value='prot'>protanopia</option><option value='trit'>tritanopia</option></select></label>" +
-      "<p class='kicker' style='margin-top:.55rem'>P1 keys — click then press</p>" +
-      "<div class='bind-row'>" +
-      ["up","down","left","right","fire","mag","cycle"].map(function (id) {
-        const map = p1Map();
-        const code = id === "fire" ? map.fire[0] : (id === "mag" ? map.mag[0] : (id === "cycle" ? map.cycle[0] : map[id]));
-        return "<button type='button' class='btn ghost bind-btn' data-bind='" + id + "' aria-label='Rebind " + id + "'>" + id + ": " + code.replace("Key","").replace("Digit","") + "</button>";
-      }).join("") + "</div>" +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
-      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Brotato-scale hordes. Stack arms or drown. Bosses every five waves. Hall score.</span></button>" +
+      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Floods of minions. Stack arms or drown. Bosses every five waves.</span></button>" +
       "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Campaign with a second warden. Pads and keyboards, up to four.</span></button>" +
-      "</div><div class='modes' style='margin-top:.6rem'><button class='btn' id='menuRadio'>Play radio</button>" +
-      "<a class='btn ghost' href='/games/'>All games</a></div>" +
+      "</div><div class='modes' style='margin-top:.6rem'><button class='btn gold' id='menuOpt'>Options</button>" +
+      "<button class='btn' id='menuRadio'>Radio</button></div>" +
       "<div class='donate-row'><a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
       "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener'>Patreon</a></div>" +
-      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='./whitepaper.html'>Whitepaper</a></p></div></div>",
+      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='/games/'>All games</a> · <a href='./whitepaper.html'>Whitepaper</a></p></div></div>",
       true
     );
     $("overlay").onclick = function (e) {
@@ -2897,48 +2982,14 @@
       const b = e.target.closest("[data-go]");
       if (!b) return;
       persist.name = ($("nm").value || "Warden").slice(0, 18);
-      persist.autoShot = !!($("autoBox") && $("autoBox").checked);
       savePersist();
       const go = b.getAttribute("data-go");
       newRun({ hero: persist.hero, mode: go === "survive" ? "survive" : (go === "endless" ? "endless" : "campaign"), coop: go === "coop" });
     };
+    const mo = $("menuOpt");
+    if (mo) mo.onclick = (e) => { e.stopPropagation(); options("menu"); };
     const mr = $("menuRadio");
-    if (mr) mr.onclick = (e) => { e.stopPropagation(); const p = $("radioPlay"); if (p) p.click(); };
-    const ab = $("autoBox");
-    if (ab) ab.onclick = (e) => e.stopPropagation();
-    const rb = $("redBox");
-    if (rb) rb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setReduced(rb.checked); };
-    const mb = $("musBox");
-    if (mb) mb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusic(mb.checked); };
-    const sv = $("sfxVol");
-    if (sv) {
-      sv.onclick = (e) => e.stopPropagation();
-      sv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setSfxVol(sv.value / 100); };
-    }
-    const mv = $("musVol");
-    if (mv) {
-      mv.onclick = (e) => e.stopPropagation();
-      mv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusicVol(mv.value / 100); };
-    }
-    document.querySelectorAll("[data-bind]").forEach(function (btn) {
-      btn.onclick = function (e) {
-        e.stopPropagation();
-        bindWait = btn.getAttribute("data-bind");
-        btn.textContent = btn.getAttribute("data-bind") + ": …";
-      };
-    });
-    const cb = $("cbSel");
-    if (cb) {
-      cb.onclick = (e) => e.stopPropagation();
-      cb.onchange = (e) => {
-        e.stopPropagation();
-        persist.cb = cb.value || "";
-        if (persist.cb) document.documentElement.setAttribute("data-cb", persist.cb);
-        else document.documentElement.removeAttribute("data-cb");
-        savePersist();
-      };
-      if (persist.cb) cb.value = persist.cb;
-    }
+    if (mr) mr.onclick = (e) => { e.stopPropagation(); if (window.LatticeRadio) LatticeRadio.play(); };
   }
 
   function help() {
@@ -2950,7 +3001,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
-      "<li>Auto-shoot (menu or L) keeps firing. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute SFX. <b>F11</b> fullscreen. Reduced motion and color filters on the menu.</li></ol>" +
+      "<li>Auto-shoot (Options or L) keeps firing. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute SFX. <b>F11</b> fullscreen. Audio, color, and keys live in <b>Options</b>.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -2963,7 +3014,7 @@
     last = now;
     if (window.CryptStudio) CryptStudio.fpsTick(raw);
     const paused = overlayMode === "pause";
-    const blocked = overlayMode === "menu" || overlayMode === "sheet" || paused;
+    const blocked = overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "options" || paused;
     if (!paused && window.CryptStudio) CryptStudio.juiceTick(raw);
     if (G && G._ups) pollUpgradePick();
     if (!blocked && G && !G.over) {
@@ -3007,7 +3058,7 @@
       }
       return;
     }
-    if (e.code === "KeyP" && G && !G.over && overlayMode !== "menu" && !G._ups) {
+    if (e.code === "KeyP" && G && !G.over && overlayMode !== "menu" && overlayMode !== "options" && !G._ups) {
       if (keyEdge.KeyP) togglePause();
       return;
     }
@@ -3018,10 +3069,12 @@
     }
     if (e.code === "Escape") {
       if (G && G._ups) return;
-      if (keyEdge.Escape) menu();
+      if (!keyEdge.Escape) return;
+      if (overlayMode === "options") { closeOptions(); return; }
+      menu();
       return;
     }
-    if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause") return;
+    if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause" || overlayMode === "options") return;
     const b = persist.binds || {};
     if (PLAY_CODES.has(e.code) || b.up === e.code || b.down === e.code || b.left === e.code || b.right === e.code || b.fire === e.code || b.mag === e.code || b.cycle === e.code) e.preventDefault();
     if (e.code === "KeyL" && G && keyEdge.KeyL) {
@@ -3075,6 +3128,7 @@
   if ($("btnAuto")) $("btnAuto").onclick = toggleAuto;
   if ($("btnFull")) $("btnFull").onclick = toggleFull;
   const pr = $("btnResume"); if (pr) pr.onclick = () => togglePause();
+  const po = $("btnPauseOpt"); if (po) po.onclick = () => options("pause");
   const pm = $("btnPauseMenu"); if (pm) pm.onclick = () => { const l = $("pauseLayer"); if (l) l.classList.add("hidden"); menu(); };
 
   window.LatticeCrypt = {

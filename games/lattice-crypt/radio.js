@@ -20,6 +20,7 @@
   const $ = (id) => document.getElementById(id);
   const el = () => $("radioEl");
 
+  const SAVE_RADIO = "lygo_lattice_crypt_radio";
   const st = {
     tracks: [],
     i: 0,
@@ -29,6 +30,14 @@
     vol: 0.55,
     bag: []
   };
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_RADIO) || "{}");
+    if (typeof s.vol === "number") st.vol = Math.max(0, Math.min(1, s.vol));
+    if (s.muted) st.muted = true;
+  } catch (_) {}
+  function saveRadio() {
+    try { localStorage.setItem(SAVE_RADIO, JSON.stringify({ vol: st.vol, muted: st.muted })); } catch (_) {}
+  }
 
   function normTrack(t) {
     const url = t.stream_url || t.url;
@@ -89,11 +98,35 @@
     if (mute) mute.textContent = st.muted ? "Unmute" : "Mute";
     if (view) view.textContent = st.view ? "Hide" : "Radio";
     if (dock) dock.classList.toggle("collapsed", !st.view);
+    document.querySelectorAll("[data-radio-vol]").forEach(function (inp) {
+      bindVol(inp);
+      const v = Math.round(st.vol * 100);
+      if (document.activeElement !== inp) inp.value = String(v);
+    });
     const a = el();
     if (a) {
       a.muted = st.muted;
       a.volume = st.vol;
     }
+  }
+  function setVol(n) {
+    st.vol = Math.max(0, Math.min(1, +n || 0));
+    if (st.vol > 0 && st.muted) {
+      st.muted = false;
+      const a = el();
+      if (a) a.muted = false;
+    }
+    saveRadio();
+    paint();
+  }
+  function bindVol(node) {
+    if (!node || node._radioVol) return;
+    node._radioVol = true;
+    node.addEventListener("click", function (e) { e.stopPropagation(); });
+    node.addEventListener("input", function (e) {
+      e.stopPropagation();
+      setVol(Number(e.target.value) / 100);
+    });
   }
 
   function loadIndex(i) {
@@ -165,29 +198,25 @@
     on("radioMute", () => {
       st.muted = !st.muted;
       el().muted = st.muted;
+      saveRadio();
       paint();
     });
     on("radioView", () => {
       st.view = !st.view;
       paint();
     });
-    const vol = $("radioVol");
-    if (vol) vol.oninput = (e) => {
-      st.vol = Number(e.target.value) / 100;
-      el().volume = st.vol;
-      if (st.vol > 0 && st.muted) {
-        st.muted = false;
-        el().muted = false;
-      }
-      paint();
-    };
+    document.querySelectorAll("[data-radio-vol]").forEach(bindVol);
     paint();
   }
 
   window.LatticeRadio = {
     play: play,
     pause: pauseKeep,
-    playing: function () { return st.playing; }
+    playing: function () { return st.playing; },
+    setVol: setVol,
+    vol: function () { return st.vol; },
+    bindVol: bindVol,
+    muted: function () { return st.muted; }
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootRadio);
