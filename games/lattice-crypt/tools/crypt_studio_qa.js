@@ -25,13 +25,15 @@ must(game.indexOf("function blit") >= 0, "pre-scale blit");
 must(studio.indexOf("createStereoPanner") >= 0, "spatial SFX");
 must(studio.indexOf("drumOsc") >= 0, "drum stem");
 must(game.indexOf("999999999") >= 0, "score cap");
-must(game.indexOf("Math.min(1000") >= 0, "1000 foe cap");
+must(game.indexOf("Math.min(380") >= 0 && game.indexOf("function surviveCap") >= 0, "survive cap ramp");
 must(game.indexOf("visibilitychange") >= 0, "tab pause");
 must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=43") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=44") >= 0, "cache-bust");
+must(game.indexOf("Start small. The lattice grows with you.") >= 0, "survive start dump");
+must(game.indexOf("0.48 + 0.035") >= 0 && game.indexOf("0.28 * (w - 1)") >= 0, "survive dmg+hp curve");
 must(game.indexOf("minSep") >= 0 && game.indexOf("cast-art") >= 0, "fog spawn + roster art");
 must(game.indexOf("hp: 200") >= 0 && game.indexOf("cistern") >= 0 && game.indexOf("originpulse") >= 0, "200hp+well cards");
 must(game.indexOf("stitch") >= 0 && game.indexOf("echoer") >= 0 && game.indexOf("veilkin") >= 0 && game.indexOf("rollFoeMut") >= 0, "new foes+muts");

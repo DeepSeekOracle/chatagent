@@ -767,13 +767,19 @@
   }
 
   function surviveKind(w) {
-    if (w > 10 && Math.random() < 0.08) return "thief";
-    if (w > 8 && Math.random() < 0.12) return "burst";
-    if (w > 6 && Math.random() < 0.12) return "spawnling";
-    if (w > 7 && Math.random() < 0.1) return "mend";
-    if (w > 4 && Math.random() < 0.16) return KINDS_NEW[(Math.random() * KINDS_NEW.length) | 0];
-    if (w > 6 && Math.random() < 0.14) return "shade";
-    const pool = w >= 5 ? KINDS_HOT : KINDS;
+    const L = Math.max(1, (G && G.lvl) || 1);
+    if (L <= 2) return Math.random() < 0.58 ? "brute" : "wraith";
+    if (L <= 4) {
+      const early = ["brute", "wraith", "imp", "hurler"];
+      return early[(Math.random() * early.length) | 0];
+    }
+    if (L >= 8 && w > 10 && Math.random() < 0.07) return "thief";
+    if (L >= 6 && w > 7 && Math.random() < 0.1) return "burst";
+    if (L >= 5 && w > 6 && Math.random() < 0.1) return "spawnling";
+    if (L >= 6 && w > 7 && Math.random() < 0.08) return "mend";
+    if (L >= 5 && Math.random() < 0.14) return KINDS_NEW[(Math.random() * KINDS_NEW.length) | 0];
+    if (L >= 5 && Math.random() < 0.12) return "shade";
+    const pool = L >= 5 ? KINDS_HOT : KINDS;
     return pool[(Math.random() * pool.length) | 0];
   }
   function foeHas(f, key) {
@@ -784,9 +790,11 @@
   }
   function rollFoeMut(f) {
     if (!f || f.boss || f.super || f.kind === "drain" || f.kind === "thief") return;
+    const L = Math.max(1, (G && G.lvl) || 1);
+    if (G && G.mode === "survive" && L < 3) return;
     const t = G ? threatIndex() : 0;
-    const p1 = 0.18 + Math.min(0.32, t * 0.014);
-    const p2 = 0.05 + Math.min(0.14, t * 0.007);
+    const p1 = G && G.mode === "survive" ? Math.min(0.34, 0.05 * (L - 2)) : (0.18 + Math.min(0.32, t * 0.014));
+    const p2 = G && G.mode === "survive" ? Math.min(0.12, 0.015 * (L - 4)) : (0.05 + Math.min(0.14, t * 0.007));
     const bag = [["shoot", 3], ["lob", 2], ["flicker", 2], ["explode", 2], ["heal", 2], ["haste", 3], ["tough", 3], ["ghost", 1], ["blink", 1], ["pull", 1], ["split", 1], ["hymn", 1], ["slow", 2], ["root", 1]];
     function one() {
       let s = 0; bag.forEach(function (x) { s += x[1]; });
@@ -850,7 +858,32 @@
     }
     return made;
   }
-  function surviveCap(w) { return Math.min(1000, 90 + w * 48); }
+  /* Survive ramp: player level L first, wave W second (W = 1+t/28).
+     Cap 14+(L-1)*7+(W-1)*2.4 ≤380. Pulse 2+L+(W/5) ≤22, gap 0.62-0.02L ≥0.16s.
+     Horde 5+2L+0.7W ≤72, gap 13.5-0.22L ≥6.2s. Fodder HP 1+0.28(W-1)+0.48(L-1). */
+  function surviveCap(w) {
+    const L = Math.max(1, (G && G.lvl) || 1);
+    w = w || surviveWave();
+    return Math.min(380, Math.round(14 + (L - 1) * 7 + (w - 1) * 2.4));
+  }
+  function survivePulseN() {
+    const L = Math.max(1, G.lvl || 1);
+    const W = surviveWave();
+    return Math.min(22, 2 + L + ((W / 5) | 0));
+  }
+  function survivePulseGap() {
+    const L = Math.max(1, G.lvl || 1);
+    return Math.max(0.16, 0.62 - L * 0.02);
+  }
+  function surviveHordePack() {
+    const L = Math.max(1, G.lvl || 1);
+    const W = surviveWave();
+    return Math.min(72, 5 + L * 2 + ((W * 0.7) | 0));
+  }
+  function surviveHordeGap() {
+    const L = Math.max(1, G.lvl || 1);
+    return Math.max(6.2, 13.5 - L * 0.22);
+  }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
     const w = surviveWave();
@@ -862,7 +895,7 @@
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
       feel("wave");
-      G._spawnQ = (G._spawnQ || 0) + 40 + Math.min(180, w * 14);
+      G._spawnQ = (G._spawnQ || 0) + Math.min(90, 8 + G.lvl * 3 + w * 2);
       G.score += 50 + w * 10;
       if (w % 5 === 0) {
         G.players.forEach(function (p) {
@@ -874,20 +907,19 @@
     }
     const cap = surviveCap(w);
     G.spawnT -= dt;
-    const gap = Math.max(0.04, 0.11 - w * 0.004);
     if (G.spawnT <= 0 && G.level.foes.length < cap) {
-      G.spawnT = gap;
-      const n = 14 + Math.min(48, (w * 2.8) | 0);
+      G.spawnT = survivePulseGap();
+      const n = survivePulseN();
       if (!spawnSurviveAround(surviveKind(w), false, n)) {
         spawnSurviveAround(surviveKind(w), false, n, true);
       }
     }
-    G.hordeT = (G.hordeT == null ? 4.5 : G.hordeT) - dt;
+    G.hordeT = (G.hordeT == null ? 12 : G.hordeT) - dt;
     if (G.hordeT <= 0) {
-      G.hordeT = Math.max(2.8, 7.5 - w * 0.2);
-      const pack = 48 + Math.min(220, w * 16);
+      G.hordeT = surviveHordeGap();
+      const pack = surviveHordePack();
       G._spawnQ = (G._spawnQ || 0) + pack;
-      say("A flood — " + pack + " more.");
+      if (G.lvl >= 3) say("A flood — " + pack + " more.");
     }
     let drain = 0;
     while ((G._spawnQ || 0) > 0 && G.level.foes.length < cap && drain < 64) {
@@ -1568,10 +1600,11 @@
       if (G.mode === "survive") {
         const w = surviveWave();
         const L = Math.max(1, G.lvl || 1);
-        const wavePart = k === "drain" ? 40 + w * 6 : (d.super ? 88 + w * 20 : (d.boss ? 14 + w * 8 : 1 + w * 0.95));
-        const lvlPart = 1 + 0.10 * (L - 1);
-        hp = Math.max(1, Math.round(wavePart * lvlPart * (1 + 0.004 * threatIndex())));
-        rank = 1 + Math.min(8, (w / 4) | 0);
+        if (k === "drain") hp = Math.round(28 + w * 4 + (L - 1) * 3);
+        else if (d.super) hp = Math.round(36 + w * 7 + (L - 1) * 5);
+        else if (d.boss) hp = Math.round(8 + w * 3.2 + (L - 1) * 2.4);
+        else hp = Math.max(1, Math.round(1 + 0.28 * (w - 1) + 0.48 * (L - 1)));
+        rank = 1 + Math.min(6, ((L + w) / 6) | 0);
       } else {
         hp = Math.max(1, Math.round(hp * hpScale()));
         if (k === "drain") hp = Math.round(70 + (G.floor || 0) * 7 * hpScale());
@@ -1798,7 +1831,7 @@
       thiefT: 24,
       over: false,
       mode: opts.mode || "campaign",
-      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.15, bossAt: 0, pendingLvl: 0, hordeT: 6
+      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.7, bossAt: 0, pendingLvl: 0, hordeT: 14
     };
     joinHero(opts.hero || persist.hero, 0);
     if (G.mode === "survive") {
@@ -1816,9 +1849,10 @@
     showCoach(G.mode);
     if (G.mode === "campaign") say("Campaign — WASD, J fire, smash nexuses, find the cyan exit.");
     else if (G.mode === "survive") {
-      say("Survival — auto-fire is on. Move. Stack. Don't stop.");
-      for (let i = 0; i < 8; i++) spawnSurviveAround(surviveKind(1), false, 12);
-      G._spawnQ = 40;
+      say("Survival — auto-fire is on. Start small. The lattice grows with you.");
+      spawnSurviveAround("brute", false, 6);
+      spawnSurviveAround("wraith", false, 5);
+      G._spawnQ = 0;
     }
     else say("Endless — WASD, J fire. The crypt does not end.");
     if (opts.coop) {
@@ -2674,7 +2708,10 @@
       const hitR = def.boss ? 0.72 : 0.48;
       if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
-        const dmg = Math.max(2, def.dmg * (G.mode === "survive" ? dmgScale() : (f.rank * dmgScale())) - arm);
+        const dmgMul = G.mode === "survive"
+          ? (0.48 + 0.035 * Math.max(0, (G.lvl || 1) - 1) + 0.018 * Math.max(0, surviveWave() - 1))
+          : (f.rank * dmgScale());
+        const dmg = Math.max(1, def.dmg * dmgMul - arm);
         const iframe = (tgt.hurtT || 0) > 0.12;
         const surviveIframe = G.mode === "survive" && (tgt.hurtT || 0) > 0;
         if (f.kind === "drain") tgt.hp -= dmg * dt * 6.5;
