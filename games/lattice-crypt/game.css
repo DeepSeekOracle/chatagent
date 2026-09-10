@@ -33,8 +33,12 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 }
 .stage { display: grid; grid-template-columns: 1fr 280px; min-height: 0; }
 .viewport { position: relative; min-width: 0; min-height: 0; background: #05060a; }
-#crypt, .fx-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+#crypt, .fx-canvas, .bg-canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.bg-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+#crypt { position: relative; z-index: 1; background: transparent; }
 .fx-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.bind-row { display: flex; flex-wrap: wrap; gap: .28rem; margin: .35rem 0 .55rem; }
+.bind-btn { min-height: 36px; font-size: .68rem !important; padding: .28rem .45rem !important; }
 .announce {
   position: absolute; left: 50%; top: 18px; transform: translateX(-50%);
   font: 800 1.05rem Syne, sans-serif; color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 12px #000;

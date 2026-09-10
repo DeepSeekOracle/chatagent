@@ -55,8 +55,9 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
 ["togglePause", "cleanupGameState", "keyEdge.KeyP", "pool.shot.free", "s._chained = false",
   "queryFoes", "rebuildFoeGrid", "showCoach", "lodOn", "CryptStudio.STEP",
   "onBossSpawn", "onWaveComplete", "onPlayerDeath", "onHeal", "onDash",
-  "setSfxVol", "cryptFx", "visibilitychange"].forEach(function (k) {
-  if (game.indexOf(k) < 0) throw new Error("missing " + k);
+  "setSfxVol", "cryptFx", "visibilitychange", "p1Map", "persist.binds",
+  "paintTileCache", "blit(", "cryptBg", "createStereoPanner"].forEach(function (k) {
+  if (game.indexOf(k) < 0 && src.indexOf(k) < 0) throw new Error("missing " + k);
 });
 if (game.indexOf("Math.min(300") < 0) throw new Error("cap not 300");
 const foe = S.pool.foe.alloc();

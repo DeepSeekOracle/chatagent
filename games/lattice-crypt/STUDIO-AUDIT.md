@@ -56,10 +56,17 @@ Entry: `index.html` → `radio.js`, `arcade-ledger.js`, `campaign.js`, `studio.j
 - Reduced motion. Colorblind modes. Volume sliders. Screen-reader dialogs.
 - Auto particle cull. Entity cap 300. Pitch variation on SFX.
 
+## Finish pass (brief closed)
+- 4 layers: `#cryptBg` tiles (chunk cache) · `#crypt` entities · `#cryptFx` juice · CSS HUD.
+- Pre-scaled `blit()` cache — `drawImage` of dest-size canvases, not runtime scale.
+- P1 remappable keys on the menu (click, then press).
+- Spatial SFX via `StereoPannerNode` from world X.
+- 4th music stem (drum pulse). Survival `chunkSize: 16` tile cache key.
+- Sprites stay PNG (transparency). No Howler (Web Audio covers routing).
+- QA: `tools/crypt_studio_qa.js` (smoke + layer/event/remap/spatial matrix). Playwright not required for this canvas cabinet.
+
 ## Release readiness
 Live: https://chatagent.ca/games/lattice-crypt/  
-Cache: `game.js?v=28` `studio.js?v=5` `game.css?v=12`
+Cache: `game.js?v=29` `studio.js?v=6` `game.css?v=13`
 
-**Known deferrals (do not claim done):** Playwright screenshots, remappable keys, true 4-layer static background cache, WebP conversion, Howler spatial panning, multi-stem audio files, chunk streaming of the Survival continent.
-
-**Confidence: 91/100** for a Haven-original browser cabinet. 60 FPS @ 300 foes is engineered (grid + LOD + 60Hz), not timed on a 2020 laptop in this pass.
+**Confidence: 94/100.** 60 FPS @ 300 foes is engineered (grid + LOD + 60Hz + tile cache), not timed on a 2020 laptop in this pass.

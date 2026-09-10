@@ -197,7 +197,13 @@
     if (!actx) return;
     try {
       const o = actx.createOscillator(), g = actx.createGain(), f = actx.createBiquadFilter();
-      o.connect(f); f.connect(g); g.connect(actx.destination);
+      o.connect(f); f.connect(g);
+      const pan = arguments[2];
+      if (typeof pan === "number" && actx.createStereoPanner) {
+        const pn = actx.createStereoPanner();
+        pn.pan.value = Math.max(-1, Math.min(1, pan));
+        g.connect(pn); pn.connect(actx.destination);
+      } else g.connect(actx.destination);
       const now = actx.currentTime;
       const table = {
         shot: { f: 620, t: 0.045, type: "square", q: 800 },
@@ -249,7 +255,7 @@
       dash: { sfx: "dash", burst: 4, col: "#86efac" }
     };
     const m = T[kind] || T.hit;
-    if (m.sfx) sfx(m.sfx);
+    if (m.sfx) sfx(m.sfx, 1, arguments[4]);
     if (m.burst && x != null) burst(x, y, col || m.col, m.burst);
     if (m.shake) shake(m.shake);
     if (m.stop) hitstop(m.stop);
@@ -319,6 +325,7 @@
 
   let musicGain = null, musicOsc = null, musicLfo = null;
   let pulseOsc = null, pulseGain = null, tenseOsc = null, tenseGain = null;
+  let drumOsc = null, drumGain = null, drumLfo = null;
   function duckMusic() {
     if (!actx) return;
     const silent = muted || !musicOn || reduced;
@@ -361,7 +368,18 @@
     tf.type = "lowpass"; tf.frequency.value = 280;
     tenseOsc.connect(tf); tf.connect(tenseGain); tenseGain.connect(actx.destination);
 
+    drumOsc = actx.createOscillator();
+    drumGain = actx.createGain();
+    drumLfo = actx.createOscillator();
+    drumOsc.type = "square"; drumOsc.frequency.value = 72;
+    drumGain.gain.value = 0.0001;
+    drumLfo.type = "square"; drumLfo.frequency.value = 2.1;
+    const dmod = actx.createGain(); dmod.gain.value = 48;
+    drumLfo.connect(dmod); dmod.connect(drumOsc.frequency);
+    drumOsc.connect(drumGain); drumGain.connect(actx.destination);
+
     musicOsc.start(); musicLfo.start(); pulseOsc.start(); tenseOsc.start();
+    drumOsc.start(); drumLfo.start();
   }
   function musicTick(intensity, extra) {
     if (muted || !musicOn || reduced) { duckMusic(); return; }
@@ -382,6 +400,10 @@
       pulseGain.gain.setTargetAtTime((0.002 + i * 0.012 + horde * 0.01) * mv, now, 0.25);
       tenseOsc.frequency.setTargetAtTime(64 + danger * 90 + horde * 40, now, 0.3);
       tenseGain.gain.setTargetAtTime((danger * 0.014 + horde * 0.01) * mv, now, 0.28);
+      if (drumGain && drumLfo) {
+        drumLfo.frequency.setTargetAtTime(1.6 + i * 2.2 + horde * 1.4, now, 0.4);
+        drumGain.gain.setTargetAtTime((0.001 + i * 0.008 + horde * 0.006) * mv, now, 0.3);
+      }
       if (danger > 0.68 && !muted) {
         const beat = ((now * 2) | 0);
         if (beat !== musicTick._beat) {

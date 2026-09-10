@@ -185,8 +185,28 @@
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("crypt");
-  const ctx = canvas.getContext("2d", { alpha: false });
+  const bgCanvas = $("cryptBg");
+  const ctx = canvas.getContext("2d", { alpha: !!bgCanvas });
   ctx.imageSmoothingEnabled = false;
+  let drawTarget = ctx;
+  const blitCache = new Map();
+  function blit(img, sx, sy, sw, sh, dx, dy, dw, dh) {
+    const dest = drawTarget || ctx;
+    if (!img || !dest) return;
+    dw = dw | 0; dh = dh | 0;
+    const key = (img.src || "x") + ":" + sx + "," + sy + "," + sw + ":" + dw;
+    let c = blitCache.get(key);
+    if (!c) {
+      c = document.createElement("canvas");
+      c.width = Math.max(1, dw); c.height = Math.max(1, dh);
+      const cctx = c.getContext("2d");
+      cctx.imageSmoothingEnabled = false;
+      cctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+      blitCache.set(key, c);
+      if (blitCache.size > 420) blitCache.delete(blitCache.keys().next().value);
+    }
+    dest.drawImage(c, Math.round(dx), Math.round(dy));
+  }
   function emit(ev, p) { if (window.CryptStudio) CryptStudio.emit(ev, p); }
   function pushShot(init) {
     const s = window.CryptStudio ? CryptStudio.pool.shot.alloc() : {};
@@ -239,6 +259,8 @@
   };
   let keys = {};
   let keyEdge = {};
+  let bindWait = null;
+  let tileCache = null, tileCacheKey = "";
   let G = null;
   let overlayMode = "menu";
   let announce = { t: "", life: 0 };
@@ -303,7 +325,7 @@
     if (!s && name.indexOf("hero_") === 0) s = spr(name.replace(/hero_[^_]+/, "hero_kael"));
     if (!s || !atlas) return;
     w = w || TILE;
-    ctx.drawImage(atlas, s.sx, s.sy, cell, cell, Math.round(x), Math.round(y), w, w);
+    blit(atlas, s.sx, s.sy, cell, cell, x, y, w, w);
   }
   function drawTile(name, x, y) {
     const i = tileNames[name];
@@ -313,7 +335,7 @@
       return;
     }
     const sx = (i % tileCols) * tileCell, sy = Math.floor(i / tileCols) * tileCell;
-    ctx.drawImage(tileAtlas, sx, sy, tileCell, tileCell, Math.round(x), Math.round(y), dw, dw);
+    blit(tileAtlas, sx, sy, tileCell, tileCell, x, y, dw, dw);
   }
   function floorName(z, x, y) {
     return z + "_f" + ((x & 3) + ((y & 3) << 2));
@@ -326,7 +348,7 @@
       return;
     }
     const sx = (i % fxCols) * fxCell, sy = Math.floor(i / fxCols) * fxCell;
-    ctx.drawImage(fxAtlas, sx, sy, fxCell, fxCell, Math.round(x), Math.round(y), w, w);
+    blit(fxAtlas, sx, sy, fxCell, fxCell, x, y, w, w);
   }
   function drawItemSpr(name, x, y, w) {
     const i = itemNames[name];
@@ -337,7 +359,7 @@
       return;
     }
     const sx = (i % itemCols) * itemCell, sy = Math.floor(i / itemCols) * itemCell;
-    ctx.drawImage(itemAtlas, sx, sy, itemCell, itemCell, Math.round(x), Math.round(y), w, w);
+    blit(itemAtlas, sx, sy, itemCell, itemCell, x, y, w, w);
   }
   function drawItem(it) {
     const spec = PICK[it.kind] || {};
@@ -579,7 +601,7 @@
     }
     const sx = (i % foeCols) * foeCell, sy = Math.floor(i / foeCols) * foeCell;
     w = w || foeCell;
-    ctx.drawImage(foeAtlas, sx, sy, foeCell, foeCell, Math.round(x), Math.round(y), w, w);
+    blit(foeAtlas, sx, sy, foeCell, foeCell, x, y, w, w);
   }
   function drawHeroSpr(p, camx, camy) {
     const fr = (p.walk | 0) % 2;
@@ -597,11 +619,11 @@
         ctx.save();
         ctx.translate(Math.round(dx + sz), Math.round(dy));
         ctx.scale(-1, 1);
-        ctx.drawImage(heroAtlas, sx, sy, heroCell, heroCell, 0, 0, sz, sz);
+        blit(heroAtlas, sx, sy, heroCell, heroCell, 0, 0, sz, sz);
         ctx.restore();
         ctx.imageSmoothingEnabled = false;
       } else {
-        ctx.drawImage(heroAtlas, sx, sy, heroCell, heroCell, Math.round(dx), Math.round(dy), sz, sz);
+        blit(heroAtlas, sx, sy, heroCell, heroCell, dx, dy, sz, sz);
       }
       return;
     }
@@ -1078,7 +1100,7 @@
       realm: REALMS[seed % 8],
       layout: "The Long Crypt",
       lore: "No exit. A continent of stone. The lattice pours. Grow or be unnamed.",
-      treasure: 0, quiet: 0, survive: true
+      treasure: 0, quiet: 0, survive: true, chunkSize: 16
     });
   }
 
@@ -1275,7 +1297,19 @@
   }
   function lodOn() { return !!(window.CryptStudio && CryptStudio.fps.lod); }
   function feel(kind, x, y, col) {
-    if (window.CryptStudio && CryptStudio.feel) CryptStudio.feel(kind, x, y, col);
+    let pan = 0;
+    if (x != null && canvas && canvas.clientWidth) {
+      pan = Math.max(-1, Math.min(1, ((x * TILE - cam.x) / canvas.clientWidth - 0.5) * 2));
+    }
+    if (window.CryptStudio && CryptStudio.feel) CryptStudio.feel(kind, x, y, col, pan);
+  }
+  function p1Map() {
+    const b = persist.binds || {};
+    const d = KEYS_P[0];
+    return {
+      up: b.up || d.up, down: b.down || d.down, left: b.left || d.left, right: b.right || d.right,
+      fire: [b.fire || d.fire[0]], mag: [b.mag || d.mag[0], "ShiftLeft"], cycle: [b.cycle || d.cycle[0]]
+    };
   }
   function showCoach(mode) {
     const el = $("coach");
@@ -1388,6 +1422,7 @@
     if (window.CryptStudio && G.shots) G.shots.forEach((s) => CryptStudio.pool.shot.free(s));
     G.shots = [];
     G.fx = [];
+    tileCacheKey = "";
     G.thiefT = 24 + (Math.random() * 16);
     if (G.mode === "campaign") {
       $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
@@ -1436,7 +1471,7 @@
   }
 
   function inputFor(p) {
-    const map = KEYS_P[p.slot] || KEYS_P[0];
+    const map = p.slot === 0 ? p1Map() : (KEYS_P[p.slot] || KEYS_P[0]);
     let dx = 0, dy = 0;
     if (keys[map.up]) dy -= 1;
     if (keys[map.down]) dy += 1;
@@ -2409,6 +2444,40 @@
     say(down.hero.name + " rises.");
   }
 
+  function paintTileCache(lv, z, x0, y0, x1, y1, key) {
+    const tw = Math.max(1, (x1 - x0) * TILE + 2);
+    const th = Math.max(1, (y1 - y0) * TILE + 2);
+    if (!tileCache) tileCache = document.createElement("canvas");
+    if (tileCacheKey === key && tileCache.width === tw && tileCache.height === th) return;
+    tileCacheKey = key;
+    tileCache.width = tw;
+    tileCache.height = th;
+    const tctx = tileCache.getContext("2d", { alpha: false });
+    tctx.imageSmoothingEnabled = false;
+    tctx.fillStyle = "#05060a";
+    tctx.fillRect(0, 0, tw, th);
+    const prev = drawTarget;
+    drawTarget = tctx;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const px = (x - x0) * TILE, py = (y - y0) * TILE;
+      const t = lv.tiles[y][x];
+      if (t === "wall") {
+        const N = !solidAt(lv, x, y - 1), S = !solidAt(lv, x, y + 1);
+        const E = !solidAt(lv, x + 1, y), W = !solidAt(lv, x - 1, y);
+        if (!N && !S && !E && !W) { drawTile("void", px, py); continue; }
+        drawTile(z + "_top", px, py);
+        if (S) drawTile(z + "_face", px, py);
+      } else {
+        drawTile(floorName(z, x, y), px, py);
+        if (t === "door") drawSpr("door", px, py);
+        if (t === "door_open") drawSpr("door_open", px, py);
+        if (t === "exit") drawSpr("exit", px, py);
+        if (t === "exit_lock") { tctx.globalAlpha = 0.32; drawSpr("exit", px, py); tctx.globalAlpha = 1; }
+        if (t === "pad") drawSpr("pad", px, py);
+      }
+    }
+    drawTarget = prev;
+  }
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const dpr = lodOn() ? 1 : Math.min(2, window.devicePixelRatio || 1);
@@ -2417,8 +2486,10 @@
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = "#05060a";
-    ctx.fillRect(0, 0, w, h);
+    if (!bgCanvas) {
+      ctx.fillStyle = "#05060a";
+      ctx.fillRect(0, 0, w, h);
+    }
     if (!G || !G.level) return;
     const lv = G.level;
     const live = G.players.filter((p) => !p.dead);
@@ -2445,27 +2516,22 @@
     const y0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
     const x1 = Math.min(lv.W, Math.ceil((cam.x + w) / TILE) + 2);
     const y1 = Math.min(lv.H, Math.ceil((cam.y + h) / TILE) + 2);
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-      const px = x * TILE - cam.x, py = y * TILE - cam.y;
-      const t = lv.tiles[y][x];
-      if (t === "wall") {
-        const N = !solidAt(lv, x, y - 1), S = !solidAt(lv, x, y + 1);
-        const E = !solidAt(lv, x + 1, y), W = !solidAt(lv, x - 1, y);
-        if (!N && !S && !E && !W) {
-          drawTile("void", px, py);
-          continue;
-        }
-        drawTile(z + "_top", px, py);
-        if (S) drawTile(z + "_face", px, py);
-      } else {
-        drawTile(floorName(z, x, y), px, py);
-        if (t === "door") drawSpr("door", px, py);
-        if (t === "door_open") drawSpr("door_open", px, py);
-        if (t === "exit") drawSpr("exit", px, py);
-        if (t === "exit_lock") { ctx.globalAlpha = 0.32; drawSpr("exit", px, py); ctx.globalAlpha = 1; }
-        if (t === "pad") drawSpr("pad", px, py);
+    const CHUNK = 16;
+    const chunkKey = G.seed + ":" + G.floor + ":" + ((x0 / CHUNK) | 0) + "," + ((y0 / CHUNK) | 0) + ":" + ((x1 / CHUNK) | 0) + "," + ((y1 / CHUNK) | 0) + ":" + x0 + "," + y0 + "," + x1 + "," + y1 + ":" + z;
+    paintTileCache(lv, z, x0, y0, x1, y1, chunkKey);
+    const tileDest = bgCanvas ? bgCanvas.getContext("2d", { alpha: false }) : ctx;
+    if (bgCanvas) {
+      if (bgCanvas.width !== canvas.width || bgCanvas.height !== canvas.height) {
+        bgCanvas.width = canvas.width; bgCanvas.height = canvas.height;
       }
+      tileDest.setTransform(dpr, 0, 0, dpr, 0, 0);
+      tileDest.imageSmoothingEnabled = false;
+      tileDest.fillStyle = "#05060a";
+      tileDest.fillRect(0, 0, w, h);
+      ctx.clearRect(0, 0, w, h);
     }
+    if (tileCache) tileDest.drawImage(tileCache, Math.round(x0 * TILE - cam.x), Math.round(y0 * TILE - cam.y));
+    drawTarget = ctx;
     lv.gens.forEach((g) => {
       const pulse = 0.78 + 0.22 * Math.sin((G.t + g.x) * 7);
       ctx.globalAlpha = pulse;
@@ -2781,6 +2847,13 @@
       "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
       "<label class='auto-lab'>Bed <input type='range' id='musVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.musicVol : 1) * 100) + "'></label>" +
       "<label class='auto-lab'>Color <select id='cbSel'><option value=''>default</option><option value='deut'>deuteranopia</option><option value='prot'>protanopia</option><option value='trit'>tritanopia</option></select></label>" +
+      "<p class='kicker' style='margin-top:.55rem'>P1 keys — click then press</p>" +
+      "<div class='bind-row'>" +
+      ["up","down","left","right","fire","mag","cycle"].map(function (id) {
+        const map = p1Map();
+        const code = id === "fire" ? map.fire[0] : (id === "mag" ? map.mag[0] : (id === "cycle" ? map.cycle[0] : map[id]));
+        return "<button type='button' class='btn ghost bind-btn' data-bind='" + id + "' aria-label='Rebind " + id + "'>" + id + ": " + code.replace("Key","").replace("Digit","") + "</button>";
+      }).join("") + "</div>" +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
@@ -2829,6 +2902,13 @@
       mv.onclick = (e) => e.stopPropagation();
       mv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusicVol(mv.value / 100); };
     }
+    document.querySelectorAll("[data-bind]").forEach(function (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        bindWait = btn.getAttribute("data-bind");
+        btn.textContent = btn.getAttribute("data-bind") + ": …";
+      };
+    });
     const cb = $("cbSel");
     if (cb) {
       cb.onclick = (e) => e.stopPropagation();
@@ -2884,6 +2964,18 @@
   }
 
   window.addEventListener("keydown", (e) => {
+    if (bindWait) {
+      e.preventDefault();
+      if (e.code !== "Escape") {
+        persist.binds = persist.binds || {};
+        persist.binds[bindWait] = e.code;
+        savePersist();
+      }
+      const btn = document.querySelector("[data-bind='" + bindWait + "']");
+      if (btn) btn.textContent = bindWait + ": " + (e.code === "Escape" ? "—" : e.code.replace("Key", "").replace("Digit", ""));
+      bindWait = null;
+      return;
+    }
     if (!keys[e.code]) keyEdge[e.code] = true;
     keys[e.code] = true;
     if (e.code === "F3") {
@@ -2912,7 +3004,8 @@
       return;
     }
     if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause") return;
-    if (PLAY_CODES.has(e.code)) e.preventDefault();
+    const b = persist.binds || {};
+    if (PLAY_CODES.has(e.code) || b.up === e.code || b.down === e.code || b.left === e.code || b.right === e.code || b.fire === e.code || b.mag === e.code || b.cycle === e.code) e.preventDefault();
     if (e.code === "KeyL" && G && keyEdge.KeyL) {
       G.surviveAuto = false;
       persist.autoShot = !persist.autoShot; savePersist(); paintHud();
