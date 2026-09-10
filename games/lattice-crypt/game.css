@@ -106,9 +106,10 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .hud-ward .nm { font: 800 .86rem Syne, sans-serif; letter-spacing: .02em; }
 .hud-hp {
   height: 15px; background: #1a2030; border-radius: 99px; overflow: hidden;
-  margin: .32rem 0 .22rem; border: 1px solid #2a3548;
+  margin: .32rem 0 .22rem; border: 1px solid #2a3548; position: relative;
 }
-.hud-hp i { display: block; height: 100%; border-radius: 99px; }
+.hud-hp b { position: absolute; inset: 0 auto 0 0; background: #7f1d1d; border-radius: 99px; }
+.hud-hp i { display: block; height: 100%; border-radius: 99px; position: relative; }
 .hud-meta-row { font: 600 .68rem "IBM Plex Mono", monospace; color: var(--mute); }
 .hud-buffs { color: var(--gold); }
 .hud-right {
@@ -158,7 +159,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   font: 700 .82rem Syne, sans-serif; background: #13202c; color: var(--text);
   border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; cursor: pointer;
 }
-.btn:hover { border-color: var(--cyan); }
+.btn:hover { border-color: var(--cyan); transform: scale(1.03); }
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.gold { background: var(--gold); color: #111; border-color: var(--gold); }
 .btn.ghost { background: transparent; }
 .overlay {

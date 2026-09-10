@@ -177,8 +177,22 @@
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("crypt");
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: false });
   ctx.imageSmoothingEnabled = false;
+  function emit(ev, p) { if (window.CryptStudio) CryptStudio.emit(ev, p); }
+  function pushShot(init) {
+    const s = window.CryptStudio ? CryptStudio.pool.shot.alloc() : {};
+    s.x = init.x; s.y = init.y; s.px = init.px != null ? init.px : init.x; s.py = init.py != null ? init.py : init.y;
+    s.vx = init.vx || 0; s.vy = init.vy || 0;
+    s.dmg = init.dmg || 1; s.owner = init.owner || null; s.life = init.life; s.maxLife = init.maxLife || init.life;
+    s.grace = init.grace || 0; s.hero = init.hero || "kael"; s.wep = init.wep || "shard";
+    s.foe = !!init.foe; s.bounced = false; s.pierce = init.pierce || 0; s.lob = !!init.lob;
+    s.flame = init.flame || 0; s.echo = !!init.echo; s.air = !!init.air;
+    s.trail = init.trail || [{ x: s.x, y: s.y }];
+    s.isActive = true;
+    G.shots.push(s);
+    return s;
+  }
 
   let atlas = null, names = {}, cell = 32, cols = 16;
   let foeAtlas = null, foeNames = {}, foeCell = 64, foeCols = 8;
@@ -239,6 +253,7 @@
   function heroOf(id) { return HEROES.find((h) => h.id === id) || HEROES[0]; }
 
   function beep(kind) {
+    if (window.CryptStudio) { CryptStudio.sfx(kind); return; }
     try {
       if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
       const o = actx.createOscillator(), g = actx.createGain();
@@ -646,6 +661,8 @@
       G.wave = w;
       say("Wave " + w + " — the pour thickens.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
+      emit("onWaveStart", { w: w });
+      if (window.CryptStudio) { CryptStudio.sfx("wave"); CryptStudio.shake(3); }
     }
     const cap = surviveCap(w);
     G.spawnT -= dt;
@@ -992,6 +1009,16 @@
       tiles[y][start.x + 1] = "floor";
     }
     tiles[start.y][start.x] = "floor";
+    function stampPlaza(cx, cy, r) {
+      fillRect(tiles, W, H, cx - r, cy - r, r * 2, r * 2, "floor");
+      [[cx - 4, cy - 4], [cx + 3, cy - 4], [cx - 4, cy + 3], [cx + 3, cy + 3]].forEach(function (pt) {
+        if (tiles[pt[1]] && tiles[pt[1]][pt[0]] !== undefined) tiles[pt[1]][pt[0]] = "wall";
+      });
+    }
+    stampPlaza(start.x - 48, start.y - 40, 10);
+    stampPlaza(start.x + 48, start.y - 40, 10);
+    stampPlaza(start.x - 48, start.y + 40, 10);
+    stampPlaza(start.x + 48, start.y + 40, 10);
     const items = [];
     const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
     for (let i = 0; i < 96; i++) {
@@ -1174,8 +1201,18 @@
     return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
   }
 
+  function cleanupGameState() {
+    if (window.CryptStudio) CryptStudio.cleanup();
+    if (G) {
+      G.shots = []; G.fx = [];
+      if (G.level) G.level.foes = [];
+    }
+    keys = {}; keyEdge = {};
+    announce = { t: "", life: 0 };
+  }
   function newRun(opts) {
     opts = opts || {};
+    cleanupGameState();
     const seed = ((opts.seed != null ? opts.seed : (Math.random() * 0xFFFFFFFF)) ^ Date.now()) >>> 0;
     G = {
       seed, floor: 0, score: 0, credits: 1, t: 0, log: [],
@@ -1418,13 +1455,14 @@
     const lv = wepLv(p, id);
     let sx = p.x + ax * 0.35, sy = p.y + ay * 0.35;
     if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
-    G.shots.push({
+    pushShot({
       x: sx, y: sy, px: sx, py: sy, vx: ax * w.spd, vy: ay * w.spd,
       dmg: shotDmg(p, w) + Math.max(0, lv - 1), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
-      hero: p.hero.id, wep: id, bounced: false,
+      hero: p.hero.id, wep: id,
       pierce: (w.pierce || 0) + (p.pierce || 0) + Math.max(0, lv - 1) + (p.echo > 0 ? 1 : 0), lob: !!w.lob, flame: w.flame || 0, echo: p.echo > 0,
       trail: [{ x: sx, y: sy }]
     });
+    emit("onFire", { p: p, wep: id });
   }
 
   function fireWeapon(p, id) {
@@ -1621,6 +1659,8 @@
   function applyPickup(p, it) {
     const k = it.kind;
     const spec = PICK[k] || {};
+    emit("onPickup", { p: p, kind: k });
+    if (window.CryptStudio) CryptStudio.burst(p.x, p.y, "#fde68a", 6);
     G.fx.push({ x: p.x, y: p.y, life: 0.3, kind: "pick", col: spec.glow || "#fde68a" });
     if (WEAPONS[k]) { giveWep(p, k); G.score += spec.score || 90; return; }
     if (spec.heal) p.hp = Math.min(9999, (spec.heal >= 9999 ? p.max : p.hp + spec.heal));
@@ -1689,11 +1729,18 @@
   }
 
   function hitFoe(f, dmg, melee) {
+    if (!f || f.isActive === false) return;
     if (f.kind === "wraith" && melee) return;
     if (shadeHidden(f)) return;
     if (f.kind === "drain") return;
     f.hp -= dmg;
     f.hurt = 0.12;
+    emit("onEnemyHit", { f: f, dmg: dmg, melee: melee });
+    if (window.CryptStudio && dmg >= 1) {
+      CryptStudio.floater(f.x, f.y - 0.3, Math.max(1, dmg | 0), f.boss ? "#fbbf24" : "#e2e8f0");
+      if (f.boss) { CryptStudio.shake(5); CryptStudio.hitstop(70); CryptStudio.sfx("boss"); }
+      else if (!G._hitSfx) { CryptStudio.sfx("hit"); G._hitSfx = true; }
+    }
     if (f.hp <= 0 && G.mode !== "survive") G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
   }
 
@@ -1710,6 +1757,8 @@
 
   function update(dt) {
     if (!G || G.over || overlayMode === "menu" || overlayMode === "sheet") { keyEdge = {}; return; }
+    G._hitSfx = false;
+    G._killSfx = false;
     G.t += dt;
     announce.life -= dt;
     const lv = G.level;
@@ -1888,7 +1937,11 @@
           }
         }
         lv.quiet = 0;
-        if (!tgt.hurtBeep) { beep("hurt"); tgt.hurtBeep = 0.25; }
+        if (!tgt.hurtBeep) {
+          beep("hurt"); tgt.hurtBeep = 0.25;
+          emit("onPlayerHit", { p: tgt, f: f });
+          if (window.CryptStudio) { CryptStudio.shake(4); CryptStudio.juice.flash = 1; CryptStudio.hitstop(45); }
+        }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
         if (tgt.thorns > 0) f.hp -= 22 * dt;
         if (f.kind === "thief" && tgt.vials > 0 && !iframe && !surviveIframe) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
@@ -1900,15 +1953,25 @@
       }
       if (def.shoot && f.t > 1.1 && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
       if (def.lob && f.t > 1.4 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
     });
     lv.foes = lv.foes.filter((f) => {
       if (f.hp > 0) return true;
+      f.isActive = false;
+      emit("onEnemyDeath", { f: f });
+      if (window.CryptStudio) {
+        CryptStudio.burst(f.x, f.y, f.boss ? "#fbbf24" : "#fb923c", f.boss ? 18 : 8);
+        if (f.boss) { CryptStudio.sfx("boss"); CryptStudio.shake(10); CryptStudio.hitstop(140); }
+        else {
+          if (!G._killSfx) { CryptStudio.sfx("kill"); G._killSfx = true; }
+          CryptStudio.shake(2);
+        }
+      }
       if (f.boss) dropBoss(f);
       if (G.mode === "survive") onSurviveKill(f);
       G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
@@ -1969,7 +2032,11 @@
       }
       if (s.life <= 0 && s.flame) G.fx.push({ x: s.x, y: s.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
     });
-    G.shots = G.shots.filter((s) => s.life > 0);
+    G.shots = G.shots.filter((s) => {
+      if (s.life > 0) return true;
+      if (window.CryptStudio) CryptStudio.pool.shot.free(s);
+      return false;
+    });
     G.fx.forEach((f) => {
       if (f.kind !== "cinder") return;
       lv.foes.forEach((foe) => {
@@ -2151,6 +2218,10 @@
     else ty = Math.max(minY, Math.min(maxY, ty));
     cam.x += (tx - cam.x) * 0.42;
     cam.y += (ty - cam.y) * 0.42;
+    if (window.CryptStudio && !CryptStudio.reduced) {
+      cam.x += CryptStudio.juice.sx;
+      cam.y += CryptStudio.juice.sy;
+    }
     const z = lv.realm.id || "stone";
     const x0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
     const y0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
@@ -2296,6 +2367,10 @@
       ctx.globalAlpha = 1;
     });
     $("announce").textContent = announce.life > 0 ? announce.t : "";
+    if (window.CryptStudio) {
+      CryptStudio.juiceDraw(ctx, cam, TILE, w, h);
+      CryptStudio.fpsDraw(ctx, w);
+    }
   }
 
   function buffs(p) {
@@ -2358,8 +2433,12 @@
     if ($("hudPlayers")) {
       $("hudPlayers").innerHTML = G.players.map((p) => {
         const hp = Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max)));
+        p._ghost = p._ghost == null ? hp : p._ghost + (hp - p._ghost) * 0.18;
+        if (hp > p._ghost) p._ghost = hp;
+        const ghost = Math.max(hp, p._ghost);
+        const hpCol = hp < 25 ? "#ef4444" : (hp < 50 ? "#fbbf24" : p.hero.color);
         return "<div class='hud-ward'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.dead ? " · DOWN" : "") + "</div>" +
-          "<div class='hud-hp'><i style='width:" + hp + "%;background:" + p.hero.color + "'></i></div>" +
+          "<div class='hud-hp'><b style='width:" + ghost + "%'></b><i style='width:" + hp + "%;background:" + hpCol + "'></i></div>" +
           "<div class='hud-meta-row'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) +
           " · vials " + p.vials + " · keys " + p.keys +
           "<span class='hud-buffs'>" + buffs(p) + "</span></div></div>";
@@ -2418,8 +2497,8 @@
       "</dl></div>";
   }
   function menu() {
+    if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
-    if (G) G.over = true;
     $("app").classList.add("hidden");
     $("app").classList.remove("survive-mode");
     const sh = $("studioHud");
@@ -2482,7 +2561,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
-      "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
+      "<li>Auto-shoot (menu or L) keeps firing. Help pauses. <b>F3</b> FPS. <b>M</b> mute SFX. Hits shake, numbers pop, synth SFX.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -2491,7 +2570,10 @@
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (overlayMode !== "menu" && overlayMode !== "sheet") update(dt);
+    if (window.CryptStudio) CryptStudio.fpsTick(dt);
+    if (window.CryptStudio) CryptStudio.juiceTick(dt);
+    const frozen = window.CryptStudio && CryptStudio.juice.hitstop > 0;
+    if (!frozen && overlayMode !== "menu" && overlayMode !== "sheet") update(dt);
     else if (G && G._ups) pollUpgradePick();
     draw();
     requestAnimationFrame(loop);
@@ -2500,6 +2582,17 @@
   window.addEventListener("keydown", (e) => {
     if (!keys[e.code]) keyEdge[e.code] = true;
     keys[e.code] = true;
+    if (e.code === "F3") {
+      if (window.CryptStudio) CryptStudio.fps.show = !CryptStudio.fps.show;
+      return;
+    }
+    if (e.code === "KeyM" && overlayMode !== "menu") {
+      if (window.CryptStudio) {
+        CryptStudio.setMute(!CryptStudio.muted);
+        say(CryptStudio.muted ? "SFX mute." : "SFX on.");
+      }
+      return;
+    }
     if (e.code === "Escape") {
       if (G && G._ups) return;
       menu();
@@ -2535,7 +2628,15 @@
     get: () => G,
     credit,
     fire: (i) => { if (G && G.players[i || 0]) fireArsenal(G.players[i || 0]); },
-    nextFloor: () => { if (G) nextFloor(); }
+    nextFloor: () => { if (G) nextFloor(); },
+    cleanup: cleanupGameState,
+    debug: () => ({
+      over: !!(G && G.over),
+      mode: G && G.mode,
+      foes: G && G.level ? G.level.foes.length : 0,
+      shots: G ? G.shots.length : 0,
+      studio: window.CryptStudio ? CryptStudio.counts() : null
+    })
   };
 
   async function boot() {
