@@ -1034,9 +1034,20 @@
       G.players.forEach((p) => { mx = Math.max(mx, wepLv(p, u.id)); });
       return mx < 8;
     }
+    const hasPet = !!(G.pets && G.pets.length);
+    const hasAi = G.players.some(function (p) { return p.ai; });
+    function okBond(u) {
+      if (u.kind !== "bond") return true;
+      if (u.need === "pet" && !hasPet) return false;
+      if (u.need === "ai" && !hasAi) return false;
+      if (u.need === "any" && !hasPet && !hasAi) return false;
+      if (u.id === "callpack" && hasPet) return false;
+      return true;
+    }
     const stats = SURVIVE_UP.filter((u) => u.kind === "stat");
     const gifts = SURVIVE_UP.filter((u) => u.kind === "gift");
     const arms = SURVIVE_UP.filter((u) => u.kind === "arm" && okArm(u));
+    const bonds = SURVIVE_UP.filter((u) => u.kind === "bond" && okBond(u));
     function pick(arr) {
       if (!arr.length) return null;
       const w = arr.map((u) => (u.tier >= 3 ? 1 : (u.tier === 2 ? 2 : (u.tier === 1 ? 4 : 6))));
@@ -1045,7 +1056,7 @@
       for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; }
       return arr[arr.length - 1];
     }
-    const buckets = [stats, gifts, arms].sort(function () { return Math.random() - 0.5; });
+    const buckets = [stats, gifts, arms, bonds].filter(function (b) { return b.length; }).sort(function () { return Math.random() - 0.5; });
     const out = [];
     const used = {};
     buckets.forEach(function (b) {
@@ -1072,7 +1083,65 @@
       return "NOW " + n + "  →  " + (n + 1);
     }
     if (u.maxHp) return "MAX " + (p.max | 0) + "  →  " + ((p.max | 0) + u.maxHp);
+    if (u.kind === "bond") {
+      const b = G.bond || {};
+      if (u.addPetDmg) return "PET DMG ×" + (1 + (b.dmg || 0)).toFixed(2) + " → ×" + (1 + (b.dmg || 0) + u.addPetDmg).toFixed(2);
+      if (u.addPetSpd) return "PET SPD +" + Math.round((b.spd || 0) * 100) + "%";
+      const pet = G.pets && G.pets[0];
+      if (u.addPetHp && pet) return "PET HP " + (pet.max | 0) + " → " + ((pet.max | 0) + u.addPetHp);
+    }
     return u.bonus;
+  }
+  function bondState() {
+    if (!G) return { dmg: 0, spd: 0, cd: 0, armor: 0, aoe: 0, sleep: 0 };
+    if (!G.bond) G.bond = { dmg: 0, spd: 0, cd: 0, armor: 0, aoe: 0, sleep: 0 };
+    return G.bond;
+  }
+  function petSleepLen() { return Math.max(20, 60 - (bondState().sleep || 0)); }
+  function applyBondUp(u) {
+    if (!u || u.kind !== "bond") return;
+    const b = bondState();
+    if (u.addPetDmg) b.dmg += u.addPetDmg;
+    if (u.addPetSpd) b.spd += u.addPetSpd;
+    if (u.addPetCd) b.cd += u.addPetCd;
+    if (u.addPetArmor) b.armor += u.addPetArmor;
+    if (u.addPetAoe) b.aoe += u.addPetAoe;
+    if (u.addSleepCut) b.sleep += u.addSleepCut;
+    (G.pets || []).forEach(function (pet) {
+      if (u.addPetHp) {
+        pet.max += u.addPetHp;
+        pet.hp = Math.min(pet.max, pet.hp + u.addPetHp);
+      }
+      if (u.addPetArmor) pet.armor = (pet.armor || 0) + u.addPetArmor;
+      if (u.id === "packwake" && (pet.sleepT || 0) > 0) {
+        pet.sleepT = 0;
+        pet.hp = Math.round(pet.max * 0.6);
+      }
+      if (u.id === "sharedcup" && (pet.sleepT || 0) <= 0) pet.hp = Math.min(pet.max, pet.hp + pet.max * 0.4);
+    });
+    G.players.forEach(function (p) {
+      if (!p.ai) return;
+      if (u.id === "secondvoice" || u.id === "latticeleash") {
+        p.might = (p.might || 0) + 1;
+        if (u.id === "secondvoice") {
+          p.haste = (p.haste || 0) + 1;
+          p.shotBoost = Math.max(p.shotBoost || 0, 4);
+        }
+      }
+      if (u.id === "followtight") {
+        p.stride = (p.stride || 0) + 2;
+        p.shotBoost = Math.max(p.shotBoost || 0, 5);
+      }
+      if (u.id === "packwake" && (p.sleepT || 0) > 0) {
+        p.sleepT = 0;
+        p.hp = Math.round(p.max * 0.6);
+      }
+      if (u.id === "sharedcup" && (p.sleepT || 0) <= 0) p.hp = Math.min(p.max, p.hp + p.max * 0.4);
+    });
+    if (u.id === "callpack" && !(G.pets && G.pets.length)) {
+      const kinds = Object.keys(PETS);
+      spawnPet(persist.pet && PETS[persist.pet] ? persist.pet : kinds[(Math.random() * kinds.length) | 0]);
+    }
   }
   function applySurviveUp(u) {
     G.players.forEach((p) => {
@@ -1123,6 +1192,7 @@
       if (u.tReflect) p.reflect = Math.max(p.reflect || 0, u.tReflect);
       if (u.tShot) p.shotBoost = Math.max(p.shotBoost || 0, u.tShot);
     });
+    applyBondUp(u);
     if (u.id === "goldrush") G.score += 500;
     if (u.addScore) G.score += u.addScore;
     if (u.stunR && G.players[0]) novaStun(G.players[0].x, G.players[0].y, 7, 1.6, "#7dd3fc");
@@ -1396,7 +1466,20 @@
     { id: "mightwell", kind: "gift", tier: 0, glyph: "tooth", name: "Might Well", tag: "WELL", bonus: "+12 MAX · +1 MIGHT", spec: "A sharper tooth and a deeper cup.", maxHp: 12, addMight: 1 },
     { id: "reboundcup", kind: "gift", tier: 1, glyph: "mirror", name: "Rebound Cup", tag: "WELL", bonus: "+8 MAX · REFLECT 6s", spec: "Fairness in the drink. Shots turn for a short hour.", maxHp: 8, tReflect: 6 },
     { id: "choruswell", kind: "gift", tier: 1, glyph: "flask", name: "Chorus Well", tag: "WELL", bonus: "+24 MAX · +2 VIALS", spec: "The chorus fills the cistern. Two flasks, twenty-four more.", maxHp: 24, addVials: 2 },
-    { id: "originpulse", kind: "gift", tier: 2, glyph: "sun", name: "Origin Pulse", tag: "WELL", bonus: "+50 MAX HP", spec: "A taste of the Origin Well. Fifty more, filled.", maxHp: 50 }
+    { id: "originpulse", kind: "gift", tier: 2, glyph: "sun", name: "Origin Pulse", tag: "WELL", bonus: "+50 MAX HP", spec: "A taste of the Origin Well. Fifty more, filled.", maxHp: 50 },
+    { id: "packhide", kind: "bond", tier: 0, glyph: "plate", name: "Pack Hide", tag: "BOND", bonus: "PET +24 HP", spec: "The beast drinks. Hide thickens; the cup fills.", need: "pet", addPetHp: 24 },
+    { id: "sharptooth", kind: "bond", tier: 0, glyph: "tooth", name: "Sharp Tooth", tag: "BOND", bonus: "PET +28% DMG", spec: "The pack keeps a sharper tooth. Arts bite harder.", need: "pet", addPetDmg: 0.28 },
+    { id: "quickpad", kind: "bond", tier: 0, glyph: "boot", name: "Quick Pad", tag: "BOND", bonus: "PET +SPD · FASTER ARTS", spec: "Paws find the corridor. Arts cycle sooner.", need: "pet", addPetSpd: 0.12, addPetCd: 0.12 },
+    { id: "packiron", kind: "bond", tier: 0, glyph: "plate", name: "Pack Iron", tag: "BOND", bonus: "PET +2 ARMOR", spec: "Fair plate on the beast. Bumps land softer.", need: "pet", addPetArmor: 2 },
+    { id: "stompwider", kind: "bond", tier: 1, glyph: "ward", name: "Wider Ring", tag: "BOND", bonus: "PET +18% AOE", spec: "Stomp, bite, roar — the ring grows a step.", need: "pet", addPetAoe: 0.18 },
+    { id: "packfury", kind: "bond", tier: 2, glyph: "fury", name: "Pack Fury", tag: "BOND", bonus: "PET DMG + ARTS", spec: "The hour is red for the pack. Bite and haste together.", need: "pet", addPetDmg: 0.35, addPetCd: 0.14 },
+    { id: "shortnap", kind: "bond", tier: 1, glyph: "wind", name: "Short Nap", tag: "BOND", bonus: "SLEEP −15s", spec: "They wake sooner. Sleep cannot hold the pack a full minute.", need: "any", addSleepCut: 15 },
+    { id: "packwake", kind: "bond", tier: 1, glyph: "wind", name: "Pack Wake", tag: "BOND", bonus: "WAKE · 60% WELL", spec: "A hand on the flank. Sleeping helpers rise now.", need: "any" },
+    { id: "sharedcup", kind: "bond", tier: 0, glyph: "flask", name: "Shared Cup", tag: "BOND", bonus: "PET+AI HEAL 40%", spec: "The well remembers the pack. Everyone beside you drinks.", need: "any" },
+    { id: "secondvoice", kind: "bond", tier: 1, glyph: "core", name: "Second Voice", tag: "BOND", bonus: "AI +1 MIGHT · +1 HASTE", spec: "The companion's bolts keep a sharper clock.", need: "ai" },
+    { id: "followtight", kind: "bond", tier: 0, glyph: "boot", name: "Tight Follow", tag: "BOND", bonus: "AI +STRIDE · COD 5s", spec: "They keep your heel. A short Codex for the helper.", need: "ai" },
+    { id: "latticeleash", kind: "bond", tier: 1, glyph: "pull", name: "Lattice Leash", tag: "BOND", bonus: "PET DMG · AI +MIGHT", spec: "The leash is a name. Beast and warden bite together.", need: "any", addPetDmg: 0.2 },
+    { id: "callpack", kind: "bond", tier: 1, glyph: "ward", name: "Call the Pack", tag: "BOND", bonus: "SUMMON PET", spec: "If you walked in alone, a mythic pads in now.", need: "" }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
@@ -1847,7 +1930,7 @@
     const lead = G.players[0];
     const pet = {
       kind, x: (lead ? lead.x : 2) - 0.85, y: (lead ? lead.y : 2) + 0.45,
-      hp: d.hp, max: d.hp, armor: d.armor, facing: 2, walk: 0,
+      hp: d.hp, max: d.hp, armor: d.armor + (bondState().armor || 0), facing: 2, walk: 0,
       sleepT: 0, hurtT: 0, atk: 0, t: 0, cd: {}
     };
     G.pets = G.pets || [];
@@ -1856,10 +1939,13 @@
     return pet;
   }
   function petStrike(pet, r, dmg, fx) {
+    const b = bondState();
+    r *= 1 + (b.aoe || 0);
+    dmg = Math.max(1, Math.round(dmg * (1 + (b.dmg || 0))));
     queryFoes(pet.x, pet.y, r).forEach(function (f) {
       if (Math.hypot(f.x - pet.x, f.y - pet.y) <= r) hitFoe(f, dmg, true);
     });
-    if (fx) G.fx.push(fx);
+    if (fx) { fx.r = r; G.fx.push(fx); }
   }
   function tickPets(dt) {
     if (!G || G.over) return;
@@ -1891,7 +1977,7 @@
       const dist = Math.hypot(dx, dy) || 1;
       if (dist > 0.58) {
         dx /= dist; dy /= dist;
-        tryMove(pet, dx, dy, spec.speed * (foe && dist < 1.15 ? 0.45 : 1), dt, false);
+        tryMove(pet, dx, dy, spec.speed * (1 + (bondState().spd || 0)) * (foe && dist < 1.15 ? 0.45 : 1), dt, false);
         pet.facing = dirFrom(dx, dy);
         pet.walk += dt * 9;
       }
@@ -1899,7 +1985,7 @@
       function ready(id, gap) {
         pet.cd[id] = (pet.cd[id] == null ? 0 : pet.cd[id]) - dt;
         if (pet.cd[id] > 0) return false;
-        pet.cd[id] = gap;
+        pet.cd[id] = gap * Math.max(0.55, 1 - (bondState().cd || 0));
         pet.atk = 0.32;
         return true;
       }
@@ -1917,8 +2003,9 @@
           petStrike(pet, 1.25, 4, { x: pet.x, y: pet.y, life: 0.22, kind: "slash", ang: ang, r: 1.25 });
         }
         if (ready("roar", 3.4)) {
-          queryFoes(pet.x, pet.y, 2.15).forEach(function (f) {
-            if (Math.hypot(f.x - pet.x, f.y - pet.y) < 2.15) f.stun = Math.max(f.stun || 0, 0.55);
+          const rr = 2.15 * (1 + (bondState().aoe || 0));
+          queryFoes(pet.x, pet.y, rr).forEach(function (f) {
+            if (Math.hypot(f.x - pet.x, f.y - pet.y) < rr) f.stun = Math.max(f.stun || 0, 0.55);
           });
           G.fx.push({ x: pet.x, y: pet.y, life: 0.4, kind: "roar" });
         }
@@ -1928,11 +2015,13 @@
       } else if (pet.kind === "bear") {
         if (foe && dist < 1.55 && ready("swipe", 1.7)) {
           const ax = foe.x - pet.x, ay = foe.y - pet.y, al = Math.hypot(ax, ay) || 1;
-          queryFoes(pet.x, pet.y, 1.45).forEach(function (f) {
+          const rr = 1.45 * (1 + (bondState().aoe || 0));
+          const dd = Math.max(1, Math.round(3 * (1 + (bondState().dmg || 0))));
+          queryFoes(pet.x, pet.y, rr).forEach(function (f) {
             const dx2 = f.x - pet.x, dy2 = f.y - pet.y, d2 = Math.hypot(dx2, dy2);
-            if (d2 < 1.45 && (dx2 * ax + dy2 * ay) / (d2 * al) > 0.1) hitFoe(f, 3, true);
+            if (d2 < rr && (dx2 * ax + dy2 * ay) / (d2 * al) > 0.1) hitFoe(f, dd, true);
           });
-          G.fx.push({ x: pet.x, y: pet.y, life: 0.18, kind: "slash", ang: ang, r: 1.45 });
+          G.fx.push({ x: pet.x, y: pet.y, life: 0.18, kind: "slash", ang: ang, r: rr });
         }
         if (foe && dist < 1.05 && ready("maul", 2.5)) {
           petStrike(pet, 1.05, 5, { x: pet.x, y: pet.y, life: 0.24, kind: "slash", ang: ang, r: 1.05 });
@@ -1949,7 +2038,7 @@
         }
         if (foe && dist < 3.4 && ready("tail", 2.8)) {
           hitFoe(foe, 2, true);
-          G.pools.push({ x: foe.x, y: foe.y, r: 1.15, life: 2.2, dps: 2.4, tick: 0 });
+          G.pools.push({ x: foe.x, y: foe.y, r: 1.15 * (1 + (bondState().aoe || 0)), life: 2.2, dps: 2.4, tick: 0 });
           G.fx.push({ x: foe.x, y: foe.y, life: 0.35, kind: "poison" });
         }
       }
@@ -2051,6 +2140,7 @@
       thiefT: 24,
       over: false,
       pets: [], pools: [],
+      bond: { dmg: 0, spd: 0, cd: 0, armor: 0, aoe: 0, sleep: 0 },
       mode: opts.mode || "campaign",
       xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.7, bossAt: 0, pendingLvl: 0, hordeT: 14
     };
@@ -2842,7 +2932,7 @@
       if (p.hp <= 0) {
         p.hp = 0;
         if (p.ai) {
-          p.sleepT = 60;
+          p.sleepT = petSleepLen();
           say(p.hero.name + " sleeps — one minute.");
           return;
         }
@@ -2990,7 +3080,7 @@
         if (!tgt.hero && tgt.hp <= 0) {
           tgt.hp = 0;
           if (!(tgt.sleepT > 0)) {
-            tgt.sleepT = 60;
+            tgt.sleepT = petSleepLen();
             const nm = PETS[tgt.kind] && PETS[tgt.kind].name;
             if (nm) say(nm + " sleeps — one minute.");
           }
@@ -3150,7 +3240,7 @@
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
             s.life = 0;
             if (pet.hp <= 0) {
-              pet.hp = 0; pet.sleepT = 60;
+              pet.hp = 0; pet.sleepT = petSleepLen();
               const nm = PETS[pet.kind] && PETS[pet.kind].name;
               if (nm) say(nm + " sleeps — one minute.");
             }
