@@ -629,6 +629,7 @@
       if (G.level.tiles[ty] && G.level.tiles[ty][tx] === "floor") p = { x: tx + 0.5, y: ty + 0.5 };
       else p = nearestWalk(G.level, x, y);
       if (blocked(G.level, p.x, p.y)) continue;
+      if (Math.hypot(p.x - live.x, p.y - live.y) < 12) continue;
       const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
       const f = makeFoe(kind, rank, p.x, p.y);
       if (boss) f.boss = true;
@@ -980,6 +981,16 @@
     }
     const start = { x: W >> 1, y: H >> 1 };
     fillRect(tiles, W, H, start.x - 14, start.y - 11, 28, 22, "floor");
+    for (let x = 3; x < W - 3; x++) {
+      tiles[start.y][x] = "floor";
+      tiles[start.y - 1][x] = "floor";
+      tiles[start.y + 1][x] = "floor";
+    }
+    for (let y = 3; y < H - 3; y++) {
+      tiles[y][start.x] = "floor";
+      tiles[y][start.x - 1] = "floor";
+      tiles[y][start.x + 1] = "floor";
+    }
     tiles[start.y][start.x] = "floor";
     const items = [];
     const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
@@ -1830,6 +1841,7 @@
     }
 
     const liveP = G.players.filter((p) => !p.dead);
+    liveP.forEach((p) => { p._touch = 0; });
     lv.foes.forEach((f) => {
       f.t += dt; f.hurt = Math.max(0, f.hurt - dt); f.flicker += dt;
       f.stun = Math.max(0, (f.stun || 0) - dt);
@@ -1858,16 +1870,28 @@
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
         const dmg = Math.max(2, def.dmg * (G.mode === "survive" ? (1 + surviveWave() * 0.09) : f.rank) - arm);
         const iframe = (tgt.hurtT || 0) > 0.12;
-        tgt.hp -= dmg * dt * (f.kind === "drain" ? 6.5 : (iframe ? 1.15 : 2.35));
-        if (!iframe) {
-          tgt.hurtT = 0.38;
-          tryMove(tgt, -Math.cos(ang), -Math.sin(ang), 6, 0.04, false);
+        const surviveIframe = G.mode === "survive" && (tgt.hurtT || 0) > 0;
+        if (f.kind === "drain") tgt.hp -= dmg * dt * 6.5;
+        else if (surviveIframe) { /* horde i-frame — thorns still bite */ }
+        else if (G.mode === "survive") {
+          tgt._touch = (tgt._touch || 0) + 1;
+          if (tgt._touch <= 5) tgt.hp -= dmg * dt * 1.85;
+          if (!iframe) {
+            tgt.hurtT = 0.46;
+            tryMove(tgt, -Math.cos(ang), -Math.sin(ang), 6, 0.04, false);
+          }
+        } else {
+          tgt.hp -= dmg * dt * (iframe ? 1.15 : 2.35);
+          if (!iframe) {
+            tgt.hurtT = 0.38;
+            tryMove(tgt, -Math.cos(ang), -Math.sin(ang), 6, 0.04, false);
+          }
         }
         lv.quiet = 0;
         if (!tgt.hurtBeep) { beep("hurt"); tgt.hurtBeep = 0.25; }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
         if (tgt.thorns > 0) f.hp -= 22 * dt;
-        if (f.kind === "thief" && tgt.vials > 0) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
+        if (f.kind === "thief" && tgt.vials > 0 && !iframe && !surviveIframe) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
         if (f.kind === "drain") {
           f._sip = (f._sip || 0) + dmg * dt * 8;
           if (f._sip > 200) { f.hp = 0; say("The Drain leaves, sated."); }
@@ -1914,7 +1938,7 @@
       if (s.foe) {
         liveP.forEach((p) => {
           if (p.veil > 0) return;
-          if (firstWallOnSeg(s.px || s.x, s.py || s.y, p.x, p.y)) return;
+          if (Math.hypot(p.x - s.x, p.y - s.y) > 0.7 && firstWallOnSeg(s.px || s.x, s.py || s.y, p.x, p.y)) return;
           if (distSeg(p.x, p.y, s.px || s.x, s.py || s.y, s.x, s.y) < 0.46) {
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });

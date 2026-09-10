@@ -56,6 +56,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .app.survive-mode .pips { display: none; }
 .app.survive-mode .top { padding: .28rem .7rem; }
 .app.survive-mode .dock { padding: .32rem .6rem; }
+.app.survive-mode .announce { top: 92px; }
 .studio-hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .hud-top {
   position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
