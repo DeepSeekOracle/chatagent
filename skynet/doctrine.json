@@ -1,8 +1,8 @@
 {
-  "signature": "Delta9Phi963-LYGO-SKYNET-v1.0.0",
+  "signature": "Delta9Phi963-LYGO-SKYNET-v1.1.0",
   "name": "LYGO SKYNET",
   "expansion": "Sentinel Kernel Yielding Named Ethical Trust",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "protocol": "AETHONΔ9",
   "ops_bar": 0.65,
   "doctrine": {
@@ -11,7 +11,7 @@
     "rule": "Discourse not identity. Name the shadow. Never steal payload. Human remains publisher for live writes."
   },
   "limbs": {
-    "PULSE": "Allowlisted HTTPS GET of lattice + public resources",
+    "PULSE": "Allowlisted HTTPS GET of every /lattice/slots.json limb (same board as the kernel)",
     "AETHON": "AETHONΔ9 discourse heuristics on public titles only",
     "YIELD": "ALIGNED | REVIEW | SHADOW — no silent action",
     "WIRE": "God's Eye iris + Witness globe + Agora + Star Chart monitor"
@@ -21,6 +21,8 @@
     "witness": "https://chatagent.ca/witness/",
     "starchart": "https://chatagent.ca/starchart/",
     "lattice": "https://chatagent.ca/lattice/",
+    "lattice_slots": "https://chatagent.ca/lattice/slots.json",
+    "lattice_map": "https://chatagent.ca/lattice/map.json",
     "ops_detector": "clawhub:@deepseekoracle/lygo-ops-detector",
     "cyborg": "https://chatagent.ca/lygoskillhub.html#full-lygo"
   }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://chatagent.ca https://eternalhaven.ca; connect-src 'self' https://deepseekoracle.github.io https://huggingface.co https://earthquake.usgs.gov https://eonet.gsfc.nasa.gov https://api.wheretheiss.at; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://chatagent.ca https://eternalhaven.ca; connect-src 'self' https://deepseekoracle.github.io https://huggingface.co https://cdn-lfs.huggingface.co https://earthquake.usgs.gov https://eonet.gsfc.nasa.gov https://api.wheretheiss.at; upgrade-insecure-requests">
 <title>LYGO SKYNET — AETHONΔ9 sentinel kernel | chatagent.ca</title>
 <meta name="description" content="LYGO SKYNET: Sentinel Kernel Yielding Named Ethical Trust. AETHONΔ9 discourse protocol on public lattice pulse. Not a weapons net. Not identity profiling. Human remains publisher.">
 <meta name="author" content="Justin Helmer / Excavationpro">
@@ -24,6 +24,7 @@
   <nav>
     <a href="/">Home</a>
     <a href="/join/">Join</a>
+    <a href="/agents/">Agents</a>
     <a href="/bench/">Bench</a>
     <a href="/lattice/">Lattice</a>
     <a href="/sources/">TV</a>
@@ -47,12 +48,14 @@
   <aside class="side">
     <p class="kicker">Δ9Φ963 · SKYNET · AETHONΔ9 · <span id="utc">…</span></p>
     <h1>Sentinel Kernel Yielding Named Ethical Trust.</h1>
-    <p class="lead"><strong>Not</strong> a weapons net and <strong>not</strong> identity profiling. SKYNET is LYGO autonomy: pulse allowlisted public GET, score <em>public titles</em> with AETHONΔ9 (discourse, not people), yield ALIGNED / REVIEW / SHADOW. Human remains the publisher. The complete Star Chart is <a href="/starchart/">/starchart/</a>. Feed-monitor writes are gated on <a href="/starchart/monitor/">/starchart/monitor/</a> (HF pending queue, not forged hashes).</p>
+    <p class="lead"><strong>Not</strong> a weapons net and <strong>not</strong> identity profiling. SKYNET is the lattice sentinel: it pulses the <strong>same slots</strong> as <a href="/lattice/">the kernel</a>, then scores <em>public titles</em> with AETHONΔ9 (discourse, not people). Yield ALIGNED / REVIEW / SHADOW. Human remains the publisher. Star Chart live writes stay on <a href="/starchart/monitor/">/starchart/monitor/</a>.</p>
     <div class="stat-row">
-      <div class="stat"><b id="n-pulse">0</b><span>lattice pings live</span></div>
-      <div class="stat"><b id="n-rev">0</b><span>AETHON REVIEW titles</span></div>
-      <div class="stat"><b id="n-sh">0</b><span>yield SHADOW</span></div>
-      <div class="stat"><b id="n-ops">—</b><span>max ops_score this pulse</span></div>
+      <div class="stat"><b id="n-pulse">0</b><span>lattice slots live</span></div>
+      <div class="stat"><b id="n-miss">0</b><span>named misses</span></div>
+      <div class="stat"><b id="n-lat">—</b><span>kernel yield</span></div>
+      <div class="stat"><b id="n-rev">0</b><span>AETHON REVIEW</span></div>
+      <div class="stat"><b id="n-sh">0</b><span>AETHON SHADOW</span></div>
+      <div class="stat"><b id="n-ops">—</b><span>max ops_score</span></div>
     </div>
     <article id="brief" class="brief empty">
       <p class="kicker">Yield</p>
@@ -61,7 +64,7 @@
     </article>
     <p class="legend">Public-title AETHONΔ9 queue (not identity)</p>
     <ul class="feed" id="queue"></ul>
-    <p class="legend">Lattice limbs</p>
+    <p class="legend">Lattice kernel slots (same board as /lattice/)</p>
     <div class="board" id="board"></div>
     <p class="legend">Wire:
       <a href="/lattice/">Lattice kernel</a> ·
@@ -79,7 +82,7 @@
   <p>The protocol lives in <code>lygo-ops-detector</code>: evasion, half-truth certainty, saturation bait. Unit of analysis is <strong>text</strong>, never a person. SKYNET applies a public-safe subset to <strong>already-public headlines</strong> from the Witness news monitor. It does not crawl private mail, does not dox, does not auto-publish.</p>
   <h2>Autonomy that still obeys P0</h2>
   <ul>
-    <li>Autonomous: re-pulse on an interval, classify, fill the yield queue.</li>
+    <li>Autonomous: load <code>/lattice/slots.json</code>, GET every CANON/RESOURCE slot, classify public titles, fill the yield queue, re-pulse every 90s.</li>
     <li>Not autonomous: git push, silent HF ingest of the Pages chain, social outbound, payload invention. Star Chart pending queue is a separate consent click on the HF bot.</li>
   </ul>
 </section>
@@ -89,7 +92,7 @@
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear();});</script>
 <script src="/lattice/guard.js"></script>
-<script src="/skynet/aethon.js"></script>
-<script src="/skynet/app.js"></script>
+<script src="/skynet/aethon.js?v=1"></script>
+<script src="/skynet/app.js?v=2"></script>
 </body>
 </html>

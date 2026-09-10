@@ -3,3 +3,5 @@
 #yield-chip.ok { border-color: #34d399; color: #34d399; }
 #yield-chip.review { border-color: #f59e0b; color: #f59e0b; }
 #yield-chip.shadow { border-color: #a78bfa; color: #a78bfa; }
+.board .row { cursor: pointer; }
+.board .row:hover { background: #122018; }

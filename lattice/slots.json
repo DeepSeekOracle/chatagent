@@ -96,7 +96,8 @@
       "era": "now",
       "class": "CANON",
       "url": "/skynet/doctrine.json",
-      "expect": "json"
+      "expect": "json",
+      "expect_sig": "LYGO-SKYNET"
     },
     {
       "id": "starchart",
@@ -113,7 +114,8 @@
       "class": "CANON",
       "url": "/lattice/doctrine.json",
       "expect": "json",
-      "expect_sig": "LATTICE-KERNEL"
+      "expect_sig": "LATTICE-KERNEL",
+      "note": "SKYNET pulses this same slots board."
     },
     {
       "id": "hf_overlay",

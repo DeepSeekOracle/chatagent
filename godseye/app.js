@@ -9,7 +9,7 @@
     anchors: "https://deepseekoracle.github.io/lygo-protocol-stack/network_builder/IMMUTABLE_ANCHORS.json",
     star: "https://deepseekoracle.github.io/lygo-protocol-stack/haven_star_chart/haven_star_chart_feed.json",
     agora: "https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/api/pulse.json",
-    lattice: "https://deepseekoracle.github.io/lygo-protocol-stack/GIT_LATTICE_OVERVIEW.json",
+    overview: "https://deepseekoracle.github.io/lygo-protocol-stack/GIT_LATTICE_OVERVIEW.json",
     usgs: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
     eonet: "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=20",
     iss: "https://api.wheretheiss.at/v1/satellites/25544",
@@ -274,7 +274,7 @@
         });
       });
     });
-    await ping("lattice", URLS.lattice, function (data, ok) {
+    await ping("overview", URLS.overview, function (data, ok) {
       board.push(boardRow("la", ok, "Lattice overview"));
       if (!ok || !data) return;
       (data.systems || []).slice(0, 20).forEach(function (h) {
