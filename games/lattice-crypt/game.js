@@ -103,6 +103,17 @@
 
   let atlas = null, names = {}, cell = 32, cols = 16;
   let foeAtlas = null, foeNames = {}, foeCell = 64, foeCols = 8;
+  let heroAtlas = null, heroNames = {}, heroCell = 64, heroCols = 8;
+  const BOSS_LOOT = {
+    gate: ["core", "heart"],
+    crown: ["comet", "swift"],
+    smith: ["cinder", "iron"],
+    heartboss: ["heart", "phial"],
+    levi: ["halo", "aegis"],
+    tithe: ["chest", "core"],
+    unnamer: ["vial", "phial"],
+    lock: ["iron", "codex"]
+  };
   let keys = {};
   let keyEdge = {};
   let G = null;
@@ -177,6 +188,64 @@
     const sx = (i % foeCols) * foeCell, sy = Math.floor(i / foeCols) * foeCell;
     w = w || foeCell;
     ctx.drawImage(foeAtlas, sx, sy, foeCell, foeCell, Math.round(x), Math.round(y), w, w);
+  }
+  function drawHeroSpr(p, camx, camy) {
+    const fr = (p.walk | 0) % 2;
+    let face = p.facing;
+    const flip = face === 1;
+    if (face === 1) face = 2;
+    let name = "hero_" + p.hero.id + "_" + face + "_" + fr;
+    if (heroAtlas && heroNames[name] == null) name = "hero_" + p.hero.id + "_0_" + fr;
+    const sz = 48;
+    const dx = p.x * TILE - sz / 2 - camx, dy = p.y * TILE - sz / 2 - camy;
+    if (heroAtlas && heroNames[name] != null) {
+      const i = heroNames[name];
+      const sx = (i % heroCols) * heroCell, sy = Math.floor(i / heroCols) * heroCell;
+      if (flip) {
+        ctx.save();
+        ctx.translate(Math.round(dx + sz), Math.round(dy));
+        ctx.scale(-1, 1);
+        ctx.drawImage(heroAtlas, sx, sy, heroCell, heroCell, 0, 0, sz, sz);
+        ctx.restore();
+        ctx.imageSmoothingEnabled = false;
+      } else {
+        ctx.drawImage(heroAtlas, sx, sy, heroCell, heroCell, Math.round(dx), Math.round(dy), sz, sz);
+      }
+      return;
+    }
+    drawSpr("hero_" + p.hero.id + "_" + p.facing + "_" + fr, p.x * TILE - TILE / 2 - camx, p.y * TILE - TILE / 2 - camy);
+  }
+  function nearestWalk(lv, x, y) {
+    const tx = Math.floor(x), ty = Math.floor(y);
+    function ok(ix, iy) {
+      if (!inB(lv, ix, iy)) return false;
+      const t = lv.tiles[iy][ix];
+      return t && t !== "wall" && t !== "door";
+    }
+    if (ok(tx, ty)) return { x: tx + 0.5, y: ty + 0.5 };
+    for (let r = 1; r < 8; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (ok(tx + dx, ty + dy)) return { x: tx + dx + 0.5, y: ty + dy + 0.5 };
+        }
+      }
+    }
+    return { x: tx + 0.5, y: ty + 0.5 };
+  }
+  function unstick(ent) {
+    if (!G || !blocked(G.level, ent.x, ent.y)) return;
+    const p = nearestWalk(G.level, ent.x, ent.y);
+    ent.x = p.x; ent.y = p.y;
+  }
+  function dropItemNear(x, y, kind) {
+    const p = nearestWalk(G.level, x, y);
+    G.level.items.push({ x: Math.floor(p.x), y: Math.floor(p.y), kind });
+  }
+  function dropBoss(f) {
+    const loot = BOSS_LOOT[f.kind];
+    if (!loot) return;
+    loot.forEach((k, i) => dropItemNear(f.x + (i ? 0.35 : -0.15), f.y, k));
+    say((f.kind === "lock" ? "The Lock" : "The guardian") + " yields relics.");
   }
 
   function fillRect(tiles, W, H, x, y, w, h, t) {
@@ -451,6 +520,14 @@
       p.x = st.x + 0.5 + (i % 2) * 0.4;
       p.y = st.y + 0.5 + ((i / 2) | 0) * 0.4;
       p.padT = 0;
+    });
+    G.level.foes.forEach((f) => {
+      const p = nearestWalk(G.level, f.x, f.y);
+      f.x = p.x; f.y = p.y;
+    });
+    G.level.items.forEach((it) => {
+      const p = nearestWalk(G.level, it.x + 0.5, it.y + 0.5);
+      it.x = Math.floor(p.x); it.y = Math.floor(p.y);
     });
     G.shots = [];
     G.thiefT = 10 + (Math.random() * 18);
@@ -778,7 +855,8 @@
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
       if (g.t > (1.4 / g.rank) && live < cap) {
         g.t = 0;
-        lv.foes.push(makeFoe(g.kind, g.rank, g.x + 0.5, g.y + 0.5));
+        const sp = nearestWalk(lv, g.x + 0.5, g.y + 0.5);
+        lv.foes.push(makeFoe(g.kind, g.rank, sp.x, sp.y));
       }
     });
     lv.gens = lv.gens.filter((g) => g.hp > 0);
@@ -825,6 +903,7 @@
       }
       stepPad(p);
       unstack(p);
+      unstick(p);
       if (tileAt(lv, p.x, p.y) === "exit") G._exit = true;
     });
     if (G._exit) { G._exit = false; nextFloor(); return; }
@@ -874,6 +953,8 @@
         else if (bd < 5.2) { mx = -my; my = mx; }
       }
       tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
+      if (!ghost) unstick(f);
+      else if (blocked(lv, f.x, f.y)) unstick(f);
       const hitR = def.boss ? 0.78 : 0.52;
       if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
@@ -900,6 +981,7 @@
     });
     lv.foes = lv.foes.filter((f) => {
       if (f.hp > 0) return true;
+      if (f.boss) dropBoss(f);
       G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
       return false;
     });
@@ -1225,7 +1307,6 @@
     });
     G.players.forEach((p) => {
       if (p.dead) return;
-      const fr = (p.walk | 0) % 2;
       ctx.globalAlpha = p.veil > 0 ? 0.45 : 1;
       if (p.reflect > 0) {
         ctx.strokeStyle = "#93c5fd";
@@ -1233,7 +1314,7 @@
         ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 16, 0, 6.28);
         ctx.stroke();
       }
-      drawSpr("hero_" + p.hero.id + "_" + p.facing + "_" + fr, p.x * TILE - TILE / 2 - cam.x, p.y * TILE - TILE / 2 - cam.y);
+      drawHeroSpr(p, cam.x, cam.y);
       if (p.halo) {
         p.halo.forEach((h) => {
           const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
@@ -1358,7 +1439,7 @@
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops.</li>" +
       "<li>Weapons: Shard, Fan, Needle, Cinder, Comet, Halo. Q cycles. Cores / Hearts / Iron grow the run. Seals gift a relic.</li>" +
-      "<li>Each job has a named special on vial (K). Brave scales bump damage. Faith scales vial power. Lightfather is playable from the first floor.</li>" +
+      "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
@@ -1419,6 +1500,13 @@
         fetch(ASSET + "creatures.json").then((r) => r.json())
       ]);
       foeAtlas = cimg; foeNames = cmeta.names; foeCell = cmeta.cell; foeCols = cmeta.cols;
+    } catch (_) {}
+    try {
+      const [himg, hmeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "heroes.png?v=1"; }),
+        fetch(ASSET + "heroes.json").then((r) => r.json())
+      ]);
+      heroAtlas = himg; heroNames = hmeta.names; heroCell = hmeta.cell; heroCols = hmeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();

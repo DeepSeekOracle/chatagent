@@ -215,9 +215,53 @@ window.LatticeCampaign = (function () {
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
     (spec.rooms || []).forEach((r) => fill(tiles, r[0], r[1], r[2], r[3], "floor"));
     (spec.halls || []).forEach((h) => tunnel(tiles, h[0], h[1], h[2], h[3]));
-    if (spec.inner) spec.inner.forEach((r) => fill(tiles, r[0], r[1], r[2], r[3], "wall"));
+    if (spec.inner) spec.inner.forEach((r) => {
+      const x = r[0], y = r[1], w = r[2], h = r[3];
+      for (let xx = x; xx < x + w; xx++) {
+        if (tiles[y]) tiles[y][xx] = "wall";
+        if (tiles[y + h - 1]) tiles[y + h - 1][xx] = "wall";
+      }
+      for (let yy = y; yy < y + h; yy++) {
+        if (!tiles[yy]) continue;
+        tiles[yy][x] = "wall";
+        tiles[yy][x + w - 1] = "wall";
+      }
+    });
     for (let x = 0; x < W; x++) { tiles[0][x] = "wall"; tiles[H - 1][x] = "wall"; }
     for (let y = 0; y < H; y++) { tiles[y][0] = "wall"; tiles[y][W - 1] = "wall"; }
+
+    function isOpen(x, y) {
+      const t = tiles[y] && tiles[y][x];
+      return t === "floor" || t === "pad" || t === "exit" || t === "exit_lock" || t === "door_open";
+    }
+    function snap(x, y) {
+      x = x | 0; y = y | 0;
+      if (isOpen(x, y)) return { x, y };
+      for (let r = 1; r < 10; r++) {
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const nx = x + dx, ny = y + dy;
+          if (isOpen(nx, ny)) return { x: nx, y: ny };
+        }
+      }
+      return { x: Math.max(1, Math.min(W - 2, x)), y: Math.max(1, Math.min(H - 2, y)) };
+    }
+    const doorList = (spec.doors || []).map((d) => [d[0], d[1]]);
+    if (spec.inner) spec.inner.forEach((r) => {
+      const x = r[0], y = r[1], w = r[2], hgt = r[3];
+      const hasDoor = doorList.some((d) =>
+        d[0] >= x && d[0] < x + w && d[1] >= y && d[1] < y + hgt &&
+        (d[0] === x || d[0] === x + w - 1 || d[1] === y || d[1] === y + hgt - 1)
+      );
+      if (hasDoor) return;
+      const sx = spec.start[0], sy = spec.start[1];
+      const cx = x + (w >> 1), cy = y + (hgt >> 1);
+      const dx = cx - sx, dy = cy - sy;
+      let px, py;
+      if (Math.abs(dx) > Math.abs(dy)) { px = dx < 0 ? x : x + w - 1; py = cy; }
+      else { px = cx; py = dy < 0 ? y : y + hgt - 1; }
+      doorList.push([px, py]);
+    });
 
     const items = [];
     const gens = [];
@@ -225,22 +269,44 @@ window.LatticeCampaign = (function () {
     const doors = [];
     const pads = [];
     const rank = spec.rank || 1;
-    (spec.doors || []).forEach((d) => { tiles[d[1]][d[0]] = "door"; doors.push({ x: d[0], y: d[1] }); });
+    doorList.forEach((d) => {
+      const x = d[0] | 0, y = d[1] | 0;
+      if (!tiles[y] || tiles[y][x] === undefined) return;
+      tiles[y][x] = "door";
+      doors.push({ x, y });
+    });
     (spec.pads || []).forEach((p) => {
-      tiles[p[1]][p[0]] = "pad"; tiles[p[3]][p[2]] = "pad";
-      pads.push({ x: p[0], y: p[1], tx: p[2] + 0.5, ty: p[3] + 0.5 });
-      pads.push({ x: p[2], y: p[3], tx: p[0] + 0.5, ty: p[1] + 0.5 });
+      const a = snap(p[0], p[1]), b = snap(p[2], p[3]);
+      tiles[a.y][a.x] = "pad"; tiles[b.y][b.x] = "pad";
+      pads.push({ x: a.x, y: a.y, tx: b.x + 0.5, ty: b.y + 0.5 });
+      pads.push({ x: b.x, y: b.y, tx: a.x + 0.5, ty: a.y + 0.5 });
     });
     (spec.gens || []).forEach((g) => {
-      gens.push({ x: g[0], y: g[1], kind: g[2], rank, hp: 3 * rank, t: 0.2 });
+      const p = snap(g[0], g[1]);
+      gens.push({ x: p.x, y: p.y, kind: g[2], rank, hp: 3 * rank, t: 0.2 });
     });
-    (spec.items || []).forEach((it) => items.push({ x: it[0], y: it[1], kind: it[2] }));
-    (spec.hidden || []).forEach((it) => items.push({ x: it[0], y: it[1], kind: it[2], hidden: true }));
-    (spec.traps || []).forEach((t) => items.push({ x: t[0], y: t[1], kind: "trap" }));
-    (spec.foes || []).forEach((f) => foes.push(makeFoe(f[2], rank, f[0] + 0.5, f[1] + 0.5)));
-    (spec.boss || []).forEach((b) => foes.push(makeFoe(b[2], rank, b[0] + 0.5, b[1] + 0.5)));
-    const start = { x: spec.start[0], y: spec.start[1] };
-    const exit = { x: spec.exit[0], y: spec.exit[1] };
+    (spec.items || []).forEach((it) => {
+      const p = snap(it[0], it[1]);
+      items.push({ x: p.x, y: p.y, kind: it[2] });
+    });
+    (spec.hidden || []).forEach((it) => {
+      const p = snap(it[0], it[1]);
+      items.push({ x: p.x, y: p.y, kind: it[2], hidden: true });
+    });
+    (spec.traps || []).forEach((t) => {
+      const p = snap(t[0], t[1]);
+      items.push({ x: p.x, y: p.y, kind: "trap" });
+    });
+    (spec.foes || []).forEach((f) => {
+      const p = snap(f[0], f[1]);
+      foes.push(makeFoe(f[2], rank, p.x + 0.5, p.y + 0.5));
+    });
+    (spec.boss || []).forEach((b) => {
+      const p = snap(b[0], b[1]);
+      foes.push(makeFoe(b[2], rank, p.x + 0.5, p.y + 0.5));
+    });
+    const start = snap(spec.start[0], spec.start[1]);
+    const exit = snap(spec.exit[0], spec.exit[1]);
     tiles[start.y][start.x] = "floor";
     if (spec.seal) tiles[exit.y][exit.x] = "exit_lock";
     else tiles[exit.y][exit.x] = "exit";
