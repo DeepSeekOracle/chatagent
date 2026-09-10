@@ -31,5 +31,5 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=29") >= 0 && html.indexOf("studio.js?v=6") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=31") >= 0 && html.indexOf("studio.js?v=8") >= 0, "cache-bust");
 console.log("crypt_studio_qa ok", { smoke: "pass", layers: 4, events: 14, remap: true, spatial: true });
