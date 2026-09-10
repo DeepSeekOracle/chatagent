@@ -84,14 +84,17 @@
     "Numpad8", "Numpad5", "Numpad4", "Numpad6", "Numpad0", "Numpad1", "Numpad2", "NumpadEnter", "Enter", "KeyL",
     "KeyQ", "Period", "KeyU", "Numpad7"
   ]);
-  const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "core", "heart", "iron", "phial"];
+  const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura", "core", "heart", "iron", "phial"];
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
     fan: { name: "Fan", cap: 3, spd: 11, life: 0.55, cool: 0.2, dmg: -1, spread: 0.38 },
     needle: { name: "Needle", cap: 2, spd: 16, life: 1.3, cool: 0.16, dmg: 1, pierce: 2 },
     cinder: { name: "Cinder", cap: 2, spd: 9, life: 0.55, cool: 0.16, dmg: 1, flame: 1.8 },
     comet: { name: "Comet", cap: 1, spd: 7.6, life: 1.5, cool: 0.32, dmg: 3, lob: true },
-    halo: { name: "Halo", cap: 2, spd: 12, life: 1.15, cool: 0.22, dmg: 0, halo: true }
+    halo: { name: "Halo", cap: 2, spd: 12, life: 1.15, cool: 0.22, dmg: 0, halo: true },
+    cleave: { name: "Cleave", melee: true, cool: 0.42, dmg: 2, range: 1.5 },
+    orbit: { name: "Orbit", melee: true, cool: 0, dmg: 2 },
+    aura: { name: "Aura", melee: true, cool: 0, dmg: 3 }
   };
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
@@ -114,7 +117,10 @@
     comet: { size: 30, col: "#60a5fa", glow: "rgba(96,165,250,0.4)" },
     halo: { size: 30, col: "#fde68a", glow: "rgba(253,224,71,0.42)" },
     imp: { size: 22, col: "#f87171", glow: "rgba(239,68,68,0.4)" },
-    hurler: { size: 24, col: "#94a3b8", glow: "rgba(148,163,184,0.35)" }
+    hurler: { size: 24, col: "#94a3b8", glow: "rgba(148,163,184,0.35)" },
+    cleave: { size: 26, col: "#f87171", glow: "rgba(248,113,113,0.4)" },
+    orbit: { size: 22, col: "#e2e8f0", glow: "rgba(226,232,240,0.35)" },
+    aura: { size: 24, col: "#4ade80", glow: "rgba(74,222,128,0.35)" }
   };
   const BOSS_LOOT = {
     gate: ["core", "heart"],
@@ -363,6 +369,17 @@
       ctx.globalAlpha = 1;
       return;
     }
+    if (f.kind === "slash") {
+      const r = (f.r || 1.5) * TILE;
+      ctx.strokeStyle = "rgba(248,113,113,0.9)";
+      ctx.lineWidth = 5;
+      ctx.globalAlpha = Math.max(0, f.life * 7);
+      ctx.beginPath();
+      ctx.arc(px, py, r, (f.ang || 0) - 0.85, (f.ang || 0) + 0.85);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (f.kind === "note") {
       ctx.fillStyle = "#67e8f9";
       ctx.globalAlpha = 1 - u;
@@ -512,9 +529,12 @@
     }
   }
   function rollSurviveUps() {
-    const have = {};
-    G.players.forEach((p) => (p.arsenal || []).forEach((w) => { have[w] = 1; }));
-    const pool = SURVIVE_UP.filter((u) => !WEAPONS[u.id] || !have[u.id]);
+    const pool = SURVIVE_UP.filter((u) => {
+      if (!WEAPONS[u.id]) return true;
+      let mx = 0;
+      G.players.forEach((p) => { mx = Math.max(mx, wepLv(p, u.id)); });
+      return mx < 8;
+    });
     const out = [];
     const copy = pool.slice();
     while (out.length < 3 && copy.length) {
@@ -676,11 +696,14 @@
     { id: "magnet", name: "Pull", spec: "Pickups from farther. Stacks." },
     { id: "swift", name: "Stride", spec: "Move speed +8%. Stacks." },
     { id: "vialpow", name: "Resonance", spec: "Vials hit harder. Stacks." },
-    { id: "fan", name: "Fan", spec: "Arm the three-way crescent." },
-    { id: "needle", name: "Needle", spec: "Arm the piercing beam." },
-    { id: "cinder", name: "Cinder", spec: "Arm the fireball." },
-    { id: "comet", name: "Comet", spec: "Arm the ice lob." },
-    { id: "halo", name: "Halo", spec: "Arm the orbiting wards." }
+    { id: "fan", name: "Fan", spec: "Arm or stack the three-way crescent." },
+    { id: "needle", name: "Needle", spec: "Arm or stack the piercing beam." },
+    { id: "cinder", name: "Cinder", spec: "Arm or stack the fireball." },
+    { id: "comet", name: "Comet", spec: "Arm or stack the ice lob." },
+    { id: "halo", name: "Halo", spec: "Arm or stack the orbiting wards." },
+    { id: "cleave", name: "Cleave", spec: "Short-range auto slash. Stacks range." },
+    { id: "orbit", name: "Orbit", spec: "Spinning blades. Stacks more blades." },
+    { id: "aura", name: "Aura", spec: "Hurt anything in arm's reach. Stacks." }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
 
@@ -921,10 +944,13 @@
       shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0, hurtT: 0,
       weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
       arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
+      wepLv: {}, coolT: {},
       cores: 0, iron: (h.id === "justicae" || h.id === "lightfather") ? 1 : 0,
       might: 0, haste: 0, stride: 0, pierce: 0, extraCap: 0, vialPow: 0, magnet: 0,
-      dead: false, pad: -1, hurtBeep: 0, halo: null
+      dead: false, pad: -1, hurtBeep: 0, halo: null, orbit: null, cleaveT: 0
     };
+    p.wepLv.shard = 1;
+    if (p.weapon !== "shard") p.wepLv[p.weapon] = 1;
     G.players.push(p);
     return p;
   }
@@ -1094,57 +1120,134 @@
   }
 
   function wepOf(p) { return WEAPONS[p.weapon] || WEAPONS.shard; }
-
+  function wepLv(p, id) {
+    if (!p.arsenal || p.arsenal.indexOf(id) < 0) return 0;
+    return (p.wepLv && p.wepLv[id]) || 1;
+  }
   function shotDmg(p, w) {
     return Math.max(1, p.hero.shot + (p.cores || 0) + (p.might || 0) + (w.dmg || 0));
   }
+  function distSeg(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1, dy = y2 - y1;
+    const l2 = dx * dx + dy * dy;
+    if (l2 < 1e-8) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * dx + (py - y1) * dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+  }
 
-  function spawnBolt(p, ax, ay, w) {
+  function spawnBolt(p, ax, ay, id) {
+    const w = WEAPONS[id] || WEAPONS.shard;
+    const lv = wepLv(p, id);
     let sx = p.x + ax * 0.35, sy = p.y + ay * 0.35;
     if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
     G.shots.push({
-      x: sx, y: sy, vx: ax * w.spd, vy: ay * w.spd,
-      dmg: shotDmg(p, w), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
-      hero: p.hero.id, wep: p.weapon, bounced: false,
-      pierce: (w.pierce || 0) + (p.pierce || 0), lob: !!w.lob, flame: w.flame || 0,
+      x: sx, y: sy, px: sx, py: sy, vx: ax * w.spd, vy: ay * w.spd,
+      dmg: shotDmg(p, w) + Math.max(0, lv - 1), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
+      hero: p.hero.id, wep: id, bounced: false,
+      pierce: (w.pierce || 0) + (p.pierce || 0) + Math.max(0, lv - 1), lob: !!w.lob, flame: w.flame || 0,
       trail: [{ x: sx, y: sy }]
     });
   }
 
-  function fireShot(p) {
-    const w = wepOf(p);
-    const live = G.shots.filter((s) => s.owner === p && !s.orbit).length;
-    const cap = (p.shotBoost > 0 ? Math.max(3, w.cap) : w.cap) + (p.extraCap || 0);
-    if (live >= cap || p.fireT > 0) return;
+  function fireWeapon(p, id) {
+    const w = WEAPONS[id];
+    if (!w || w.melee) return false;
+    p.coolT = p.coolT || {};
+    if ((p.coolT[id] || 0) > 0) return false;
+    const lv = wepLv(p, id);
+    const live = G.shots.filter((s) => s.owner === p && s.wep === id).length;
+    const cap = (p.shotBoost > 0 ? Math.max(3, w.cap) : w.cap) + (p.extraCap || 0) + Math.max(0, lv - 1);
+    if (live >= cap) return false;
     let ax = p.aimX, ay = p.aimY;
-    const l = Math.hypot(ax, ay) || 1;
-    ax /= l; ay /= l;
-    if (w.halo && (!p.halo || p.halo.length < 2)) {
-      p.halo = [{ ang: 0, r: 0.82 }, { ang: Math.PI, r: 0.82 }];
+    const len = Math.hypot(ax, ay) || 1;
+    ax /= len; ay /= len;
+    if (w.halo) {
+      const n = 2 + Math.min(4, lv);
+      if (!p.halo || p.halo.length !== n) {
+        p.halo = [];
+        for (let i = 0; i < n; i++) p.halo.push({ ang: (i / n) * Math.PI * 2, r: 0.82 + lv * 0.04 });
+      }
     }
     if (w.spread) {
       const ang = Math.atan2(ay, ax);
-      [-w.spread, 0, w.spread].forEach((off) => {
-        spawnBolt(p, Math.cos(ang + off), Math.sin(ang + off), w);
-      });
+      const offs = lv >= 3 ? [-w.spread * 1.5, -w.spread, 0, w.spread, w.spread * 1.5] : [-w.spread, 0, w.spread];
+      offs.forEach((off) => spawnBolt(p, Math.cos(ang + off), Math.sin(ang + off), id));
     } else {
-      spawnBolt(p, ax, ay, w);
+      spawnBolt(p, ax, ay, id);
     }
-    G.fx.push({ x: p.x + ax * 0.45, y: p.y + ay * 0.45, life: 0.12, kind: "muzzle", wep: p.weapon, ang: Math.atan2(ay, ax) });
-    if (p.hero.hymn) {
-      G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 3.2) f.stun = Math.max(f.stun || 0, 0.35); });
-      G.fx.push({ x: p.x, y: p.y, life: 0.4, kind: "note" });
-    }
-    beep("shot");
+    G.fx.push({ x: p.x + ax * 0.45, y: p.y + ay * 0.45, life: 0.1, kind: "muzzle", wep: id, ang: Math.atan2(ay, ax) });
     const cool = (p.shotBoost > 0 ? Math.min(0.12, w.cool) : w.cool) / (1 + (p.haste || 0) * 0.1);
-    p.fireT = Math.max(0.08, cool);
+    p.coolT[id] = Math.max(0.08, cool);
+    return true;
+  }
+  function fireArsenal(p) {
+    let any = false;
+    (p.arsenal || [p.weapon]).forEach((id) => { if (fireWeapon(p, id)) any = true; });
+    if (any && p.hero.hymn) {
+      G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 3.2) f.stun = Math.max(f.stun || 0, 0.35); });
+      G.fx.push({ x: p.x, y: p.y, life: 0.35, kind: "note" });
+    }
+    if (any) beep("shot");
+  }
+  function tickMelee(p, dt) {
+    const lvC = wepLv(p, "cleave");
+    if (lvC) {
+      p.cleaveT = (p.cleaveT || 0) - dt;
+      if (p.cleaveT <= 0) {
+        p.cleaveT = Math.max(0.18, 0.4 / (1 + (p.haste || 0) * 0.1));
+        const range = 1.42 + lvC * 0.2;
+        const ax = p.aimX || 1, ay = p.aimY || 0;
+        const dmg = shotDmg(p, WEAPONS.cleave) + lvC;
+        G.level.foes.forEach((f) => {
+          const dx = f.x - p.x, dy = f.y - p.y;
+          const d = Math.hypot(dx, dy);
+          if (d > range || d < 0.04) return;
+          if ((dx * ax + dy * ay) / d < 0.12) return;
+          hitFoe(f, dmg, true);
+        });
+        G.fx.push({ x: p.x, y: p.y, life: 0.14, kind: "slash", ang: Math.atan2(ay, ax), r: range });
+      }
+    }
+    const lvO = wepLv(p, "orbit");
+    if (lvO) {
+      const n = 2 + Math.min(5, lvO);
+      const r = 0.92 + lvO * 0.08;
+      if (!p.orbit || p.orbit.length !== n) {
+        p.orbit = [];
+        for (let i = 0; i < n; i++) p.orbit.push({ ang: (i / n) * Math.PI * 2, r });
+      }
+      p.orbit.forEach((o) => {
+        o.r = r;
+        o.ang += dt * (4.4 + lvO * 0.35);
+        const hx = p.x + Math.cos(o.ang) * o.r, hy = p.y + Math.sin(o.ang) * o.r;
+        G.level.foes.forEach((f) => {
+          if (Math.hypot(f.x - hx, f.y - hy) < 0.62) hitFoe(f, Math.max(2, 2 + lvO + (p.might || 0)), true);
+        });
+      });
+    }
+    const lvA = wepLv(p, "aura");
+    if (lvA) {
+      const rad = 1.18 + lvA * 0.2;
+      const dps = 3.2 + lvA * 1.4 + (p.might || 0);
+      G.level.foes.forEach((f) => {
+        if (Math.hypot(f.x - p.x, f.y - p.y) < rad) hitFoe(f, dps * dt, true);
+      });
+    }
   }
 
   function giveWep(p, id) {
     if (!WEAPONS[id]) return false;
-    if (!p.arsenal.includes(id)) p.arsenal.push(id);
+    p.wepLv = p.wepLv || {};
+    if (p.arsenal.includes(id)) {
+      p.wepLv[id] = (p.wepLv[id] || 1) + 1;
+      say(WEAPONS[id].name + " stacks to " + p.wepLv[id] + ".");
+      return true;
+    }
+    p.arsenal.push(id);
+    p.wepLv[id] = 1;
     p.weapon = id;
-    say(p.hero.name + " arms " + WEAPONS[id].name + ".");
+    say(p.hero.name + " arms " + WEAPONS[id].name + " — all arms fire.");
     return true;
   }
 
@@ -1152,7 +1255,7 @@
     if (!p.arsenal || p.arsenal.length < 2) { say("Only Shard — find a relic."); return; }
     const i = p.arsenal.indexOf(p.weapon);
     p.weapon = p.arsenal[(i + 1) % p.arsenal.length];
-    say(WEAPONS[p.weapon].name);
+    say("Focus " + WEAPONS[p.weapon].name + " · all still fire.");
   }
 
   function faithMul(p) {
@@ -1338,6 +1441,8 @@
       if (p.dead) return;
       p.hp -= dt * (G.mode === "survive" ? 0.22 : (G.mode === "endless" ? 0.72 + Math.min(0.45, G.floor * 0.014) : (0.58 + G.floor * 0.016)));
       p.fireT = Math.max(0, p.fireT - dt);
+      p.coolT = p.coolT || {};
+      Object.keys(p.coolT).forEach((k) => { p.coolT[k] = Math.max(0, p.coolT[k] - dt); });
       p.hurtT = Math.max(0, (p.hurtT || 0) - dt);
       p.magT = Math.max(0, p.magT - dt);
       p.stun = Math.max(0, p.stun - dt);
@@ -1360,7 +1465,8 @@
         tryMove(p, inn.dx, inn.dy, spd, dt, false);
         if (inn.dx || inn.dy) p.walk += dt * 8;
       }
-      if (inn.fire) fireShot(p);
+      if (inn.fire) fireArsenal(p);
+      tickMelee(p, dt);
       if (inn.mag) useVial(p);
       if (inn.cycle) cycleWep(p);
       pickup(p);
@@ -1369,7 +1475,7 @@
           h.ang += dt * 5.2;
           const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
           G.level.foes.forEach((f) => {
-            if (Math.hypot(f.x - hx, f.y - hy) < 0.42) hitFoe(f, Math.max(2, 2 + (p.cores || 0)), false);
+            if (Math.hypot(f.x - hx, f.y - hy) < 0.56) hitFoe(f, Math.max(2, 2 + (p.cores || 0) + wepLv(p, "halo")), false);
           });
         });
       }
@@ -1467,7 +1573,9 @@
     });
 
     G.shots.forEach((s) => {
-      s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
+      s.life -= dt;
+      s.px = s.x; s.py = s.y;
+      s.x += s.vx * dt; s.y += s.vy * dt;
       s.grace = Math.max(0, (s.grace || 0) - dt);
       s.trail = s.trail || [];
       s.trail.push({ x: s.x, y: s.y });
@@ -1486,7 +1594,7 @@
       if (s.foe) {
         liveP.forEach((p) => {
           if (p.veil > 0) return;
-          if (Math.hypot(p.x - s.x, p.y - s.y) < 0.38) {
+          if (distSeg(p.x, p.y, s.px || s.x, s.py || s.y, s.x, s.y) < 0.46) {
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
             s.life = 0;
@@ -1495,7 +1603,7 @@
       } else {
         lv.gens.forEach((g) => {
           if (s.life <= 0) return;
-          if (Math.hypot(g.x + 0.5 - s.x, g.y + 0.5 - s.y) <= 0.62) {
+          if (distSeg(g.x + 0.5, g.y + 0.5, s.px || s.x, s.py || s.y, s.x, s.y) <= 0.78) {
             g.hp -= 1; G.score += 5; lv.quiet = 0; beep("hit");
             G.fx.push({ x: s.x, y: s.y, life: 0.2, kind: "hit", wep: wepKey(s) });
             if (s.pierce > 0) s.pierce--; else s.life = 0;
@@ -1504,7 +1612,7 @@
         if (s.life > 0) {
           lv.foes.forEach((f) => {
             if (s.life <= 0) return;
-            if (Math.hypot(f.x - s.x, f.y - s.y) < ((FOE[f.kind] && FOE[f.kind].boss) ? 0.72 : 0.48)) {
+            if (distSeg(f.x, f.y, s.px || s.x, s.py || s.y, s.x, s.y) < ((FOE[f.kind] && FOE[f.kind].boss) ? 0.9 : 0.66)) {
               hitFoe(f, s.dmg, false); beep("hit");
               G.fx.push({ x: s.x, y: s.y, life: 0.22, kind: "hit", wep: wepKey(s) });
               if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
@@ -1771,6 +1879,31 @@
         ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 20, 0, 6.28);
         ctx.stroke();
       }
+      const lvA = wepLv(p, "aura");
+      if (lvA) {
+        const rad = (1.18 + lvA * 0.2) * TILE;
+        ctx.strokeStyle = "rgba(74,222,128," + (0.3 + 0.14 * Math.sin(G.t * 6)) + ")";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, rad, 0, 6.28);
+        ctx.stroke();
+      }
+      if (p.orbit) {
+        p.orbit.forEach((o) => {
+          const ox = p.x + Math.cos(o.ang) * o.r, oy = p.y + Math.sin(o.ang) * o.r;
+          const sx = ox * TILE - cam.x, sy = oy * TILE - cam.y;
+          ctx.fillStyle = "#e2e8f0";
+          ctx.beginPath();
+          ctx.arc(sx, sy, 5, 0, 6.28);
+          ctx.fill();
+          ctx.strokeStyle = "#f87171";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(sx - 8, sy);
+          ctx.lineTo(sx + 8, sy);
+          ctx.stroke();
+        });
+      }
       if (p.halo) {
         p.halo.forEach((h) => {
           const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
@@ -1807,6 +1940,11 @@
       "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max))) + "%;background:" + p.hero.color + "'></i></div>" +
       "<div class='st'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
       (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
+      " · " + (p.arsenal || []).map((id) => {
+        const n = (WEAPONS[id] && WEAPONS[id].name) || id;
+        const lv = wepLv(p, id);
+        return n.slice(0, 3) + (lv > 1 ? lv : "");
+      }).join("/") +
       " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
     ).join("");
     const autoOn = persist.autoShot || G.surviveAuto;
@@ -1908,7 +2046,7 @@
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is one huge crypt: waves, stacking upgrades, bosses every five waves, hall score.</li>" +
-      "<li>Weapons: Shard, Fan, Needle, Cinder, Comet, Halo. Q cycles. Cores / Hearts / Iron grow the run. Seals gift a relic.</li>" +
+      "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Cores / Hearts / Iron grow the run.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
@@ -1961,7 +2099,7 @@
   window.LatticeCrypt = {
     get: () => G,
     credit,
-    fire: (i) => { if (G && G.players[i || 0]) fireShot(G.players[i || 0]); },
+    fire: (i) => { if (G && G.players[i || 0]) fireArsenal(G.players[i || 0]); },
     nextFloor: () => { if (G) nextFloor(); }
   };
 
