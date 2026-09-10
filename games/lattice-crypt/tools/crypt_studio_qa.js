@@ -31,7 +31,8 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=50") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=51") >= 0, "cache-bust");
+must(game.indexOf("autoUpBox") >= 0 && game.indexOf("function autoPickUp") >= 0, "auto-pick upgrades");
 must(game.indexOf("(lv * lv) * 0.28") >= 0, "survive xp curve");
 must(game.indexOf("kind: \"bond\"") >= 0 && game.indexOf("packhide") >= 0 && game.indexOf("callpack") >= 0, "bond pet cards");
 must(game.indexOf("function pollSelectChar") >= 0 && game.indexOf("buttons[8]") >= 0, "pad select opens sheet");

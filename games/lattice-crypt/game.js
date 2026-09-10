@@ -366,7 +366,7 @@
   let G = null;
   let overlayMode = "menu";
   let announce = { t: "", life: 0 };
-  let persist = { name: "Warden", best: 0, runs: 0, hero: "kael", autoShot: false, campaignBest: 0, unlocked: ["kael", "vale", "orin", "nia"] };
+  let persist = { name: "Warden", best: 0, runs: 0, hero: "kael", autoShot: false, autoUp: false, campaignBest: 0, unlocked: ["kael", "vale", "orin", "nia"] };
   let cam = { x: 0, y: 0 };
   let actx = null;
 
@@ -380,6 +380,7 @@
     else document.documentElement.removeAttribute("data-cb");
     if (persist.comp == null) persist.comp = "";
     if (persist.pet == null) persist.pet = "";
+    if (persist.autoUp == null) persist.autoUp = false;
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -1259,8 +1260,32 @@
     if (ok) confirmSurviveUp(G._upSel);
     keyEdge = {};
   }
+  function autoPickUp(picks) {
+    const p = G.players && G.players[0];
+    const hasBond = (G.pets && G.pets.length) || G.players.some(function (x) { return x.ai; });
+    let best = 0, score = -1;
+    picks.forEach(function (u, i) {
+      let s = (u.tier || 0) * 10;
+      if (WEAPONS[u.id] && p && wepLv(p, u.id)) s += 7;
+      if (u.kind === "bond" && hasBond) s += 5;
+      if (u.maxHp && p && p.hp < p.max * 0.42) s += 6;
+      if (u.kind === "stat") s += 2;
+      if (s > score) { score = s; best = i; }
+    });
+    return best;
+  }
   function offerSurviveUp() {
     const picks = rollSurviveUps();
+    if (persist.autoUp) {
+      let batch = picks;
+      while (G.pendingLvl > 0) {
+        G.pendingLvl--;
+        const u = batch[autoPickUp(batch)];
+        if (u) applySurviveUp(u);
+        if (G.pendingLvl > 0) batch = rollSurviveUps();
+      }
+      return;
+    }
     G._ups = picks;
     G._upSel = 0;
     G._upHold = true;
@@ -4064,6 +4089,7 @@
       el.onclick = (e) => { e.stopPropagation(); if (fn) fn(e); };
     };
     stop($("autoBox"), () => { persist.autoShot = !!$("autoBox").checked; savePersist(); });
+    stop($("autoUpBox"), () => { persist.autoUp = !!$("autoUpBox").checked; savePersist(); });
     stop($("redBox"), () => { if (window.CryptStudio) CryptStudio.setReduced($("redBox").checked); });
     stop($("musBox"), () => { if (window.CryptStudio) CryptStudio.setMusic($("musBox").checked); });
     const sv = $("sfxVol");
@@ -4114,6 +4140,7 @@
       "<p class='lore'>Play, audio, display, and P1 keys. Radio volume lives here and on the dock.</p>" +
       "<p class='kicker'>Play</p>" +
       "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
+      "<label class='auto-lab'><input type='checkbox' id='autoUpBox'" + (persist.autoUp ? " checked" : "") + "> Auto-pick upgrades — Survival cards take themselves</label>" +
       "<p class='kicker'>Audio</p>" +
       "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed (in-run only)</label>" +
       "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
@@ -4287,7 +4314,7 @@
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets and AI sleep 60s if downed — they do not end the run.</li>" +
-      "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
+      "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). Options: auto-pick Survival upgrades. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
