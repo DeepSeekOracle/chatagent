@@ -72,7 +72,13 @@
     levi: { hp: 36, dmg: 16, speed: 1.05, melee: true, ghost: true, pts: 560, boss: true },
     tithe: { hp: 30, dmg: 12, speed: 1.2, melee: true, steal: true, pts: 540, boss: true },
     unnamer: { hp: 40, dmg: 10, speed: 1.1, melee: true, drain: true, ghost: true, pts: 800, boss: true },
-    lock: { hp: 48, dmg: 18, speed: 0.75, melee: true, shoot: true, pts: 1000, boss: true }
+    lock: { hp: 48, dmg: 18, speed: 0.75, melee: true, shoot: true, pts: 1000, boss: true },
+    unspool: { hp: 96, dmg: 22, speed: 0.68, melee: true, radial: true, shoot: true, pts: 2800, boss: true, super: true, spr: "lock" },
+    titheking: { hp: 88, dmg: 17, speed: 0.92, melee: true, pull: true, lob: true, steal: true, pts: 2600, boss: true, super: true, spr: "tithe" },
+    nameeater: { hp: 110, dmg: 15, speed: 1.12, melee: true, blink: true, silence: true, drain: true, ghost: true, pts: 3200, boss: true, super: true, spr: "unnamer" }
+  };
+  const BOSS_NAME = {
+    lock: "The Lock", unspool: "The Unspooler", titheking: "The Tithe-King", nameeater: "The Name-Eater"
   };
   const KEYS_P = [
     { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", fire: ["KeyJ"], mag: ["KeyK", "ShiftLeft"], cycle: ["KeyQ"] },
@@ -151,7 +157,32 @@
     halo: { glow: "rgba(253,224,71,0.5)", spin: 1 },
     cleave: { glow: "rgba(248,113,113,0.5)" },
     orbit: { glow: "rgba(226,232,240,0.45)", spin: 2 },
-    aura: { glow: "rgba(74,222,128,0.5)" }
+    aura: { glow: "rgba(74,222,128,0.5)" },
+    prism: { glow: "rgba(251,191,36,0.55)", spin: 1, rarity: 1, say: "Prism — five-way light." },
+    thornlance: { glow: "rgba(74,222,128,0.55)", rarity: 1, say: "Thornlance — the beam does not stop." },
+    sunbolt: { glow: "rgba(249,115,22,0.6)", rarity: 2, say: "Sunbolt — a coal of the first fire." },
+    voidlob: { glow: "rgba(124,58,237,0.6)", rarity: 2, say: "Voidlob — ice that unnames." },
+    starwheel: { glow: "rgba(253,224,71,0.6)", spin: 2, rarity: 1, say: "Starwheel — more wards in orbit." },
+    riftcleave: { glow: "rgba(248,113,113,0.6)", rarity: 1, say: "Riftcleave — a longer tooth." },
+    gyre: { glow: "rgba(226,232,240,0.6)", spin: 2, rarity: 2, say: "Gyre — the blades remember a wider ring." },
+    hymnfield: { glow: "rgba(103,232,249,0.55)", rarity: 1, say: "Hymnfield — the song has reach." },
+    truthseek: { glow: "rgba(196,181,253,0.6)", rarity: 2, say: "Truthseek — it will not miss a lie." },
+    latticearc: { glow: "rgba(34,211,238,0.7)", spin: 1, rarity: 3, say: "Lattice Arc — a legendary jump of light." },
+    sigilplate: { iron: 2, aegis: 18, score: 160, rarity: 1, say: "Sigilplate — two irons, a held Aegis." },
+    wellcrown: { max: 140, vials: 2, score: 220, rarity: 2, say: "Wellcrown — a deeper well, two vials." },
+    namelamp: { lamp: 2, score: 150, rarity: 1, say: "Namelamp — the fog yields twice." },
+    truthlens: { pierce: 2, cores: 1, score: 180, rarity: 2, say: "Truthlens — bolts pass, a core wakes." },
+    stormquill: { extraCap: 2, shotBoost: 16, score: 160, rarity: 1, say: "Stormquill — more live bolts, faster hand." },
+    weaveheart: { regen: 28, max: 60, score: 200, rarity: 2, say: "Weaveheart — the well seeps and deepens." },
+    triadkey: { keys: 3, score: 140, rarity: 1, say: "Triad key — three teeth for the lock." },
+    voidcloak: { veil: 16, swift: 14, score: 200, rarity: 2, say: "Voidcloak — unseen, already gone." },
+    titheband: { magnet: 1.1, score: 150, rarity: 1, say: "Titheband — the floor pays you." },
+    starbread: { heal: 400, max: 40, score: 160, rarity: 1, say: "Starbread — a rare feast." },
+    chorusflask: { vials: 4, heal: 80, score: 210, rarity: 2, say: "Chorus flask — four vials, a sip of chorus." },
+    geodesic: { special: "geodesic", score: 160, rarity: 1, glow: "rgba(45,212,191,0.55)", say: "Geodesic — the shortest true line." },
+    unwriteink: { special: "unwrite", score: 220, rarity: 2, glow: "rgba(192,132,252,0.65)", say: "Unwrite-ink — names come off the stone." },
+    accordseal: { special: "accordseal", score: 400, rarity: 3, glow: "rgba(251,191,36,0.75)", spin: 2, say: "Accord Seal — legendary Δ9 lock." },
+    originwell: { heal: 9999, max: 200, vials: 3, lamp: 1, score: 450, rarity: 3, glow: "rgba(253,224,71,0.8)", spin: 2, say: "Origin Well — legendary restoration." }
   };
   const BAG = [
     "food", "food", "food", "berry", "berry", "bread", "scrap", "flask", "flask", "nectar",
@@ -163,7 +194,17 @@
     "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura", "seek", "chain", "barrage", "nova",
     "feast", "elixir", "chalice", "tome", "ring", "moon", "sun", "storm", "crown", "soul", "anvil", "weave"
   ];
-  const CHEST_DROP = ["fan", "needle", "cinder", "core", "heart", "cleave", "orbit", "aura", "comet", "halo", "seek", "chain", "barrage", "nova", "elixir", "crown", "chalice", "tome", "ring", "crystal", "phial", "iron"];
+  const CHEST_DROP = ["fan", "needle", "cinder", "core", "heart", "cleave", "orbit", "aura", "comet", "halo", "seek", "chain", "barrage", "nova", "elixir", "crown", "chalice", "tome", "ring", "crystal", "phial", "iron", "prism", "thornlance", "riftcleave", "starwheel", "hymnfield", "sigilplate", "starbread", "triadkey"];
+  const LOOT_RARE = ["prism", "thornlance", "starwheel", "riftcleave", "hymnfield", "sigilplate", "namelamp", "stormquill", "triadkey", "titheband", "starbread", "geodesic"];
+  const LOOT_SUPER = ["sunbolt", "voidlob", "gyre", "truthseek", "wellcrown", "truthlens", "weaveheart", "voidcloak", "chorusflask", "unwriteink"];
+  const LOOT_LEGEN = ["latticearc", "accordseal", "originwell"];
+  function rollLoot(R) {
+    const u = (R || Math.random)();
+    if (u < 0.012) return LOOT_LEGEN[( (R || Math.random)() * LOOT_LEGEN.length) | 0];
+    if (u < 0.05) return LOOT_SUPER[( (R || Math.random)() * LOOT_SUPER.length) | 0];
+    if (u < 0.18) return LOOT_RARE[( (R || Math.random)() * LOOT_RARE.length) | 0];
+    return BAG[( (R || Math.random)() * BAG.length) | 0];
+  }
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
     fan: { name: "Fan", cap: 3, spd: 11, life: 0.55, cool: 0.2, dmg: -1, spread: 0.38 },
@@ -177,7 +218,17 @@
     seek: { name: "Seek", cap: 2, spd: 9.5, life: 1.35, cool: 0.24, dmg: 1, seek: true },
     chain: { name: "Chain", cap: 2, spd: 13, life: 0.9, cool: 0.2, dmg: 0, chain: true, pierce: 1 },
     barrage: { name: "Barrage", cap: 4, spd: 13, life: 0.45, cool: 0.1, dmg: -1 },
-    nova: { name: "Nova", cap: 1, spd: 8, life: 0.7, cool: 0.36, dmg: 2, nova: true }
+    nova: { name: "Nova", cap: 1, spd: 8, life: 0.7, cool: 0.36, dmg: 2, nova: true },
+    prism: { name: "Prism", cap: 5, spd: 12, life: 0.5, cool: 0.22, dmg: 0, spread: 0.52 },
+    thornlance: { name: "Thornlance", cap: 2, spd: 18, life: 1.45, cool: 0.15, dmg: 2, pierce: 4 },
+    sunbolt: { name: "Sunbolt", cap: 2, spd: 10, life: 0.7, cool: 0.14, dmg: 3, flame: 2.8 },
+    voidlob: { name: "Voidlob", cap: 1, spd: 8.2, life: 1.55, cool: 0.3, dmg: 4, lob: true, nova: true },
+    starwheel: { name: "Starwheel", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 1, halo: true, haloN: 2 },
+    riftcleave: { name: "Riftcleave", melee: true, cleave: true, cool: 0.36, dmg: 4, range: 2.15 },
+    gyre: { name: "Gyre", melee: true, orbit: true, cool: 0, dmg: 3 },
+    hymnfield: { name: "Hymnfield", melee: true, aura: true, cool: 0, dmg: 4 },
+    truthseek: { name: "Truthseek", cap: 3, spd: 11, life: 1.5, cool: 0.18, dmg: 2, seek: true, pierce: 2 },
+    latticearc: { name: "Lattice Arc", cap: 3, spd: 15, life: 1.05, cool: 0.16, dmg: 3, chain: true, pierce: 2 }
   };
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
@@ -187,7 +238,7 @@
   const INV_RELIC = 4;
   function itemCat(kind) {
     if (WEAPONS[kind]) return "wep";
-    if (["food", "flask", "berry", "bread", "feast", "elixir", "scrap", "nectar", "soul", "vial", "phial", "chalice", "bomb", "warp", "scroll", "dice"].indexOf(kind) >= 0) return "use";
+    if (["food", "flask", "berry", "bread", "feast", "elixir", "scrap", "nectar", "soul", "vial", "phial", "chalice", "bomb", "warp", "scroll", "dice", "starbread", "chorusflask", "originwell", "geodesic", "unwriteink", "accordseal"].indexOf(kind) >= 0) return "use";
     if (kind === "coin" || kind === "gem") return "gold";
     if (kind === "key" || kind === "latch") return "pack";
     return "relic";
@@ -261,7 +312,17 @@
     seek: { size: 26, col: "#c4b5fd", glow: "rgba(196,181,253,0.4)" },
     chain: { size: 30, col: "#67e8f9", glow: "rgba(103,232,249,0.4)" },
     barrage: { size: 22, col: "#fdba74", glow: "rgba(253,186,116,0.38)" },
-    nova: { size: 30, col: "#f472b6", glow: "rgba(244,114,182,0.4)" }
+    nova: { size: 30, col: "#f472b6", glow: "rgba(244,114,182,0.4)" },
+    prism: { size: 26, col: "#fde68a", glow: "rgba(253,224,71,0.45)" },
+    thornlance: { size: 34, col: "#4ade80", glow: "rgba(74,222,128,0.45)" },
+    sunbolt: { size: 30, col: "#fb923c", glow: "rgba(251,146,60,0.5)" },
+    voidlob: { size: 32, col: "#a78bfa", glow: "rgba(167,139,250,0.5)" },
+    starwheel: { size: 30, col: "#facc15", glow: "rgba(250,204,21,0.48)" },
+    riftcleave: { size: 28, col: "#fb7185", glow: "rgba(251,113,133,0.45)" },
+    gyre: { size: 24, col: "#e0f2fe", glow: "rgba(224,242,254,0.45)" },
+    hymnfield: { size: 26, col: "#67e8f9", glow: "rgba(103,232,249,0.45)" },
+    truthseek: { size: 28, col: "#c4b5fd", glow: "rgba(196,181,253,0.5)" },
+    latticearc: { size: 34, col: "#22d3ee", glow: "rgba(34,211,238,0.55)" }
   };
   const BOSS_LOOT = {
     gate: ["core", "heart", "ward"],
@@ -271,7 +332,10 @@
     levi: ["halo", "aegis", "echo"],
     tithe: ["chest", "core", "gem"],
     unnamer: ["vial", "phial", "soul"],
-    lock: ["iron", "codex", "crown"]
+    lock: ["iron", "codex", "crown"],
+    unspool: ["latticearc", "sunbolt", "accordseal"],
+    titheking: ["wellcrown", "voidlob", "titheband"],
+    nameeater: ["originwell", "voidcloak", "truthseek"]
   };
   let keys = {};
   let keyEdge = {};
@@ -389,23 +453,30 @@
     ctx.beginPath();
     ctx.ellipse(cx, cy + 11, 9, 3.2, 0, 0, 6.28);
     ctx.fill();
+    const rarity = spec.rarity || spec.rare || 0;
     ctx.globalAlpha = 0.2 + 0.18 * (0.5 + 0.5 * Math.sin(t * 5.1));
     ctx.fillStyle = spec.glow || "rgba(251,191,36,0.4)";
     ctx.beginPath();
-    ctx.arc(cx, cy + bob, spec.rare ? 16 : 13, 0, 6.28);
+    ctx.arc(cx, cy + bob, rarity >= 3 ? 20 : (rarity >= 2 ? 17 : (rarity ? 16 : 13)), 0, 6.28);
     ctx.fill();
     ctx.globalAlpha = 1;
-    if (spec.rare || spec.spin) {
-      for (let n = 0; n < 3; n++) {
-        const a = t * 2.4 + n * 2.09;
-        ctx.fillStyle = "rgba(255,255,230,0.75)";
-        ctx.fillRect(Math.round(cx + Math.cos(a) * 13), Math.round(cy + bob + Math.sin(a) * 10), 2, 2);
+    if (rarity || spec.spin) {
+      const sparks = rarity >= 3 ? 6 : (rarity >= 2 ? 5 : 3);
+      for (let n = 0; n < sparks; n++) {
+        const a = t * (2.4 + rarity) + n * (6.28 / sparks);
+        ctx.fillStyle = rarity >= 3 ? "#fde68a" : "rgba(255,255,230,0.75)";
+        ctx.fillRect(Math.round(cx + Math.cos(a) * (13 + rarity * 2)), Math.round(cy + bob + Math.sin(a) * (10 + rarity)), rarity >= 2 ? 3 : 2, rarity >= 2 ? 3 : 2);
       }
     }
     ctx.save();
     ctx.translate(cx, cy + bob);
     if (spec.spin) ctx.rotate(t * (spec.spin === 2 ? 3.6 : 1.8));
-    const vis = { seek: "comet", chain: "needle", barrage: "fan", nova: "pulse" };
+    const vis = { seek: "comet", chain: "needle", barrage: "fan", nova: "pulse",
+      prism: "fan", thornlance: "needle", sunbolt: "cinder", voidlob: "comet", starwheel: "halo",
+      riftcleave: "cleave", gyre: "orbit", hymnfield: "aura", truthseek: "comet", latticearc: "needle",
+      sigilplate: "iron", wellcrown: "heart", namelamp: "lantern", truthlens: "lens", stormquill: "quiver",
+      weaveheart: "weave", triadkey: "key", voidcloak: "veil", titheband: "magnet", starbread: "feast",
+      chorusflask: "chalice", geodesic: "warp", unwriteink: "pulse", accordseal: "crown", originwell: "soul" };
     drawItemSpr((vis[it.kind] || it.kind) + "_" + fr, -16, -16, 32);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
@@ -463,7 +534,9 @@
     if (wep === "halo") ctx.rotate(G.t * 7);
     else if (wep === "cinder") ctx.rotate(G.t * 5);
     else if (wep !== "imp") ctx.rotate(ang);
-    const fxW = { seek: "comet", chain: "needle", barrage: "fan", nova: "cinder", cleave: "shard", orbit: "shard", aura: "shard" };
+    const fxW = { seek: "comet", chain: "needle", barrage: "fan", nova: "cinder", cleave: "shard", orbit: "shard", aura: "shard",
+      prism: "fan", thornlance: "needle", sunbolt: "cinder", voidlob: "comet", starwheel: "halo",
+      riftcleave: "shard", gyre: "shard", hymnfield: "shard", truthseek: "comet", latticearc: "needle" };
     drawFxSpr("bolt_" + (fxW[wep] || wep) + "_" + fr, -sz / 2, -sz / 2, sz);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
@@ -773,6 +846,13 @@
       }
       say(nB > 1 ? "Named guardians enter the long crypt." : "A named guardian enters the long crypt.");
     }
+    if ((w === 12 || w === 18 || w === 24 || w === 36) && G.bossAt !== w + 0.5) {
+      G.bossAt = w + 0.5;
+      const sk = w === 12 || w === 36 ? "unspool" : (w === 18 ? "titheking" : "nameeater");
+      spawnSurviveAround(sk, true);
+      emit("onBossSpawn", { w: w, super: true });
+      say(BOSS_NAME[sk] + " walks the Long Crypt.");
+    }
     if (G.pendingLvl > 0 && overlayMode == null) offerSurviveUp();
   }
   function onSurviveKill(f) {
@@ -780,8 +860,7 @@
     G.score += 6 + surviveWave() * 2;
     G.xp += 1 + ((surviveWave() / 5) | 0);
     if (Math.random() < 0.07 && G.level.items.length < 90) {
-      const loot = ["food", "berry", "coin", "scrap", "core", "heart", "moss", "vial", "fury", "magnet"];
-      dropItemNear(f.x, f.y, loot[(Math.random() * loot.length) | 0]);
+      dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["food", "berry", "coin", "scrap", "core", "heart", "moss", "vial", "fury", "magnet"][(Math.random() * 10) | 0]);
     }
     while (G.xp >= surviveXpNeed(G.lvl)) {
       G.xp -= surviveXpNeed(G.lvl);
@@ -1031,9 +1110,20 @@
     { id: "seek", name: "Seek", spec: "Arm or stack homing bolts." },
     { id: "chain", name: "Chain", spec: "Arm or stack jumping arcs." },
     { id: "barrage", name: "Barrage", spec: "Arm or stack a rapid stream." },
-    { id: "nova", name: "Nova", spec: "Arm or stack bursting shells." }
+    { id: "nova", name: "Nova", spec: "Arm or stack bursting shells." },
+    { id: "prism", name: "Prism", spec: "Rare five-way light." },
+    { id: "thornlance", name: "Thornlance", spec: "Rare piercing beam." },
+    { id: "sunbolt", name: "Sunbolt", spec: "Super firebolt." },
+    { id: "voidlob", name: "Voidlob", spec: "Super ice that bursts." },
+    { id: "starwheel", name: "Starwheel", spec: "Rare extra halo wards." },
+    { id: "riftcleave", name: "Riftcleave", spec: "Rare long slash." },
+    { id: "gyre", name: "Gyre", spec: "Super orbit blades." },
+    { id: "hymnfield", name: "Hymnfield", spec: "Rare wide aura." },
+    { id: "truthseek", name: "Truthseek", spec: "Super homing pierce." },
+    { id: "latticearc", name: "Lattice Arc", spec: "Legendary jumping arc." }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
+  const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
   function surviveXpNeed(lv) { return 10 + lv * 6; }
@@ -1124,7 +1214,7 @@
         const x = 6 + ((R() * (W - 12)) | 0), y = 6 + ((R() * (H - 12)) | 0);
         if (tiles[y][x] === "floor" && (x !== start.x || y !== start.y)) { p = { x, y }; break; }
       }
-      if (p) items.push({ x: p.x, y: p.y, kind: bag[(R() * bag.length) | 0] });
+      if (p) items.push({ x: p.x, y: p.y, kind: R() < 0.22 ? rollLoot(R) : bag[(R() * bag.length) | 0] });
     }
     return contentBox({
       W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: pads,
@@ -1196,7 +1286,7 @@
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
-      const k = treasure ? (R() < 0.55 ? "chest" : BAG[(R() * BAG.length) | 0]) : BAG[(R() * BAG.length) | 0];
+      const k = treasure ? (R() < 0.55 ? "chest" : rollLoot(R)) : rollLoot(R);
       items.push({ x: p.x, y: p.y, kind: k });
     }
     if (R() < 0.45 || floor % 5 === 4) {
@@ -1232,6 +1322,10 @@
     if (floor >= (mode === "endless" ? 3 : 6) && R() < 0.22 + floor * 0.01) {
       foes.push(makeFoe("drain", 1, exit.x + 0.5, exit.y + 0.5));
     }
+    if (floor >= (mode === "endless" ? 8 : 11) && R() < 0.16 + floor * 0.008) {
+      const sk = SUPER_BOSSES[floor % 3];
+      foes.push(makeFoe(sk, 1, exit.x + 0.5, exit.y + 0.5));
+    }
     return contentBox({
       W, H, tiles, start, items, gens, foes, doors, pads,
       realm: REALMS[floor % 8],
@@ -1247,13 +1341,14 @@
     let hp = k === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank);
     if (G && G.mode === "survive") {
       const w = surviveWave();
-      hp = k === "drain" ? 40 + w * 6 : (d.boss ? Math.round(16 + w * 9) : Math.max(1, Math.round(1 + w * 1.15)));
+      hp = k === "drain" ? 40 + w * 6 : (d.super ? Math.round(90 + w * 24) : (d.boss ? Math.round(16 + w * 9) : Math.max(1, Math.round(1 + w * 1.15))));
       rank = 1 + Math.min(8, (w / 4) | 0);
     }
     const f = window.CryptStudio && CryptStudio.pool.foe ? CryptStudio.pool.foe.alloc() : {};
     f.kind = k; f.rank = rank; f.x = x; f.y = y;
     f.hp = hp; f.max = hp;
-    f.boss = !!d.boss;
+    f.boss = !!d.boss || !!d.super;
+    f.super = !!d.super;
     f.explode = !!d.explode; f.split = !!d.split; f.heal = !!d.heal; f.spr = d.spr || k;
     f.vx = 0; f.vy = 0; f.t = 0; f.hurt = 0; f.flicker = 0; f.stun = 0;
     f.phase = 1; f._splitDone = false; f._sip = 0; f.isActive = true;
@@ -1556,7 +1651,8 @@
     else if (G.level.treasure) say("Treasure rush — grab and go.");
     else if (G.level.items.some((it) => it.hidden)) say("A hidden vial waits.");
     if (G.level.foes.some((f) => f.kind === "drain")) say("The Drain walks.");
-    if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].boss)) say("A named guardian holds this seal.");
+    if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].super)) say((BOSS_NAME[G.level.foes.find(function (x) { return FOE[x.kind] && FOE[x.kind].super; }).kind] || "A super guardian") + " holds this seal.");
+    else if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].boss)) say("A named guardian holds this seal.");
     const foc = G.players.find((p) => !p.dead) || G.players[0];
     const cw = canvas.clientWidth || 800, ch = canvas.clientHeight || 480;
     cam.x = foc.x * TILE - cw / 2;
@@ -1735,7 +1831,7 @@
     const len = Math.hypot(ax, ay) || 1;
     ax /= len; ay /= len;
     if (w.halo) {
-      const n = 2 + Math.min(4, lv);
+      const n = (w.haloN || 2) + Math.min(4, lv);
       if (!p.halo || p.halo.length !== n) {
         p.halo = [];
         for (let i = 0; i < n; i++) p.halo.push({ ang: (i / n) * Math.PI * 2, r: 0.82 + lv * 0.04 });
@@ -1754,6 +1850,7 @@
     return true;
   }
   function fireArsenal(p) {
+    if ((p.muteT || 0) > 0 || (p.stun || 0) > 0) return;
     let any = false;
     (p.arsenal || [p.weapon]).forEach((id) => { if (fireWeapon(p, id)) any = true; });
     if (any && p.hero.hymn) {
@@ -1763,12 +1860,12 @@
     if (any) beep("shot");
   }
   function tickMelee(p, dt) {
-    const lvC = wepLv(p, "cleave");
+    const lvC = wepLv(p, "cleave") + wepLv(p, "riftcleave");
     if (lvC) {
       p.cleaveT = (p.cleaveT || 0) - dt;
       if (p.cleaveT <= 0) {
         p.cleaveT = Math.max(0.18, 0.4 / (1 + (p.haste || 0) * 0.1));
-        const range = 1.42 + lvC * 0.2;
+        const range = 1.42 + lvC * 0.2 + (wepLv(p, "riftcleave") ? 0.55 : 0);
         const ax = p.aimX || 1, ay = p.aimY || 0;
         const dmg = shotDmg(p, WEAPONS.cleave) + lvC;
         queryFoes(p.x, p.y, range).forEach((f) => {
@@ -1781,7 +1878,7 @@
         G.fx.push({ x: p.x, y: p.y, life: 0.14, kind: "slash", ang: Math.atan2(ay, ax), r: range });
       }
     }
-    const lvO = wepLv(p, "orbit");
+    const lvO = wepLv(p, "orbit") + wepLv(p, "gyre");
     if (lvO) {
       const n = 2 + Math.min(5, lvO);
       const r = 0.92 + lvO * 0.08;
@@ -1798,7 +1895,7 @@
         });
       });
     }
-    const lvA = wepLv(p, "aura");
+    const lvA = wepLv(p, "aura") + wepLv(p, "hymnfield");
     if (lvA) {
       const rad = 1.18 + lvA * 0.2;
       const dps = 3.2 + lvA * 1.4 + (p.might || 0);
@@ -1870,8 +1967,8 @@
     if (!addInv(p, id, 1)) return;
     p.arsenal.splice(ix, 1);
     if (p.weapon === id) p.weapon = p.arsenal[0] || "shard";
-    if (id === "halo") p.halo = null;
-    if (id === "orbit") p.orbit = null;
+    if (id === "halo" || id === "starwheel") p.halo = null;
+    if (id === "orbit" || id === "gyre") p.orbit = null;
     say(WEAPONS[id].name + " → bag.");
   }
   function useBag(p, i) {
@@ -2038,6 +2135,7 @@
     if (spec.thorns) p.thorns = Math.max(p.thorns || 0, spec.thorns);
     if (spec.echo) p.echo = Math.max(p.echo || 0, spec.echo);
     if (spec.regen) p.regen = Math.max(p.regen || 0, spec.regen);
+    if (spec.lamp) p.lamp = (p.lamp || 0) + spec.lamp;
     if (spec.score && !fromBag) G.score += spec.score;
     const sp = spec.special;
     if (sp === "poison") {
@@ -2047,7 +2145,7 @@
     }
     if (sp === "chest") {
       if (Math.random() < 0.42) {
-        const drop = CHEST_DROP[(Math.random() * CHEST_DROP.length) | 0];
+        const drop = Math.random() < 0.28 ? rollLoot() : CHEST_DROP[(Math.random() * CHEST_DROP.length) | 0];
         G.level.items.push({ x: it.x, y: it.y, kind: drop });
       }
     }
@@ -2065,9 +2163,28 @@
       p.shotBoost = Math.max(p.shotBoost || 0, 8);
       say("Lantern — the dark yields.");
     }
+    if (sp === "geodesic") {
+      randomFloor(p);
+      p.aegis = Math.max(p.aegis, 5);
+      say("Geodesic — you take the true line.");
+    }
+    if (sp === "unwrite") {
+      blastFoes(p.x, p.y, 8, 16);
+      novaStun(p.x, p.y, 8, 2.4, "#c4b5fd");
+      say("Unwrite — the stone forgets them.");
+    }
+    if (sp === "accordseal") {
+      novaStun(p.x, p.y, 12, 3.2, "#fbbf24");
+      p.iron = (p.iron || 0) + 2;
+      p.cores = (p.cores || 0) + 1;
+      p.lamp = (p.lamp || 0) + 1;
+      p.aegis = Math.max(p.aegis, 8);
+      G.players.forEach(function (o) { if (!o.dead) o.hp = Math.min(o.max, o.hp + 120); });
+      say("Accord Seal — the lock remembers.");
+    }
     if (sp === "trap") { p.stun = 0.8; p.hp -= 15; }
     if (sp === "dice") {
-      const pool = ["fury", "moss", "coin", "heart", "swift", "bomb", "elixir", "warp", "thorns", "echo"];
+      const pool = ["fury", "moss", "coin", "heart", "swift", "bomb", "elixir", "warp", "thorns", "echo", "prism", "starbread", "sigilplate"];
       say("The die turns.");
       applyPickup(p, { x: it.x, y: it.y, kind: pool[(Math.random() * pool.length) | 0] });
       return;
@@ -2195,6 +2312,7 @@
       p.hurtT = Math.max(0, (p.hurtT || 0) - dt);
       p.magT = Math.max(0, p.magT - dt);
       p.stun = Math.max(0, p.stun - dt);
+      p.muteT = Math.max(0, (p.muteT || 0) - dt);
       p.padT = Math.max(0, p.padT - dt);
       p.shotBoost = Math.max(0, p.shotBoost - dt);
       p.swift = Math.max(0, p.swift - dt);
@@ -2293,7 +2411,16 @@
       if (f.boss && f.hp < f.max * 0.5 && (f.phase || 1) < 2) {
         f.phase = 2;
         emit("onBossPhase", { f: f, phase: 2 });
-        say("The guardian breaks its first seal.");
+        say(f.kind === "unspool" ? "The Unspooler rips the ring wider."
+          : (f.kind === "titheking" ? "The Tithe-King drinks the room."
+            : (f.kind === "nameeater" ? "The Name-Eater unwrites your shot."
+              : "The guardian breaks its first seal.")));
+        if (f.kind === "unspool") {
+          for (let i = 0; i < 4; i++) lv.foes.push(makeFoe("spawnling", 1, f.x + (i - 1.5) * 0.5, f.y + 0.4));
+        }
+        if (f.kind === "nameeater") {
+          for (let i = 0; i < 3; i++) lv.foes.push(makeFoe("shade", 1, f.x + Math.cos(i * 2.1) * 1.2, f.y + Math.sin(i * 2.1) * 1.2));
+        }
       }
       const spdMul = (f.phase >= 2 ? 1.32 : 1);
       if (lodOn() && bd > 22 && !def.boss) {
@@ -2354,10 +2481,45 @@
         f.t = 0;
         pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
-      if (def.lob && f.t > 1.4 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
+      if (def.lob && f.t > (f.phase >= 2 && def.super ? 0.7 : 1.4) && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
-        pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        const nLob = def.super && f.phase >= 2 ? 3 : 1;
+        for (let i = 0; i < nLob; i++) {
+          const a = ang + (i - (nLob - 1) / 2) * 0.28;
+          pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(a) * 4, vy: Math.sin(a) * 4, dmg: def.super ? 14 : 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        }
       }
+      if (def.radial && f.t > (f.phase >= 2 ? 0.8 : 1.25)) {
+        f.t = 0;
+        const n = f.phase >= 2 ? 12 : 8;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * 6.28 + G.t * 0.4;
+          pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(a) * 7.2, vy: Math.sin(a) * 7.2, dmg: 13, foe: true, life: 1.45, maxLife: 1.45, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        }
+      }
+      if (def.pull && bd < 8.5 && bd > 0.8) {
+        const pull = (f.phase >= 2 ? 2.6 : 1.6) * dt;
+        tgt.x -= Math.cos(ang) * pull;
+        tgt.y -= Math.sin(ang) * pull;
+        if (f.phase >= 2 && def.heal) { /* no */ }
+        if (f.phase >= 2) f.hp = Math.min(f.max, f.hp + dt * 2.2);
+      }
+      if (def.blink && f.t > (f.phase >= 2 ? 1.35 : 2.1)) {
+        f.t = 0;
+        const ox = tgt.x + (Math.random() - 0.5) * 5;
+        const oy = tgt.y + (Math.random() - 0.5) * 5;
+        const np = nearestWalk(lv, ox, oy);
+        G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "warp" });
+        f.x = np.x; f.y = np.y;
+        G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "warp" });
+      }
+      if (def.silence && bd < 5 && (f._sil || 0) <= 0) {
+        f._sil = f.phase >= 2 ? 2.4 : 3.2;
+        tgt.muteT = Math.max(tgt.muteT || 0, f.phase >= 2 ? 2.4 : 1.5);
+        say(tgt.hero.name + " — shot unnamed.");
+        G.fx.push({ x: tgt.x, y: tgt.y, life: 0.4, kind: "nova", col: "#c4b5fd" });
+      }
+      if (def.silence) f._sil = Math.max(0, (f._sil || 0) - dt);
     });
     const born = [];
     lv.foes = lv.foes.filter((f) => {
@@ -2962,7 +3124,7 @@
     if (bh) {
       bh.classList.toggle("hidden", !boss);
       if (boss) {
-        if ($("bossName")) $("bossName").textContent = (FOE[boss.kind] && boss.kind === "lock" ? "The Lock" : "Named guardian") + (boss.phase >= 2 ? " · II" : "");
+        if ($("bossName")) $("bossName").textContent = (BOSS_NAME[boss.kind] || "Named guardian") + (boss.super ? " · SUPER" : "") + (boss.phase >= 2 ? " · II" : "");
         if ($("bossHpFill")) $("bossHpFill").style.width = Math.max(0, Math.min(100, 100 * boss.hp / Math.max(1, boss.max))) + "%";
       }
     }
@@ -3319,7 +3481,7 @@
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
-      "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
+      "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li><b>Tab</b> character sheet — model, stats, arms, spell, bag. Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
