@@ -1454,6 +1454,7 @@
     keys = {}; keyEdge = {};
     announce = { t: "", life: 0 };
     hideCoach();
+    if (overlayMode === "char") hideOverlay();
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
   }
   function newRun(opts) {
@@ -1994,8 +1995,19 @@
         emit("onPickup", { p: p, kind: k });
         G.score += spec.score || 0;
         say("Bagged " + itemLabel(k) + " · Tab.");
-        feel("pick", p.x, p.y);
         return;
+      }
+    }
+    if (!fromBag && cat === "relic") {
+      ensureInv(p);
+      const worn = p.inv.relic.some(function (r) { return r.kind === k; });
+      if (!worn && p.inv.relic.length >= INV_RELIC) {
+        if (addInv(p, k, 1)) {
+          emit("onPickup", { p: p, kind: k });
+          if (spec.score) G.score += spec.score;
+          say("Bagged " + itemLabel(k) + " — relic slots full. Tab.");
+          return;
+        }
       }
     }
     emit("onPickup", { p: p, kind: k });
@@ -2060,10 +2072,8 @@
       applyPickup(p, { x: it.x, y: it.y, kind: pool[(Math.random() * pool.length) | 0] });
       return;
     }
-    if (!fromBag) {
-      if (cat === "gold") addInv(p, k, 1);
-      else if (cat === "relic") noteRelic(p, k);
-    }
+    if (cat === "gold" && !fromBag) addInv(p, k, 1);
+    if (cat === "relic") noteRelic(p, k);
     if (spec.say) say(p.hero.name + " — " + spec.say);
   }
   function pickup(p) {
@@ -2625,7 +2635,7 @@
 
   function credit() {
     if (!G || G.over) return;
-    if (overlayMode === "pause" || overlayMode === "menu") return;
+    if (overlayMode === "pause" || overlayMode === "menu" || overlayMode === "char" || overlayMode === "options") return;
     feel("credit", G.players[0] && G.players[0].x, G.players[0] && G.players[0].y);
     const down = G.players.find((p) => p.dead);
     if (!down) {
@@ -3081,10 +3091,12 @@
     $("overlay").onclick = function (e) {
       const who = e.target.closest("[data-who]");
       if (who) { e.stopPropagation(); openChar(+who.getAttribute("data-who")); return; }
+      const me = G.players[G._charSlot];
+      if (!me) return;
       const bag = e.target.closest("[data-bag]");
       if (bag) {
         e.stopPropagation();
-        useBag(p, +bag.getAttribute("data-bag"));
+        useBag(me, +bag.getAttribute("data-bag"));
         openChar(G._charSlot);
         return;
       }
@@ -3092,18 +3104,37 @@
       if (wep && wep.getAttribute("data-wep")) {
         e.stopPropagation();
         const id = wep.getAttribute("data-wep");
-        if (p.weapon === id) unequipWep(p, id);
-        else { p.weapon = id; say("Focus " + WEAPONS[id].name + "."); }
+        if (me.weapon === id) unequipWep(me, id);
+        else { me.weapon = id; say("Focus " + (WEAPONS[id] ? WEAPONS[id].name : id) + "."); }
         openChar(G._charSlot);
       }
     };
     const cl = $("charClose");
-    if (cl) cl.onclick = function (e) { e.stopPropagation(); hideOverlay(); overlayMode = null; };
+    if (cl) cl.onclick = function (e) { e.stopPropagation(); closeChar(); };
+  }
+  function closeChar() {
+    const fromPause = G && G._charFrom === "pause";
+    hideOverlay();
+    if (fromPause && G && !G.over) {
+      overlayMode = "pause";
+      const pl = $("pauseLayer");
+      if (pl) pl.classList.remove("hidden");
+    }
+    if (G) G._charFrom = null;
   }
   function toggleChar() {
-    if (overlayMode === "char") { hideOverlay(); overlayMode = null; return; }
-    if (!G || G.over || overlayMode === "menu" || overlayMode === "options" || G._ups) return;
-    if (overlayMode === "pause") return;
+    if (overlayMode === "char") { closeChar(); return; }
+    if (!G || G.over || G._ups) return;
+    if (overlayMode === "menu" || overlayMode === "options" || overlayMode === "sheet") return;
+    if (overlayMode === "pause") {
+      G._charFrom = "pause";
+      const pl = $("pauseLayer");
+      if (pl) pl.classList.add("hidden");
+      openChar();
+      return;
+    }
+    if (overlayMode != null) return;
+    G._charFrom = "run";
     openChar();
   }
   function attrBar(n, max) {
@@ -3347,6 +3378,7 @@
       return;
     }
     if (e.code === "Tab") {
+      if (overlayMode === "menu" || overlayMode === "options") return;
       e.preventDefault();
       if (keyEdge.Tab) toggleChar();
       return;
@@ -3364,7 +3396,7 @@
       if (G && G._ups) return;
       if (!keyEdge.Escape) return;
       if (overlayMode === "options") { closeOptions(); return; }
-      if (overlayMode === "char") { hideOverlay(); overlayMode = null; return; }
+      if (overlayMode === "char") { closeChar(); return; }
       menu();
       return;
     }
