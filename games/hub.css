@@ -401,9 +401,10 @@ body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
 }
 .hall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1rem;
   margin-top: 1rem;
+  align-items: stretch;
 }
 .hall {
   background: linear-gradient(180deg, #101826, #0c121c);
@@ -412,7 +413,8 @@ body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
   padding: .95rem 1rem 1.05rem;
   display: flex;
   flex-direction: column;
-  min-height: 16rem;
+  min-height: 17.5rem;
+  height: 100%;
 }
 .hall header h3 {
   font-family: Syne, sans-serif;

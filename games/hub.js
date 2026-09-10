@@ -266,8 +266,14 @@
     var crypt = bookRows(books["lattice-crypt"]).concat(lsJson("lygo-lattice-crypt-ledger-q") || []);
     crypt = crypt.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
     paintHall("crypt", crypt.length ? (stamp + crypt.length + " runs") : "No crypt runs yet.", crypt.slice(0, 12).map(function (r) {
-      return { name: r.name || "Warden", score: String(r.score), meta: [r.mode, r.floor != null ? "f/w " + r.floor : "", r.date || ""].filter(Boolean).join(" · ") };
+      return { name: r.name || "Warden", score: String(r.score), meta: cryptLine(r) };
     }));
+  }
+
+  function cryptLine(r) {
+    var mode = r.mode === "survive" ? "Survive" : r.mode === "endless" ? "Endless" : r.mode === "campaign" ? "Campaign" : (r.mark || "");
+    var fw = r.floor != null ? ((r.mode === "survive" || r.mark === "wave") ? "wave " + r.floor : "floor " + r.floor) : "";
+    return [mode, fw, r.date || ""].filter(Boolean).join(" · ");
   }
 
   function renderHallsLegacy() {
@@ -476,7 +482,7 @@
         "crypt",
         rows.length ? (rows.length + " runs · public book") : "No crypt runs yet.",
         rows.slice(0, 12).map(function (r) {
-          return { name: r.name || "Warden", score: String(r.score), meta: [r.mode, r.floor != null ? "f/w " + r.floor : "", r.date || ""].filter(Boolean).join(" · ") };
+          return { name: r.name || "Warden", score: String(r.score), meta: cryptLine(r) };
         })
       );
     });
