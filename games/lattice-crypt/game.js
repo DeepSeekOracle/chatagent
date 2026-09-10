@@ -869,38 +869,79 @@
     }
   }
   function rollSurviveUps() {
-    const pool = SURVIVE_UP.filter((u) => {
+    function okArm(u) {
       if (!WEAPONS[u.id]) return true;
       let mx = 0;
       G.players.forEach((p) => { mx = Math.max(mx, wepLv(p, u.id)); });
       return mx < 8;
-    });
+    }
+    const stats = SURVIVE_UP.filter((u) => u.kind === "stat");
+    const gifts = SURVIVE_UP.filter((u) => u.kind === "gift");
+    const arms = SURVIVE_UP.filter((u) => u.kind === "arm" && okArm(u));
+    function pick(arr) {
+      if (!arr.length) return null;
+      const w = arr.map((u) => (u.tier >= 3 ? 1 : (u.tier === 2 ? 2 : (u.tier === 1 ? 4 : 6))));
+      let t = 0; w.forEach((n) => { t += n; });
+      let r = Math.random() * t;
+      for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; }
+      return arr[arr.length - 1];
+    }
+    const buckets = [stats, gifts, arms].sort(function () { return Math.random() - 0.5; });
     const out = [];
-    const copy = pool.slice();
-    while (out.length < 3 && copy.length) {
-      const i = (Math.random() * copy.length) | 0;
-      out.push(copy.splice(i, 1)[0]);
+    const used = {};
+    buckets.forEach(function (b) {
+      const u = pick(b.filter(function (x) { return !used[x.id]; }));
+      if (u) { out.push(u); used[u.id] = 1; }
+    });
+    while (out.length < 3) {
+      const u = pick(SURVIVE_UP.filter(function (x) { return !used[x.id] && okArm(x); }));
+      if (!u) break;
+      out.push(u); used[u.id] = 1;
     }
     while (out.length < 3) out.push(SURVIVE_UP[out.length % SURVIVE_UP.length]);
     return out;
+  }
+  function upNowLine(u) {
+    const p = G.players[0];
+    if (!p) return u.bonus;
+    if (WEAPONS[u.id]) {
+      const lv = wepLv(p, u.id);
+      return lv ? "ARM LV " + lv + " → " + (lv + 1) : "NEW ARM";
+    }
+    if (u.stack) {
+      const n = p[u.stack] || 0;
+      return "NOW " + n + "  →  " + (n + 1);
+    }
+    return u.bonus;
   }
   function applySurviveUp(u) {
     G.players.forEach((p) => {
       if (p.dead) return;
       if (u.id === "might") p.might = (p.might || 0) + 1;
-      else if (u.id === "haste") p.haste = (p.haste || 0) + 1;
-      else if (u.id === "iron") p.iron = (p.iron || 0) + 1;
+      else if (u.id === "haste") { p.haste = (p.haste || 0) + 1; p.shotBoost = Math.max(p.shotBoost || 0, 4); }
+      else if (u.id === "iron") { p.iron = (p.iron || 0) + 1; p.aegis = Math.max(p.aegis || 0, 4); }
       else if (u.id === "heart") { p.max += 80; p.hp = Math.min(p.max, p.hp + 80); }
       else if (u.id === "core") p.cores = (p.cores || 0) + 1;
-      else if (u.id === "phial") p.vials += 2;
+      else if (u.id === "phial") { p.vials += 2; p.vialPow = (p.vialPow || 0) + 1; }
       else if (u.id === "pierce") p.pierce = (p.pierce || 0) + 1;
       else if (u.id === "cap") p.extraCap = (p.extraCap || 0) + 1;
       else if (u.id === "magnet") p.magnet = (p.magnet || 0) + 0.45;
-      else if (u.id === "swift") p.stride = (p.stride || 0) + 1;
+      else if (u.id === "swift") { p.stride = (p.stride || 0) + 1; p.swift = Math.max(p.swift || 0, 3); }
       else if (u.id === "vialpow") p.vialPow = (p.vialPow || 0) + 1;
+      else if (u.id === "secondwind") p.hp = Math.min(p.max, p.hp + p.max * 0.4);
+      else if (u.id === "overclock") { p.shotBoost = Math.max(p.shotBoost || 0, 8); p.haste = (p.haste || 0) + 1; }
+      else if (u.id === "latticeward") p.aegis = Math.max(p.aegis || 0, 7);
+      else if (u.id === "goldrush") {}
+      else if (u.id === "namelight") p.lamp = (p.lamp || 0) + 1;
+      else if (u.id === "thornmail") p.thorns = Math.max(p.thorns || 0, 10);
+      else if (u.id === "echoround") p.echo = Math.max(p.echo || 0, 10);
+      else if (u.id === "fairmirror") p.reflect = Math.max(p.reflect || 0, 8);
+      else if (u.id === "veilstep") { p.veil = Math.max(p.veil || 0, 6); p.stride = (p.stride || 0) + 1; }
+      else if (u.id === "furyhour") { p.fury = Math.max(p.fury || 0, 10); p.might = (p.might || 0) + 1; }
       else if (WEAPONS[u.id]) giveWep(p, u.id);
     });
-    say(u.name + " — " + u.spec);
+    if (u.id === "goldrush") G.score += 500;
+    say("LEVEL " + G.lvl + " · " + u.name + " — " + u.bonus);
     const p0 = G.players[0];
     feel("upgrade", p0 && p0.x, p0 && p0.y);
   }
@@ -913,13 +954,12 @@
     const u = G._ups[i];
     if (!u) return;
     G._upLock = true;
+    const card = document.querySelector("[data-up='" + i + "']");
+    if (card) card.classList.add("taken");
     applySurviveUp(u);
     G._ups = null;
-    G._upLock = false;
-    hideOverlay();
-    overlayMode = null;
-    $("overlay").onclick = null;
-    if (G.pendingLvl > 0) offerSurviveUp();
+    G._upTaken = 0.34;
+    G._upPending = G.pendingLvl > 0;
   }
   function pollUpgradePick() {
     if (!G || !G._ups) return;
@@ -972,16 +1012,33 @@
     G._upPadL = true;
     G._upPadR = true;
     G._upLock = false;
+    G._upTaken = 0;
     G.pendingLvl--;
     overlayMode = "sheet";
+    const tiers = ["COMMON", "RARE", "SUPER", "LEGEND"];
     showSheet(
-      "<p class='kicker'>The lattice grows</p><h2>Level " + G.lvl + "</h2>" +
-      "<p class='lore'>Pick one. Stacks keep. Wave " + surviveWave() + ". Stick / D-pad to choose, A to take. 1–3 or Enter.</p>" +
-      "<div class='mode-grid'>" + picks.map((u, i) =>
-        "<button type='button' class='mode-card" + (i === 0 ? " on" : "") + "' data-up='" + i + "'><b>" + u.name + "</b><span>" + u.spec + "</span></button>"
-      ).join("") + "</div>"
+      "<div class='up-cabinet'>" +
+      "<p class='up-marquee'>★ THE LATTICE GROWS ★ BONUS STAGE ★</p>" +
+      "<h2 class='up-title'>LEVEL " + G.lvl + "</h2>" +
+      "<p class='up-sub'>WAVE " + surviveWave() + " · PICK ONE · STACKS KEEP</p>" +
+      "<div class='up-grid'>" + picks.map(function (u, i) {
+        const t = u.tier || 0;
+        return "<button type='button' class='up-card tier-" + t + (i === 0 ? " on" : "") + "' data-up='" + i + "'>" +
+          "<span class='up-num'>" + (i + 1) + "</span>" +
+          "<span class='up-tier'>" + (u.tag || tiers[t]) + "</span>" +
+          "<span class='up-glyph g-" + (u.glyph || "core") + "' aria-hidden='true'></span>" +
+          "<b>" + u.name + "</b>" +
+          "<span class='up-spec'>" + u.spec + "</span>" +
+          "<span class='up-now'>" + upNowLine(u) + "</span>" +
+          "<span class='up-bonus'>" + u.bonus + "</span>" +
+          "</button>";
+      }).join("") + "</div>" +
+      "<p class='up-hint'>1 · 2 · 3 &nbsp;|&nbsp; ← → &nbsp;|&nbsp; ENTER / A / J</p>" +
+      "</div>"
     );
     $("overlay").classList.add("upgrade-pick");
+    const sh = document.querySelector("#overlay .sheet");
+    if (sh) sh.classList.add("up-sheet");
     $("overlay").onclick = function (e) {
       const b = e.target.closest("[data-up]");
       if (!b || !G._ups) return;
@@ -1088,39 +1145,49 @@
   }
 
   const SURVIVE_UP = [
-    { id: "might", name: "Might", spec: "Shot damage +1. Stacks." },
-    { id: "haste", name: "Haste", spec: "Fire faster. Stacks." },
-    { id: "iron", name: "Iron", spec: "Armor +1. Stacks." },
-    { id: "heart", name: "Heart", spec: "+80 max HP and heal." },
-    { id: "core", name: "Core", spec: "Shot +1. Stacks." },
-    { id: "phial", name: "Phial", spec: "+2 vials." },
-    { id: "pierce", name: "Pierce", spec: "Bolts pass +1 foe. Stacks." },
-    { id: "cap", name: "Volley", spec: "+1 live bolt. Stacks." },
-    { id: "magnet", name: "Pull", spec: "Pickups from farther. Stacks." },
-    { id: "swift", name: "Stride", spec: "Move speed +8%. Stacks." },
-    { id: "vialpow", name: "Resonance", spec: "Vials hit harder. Stacks." },
-    { id: "fan", name: "Fan", spec: "Arm or stack the three-way crescent." },
-    { id: "needle", name: "Needle", spec: "Arm or stack the piercing beam." },
-    { id: "cinder", name: "Cinder", spec: "Arm or stack the fireball." },
-    { id: "comet", name: "Comet", spec: "Arm or stack the ice lob." },
-    { id: "halo", name: "Halo", spec: "Arm or stack the orbiting wards." },
-    { id: "cleave", name: "Cleave", spec: "Short-range auto slash. Stacks range." },
-    { id: "orbit", name: "Orbit", spec: "Spinning blades. Stacks more blades." },
-    { id: "aura", name: "Aura", spec: "Hurt anything in arm's reach. Stacks." },
-    { id: "seek", name: "Seek", spec: "Arm or stack homing bolts." },
-    { id: "chain", name: "Chain", spec: "Arm or stack jumping arcs." },
-    { id: "barrage", name: "Barrage", spec: "Arm or stack a rapid stream." },
-    { id: "nova", name: "Nova", spec: "Arm or stack bursting shells." },
-    { id: "prism", name: "Prism", spec: "Rare five-way light." },
-    { id: "thornlance", name: "Thornlance", spec: "Rare piercing beam." },
-    { id: "sunbolt", name: "Sunbolt", spec: "Super firebolt." },
-    { id: "voidlob", name: "Voidlob", spec: "Super ice that bursts." },
-    { id: "starwheel", name: "Starwheel", spec: "Rare extra halo wards." },
-    { id: "riftcleave", name: "Riftcleave", spec: "Rare long slash." },
-    { id: "gyre", name: "Gyre", spec: "Super orbit blades." },
-    { id: "hymnfield", name: "Hymnfield", spec: "Rare wide aura." },
-    { id: "truthseek", name: "Truthseek", spec: "Super homing pierce." },
-    { id: "latticearc", name: "Lattice Arc", spec: "Legendary jumping arc." }
+    { id: "might", kind: "stat", tier: 0, glyph: "tooth", name: "Tooth of the Door", tag: "MIGHT", bonus: "+1 MIGHT", stack: "might", spec: "Every bolt bites harder. The lock keeps a sharper tooth." },
+    { id: "haste", kind: "stat", tier: 0, glyph: "clock", name: "Right-Time Hands", tag: "HASTE", bonus: "+1 HASTE · COD 4s", stack: "haste", spec: "The magazine cycles like a clock. A short Codex surge on take." },
+    { id: "iron", kind: "stat", tier: 0, glyph: "plate", name: "Fair Plate", tag: "IRON", bonus: "+1 IRON · AEGIS 4s", stack: "iron", spec: "Fairness as armor. A brief Aegis while the plate settles." },
+    { id: "heart", kind: "stat", tier: 1, glyph: "well", name: "Wellspring", tag: "WELL", bonus: "+80 MAX & HEAL", spec: "The well deepens and fills. You drink what you just cut." },
+    { id: "core", kind: "stat", tier: 1, glyph: "core", name: "Named Core", tag: "CORE", bonus: "+1 CORE", stack: "cores", spec: "A named coal in the shot. Damage that does not unwrite." },
+    { id: "phial", kind: "stat", tier: 0, glyph: "flask", name: "Chorus Charge", tag: "VIAL", bonus: "+2 VIALS · +1 RES", spec: "Two flasks and a louder resonance. The chorus drinks with you." },
+    { id: "pierce", kind: "stat", tier: 0, glyph: "lens", name: "Truth Lens", tag: "PIERCE", bonus: "+1 PIERCE", stack: "pierce", spec: "Bolts pass a lie and keep going. The floor cannot hide behind a body." },
+    { id: "cap", kind: "stat", tier: 0, glyph: "volley", name: "Open Volley", tag: "VOLLEY", bonus: "+1 LIVE BOLT", stack: "extraCap", spec: "One more bolt allowed in the air. The lattice likes a crowded line." },
+    { id: "magnet", kind: "stat", tier: 0, glyph: "pull", name: "Tithe Pull", tag: "PULL", bonus: "+PULL RANGE", stack: "magnet", spec: "Relics lean toward you. The floor pays its tithe." },
+    { id: "swift", kind: "stat", tier: 0, glyph: "boot", name: "Path Stride", tag: "STRIDE", bonus: "+8% MOVE · SWIFT 3s", stack: "stride", spec: "The corridor shortens. A burst of Swift as the path agrees." },
+    { id: "vialpow", kind: "stat", tier: 1, glyph: "sigil", name: "Black Sigil", tag: "RES", bonus: "+1 RESONANCE", stack: "vialPow", spec: "Vials hit like names. Resonance is the weapon." },
+    { id: "secondwind", kind: "gift", tier: 1, glyph: "wind", name: "Second Wind", tag: "GIFT", bonus: "HEAL 40% MAX", spec: "The well remembers you. Instant drink — forty percent of the cistern." },
+    { id: "overclock", kind: "gift", tier: 2, glyph: "spark", name: "Overclock", tag: "GIFT", bonus: "COD 8s · +1 HASTE", spec: "Hands too fast for the Drain. Codex surge and a lasting Haste." },
+    { id: "latticeward", kind: "gift", tier: 1, glyph: "ward", name: "Lattice Ward", tag: "GIFT", bonus: "PARTY AEGIS 7s", spec: "A door held for everyone living. Cover, then keep moving." },
+    { id: "goldrush", kind: "gift", tier: 1, glyph: "coin", name: "Hall Mark", tag: "GIFT", bonus: "+500 SCORE", spec: "The hall stamps a mark now. Score is a name it cannot unwrite." },
+    { id: "namelight", kind: "gift", tier: 2, glyph: "lamp", name: "Name-Light", tag: "GIFT", bonus: "+FOG RANGE", spec: "The dark yields a step. Lantern without the relic — the fog recedes." },
+    { id: "thornmail", kind: "gift", tier: 1, glyph: "thorn", name: "Bumper Thorn", tag: "GIFT", bonus: "THORNS 10s", spec: "What bumps you bleeds. A short hedge of thorns." },
+    { id: "echoround", kind: "gift", tier: 1, glyph: "echo", name: "Echo Round", tag: "GIFT", bonus: "ECHO 10s", spec: "Bolts linger in the stone. Pierce that does not ask permission." },
+    { id: "fairmirror", kind: "gift", tier: 1, glyph: "mirror", name: "Fair Mirror", tag: "GIFT", bonus: "REFLECT 8s", spec: "Shots that would unname you turn around. Fairness as plate." },
+    { id: "veilstep", kind: "gift", tier: 2, glyph: "veil", name: "Veil Step", tag: "GIFT", bonus: "VEIL 6s · +STRIDE", spec: "You are already gone. A lasting Stride under the veil." },
+    { id: "furyhour", kind: "gift", tier: 2, glyph: "fury", name: "Fury Hour", tag: "GIFT", bonus: "FURY 10s · +1 MIGHT", spec: "The hour is red. Bolts bite, and they keep the bite." },
+    { id: "fan", kind: "arm", tier: 0, glyph: "fan", name: "Three-Way Crescent", tag: "ARM", bonus: "ARM / STACK FAN", spec: "A crescent of three. Stacks split wider." },
+    { id: "needle", kind: "arm", tier: 0, glyph: "needle", name: "Piercing Beam", tag: "ARM", bonus: "ARM / STACK NEEDLE", spec: "A thin true line. Stacks pass more bodies." },
+    { id: "cinder", kind: "arm", tier: 0, glyph: "cinder", name: "Coal of Ember", tag: "ARM", bonus: "ARM / STACK CINDER", spec: "A fireball that leaves a burn. Stacks hotter." },
+    { id: "comet", kind: "arm", tier: 0, glyph: "comet", name: "Shortest Ice", tag: "ARM", bonus: "ARM / STACK COMET", spec: "A lob over walls. The geodesic of frost." },
+    { id: "halo", kind: "arm", tier: 0, glyph: "halo", name: "Orbiting Wards", tag: "ARM", bonus: "ARM / STACK HALO", spec: "Wards that circle you. Stacks add seats at the table." },
+    { id: "cleave", kind: "arm", tier: 0, glyph: "cleave", name: "Door Tooth", tag: "ARM", bonus: "ARM / STACK CLEAVE", spec: "Auto slash in front. Stacks reach farther." },
+    { id: "orbit", kind: "arm", tier: 0, glyph: "orbit", name: "Spinning Blades", tag: "ARM", bonus: "ARM / STACK ORBIT", spec: "Blades on a ring. Stacks more teeth." },
+    { id: "aura", kind: "arm", tier: 0, glyph: "aura", name: "Arm's Reach", tag: "ARM", bonus: "ARM / STACK AURA", spec: "Hurt anything in reach. Stacks the radius." },
+    { id: "seek", kind: "arm", tier: 1, glyph: "seek", name: "Homing Bolt", tag: "ARM", bonus: "ARM / STACK SEEK", spec: "It will find a name. Stacks the hunt." },
+    { id: "chain", kind: "arm", tier: 1, glyph: "chain", name: "Jumping Arc", tag: "ARM", bonus: "ARM / STACK CHAIN", spec: "Light that jumps. Stacks the bite." },
+    { id: "barrage", kind: "arm", tier: 1, glyph: "barrage", name: "Rapid Stream", tag: "ARM", bonus: "ARM / STACK BARRAGE", spec: "A stream, not a shot. Stacks the flood." },
+    { id: "nova", kind: "arm", tier: 1, glyph: "nova", name: "Bursting Shell", tag: "ARM", bonus: "ARM / STACK NOVA", spec: "Dies in a bloom. Stacks the bloom." },
+    { id: "prism", kind: "arm", tier: 1, glyph: "prism", name: "Five-Way Light", tag: "RARE ARM", bonus: "ARM / STACK PRISM", spec: "Rare crescent of five. The lock likes a crowd of lines." },
+    { id: "thornlance", kind: "arm", tier: 1, glyph: "lance", name: "Thornlance", tag: "RARE ARM", bonus: "ARM / STACK LANCE", spec: "The beam does not stop. A rare pierce." },
+    { id: "sunbolt", kind: "arm", tier: 2, glyph: "sun", name: "Sunbolt", tag: "SUPER ARM", bonus: "ARM / STACK SUNBOLT", spec: "A coal of the first fire. Super heat." },
+    { id: "voidlob", kind: "arm", tier: 2, glyph: "void", name: "Voidlob", tag: "SUPER ARM", bonus: "ARM / STACK VOIDLOB", spec: "Ice that unnames on death. Super lob." },
+    { id: "starwheel", kind: "arm", tier: 1, glyph: "wheel", name: "Starwheel", tag: "RARE ARM", bonus: "ARM / STACK WHEEL", spec: "More wards in orbit. Rare halo." },
+    { id: "riftcleave", kind: "arm", tier: 1, glyph: "rift", name: "Riftcleave", tag: "RARE ARM", bonus: "ARM / STACK RIFT", spec: "A longer tooth. Rare slash." },
+    { id: "gyre", kind: "arm", tier: 2, glyph: "gyre", name: "Gyre", tag: "SUPER ARM", bonus: "ARM / STACK GYRE", spec: "The blades remember a wider ring." },
+    { id: "hymnfield", kind: "arm", tier: 1, glyph: "hymn", name: "Hymnfield", tag: "RARE ARM", bonus: "ARM / STACK HYMN", spec: "The song has reach. Rare aura." },
+    { id: "truthseek", kind: "arm", tier: 2, glyph: "truth", name: "Truthseek", tag: "SUPER ARM", bonus: "ARM / STACK TRUTH", spec: "It will not miss a lie. Super hunt." },
+    { id: "latticearc", kind: "arm", tier: 3, glyph: "arc", name: "Lattice Arc", tag: "LEGEND ARM", bonus: "ARM / STACK ARC", spec: "A legendary jump of light. The hall will remember." }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
@@ -3498,6 +3565,16 @@
     const blocked = overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "options" || overlayMode === "char" || paused;
     if (!paused && window.CryptStudio) CryptStudio.juiceTick(raw);
     if (G && G._ups) pollUpgradePick();
+    if (G && G._upTaken > 0) {
+      G._upTaken -= raw;
+      if (G._upTaken <= 0) {
+        G._upTaken = 0;
+        hideOverlay();
+        overlayMode = null;
+        $("overlay").onclick = null;
+        if (G._upPending) { G._upPending = false; offerSurviveUp(); }
+      }
+    }
     if (!blocked && G && !G.over) {
       acc += raw;
       let n = 0;
