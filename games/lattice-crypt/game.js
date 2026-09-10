@@ -248,11 +248,11 @@
   const KINDS_NEW = ["stitch", "echoer", "veilkin", "knot", "choir"];
   const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend", "stitch", "echoer", "veilkin", "knot", "choir"];
   const PETS = {
-    wolf: { name: "Ashmane", tag: "Dash · Bite", hp: 42, armor: 1, speed: 3.9, col: "#94a3b8" },
-    lion: { name: "Solstride", tag: "Jump · Roar · Claw", hp: 50, armor: 1, speed: 3.55, col: "#fbbf24" },
-    bear: { name: "Ironhide", tag: "Swipe · Maul", hp: 88, armor: 4, speed: 2.35, col: "#fb923c" },
-    elephant: { name: "Tuskward", tag: "Stomp", hp: 76, armor: 3, speed: 2.15, col: "#67e8f9" },
-    scorpion: { name: "Glassbarb", tag: "Clamp · Tail", hp: 38, armor: 2, speed: 2.95, col: "#c4b5fd" }
+    wolf: { name: "Ashmane", tag: "Dash · Bite", hp: 96, armor: 2, speed: 3.9, col: "#94a3b8" },
+    lion: { name: "Solstride", tag: "Jump · Roar · Claw", hp: 110, armor: 2, speed: 3.55, col: "#fbbf24" },
+    bear: { name: "Ironhide", tag: "Swipe · Maul", hp: 180, armor: 5, speed: 2.35, col: "#fb923c" },
+    elephant: { name: "Tuskward", tag: "Stomp", hp: 155, armor: 4, speed: 2.15, col: "#67e8f9" },
+    scorpion: { name: "Glassbarb", tag: "Clamp · Tail", hp: 88, armor: 3, speed: 2.95, col: "#c4b5fd" }
   };
   const INV_BAG = 24;
   const INV_WEP = 6;
@@ -1098,7 +1098,7 @@
     if (!G.bond) G.bond = { dmg: 0, spd: 0, cd: 0, armor: 0, aoe: 0, sleep: 0 };
     return G.bond;
   }
-  function petSleepLen() { return Math.max(20, 60 - (bondState().sleep || 0)); }
+  function petSleepLen() { return Math.max(12, 20 - (bondState().sleep || 0)); }
   function applyBondUp(u) {
     if (!u || u.kind !== "bond") return;
     const b = bondState();
@@ -3040,7 +3040,6 @@
         if (d < bd) { bd = d; tgt = ent; }
       }
       liveP.forEach(consider);
-      (G.pets || []).forEach(consider);
       if (!tgt) return;
       const ang = Math.atan2(tgt.y - f.y, tgt.x - f.x);
       const ghost = foeHas(f, "ghost");
@@ -3110,7 +3109,7 @@
           if (!(tgt.sleepT > 0)) {
             tgt.sleepT = petSleepLen();
             const nm = PETS[tgt.kind] && PETS[tgt.kind].name;
-            if (nm) say(nm + " sleeps — one minute.");
+            if (nm) say(nm + " sleeps — 20s.");
           }
         }
         if (!tgt.hurtBeep) {
@@ -3259,19 +3258,6 @@
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
             s.life = 0;
-          }
-        });
-        (G.pets || []).forEach(function (pet) {
-          if (s.life <= 0 || (pet.sleepT || 0) > 0) return;
-          if (distSeg(pet.x, pet.y, s.px || s.x, s.py || s.y, s.x, s.y) < 0.48) {
-            pet.hp -= Math.max(2, s.dmg - (pet.armor || 0));
-            G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
-            s.life = 0;
-            if (pet.hp <= 0) {
-              pet.hp = 0; pet.sleepT = petSleepLen();
-              const nm = PETS[pet.kind] && PETS[pet.kind].name;
-              if (nm) say(nm + " sleeps — one minute.");
-            }
           }
         });
       } else {
@@ -4313,7 +4299,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): fog-band hordes that grow with your level, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
-      "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets and AI sleep 60s if downed — they do not end the run.</li>" +
+      "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets draw no agro and sleep 20s if downed. AI helpers sleep if they fall — they do not end the run.</li>" +
       "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). Options: auto-pick Survival upgrades. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
