@@ -1283,6 +1283,91 @@
   function shadeHidden(f) {
     return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
   }
+  function initFog(lv) {
+    if (!lv) return;
+    lv.seen = Array.from({ length: lv.H }, function () { return new Uint8Array(lv.W); });
+    lv.vis = Array.from({ length: lv.H }, function () { return new Uint8Array(lv.W); });
+    lv._visMarks = [];
+  }
+  function tileSeen(x, y) {
+    const lv = G && G.level;
+    if (!lv || !lv.seen) return true;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    return !!(lv.seen[ty] && lv.seen[ty][tx]);
+  }
+  function tileVis(x, y) {
+    const lv = G && G.level;
+    if (!lv || !lv.vis) return true;
+    const tx = Math.floor(x), ty = Math.floor(y);
+    return !!(lv.vis[ty] && lv.vis[ty][tx]);
+  }
+  function visionRange(p) {
+    let r = G.mode === "survive" ? 9.2 : 8.2;
+    r += (p.lamp || 0) * 2.4;
+    if (p.hero && p.hero.id === "lightfather") r += 1.6;
+    if (p.cores) r += Math.min(1.8, p.cores * 0.3);
+    return r;
+  }
+  function stampVis(tx, ty) {
+    const lv = G.level;
+    if (!lv.vis || ty < 0 || tx < 0 || ty >= lv.H || tx >= lv.W) return;
+    if (!lv.vis[ty][tx]) {
+      lv.vis[ty][tx] = 1;
+      lv._visMarks.push(tx, ty);
+    }
+    lv.seen[ty][tx] = 1;
+  }
+  function updateFog() {
+    if (!G || !G.level) return;
+    const lv = G.level;
+    if (!lv.seen) initFog(lv);
+    const marks = lv._visMarks;
+    for (let i = 0; i < marks.length; i += 2) {
+      const tx = marks[i], ty = marks[i + 1];
+      if (lv.vis[ty]) lv.vis[ty][tx] = 0;
+    }
+    marks.length = 0;
+    const live = G.players.filter(function (p) { return !p.dead; });
+    const coarse = lodOn();
+    live.forEach(function (p) {
+      const r = visionRange(p);
+      const r2 = r * r;
+      const x0 = Math.max(0, Math.floor(p.x - r));
+      const y0 = Math.max(0, Math.floor(p.y - r));
+      const x1 = Math.min(lv.W - 1, Math.ceil(p.x + r));
+      const y1 = Math.min(lv.H - 1, Math.ceil(p.y + r));
+      for (let ty = y0; ty <= y1; ty++) {
+        for (let tx = x0; tx <= x1; tx++) {
+          const dx = tx + 0.5 - p.x, dy = ty + 0.5 - p.y;
+          if (dx * dx + dy * dy > r2) continue;
+          if (Math.abs(dx) <= 1.15 && Math.abs(dy) <= 1.15) { stampVis(tx, ty); continue; }
+          if (coarse && ((tx + ty) & 1) && dx * dx + dy * dy > 16) {
+            if (hasLos(p.x, p.y, tx + 0.5, ty + 0.5)) stampVis(tx, ty);
+            continue;
+          }
+          if (hasLos(p.x, p.y, tx + 0.5, ty + 0.5)) stampVis(tx, ty);
+        }
+      }
+    });
+  }
+  function drawFog(dest, x0, y0, x1, y1) {
+    const lv = G.level;
+    if (!lv.seen) return;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const vis = lv.vis[y] && lv.vis[y][x];
+        const seen = lv.seen[y] && lv.seen[y][x];
+        const px = Math.round(x * TILE - cam.x), py = Math.round(y * TILE - cam.y);
+        if (!seen) {
+          dest.fillStyle = "#020308";
+          dest.fillRect(px, py, TILE + 1, TILE + 1);
+        } else if (!vis) {
+          dest.fillStyle = "rgba(2,4,10,0.72)";
+          dest.fillRect(px, py, TILE + 1, TILE + 1);
+        }
+      }
+    }
+  }
 
   function rebuildFoeGrid() {
     if (!G || !G.level) return;
@@ -1439,6 +1524,8 @@
     G.shots = [];
     G.fx = [];
     tileCacheKey = "";
+    initFog(G.level);
+    updateFog();
     G.thiefT = 24 + (Math.random() * 16);
     if (G.mode === "campaign") {
       $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
@@ -1868,8 +1955,9 @@
     if (sp === "scroll") { randomFloor(p); p.shotBoost = Math.max(p.shotBoost || 0, 10); say("Scroll — elsewhere, armed."); }
     if (sp === "lantern") {
       G.level.items.forEach((o) => { o.hidden = false; });
+      p.lamp = (p.lamp || 0) + 1;
       p.shotBoost = Math.max(p.shotBoost || 0, 8);
-      say("Lantern — the floor is named.");
+      say("Lantern — the dark yields.");
     }
     if (sp === "trap") { p.stun = 0.8; p.hp -= 15; }
     if (sp === "dice") {
@@ -2547,25 +2635,33 @@
       ctx.clearRect(0, 0, w, h);
     }
     if (tileCache) tileDest.drawImage(tileCache, Math.round(x0 * TILE - cam.x), Math.round(y0 * TILE - cam.y));
+    updateFog();
+    drawFog(tileDest, x0, y0, x1, y1);
     drawTarget = ctx;
     lv.gens.forEach((g) => {
+      if (!tileVis(g.x + 0.5, g.y + 0.5) && !tileSeen(g.x + 0.5, g.y + 0.5)) return;
       const pulse = 0.78 + 0.22 * Math.sin((G.t + g.x) * 7);
-      ctx.globalAlpha = pulse;
+      ctx.globalAlpha = tileVis(g.x + 0.5, g.y + 0.5) ? pulse : 0.28;
       drawSpr("gen_" + g.kind + "_" + g.rank, g.x * TILE + TILE / 2 - 16 - cam.x, g.y * TILE + TILE / 2 - 16 - cam.y);
       ctx.globalAlpha = 1;
     });
     lv.items.forEach((it) => {
       const ipx = it.x * TILE - cam.x, ipy = it.y * TILE - cam.y;
       if (ipx < -48 || ipy < -48 || ipx > w + 48 || ipy > h + 48) return;
+      if (!tileVis(it.x + 0.5, it.y + 0.5) && !tileSeen(it.x + 0.5, it.y + 0.5)) return;
       if (it.hidden) {
         const near = live.some((p) => Math.hypot(p.x - (it.x + 0.5), p.y - (it.y + 0.5)) < 0.85);
         if (!near) return;
       }
+      const prevA = ctx.globalAlpha;
+      if (!tileVis(it.x + 0.5, it.y + 0.5)) ctx.globalAlpha = 0.4;
       drawItem(it);
+      ctx.globalAlpha = prevA;
     });
     lv.foes.forEach((f) => {
       const fpx = f.x * TILE - cam.x, fpy = f.y * TILE - cam.y;
       if (fpx < -72 || fpy < -72 || fpx > w + 72 || fpy > h + 72) return;
+      if (!tileVis(f.x, f.y)) return;
       const hid = shadeHidden(f);
       const rate = f.kind === "drain" || f.kind === "wraith" || f.kind === "unnamer" ? 5 : 8;
       const fr = ((f.t * rate) | 0) % 4;
@@ -2994,7 +3090,7 @@
 
   function help() {
     showSheet("<h2>How to play</h2><ol class='lore'>" +
-      "<li>Health ticks down. Smash <b>nexuses</b> or the floor fills. Find the cyan exit.</li>" +
+      "<li>Health ticks down. Smash <b>nexuses</b> or the floor fills. Find the cyan exit. The crypt is dark — lanterns push the fog.</li>" +
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
