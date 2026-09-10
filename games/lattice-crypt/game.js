@@ -87,7 +87,7 @@
   const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "core", "heart", "iron", "phial"];
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
-    fan: { name: "Fan", cap: 3, spd: 11, life: 0.9, cool: 0.26, dmg: -1, spread: 0.38 },
+    fan: { name: "Fan", cap: 3, spd: 11, life: 0.55, cool: 0.2, dmg: -1, spread: 0.38 },
     needle: { name: "Needle", cap: 2, spd: 16, life: 1.3, cool: 0.16, dmg: 1, pierce: 2 },
     cinder: { name: "Cinder", cap: 2, spd: 9, life: 0.55, cool: 0.16, dmg: 1, flame: 1.8 },
     comet: { name: "Comet", cap: 1, spd: 7.6, life: 1.5, cool: 0.32, dmg: 3, lob: true },
@@ -1003,7 +1003,7 @@
     if (keys[map.left]) dx -= 1;
     if (keys[map.right]) dx += 1;
     let fire = persist.autoShot || G.surviveAuto || map.fire.some((k) => keys[k] || keyEdge[k]);
-    let mag = map.mag.some((k) => keys[k] || keyEdge[k]);
+    let mag = map.mag.some((k) => keyEdge[k]);
     let cycle = (map.cycle || []).some((k) => keyEdge[k]);
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = p.pad >= 0 ? pads[p.pad] : null;
@@ -1017,9 +1017,9 @@
       if (pad.buttons[15] && pad.buttons[15].pressed) dx += 1;
       if (pad.buttons[0] && pad.buttons[0].pressed) fire = true;
       if (pad.buttons[7] && pad.buttons[7].pressed) fire = true;
-      if (pad.buttons[1] && pad.buttons[1].pressed) mag = true;
-      if (pad.buttons[2] && pad.buttons[2].pressed) mag = true;
-      if (pad.buttons[6] && pad.buttons[6].pressed) mag = true;
+      const magBtn = (pad.buttons[1] && pad.buttons[1].pressed) || (pad.buttons[2] && pad.buttons[2].pressed) || (pad.buttons[6] && pad.buttons[6].pressed);
+      if (magBtn && !p._magLatch) { mag = true; p._magLatch = true; }
+      if (!magBtn) p._magLatch = false;
       if (pad.buttons[4] && pad.buttons[4].pressed && !p._lbLatch) { cycle = true; p._lbLatch = true; }
       if (pad.buttons[4] && !pad.buttons[4].pressed) p._lbLatch = false;
     }
@@ -1056,16 +1056,25 @@
     return { x, y };
   }
   function tryMove(ent, dx, dy, speed, dt, ghost) {
-    let nx = ent.x + dx * speed * dt;
-    let ny = ent.y + dy * speed * dt;
-    const r = 0.22;
-    if (!ghost) {
-      const ax = resolveCircle(G.level, nx, ent.y, r);
-      nx = ax.x;
-      const ay = resolveCircle(G.level, nx, ny, r);
-      nx = ay.x; ny = ay.y;
+    const mx = dx * speed * dt, my = dy * speed * dt;
+    if (ghost) {
+      ent.x += mx; ent.y += my;
+      if (ent.keys != null) bumpDoor(ent);
+      return;
     }
-    ent.x = nx; ent.y = ny;
+    const lv = G.level;
+    const lead = 0.14;
+    if (mx) {
+      const nx = ent.x + mx;
+      const lx = nx + (mx > 0 ? lead : -lead);
+      if (!blocked(lv, nx, ent.y) && !blocked(lv, lx, ent.y)) ent.x = nx;
+    }
+    if (my) {
+      const ny = ent.y + my;
+      const ly = ny + (my > 0 ? lead : -lead);
+      if (!blocked(lv, ent.x, ny) && !blocked(lv, ent.x, ly)) ent.y = ny;
+    }
+    if (blocked(lv, ent.x, ent.y)) unstick(ent);
     if (ent.keys != null) bumpDoor(ent);
   }
 
@@ -1075,7 +1084,7 @@
     for (const [x, y] of near) {
       if (!inB(G.level, x, y)) continue;
       if (G.level.tiles[y][x] !== "door") continue;
-      if (Math.hypot(ent.x - (x + 0.5), ent.y - (y + 0.5)) > 1.2) continue;
+      if (Math.hypot(ent.x - (x + 0.5), ent.y - (y + 0.5)) > 0.72) continue;
       if (ent.keys > 0) {
         ent.keys--;
         G.level.tiles[y][x] = "door_open";
@@ -1197,7 +1206,7 @@
   function useVial(p) {
     if (p.vials < 1 || p.magT > 0) return;
     p.vials--;
-    p.magT = 0.5;
+    p.magT = 0.22;
     beep("vial");
     const pow = Math.round(20 * p.hero.magic * faithMul(p) * (1 + (p.vialPow || 0) * 0.15));
     say(p.hero.name + " — " + (p.hero.special || "vial") + ".");
@@ -1305,7 +1314,10 @@
       lv.foes.push(makeFoe("thief", 1, lv.start.x + 0.5, lv.start.y + 0.5));
       say("A thief slips the gate.");
     }
-    if (G.mode === "survive") surviveTick(dt);
+    if (G.mode === "survive") {
+      surviveTick(dt);
+      if (overlayMode === "sheet") { paintHud(); keyEdge = {}; return; }
+    }
 
     lv.gens.forEach((g) => {
       if (g.hp <= 0) return;
@@ -1425,9 +1437,7 @@
         tgt.hp -= dmg * dt * (f.kind === "drain" ? 6.5 : (iframe ? 1.15 : 2.35));
         if (!iframe) {
           tgt.hurtT = 0.38;
-          tgt.x -= Math.cos(ang) * 0.14;
-          tgt.y -= Math.sin(ang) * 0.14;
-          unstick(tgt);
+          tryMove(tgt, -Math.cos(ang), -Math.sin(ang), 6, 0.04, false);
         }
         lv.quiet = 0;
         if (!tgt.hurtBeep) { beep("hurt"); tgt.hurtBeep = 0.25; }
@@ -1464,7 +1474,7 @@
       if (s.trail.length > (s.wep === "needle" ? 12 : 8)) s.trail.shift();
       const inWall = blocked(lv, s.x, s.y) && tileAt(lv, s.x, s.y) !== "door_open";
       if (!inWall) s.air = true;
-      if (!s.lob && s.air && inWall) {
+      if (!s.lob && inWall && (s.air || s.grace <= 0)) {
         if (!s.foe && s.owner && s.owner.reflect > 0 && !s.bounced) {
           s.vx *= -1; s.vy *= -1; s.bounced = true; s.x += s.vx * dt; s.y += s.vy * dt;
         } else {
@@ -1515,7 +1525,8 @@
     });
     G.fx = G.fx.filter((f) => { f.life -= dt; return f.life > 0; });
     pollJoin();
-    paintHud();
+    G._hudT = (G._hudT || 0) + dt;
+    if (G._hudT > 0.1) { G._hudT = 0; paintHud(); }
     keyEdge = {};
   }
 
@@ -1678,8 +1689,8 @@
     else tx = Math.max(minX, Math.min(maxX, tx));
     if (maxY < minY) ty = ((bb.y0 + bb.y1 + 1) * TILE - h) / 2;
     else ty = Math.max(minY, Math.min(maxY, ty));
-    cam.x += (tx - cam.x) * 0.28;
-    cam.y += (ty - cam.y) * 0.28;
+    cam.x += (tx - cam.x) * 0.42;
+    cam.y += (ty - cam.y) * 0.42;
     const z = lv.realm.id || "stone";
     for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
       const px = x * TILE - cam.x, py = y * TILE - cam.y;
@@ -1814,7 +1825,11 @@
     o.innerHTML = studio ? html : "<div class='sheet'>" + html + "</div>";
     overlayMode = studio ? "menu" : "sheet";
   }
-  function hideOverlay() { $("overlay").className = "overlay hidden"; overlayMode = null; }
+  function hideOverlay() {
+    $("overlay").className = "overlay hidden";
+    $("overlay").onclick = null;
+    overlayMode = null;
+  }
 
   function attrBar(n, max) {
     const v = Math.max(0, Math.min(100, 100 * n / max));
