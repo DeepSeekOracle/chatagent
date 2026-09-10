@@ -32,6 +32,8 @@
   var skyRoot = null;
   var sunDisc = null;
   var waterMeshes = [];
+  var ghostRoot = null;
+  var ghostBalls = {};
   var BALL_R = 0.16;
 
   var DIST_MIN = 22;
@@ -70,28 +72,28 @@
 
   function makeTextures() {
     tex.grass = noiseTex(256, 256, function (x, y) {
-      var n = ((x * 13 + y * 7) % 17) + ((x * 3) ^ (y * 5)) % 11;
-      var clump = ((x >> 3) ^ (y >> 3)) % 9;
-      return [18 + n, 48 + n + clump, 24 + n * 0.5];
+      var n = Math.sin(x * 0.37) * 6 + Math.cos(y * 0.29) * 5 + ((x * 13 + y * 7) % 9);
+      var clump = Math.sin((x * 0.11 + y * 0.09)) * 8;
+      return [28 + n, 62 + n + clump, 32 + n * 0.4];
     });
-    tex.grass.repeat.set(22, 22);
+    tex.grass.repeat.set(14, 14);
     tex.rough = noiseTex(256, 256, function (x, y) {
-      var n = ((x * 17) ^ (y * 13)) % 26;
-      var clump = (((x / 7) | 0) ^ ((y / 6) | 0)) % 8 * 5;
-      return [20 + n, 52 + n * 0.7 + clump, 26 + n * 0.35];
+      var n = Math.sin(x * 0.21 + y * 0.17) * 10 + ((x * 17) ^ (y * 13)) % 12;
+      var clump = Math.cos(x * 0.08) * 7;
+      return [36 + n, 68 + n * 0.55 + clump, 30 + n * 0.3];
     });
-    tex.rough.repeat.set(16, 16);
+    tex.rough.repeat.set(10, 10);
     tex.fair = noiseTex(256, 256, function (x, y, u, v) {
-      var n = ((x * 3 + y) % 6);
-      var stripe = Math.sin(v * Math.PI * 8) >= 0 ? 16 : 0;
-      var edge = Math.round(22 * Math.pow(Math.abs(u - 0.5) * 2, 1.6));
-      return [72 + n + stripe - edge, 158 + n + stripe - edge, 78 + n - edge * 0.5];
+      var n = ((x * 3 + y) % 5);
+      var stripe = Math.sin(v * Math.PI * 14) >= 0 ? 10 : -6;
+      var edge = Math.round(14 * Math.pow(Math.abs(u - 0.5) * 2, 2.2));
+      return [42 + n + stripe - edge, 118 + n + stripe - edge * 0.7, 52 + n - edge * 0.4];
     });
     tex.fair.repeat.set(1, 1);
     tex.green = noiseTex(128, 128, function (x, y) {
-      var n = (x + y) % 7;
-      var stripe = ((y / 8) | 0) % 2 === 0 ? 10 : 0;
-      return [48 + n + stripe, 168 + n + stripe, 82];
+      var n = (x + y) % 6;
+      var stripe = ((y / 10) | 0) % 2 === 0 ? 8 : -4;
+      return [36 + n + stripe, 132 + n + stripe, 64];
     });
     tex.sand = noiseTex(128, 128, function (x, y) {
       var n = ((x * 5) ^ y) % 18;
@@ -169,24 +171,45 @@
     }
     skyRoot = new T.Group();
     scene.add(skyRoot);
-    if (!skyMesh) {
-      skyMesh = new T.Mesh(
-        new T.SphereGeometry(2200, 24, 16),
-        new T.MeshBasicMaterial({ color: th.sky, side: T.BackSide, fog: false })
-      );
+    var skyC = document.createElement("canvas");
+    skyC.width = 16;
+    skyC.height = 256;
+    var sg = skyC.getContext("2d");
+    var grd = sg.createLinearGradient(0, 0, 0, 256);
+    if (th.dusk) {
+      grd.addColorStop(0, "#14102c");
+      grd.addColorStop(0.42, "#2a2158");
+      grd.addColorStop(0.7, "#6a4a88");
+      grd.addColorStop(1, "#1c1820");
     } else {
-      skyMesh.material.color.setHex(th.sky);
+      grd.addColorStop(0, "#6eb4e6");
+      grd.addColorStop(0.38, "#b7dcf4");
+      grd.addColorStop(0.68, "#e4eede");
+      grd.addColorStop(1, "#9aaf88");
     }
+    sg.fillStyle = grd;
+    sg.fillRect(0, 0, 16, 256);
+    var skyMap = new T.CanvasTexture(skyC);
+    skyMap.needsUpdate = true;
+    if (skyMesh) {
+      skyMesh.geometry.dispose();
+      if (skyMesh.material.map) skyMesh.material.map.dispose();
+      skyMesh.material.dispose();
+    }
+    skyMesh = new T.Mesh(
+      new T.SphereGeometry(2400, 32, 20),
+      new T.MeshBasicMaterial({ map: skyMap, side: T.BackSide, fog: false })
+    );
     skyRoot.add(skyMesh);
     sunDisc = new T.Mesh(
-      new T.SphereGeometry(36, 16, 12),
-      new T.MeshBasicMaterial({ color: th.dusk ? 0xe8d6ff : 0xfff3c4, fog: false })
+      new T.SphereGeometry(14, 16, 12),
+      new T.MeshBasicMaterial({ color: th.dusk ? 0xf0d8ff : 0xfff4d0, fog: false })
     );
-    sunDisc.position.set(-420, th.dusk ? 280 : 540, 260);
+    sunDisc.position.set(-520, th.dusk ? 220 : 380, 180);
     skyRoot.add(sunDisc);
     var glow = new T.Mesh(
-      new T.SphereGeometry(70, 12, 10),
-      new T.MeshBasicMaterial({ color: th.dusk ? 0xc4b0ff : 0xffe7a0, transparent: true, opacity: 0.22, fog: false, depthWrite: false })
+      new T.SphereGeometry(28, 12, 10),
+      new T.MeshBasicMaterial({ color: th.dusk ? 0xc4b0ff : 0xffe7a0, transparent: true, opacity: 0.28, fog: false, depthWrite: false })
     );
     glow.position.copy(sunDisc.position);
     skyRoot.add(glow);
@@ -194,13 +217,13 @@
     var cmat = new T.MeshBasicMaterial({
       map: tex.cloud,
       transparent: true,
-      opacity: th.dusk ? 0.28 : 0.72,
+      opacity: th.dusk ? 0.18 : 0.38,
       depthWrite: false,
       fog: false,
       side: T.DoubleSide
     });
     for (var i = 0; i < nCloud; i++) {
-      var w = 140 + (i % 5) * 28;
+      var w = 90 + (i % 5) * 18;
       var cl = new T.Mesh(new T.PlaneGeometry(w, w * 0.48), cmat);
       cl.position.set(-200 + i * 160, 210 + (i % 3) * 36, -420 + (i % 4) * 180);
       cl.rotation.y = 0.2 + i * 0.31;
@@ -253,7 +276,7 @@
       pz = a.z + b.z + c.z;
       len = Math.hypot(px, pz) || 1;
       var dot = Math.max(0.45, (px / len) * b.x + (pz / len) * b.z);
-      var sc = Math.min(1.85, 1 / dot);
+      var sc = Math.min(1.22, 1 / dot);
       perps[i] = { x: (px / len) * sc, z: (pz / len) * sc };
     }
     var pos = [];
@@ -265,8 +288,10 @@
       var vv = distAcc * uvS;
       px = perps[i].x * width;
       pz = perps[i].z * width;
-      pos.push(pts[i].x + px, y, pts[i].y + pz);
-      pos.push(pts[i].x - px, y, pts[i].y - pz);
+      var yL = y + heightAt(pts[i].x + px, pts[i].y + pz);
+      var yR = y + heightAt(pts[i].x - px, pts[i].y - pz);
+      pos.push(pts[i].x + px, yL, pts[i].y + pz);
+      pos.push(pts[i].x - px, yR, pts[i].y - pz);
       uv.push(0, vv, 1, vv);
       if (i > 0) {
         var q = (i - 1) * 2;
@@ -309,7 +334,7 @@
     var path = hole.path;
     if (!path || path.length < 2) return;
     var lat = (hole.fairW || 30) + 26;
-    var lineMat = mat({ color: 0xf3efe6, roughness: 0.42, metalness: 0.08, emissive: 0x2a2818, emissiveIntensity: 0.12 });
+    var lineMat = mat({ color: 0x8a9a78, roughness: 0.72, metalness: 0.04, emissive: 0x1a2414, emissiveIntensity: 0.04 });
     holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, lat), 0.28, 0.11), lineMat));
     holeRoot.add(new T.Mesh(ribbonGeo(offsetPathPts(path, -lat), 0.28, 0.11), lineMat));
     var stakePts = densify(path, 22);
@@ -335,7 +360,7 @@
         if (pin && Math.hypot(x - pin.x, z - pin.y) < (hole.greenR || 12) + 10) continue;
         if (tee && Math.hypot(x - tee.x, z - tee.y) < 16) continue;
         if (inAnyWater({ x: x, y: z }, hole)) continue;
-        dummy.position.set(x, 0.62, z);
+        dummy.position.set(x, heightAt(x, z, hole) + 0.58, z);
         dummy.rotation.set(0, i * 0.17, 0.03 * s);
         dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
@@ -366,6 +391,60 @@
       if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return true;
     }
     return false;
+  }
+
+  function distToPath3(p, path) {
+    if (!path || path.length < 2) return 1e9;
+    var best = 1e9, i, a, b, dx, dy, len, t, qx, qy;
+    for (i = 0; i < path.length - 1; i++) {
+      a = path[i]; b = path[i + 1];
+      dx = b.x - a.x; dy = b.y - a.y;
+      len = dx * dx + dy * dy || 1;
+      t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      qx = a.x + dx * t; qy = a.y + dy * t;
+      var d = Math.hypot(p.x - qx, p.y - qy);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  function heightAt(x, z, hole) {
+    hole = hole || lastHole;
+    if (!hole) return 0;
+    var n = Math.sin(x * 0.011) * 1.6 + Math.cos(z * 0.009) * 1.35 + Math.sin((x + z) * 0.0065) * 2.1;
+    var d = distToPath3({ x: x, y: z }, hole.path || []);
+    var fw = hole.fairW || 30;
+    var pin = hole.pin || { x: 0, y: 0 };
+    var green = Math.hypot(x - pin.x, z - pin.y);
+    var gR = hole.greenR || 16;
+    var h;
+    if (green < gR * 1.45) {
+      var gt = 1 - green / (gR * 1.45);
+      h = 0.42 + gt * 0.55;
+    } else if (d < fw) {
+      h = 0.28 + (1 - d / fw) * 0.16 + n * 0.05;
+    } else if (d < fw + 30) {
+      h = 0.12 + ((d - fw) / 30) * 0.2 + n * 0.18;
+    } else {
+      h = 0.35 + n * 0.85 + Math.min(7.5, (d - fw) * 0.01);
+    }
+    var waters = hole.water || [];
+    for (var i = 0; i < waters.length; i++) {
+      var r = waters[i];
+      var cx = r.x + r.w / 2, cz = r.y + r.h / 2;
+      var nx = (x - cx) / Math.max(4, r.w * 0.55);
+      var nz = (z - cz) / Math.max(4, r.h * 0.55);
+      var ell = nx * nx + nz * nz;
+      if (ell < 1.15) h = -0.55 + ell * 0.2;
+    }
+    var bunks = hole.bunkers || [];
+    for (i = 0; i < bunks.length; i++) {
+      var b = bunks[i];
+      var bd = Math.hypot(x - b.x, z - b.y) / Math.max(1, b.r);
+      if (bd < 1) h = Math.min(h, 0.02 + bd * 0.12);
+    }
+    return h;
   }
 
   function cartPathPts(hole) {
@@ -401,6 +480,57 @@
     return pts;
   }
 
+  function addHorizon(hole, th) {
+    var b = holeBounds(hole);
+    var hillMat = mat({ map: tex.grass, color: th.grass, roughness: 1, flatShading: true });
+    var dummy = new T.Object3D();
+    var nHill = 10;
+    var hg = new T.SphereGeometry(1, 10, 7);
+    var hills = new T.InstancedMesh(hg, hillMat, nHill);
+    hills.receiveShadow = true;
+    var i, ang, dist, sx, sz;
+    for (i = 0; i < nHill; i++) {
+      ang = (i / nHill) * Math.PI * 2 + 0.2;
+      dist = b.span * 0.95 + 260 + (i % 4) * 70;
+      sx = b.cx + Math.cos(ang) * dist;
+      sz = b.cz + Math.sin(ang) * dist;
+      dummy.position.set(sx, heightAt(sx, sz, hole) - 4, sz);
+      dummy.scale.set(90 + (i % 4) * 28, 22 + (i % 3) * 8, 70 + (i % 5) * 18);
+      dummy.rotation.set(0, ang, 0);
+      dummy.updateMatrix();
+      hills.setMatrixAt(i, dummy.matrix);
+    }
+    hills.instanceMatrix.needsUpdate = true;
+    holeRoot.add(hills);
+
+    var nFar = 90;
+    var trunkGeo = new T.CylinderGeometry(0.2, 0.32, 1, 5);
+    var coneGeo = new T.ConeGeometry(1, 1.2, 6);
+    var trunks = new T.InstancedMesh(trunkGeo, mat({ color: 0x4a3220, roughness: 1 }), nFar);
+    var cones = new T.InstancedMesh(coneGeo, mat({ color: th.pine, roughness: 0.85, flatShading: true }), nFar);
+    trunks.castShadow = cones.castShadow = true;
+    for (i = 0; i < nFar; i++) {
+      ang = (i / nFar) * Math.PI * 2 + i * 0.07;
+      dist = b.span * 0.55 + 90 + (i % 7) * 18;
+      sx = b.cx + Math.cos(ang) * dist;
+      sz = b.cz + Math.sin(ang) * dist;
+      var ht = 10 + (i % 6) * 2.4;
+      dummy.position.set(sx, heightAt(sx, sz, hole) + ht * 0.22, sz);
+      dummy.rotation.set(0, i, 0);
+      dummy.scale.set(1.1, ht * 0.4, 1.1);
+      dummy.updateMatrix();
+      trunks.setMatrixAt(i, dummy.matrix);
+      dummy.position.y += ht * 0.45;
+      dummy.scale.set(3.4 + (i % 3), ht * 0.85, 3.4 + (i % 3));
+      dummy.updateMatrix();
+      cones.setMatrixAt(i, dummy.matrix);
+    }
+    trunks.instanceMatrix.needsUpdate = true;
+    cones.instanceMatrix.needsUpdate = true;
+    holeRoot.add(trunks);
+    holeRoot.add(cones);
+  }
+
   function addBench(x, z, yaw) {
     var wood = mat({ color: 0x6b4a28, roughness: 0.9 });
     var g = new T.Group();
@@ -417,7 +547,7 @@
     leg3.position.set(-0.7, 0.21, -0.18);
     leg4.position.set(0.7, 0.21, -0.18);
     g.add(seat, back, leg1, leg2, leg3, leg4);
-    g.position.set(x, 0.18, z);
+    g.position.set(x, heightAt(x, z) + 0.04, z);
     g.rotation.y = yaw;
     g.castShadow = true;
     holeRoot.add(g);
@@ -429,15 +559,15 @@
 
   function themeOf(id) {
     if (id === "coral-lattice") {
-      return { sky: 0x8ec8e8, fog: 0xb8dcee, grass: 0x245c3a, fair: 0x62d878, dusk: false, sun: 0xffe6c4, pine: 0x1a7a4a };
+      return { sky: 0x8ec8e8, fog: 0xc4e0ee, grass: 0x3a6a40, fair: 0x4aaa62, dusk: false, sun: 0xffe6c4, pine: 0x2a8a52, water: 0x1a7aaa };
     }
     if (id === "singularity-nine") {
-      return { sky: 0x1c1838, fog: 0x2a2458, grass: 0x10241c, fair: 0x3a8a58, dusk: true, sun: 0xc4b0ff, pine: 0x163e2c };
+      return { sky: 0x1c1838, fog: 0x2a2458, grass: 0x10241c, fair: 0x2f7a48, dusk: true, sun: 0xc4b0ff, pine: 0x163e2c, water: 0x143a68 };
     }
     if (id === "endless") {
-      return { sky: 0x4a6a88, fog: 0x6a8899, grass: 0x1a3a24, fair: 0x4cbe68, dusk: false, sun: 0xffd9a0, pine: 0x1a5530 };
+      return { sky: 0x4a6a88, fog: 0x7a96a4, grass: 0x1a3a24, fair: 0x3e9a54, dusk: false, sun: 0xffd9a0, pine: 0x1a5530, water: 0x15688a };
     }
-    return { sky: 0x7ec4ee, fog: 0xc5dff0, grass: 0x1c3e28, fair: 0x58d070, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32 };
+    return { sky: 0x7ec4ee, fog: 0xc8dcc8, grass: 0x2a4a30, fair: 0x3e9652, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32, water: 0x1878a0 };
   }
 
   function applyOrbit() {
@@ -561,7 +691,7 @@
     var th = themeOf(courseId);
     scene.background = new T.Color(th.sky);
     scene.fog.color.setHex(th.fog);
-    scene.fog.density = th.dusk ? 0.0022 : 0.00085;
+    scene.fog.density = th.dusk ? 0.0016 : 0.00055;
     if (hemi) hemi.color.setHex(th.dusk ? 0x8899dd : 0xeef6ff);
     if (sun) {
       sun.color.setHex(th.sun);
@@ -582,37 +712,46 @@
     holeRoot = new T.Group();
     scene.add(holeRoot);
 
-    var span = 900;
-    var groundGeo = new T.PlaneGeometry(span * 2, span * 2, 24, 24);
+    var span = 1100;
+    var groundGeo = new T.PlaneGeometry(span * 2, span * 2, 72, 72);
     var gpos = groundGeo.attributes.position;
     for (var gi = 0; gi < gpos.count; gi++) {
       var gx = gpos.getX(gi), gy = gpos.getY(gi);
-      var bump = Math.sin(gx * 0.01) * 0.06 + Math.cos(gy * 0.008) * 0.05;
-      gpos.setZ(gi, bump);
+      gpos.setZ(gi, heightAt(gx, -gy, hole) - 0.06);
     }
     groundGeo.computeVertexNormals();
     var ground = new T.Mesh(
       groundGeo,
-      mat({ map: tex.grass, color: th.grass, roughness: 0.96, metalness: 0.0 })
+      mat({ map: tex.grass, color: th.grass, roughness: 0.97, metalness: 0.0 })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.7;
+    ground.position.y = 0;
     ground.receiveShadow = true;
     holeRoot.add(ground);
+    addHorizon(hole, th);
 
     var fw = hole.fairW || 30;
-    var roughMat = mat({ map: tex.rough, color: 0x163820, roughness: 1 });
-    var cutMat = mat({ map: tex.rough, color: 0x2f6a3c, roughness: 0.92 });
-    addBand(hole.path, fw + 14, fw + 26, 0.04, roughMat);
-    addBand(hole.path, fw, fw + 14, 0.09, cutMat);
+    var roughMat = mat({
+      map: tex.rough, color: 0x2a4e30, roughness: 1,
+      polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: 1
+    });
+    var cutMat = mat({
+      map: tex.rough, color: 0x3a6a40, roughness: 0.94,
+      polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: 1
+    });
+    addBand(hole.path, fw + 14, fw + 28, 0.03, roughMat);
+    addBand(hole.path, fw, fw + 14, 0.05, cutMat);
 
     var fair = new T.Mesh(
-      ribbonGeo(hole.path, fw, 0.16, { uvScale: 0.018 }),
+      ribbonGeo(hole.path, fw, 0.08, { uvScale: 0.016, step: 6 }),
       mat({
         map: tex.fair,
-        color: th.fair,
-        roughness: 0.62,
-        metalness: 0.03
+        color: 0x5ec46a,
+        roughness: 0.72,
+        metalness: 0.02,
+        polygonOffset: true,
+        polygonOffsetFactor: -3,
+        polygonOffsetUnits: 1
       })
     );
     fair.receiveShadow = true;
@@ -649,120 +788,104 @@
     }
 
     var gR = Math.max(6, hole.greenR);
+    var pinH = heightAt(hole.pin.x, hole.pin.y, hole);
     var collar = new T.Mesh(
-      new T.RingGeometry(gR * 0.98, gR * 1.38, 48),
+      new T.RingGeometry(gR * 0.98, gR * 1.42, 48),
       mat({ color: 0x2a6b3c, roughness: 0.9 })
     );
     collar.rotation.x = -Math.PI / 2;
-    collar.position.set(hole.pin.x, 0.20, hole.pin.y);
+    collar.position.set(hole.pin.x, pinH + 0.06, hole.pin.y);
     collar.receiveShadow = true;
     holeRoot.add(collar);
 
     var green = new T.Mesh(
       new T.CircleGeometry(gR, 48),
-      mat({ map: tex.green, color: 0x4cce72, roughness: 0.58 })
+      mat({ map: tex.green, color: 0x3aaa58, roughness: 0.64 })
     );
     green.rotation.x = -Math.PI / 2;
-    green.position.set(hole.pin.x, 0.28, hole.pin.y);
+    green.position.set(hole.pin.x, pinH + 0.1, hole.pin.y);
     green.receiveShadow = true;
     holeRoot.add(green);
 
+    var teeH = heightAt(hole.tee.x, hole.tee.y, hole);
     var tee = new T.Mesh(
       new T.BoxGeometry(7.2, 0.18, 6.2),
       mat({ color: 0x3f8f54, roughness: 0.8 })
     );
-    tee.position.set(hole.tee.x, 0.22, hole.tee.y);
+    tee.position.set(hole.tee.x, teeH + 0.12, hole.tee.y);
     tee.castShadow = true;
     holeRoot.add(tee);
     var pegMat = mat({ color: 0xf8fafc, roughness: 0.4 });
     [[-1.1, -1.4], [1.1, -1.4]].forEach(function (xy) {
       var peg = new T.Mesh(new T.CylinderGeometry(0.05, 0.06, 0.28, 6), pegMat);
-      peg.position.set(hole.tee.x + xy[0], 0.4, hole.tee.y + xy[1]);
+      peg.position.set(hole.tee.x + xy[0], teeH + 0.28, hole.tee.y + xy[1]);
       holeRoot.add(peg);
     });
     var teeSign = new T.Mesh(new T.BoxGeometry(0.08, 1.1, 0.7), mat({ color: 0xf4f4f5, roughness: 0.5 }));
-    teeSign.position.set(hole.tee.x - 3.4, 0.75, hole.tee.y);
+    teeSign.position.set(hole.tee.x - 3.4, teeH + 0.7, hole.tee.y);
     holeRoot.add(teeSign);
 
     waterMeshes = [];
     (hole.water || []).forEach(function (w) {
       var cx = w.x + w.w / 2, cz = w.y + w.h / 2;
-      var bank = new T.Mesh(
-        new T.BoxGeometry(w.w + 7.5, 1.15, w.h + 7.5),
-        mat({ color: 0x3a4a32, roughness: 1 })
-      );
-      bank.position.set(cx, -0.15, cz);
-      bank.receiveShadow = true;
-      holeRoot.add(bank);
+      var rx = Math.max(6, w.w * 0.52), rz = Math.max(6, w.h * 0.52);
       var basin = new T.Mesh(
-        new T.PlaneGeometry(w.w + 1.5, w.h + 1.5),
-        mat({ color: 0x0a2a3c, roughness: 1 })
+        new T.CircleGeometry(1, 36),
+        mat({ color: 0x0a2434, roughness: 1 })
       );
+      basin.scale.set(rx * 1.08, rz * 1.08, 1);
       basin.rotation.x = -Math.PI / 2;
-      basin.position.set(cx, -0.95, cz);
+      basin.position.set(cx, -0.62, cz);
       holeRoot.add(basin);
-      var segsW = Math.max(8, Math.min(28, Math.round(w.w / 8)));
-      var segsH = Math.max(8, Math.min(28, Math.round(w.h / 8)));
-      var wgeo = new T.PlaneGeometry(w.w, w.h, segsW, segsH);
+      var segs = 28;
+      var wgeo = new T.CircleGeometry(1, segs);
       var m = new T.Mesh(
         wgeo,
-        new T.MeshPhysicalMaterial({
-          color: 0x156e9a,
-          metalness: 0.06,
-          roughness: 0.08,
+        mat({
+          color: 0x0c5c78,
+          metalness: 0.04,
+          roughness: 0.48,
           transparent: true,
-          opacity: 0.78,
-          transmission: 0.38,
-          thickness: 2.8,
-          map: tex.water
+          opacity: 0.9,
+          emissive: 0x062838,
+          emissiveIntensity: 0.35
         })
       );
+      m.scale.set(rx, rz, 1);
       m.rotation.x = -Math.PI / 2;
-      m.position.set(cx, 0.04, cz);
+      m.position.set(cx, -0.18, cz);
       holeRoot.add(m);
       waterMeshes.push(m);
-      var foam = new T.Mesh(
-        new T.PlaneGeometry(w.w + 2.2, w.h + 2.2),
-        new T.MeshBasicMaterial({ color: 0xd7eef6, transparent: true, opacity: 0.22, depthWrite: false })
-      );
-      foam.rotation.x = -Math.PI / 2;
-      foam.position.set(cx, 0.07, cz);
-      holeRoot.add(foam);
     });
 
-    var sandMat = mat({ map: tex.sand, color: 0xe8d3a4, roughness: 1, metalness: 0 });
-    var duneMat = mat({ map: tex.dune, color: 0xdcc48a, roughness: 0.98 });
+    var sandMat = mat({ map: tex.sand, color: 0xe8d4a0, roughness: 1, metalness: 0 });
+    var duneMat = mat({ map: tex.dune, color: 0xd4bc88, roughness: 0.98 });
     (hole.bunkers || []).forEach(function (b, bi) {
+      var bh = heightAt(b.x, b.y, hole);
       var floor = new T.Mesh(
-        new T.CircleGeometry(b.r * 0.96, 28),
+        new T.CircleGeometry(b.r * 0.98, 28),
         sandMat
       );
       floor.rotation.x = -Math.PI / 2;
-      floor.position.set(b.x, 0.12, b.y);
+      floor.position.set(b.x, bh - 0.08, b.y);
       floor.receiveShadow = true;
       holeRoot.add(floor);
       var lip = new T.Mesh(
-        new T.TorusGeometry(b.r * 0.9, Math.max(0.85, b.r * 0.14), 8, 24),
+        new T.TorusGeometry(b.r * 0.92, Math.max(0.28, b.r * 0.055), 6, 24),
         duneMat
       );
       lip.rotation.x = Math.PI / 2;
-      lip.position.set(b.x, 0.62, b.y);
-      lip.scale.set(1, 1, 0.55);
+      lip.position.set(b.x, bh + 0.12, b.y);
+      lip.scale.set(1, 1, 0.32);
       lip.castShadow = true;
       holeRoot.add(lip);
-      var mound = new T.Mesh(new T.SphereGeometry(1, 12, 8), duneMat);
+      var mound = new T.Mesh(new T.SphereGeometry(1, 10, 7), duneMat);
       var ang = (bi * 1.7) % (Math.PI * 2);
-      mound.position.set(b.x + Math.cos(ang) * b.r * 0.95, 0.55, b.y + Math.sin(ang) * b.r * 0.7);
-      mound.scale.set(b.r * 0.62, b.r * 0.22, b.r * 0.48);
+      mound.position.set(b.x + Math.cos(ang) * b.r * 0.92, bh + 0.18, b.y + Math.sin(ang) * b.r * 0.7);
+      mound.scale.set(b.r * 0.42, b.r * 0.1, b.r * 0.34);
       mound.castShadow = true;
       mound.receiveShadow = true;
       holeRoot.add(mound);
-      if (b.r > 10) {
-        var mound2 = mound.clone();
-        mound2.position.set(b.x - Math.cos(ang) * b.r * 0.8, 0.42, b.y - Math.sin(ang) * b.r * 0.55);
-        mound2.scale.set(b.r * 0.45, b.r * 0.16, b.r * 0.38);
-        holeRoot.add(mound2);
-      }
     });
 
     var rocks = hole.rocks || [];
@@ -777,7 +900,7 @@
       for (var ri = 0; ri < nRock; ri++) {
         var rk = rocks[ri];
         var rs = Math.max(0.4, rk.r || 1);
-        dummyR.position.set(rk.x, rs * 0.42, rk.y);
+        dummyR.position.set(rk.x, heightAt(rk.x, rk.y, hole) + rs * 0.38, rk.y);
         dummyR.rotation.set(ri * 0.4, ri * 0.73, ri * 0.21);
         dummyR.scale.set(rs, rs * (0.55 + (ri % 4) * 0.08), rs * 0.92);
         dummyR.updateMatrix();
@@ -817,7 +940,8 @@
         var isRound = tr.kind === "round" || (i % 5 === 0 && tr.kind !== "pine");
         var lean = ((i % 9) - 4) * 0.012;
         dummy.rotation.set(lean, i * 0.41, -lean * 0.35);
-        dummy.position.set(tr.x, height * 0.18, tr.y);
+        var groundY = heightAt(tr.x, tr.y, hole);
+        dummy.position.set(tr.x, groundY + height * 0.18, tr.y);
         dummy.scale.set(canopy * 0.12, height * 0.36, canopy * 0.12);
         dummy.updateMatrix();
         trunks.setMatrixAt(i, dummy.matrix);
@@ -826,7 +950,7 @@
         lows.setColorAt(i, color);
         tops.setColorAt(i, color);
         if (isRound) {
-          dummy.position.y = height * 0.58;
+          dummy.position.y = groundY + height * 0.58;
           dummy.scale.set(canopy * 0.48, height * 0.38, canopy * 0.48);
           dummy.updateMatrix();
           rounds.setMatrixAt(i, dummy.matrix);
@@ -835,11 +959,11 @@
           color.setHSL(0.29 + (i % 5) * 0.01, 0.5, 0.28 + (i % 4) * 0.03);
           rounds.setColorAt(i, color);
         } else {
-          dummy.position.y = height * 0.48;
+          dummy.position.y = groundY + height * 0.48;
           dummy.scale.set(canopy * 0.52, height * 0.55, canopy * 0.52);
           dummy.updateMatrix();
           lows.setMatrixAt(i, dummy.matrix);
-          dummy.position.y = height * 0.82;
+          dummy.position.y = groundY + height * 0.82;
           dummy.scale.set(canopy * 0.34, height * 0.38, canopy * 0.34);
           dummy.updateMatrix();
           tops.setMatrixAt(i, dummy.matrix);
@@ -869,7 +993,7 @@
         new T.SphereGeometry(0.28, 8, 6),
         mat({ color: 0xfbbf24, emissive: 0x664400, roughness: 0.4 })
       );
-      pip.position.set(p.x, 0.55, p.y);
+      pip.position.set(p.x, heightAt(p.x, p.y, hole) + 0.45, p.y);
       holeRoot.add(pip);
     });
 
@@ -878,14 +1002,14 @@
       mat({ color: 0x111111, roughness: 1, metalness: 0.25 })
     );
     cup.rotation.x = -Math.PI / 2;
-    cup.position.set(hole.pin.x, 0.32, hole.pin.y);
+    cup.position.set(hole.pin.x, pinH + 0.14, hole.pin.y);
     holeRoot.add(cup);
 
     flagPole = new T.Mesh(
       new T.CylinderGeometry(0.035, 0.045, 2.55, 8),
       mat({ color: 0xf4f4f5, metalness: 0.55, roughness: 0.28 })
     );
-    flagPole.position.set(hole.pin.x, 1.5, hole.pin.y);
+    flagPole.position.set(hole.pin.x, pinH + 1.38, hole.pin.y);
     flagPole.castShadow = true;
     holeRoot.add(flagPole);
     flagCloth = new T.Mesh(
@@ -907,6 +1031,19 @@
     );
     pickPlane.rotation.x = -Math.PI / 2;
     holeRoot.add(pickPlane);
+
+    if (sun) {
+      var hb = holeBounds(hole);
+      sun.position.set(hb.cx - 90, 160, hb.cz + 50);
+      if (!sun.target.parent) scene.add(sun.target);
+      sun.target.position.set(hb.cx, 2, hb.cz);
+      var ext = Math.max(140, hb.span * 0.72);
+      sun.shadow.camera.left = -ext;
+      sun.shadow.camera.right = ext;
+      sun.shadow.camera.top = ext;
+      sun.shadow.camera.bottom = -ext;
+      sun.shadow.camera.updateProjectionMatrix();
+    }
 
     fitCamera(hole);
   }
@@ -1002,6 +1139,10 @@
     impactRing.rotation.x = -Math.PI / 2;
     impactRing.visible = false;
     scene.add(impactRing);
+    if (!ghostRoot) {
+      ghostRoot = new T.Group();
+      scene.add(ghostRoot);
+    }
   }
 
   function updateActors(s) {
@@ -1009,20 +1150,21 @@
     var b = s.ball || { x: 0, y: 0 };
     ballPhase = s.phase || b.phase || "";
     var lift = (b.z || 0) * 0.42;
-    ballMesh.position.set(b.x, 0.28 + lift, b.y);
-    ballShadow.position.set(b.x, 0.21, b.y);
+    var gy = heightAt(b.x, b.y);
+    ballMesh.position.set(b.x, gy + 0.16 + lift, b.y);
+    ballShadow.position.set(b.x, gy + 0.04, b.y);
     ballShadow.scale.setScalar(1 + lift * 0.03);
     ballShadow.material.opacity = Math.max(0.08, 0.28 - lift * 0.006);
     if (impactRing) {
       if (ballPhase === "bounce") {
         var hop = Math.max(0.2, 1 - (b.z || 0) / 8);
         impactRing.visible = true;
-        impactRing.position.set(b.x, 0.38, b.y);
+        impactRing.position.set(b.x, gy + 0.1, b.y);
         impactRing.scale.set(2.2 * hop, 2.2 * hop, 1);
         impactRing.material.opacity = 0.18 + hop * 0.22;
       } else if (ballPhase === "roll") {
         impactRing.visible = true;
-        impactRing.position.set(b.x, 0.36, b.y);
+        impactRing.position.set(b.x, gy + 0.08, b.y);
         impactRing.scale.set(1.4, 1.4, 1);
         impactRing.material.opacity = 0.12;
       } else {
@@ -1031,8 +1173,9 @@
     }
     if (s.marker && markerRoot) {
       markerRoot.visible = true;
-      markerRoot.position.set(s.marker.x, 0, s.marker.y);
-      var pts = [new T.Vector3(b.x, 0.27, b.y), new T.Vector3(s.marker.x, 0.27, s.marker.y)];
+      var my = heightAt(s.marker.x, s.marker.y);
+      markerRoot.position.set(s.marker.x, my, s.marker.y);
+      var pts = [new T.Vector3(b.x, gy + 0.2, b.y), new T.Vector3(s.marker.x, my + 0.2, s.marker.y)];
       aimLine.geometry.setFromPoints(pts);
       aimLine.computeLineDistances();
       aimLine.visible = true;
@@ -1040,32 +1183,72 @@
       if (markerRoot) markerRoot.visible = false;
       if (aimLine) aimLine.visible = false;
     }
-    var reach = s.carry || 0;
-    carryRing.visible = reach > 2;
-    if (reach > 2) {
-      carryRing.position.set(b.x, 0.31, b.y);
-      carryRing.scale.set(reach, reach, 1);
+    var land = s.pred && (s.pred.carry || s.pred.dest);
+    carryRing.visible = !!(land && !s.flying);
+    if (carryRing.visible) {
+      var lx = land.x, lz = land.y;
+      carryRing.position.set(lx, heightAt(lx, lz) + 0.1, lz);
+      carryRing.scale.set(3.4, 3.4, 1);
     }
     if (s.pred && s.pred.carry && carryMark) {
       var cdx = s.pred.carry.x - (s.pred.dest ? s.pred.dest.x : s.pred.carry.x);
       var cdy = s.pred.carry.y - (s.pred.dest ? s.pred.dest.y : s.pred.carry.y);
       var showCarry = Math.hypot(cdx, cdy) > 2.5;
       carryMark.visible = showCarry;
-      if (showCarry) carryMark.position.set(s.pred.carry.x, 0, s.pred.carry.y);
+      if (showCarry) carryMark.position.set(s.pred.carry.x, heightAt(s.pred.carry.x, s.pred.carry.y), s.pred.carry.y);
     } else if (carryMark) carryMark.visible = false;
     if (s.pred && s.pred.dest) {
       windPip.visible = true;
-      windPip.position.set(s.pred.dest.x, 0.38, s.pred.dest.y);
+      windPip.position.set(s.pred.dest.x, heightAt(s.pred.dest.x, s.pred.dest.y) + 0.28, s.pred.dest.y);
       windPip.material.color.setHex(s.pred.blocked ? 0xf87171 : 0xc084fc);
     } else windPip.visible = false;
     var trail = s.trail || [];
     if (trail.length > 1) {
       var tp = trail.map(function (t) {
-        return new T.Vector3(t.x, 0.28 + (t.z || 0) * 0.42, t.y);
+        return new T.Vector3(t.x, heightAt(t.x, t.y) + 0.16 + (t.z || 0) * 0.42, t.y);
       });
       trailLine.geometry.setFromPoints(tp);
       trailLine.visible = true;
     } else trailLine.visible = false;
+    syncGhosts(s.ghosts || []);
+  }
+
+  function syncGhosts(list) {
+    if (!ghostRoot) return;
+    var seen = {};
+    var i, g, rec, y;
+    for (i = 0; i < list.length; i++) {
+      rec = list[i];
+      if (!rec || rec.id == null) continue;
+      seen[rec.id] = true;
+      g = ghostBalls[rec.id];
+      if (!g) {
+        g = new T.Group();
+        var sph = new T.Mesh(
+          new T.SphereGeometry(0.22, 12, 10),
+          mat({ color: rec.mine ? 0x5eead4 : 0xfbbf24, roughness: 0.35, emissive: rec.mine ? 0x134e4a : 0x78350f, emissiveIntensity: 0.35 })
+        );
+        sph.castShadow = true;
+        var sh = new T.Mesh(
+          new T.CircleGeometry(0.32, 10),
+          new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false })
+        );
+        sh.rotation.x = -Math.PI / 2;
+        sh.position.y = -0.12;
+        g.add(sph, sh);
+        ghostRoot.add(g);
+        ghostBalls[rec.id] = g;
+      }
+      y = heightAt(rec.x, rec.y) + 0.16 + (rec.z || 0) * 0.42;
+      g.position.set(rec.x, y, rec.y);
+      g.visible = true;
+    }
+    Object.keys(ghostBalls).forEach(function (id) {
+      if (!seen[id]) {
+        ghostRoot.remove(ghostBalls[id]);
+        delete ghostBalls[id];
+      }
+    });
   }
 
   function loop() {
@@ -1224,10 +1407,10 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.toneMapping = T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.16;
+    renderer.toneMappingExposure = 1.08;
     if (T.SRGBColorSpace) renderer.outputColorSpace = T.SRGBColorSpace;
     scene = new T.Scene();
-    scene.fog = new T.FogExp2(0xc5dff0, 0.00085);
+    scene.fog = new T.FogExp2(0xc8dcc8, 0.00055);
     camera = new T.PerspectiveCamera(44, 1, 1.2, 2800);
     clock = new T.Clock();
     raycaster = new T.Raycaster();

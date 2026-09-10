@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lattice Crypt — Whitepaper v1.0 | chatagent.ca</title>
+<meta name="description" content="Design canon for Lattice Crypt: four wardens, eight realms, vials, nexuses, local co-op, gamepads, live hall.">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-crypt/whitepaper.html">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#07080e; color:#e8eef5; font-family:"Source Sans 3",system-ui,sans-serif; }
+.wrap { max-width:840px; margin:0 auto; padding:1.5rem 1.1rem 3.5rem; }
+.kicker { letter-spacing:.2em; text-transform:uppercase; color:#5eead4; font-size:.72rem; }
+h1,h2 { font-family:Syne,sans-serif; }
+h1 { font-size:clamp(1.8rem,4vw,2.6rem); margin:.2rem 0 .6rem; }
+h2 { font-size:1.15rem; letter-spacing:.06em; color:#fbbf24; margin:1.6rem 0 .45rem; }
+a { color:#5eead4; }
+p,li { line-height:1.55; color:#c5d0dc; }
+code { font-family:"IBM Plex Mono",monospace; font-size:.86em; color:#fbbf24; }
+.row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0; }
+.btn { display:inline-flex; padding:.5rem .8rem; border:1px solid #1e3a4a; border-radius:8px; text-decoration:none; color:#e8eef5; }
+table { width:100%; border-collapse:collapse; font-size:.88rem; }
+th,td { border-bottom:1px solid #1e3a4a; padding:.4rem .3rem; text-align:left; vertical-align:top; }
+th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Δ9Φ963 · design canon</p>
+  <h1>Lattice Crypt v1.0</h1>
+  <p>Four-warden co-op dungeon crawl in this browser. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
+  <div class="row">
+    <a class="btn" href="./">Play</a>
+    <a class="btn" href="/games/">Arcade</a>
+    <a class="btn" href="./ledger.html">Ledger</a>
+    <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro">PayPal</a>
+  </div>
+
+  <h2>1. Loop</h2>
+  <p>You drop into a seeded maze. Health ticks down every second. Find the exit. Nexuses spawn foes until you smash them. Keys open doors. Rations buy time. Vials are smart bombs. Treasure rooms every eighth floor are a thirty-second grab. After eight realms (96 floors) the crypt loops harder. Score is the run. Insert a credit (Space / Start) when a warden falls to stand them back up at 700 health.</p>
+  <p>There is no last floor. The hall ranks score per credit, not floors cheesed with infinite continues.</p>
+
+  <h2>2. Wardens</h2>
+  <table>
+    <tr><th>Warden</th><th>Color</th><th>Shot</th><th>Speed</th><th>Magic</th><th>Armor</th><th>Melee</th></tr>
+    <tr><td><b>Kael</b> Blade</td><td>Red</td><td>3</td><td>3</td><td>2</td><td>4</td><td>5</td></tr>
+    <tr><td><b>Vale</b> Aegis</td><td>Cyan</td><td>3</td><td>4</td><td>3</td><td>5</td><td>4</td></tr>
+    <tr><td><b>Orin</b> Sigil</td><td>Gold</td><td>5</td><td>3</td><td>5</td><td>1</td><td>1</td></tr>
+    <tr><td><b>Nia</b> Path</td><td>Green</td><td>4</td><td>5</td><td>3</td><td>2</td><td>2</td></tr>
+  </table>
+  <p>Armor reduces incoming hits. Magic scales vial radius and Drain damage. Speed is tiles per second. Shot is projectile damage. Melee is bump damage. One shot on screen per warden unless a Shot Codex is held.</p>
+
+  <h2>3. Foes</h2>
+  <table>
+    <tr><th>Kind</th><th>Behavior</th><th>Notes</th></tr>
+    <tr><td>Wraith</td><td>Chases, passes nothing</td><td>Shot only. Bump steals health, no melee back.</td></tr>
+    <tr><td>Brute</td><td>Melee rush</td><td>Club bump. Smashable up close.</td></tr>
+    <tr><td>Imp</td><td>Ranged fire</td><td>Holds back and shoots.</td></tr>
+    <tr><td>Hurler</td><td>Lobs over walls</td><td>Arcs. Hide around corners.</td></tr>
+    <tr><td>Shade</td><td>Flickers</td><td>Invulnerable while faded. Wait the beat.</td></tr>
+    <tr><td>Thief</td><td>Spawns at the start</td><td>Steals one vial on touch. Hunt them.</td></tr>
+    <tr><td>The Drain</td><td>Walks walls</td><td>Only a vial kills it. Else it sips 200 and leaves.</td></tr>
+  </table>
+  <p>Most foes come from <b>nexuses</b> in three ranks. Rank sets hit points of both the nexus and what it pours. Smash the nexus first.</p>
+
+  <h2>4. Relics</h2>
+  <ul>
+    <li><b>Ration</b> +100 health. <b>Flask</b> same, but a stray shot ruins it.</li>
+    <li><b>Blight</b> looks like a flask — −100 and strips a buff.</li>
+    <li><b>Key</b> opens one door. Doors also yawn open if the floor stays quiet long enough.</li>
+    <li><b>Chest</b> score. <b>Vial</b> stored magic. Shooting a vial on the floor is a weaker room-clear.</li>
+    <li><b>Shot Codex / Swift / Aegis</b> timed buffs (fire rate, speed, armor).</li>
+    <li><b>Veil</b> foes lose the warden unless they bump. <b>Reflect</b> shots bounce once; bumpers take damage.</li>
+    <li><b>Pulse</b> freezes nearby foes. <b>Warp</b> relocates the warden. <b>Gates</b> teleport between paired pads.</li>
+    <li><b>Trap</b> tiles stun. <b>Exit</b> is the only way down, unless the floor stalls into a wall-exit after three minutes.</li>
+  </ul>
+
+  <h2>5. Spells (vials)</h2>
+  <p>K / Magic / pad B: spend one vial. Damage in view = 20 × magic rank. Clears fodder, wounds elites, deletes the Drain. Orin clears rooms. Kael’s vial is a slap. Floor vials that get shot do half of that.</p>
+  <p>Hidden vials on some floors (banner: “A hidden vial waits”). Treasure rush floors (every 8th) are 30 seconds, extra chests, exit in a random corner. Layouts cycle: rooms, cross, cells, halls, arena, ring, vault, spiral.</p>
+
+  <h2>6. Realms</h2>
+  <p>Eight palettes, twelve floors each: Stone, Frost, Ember, Root, Tide, Gold, Void, Lattice. Seeded rooms + corridors. Same seed is the same crypt. After 96, the eight cycle with +rank on nexuses.</p>
+
+  <h2>7. Controls</h2>
+  <table>
+    <tr><th>Slot</th><th>Move</th><th>Fire</th><th>Vial</th></tr>
+    <tr><td>P1</td><td>WASD</td><td>J</td><td>K / Shift</td></tr>
+    <tr><td>P2</td><td>Arrows</td><td><code>;</code> or Num1</td><td><code>'</code> or Num2</td></tr>
+    <tr><td>P3</td><td>TFGH</td><td>R</td><td>Y</td></tr>
+    <tr><td>P4</td><td>Num 8456</td><td>Num0</td><td>Num Enter</td></tr>
+    <tr><td>Pads</td><td>Left stick / d-pad</td><td>A / RT</td><td>B / Y / LT</td></tr>
+  </table>
+  <p>Start / Enter joins an empty slot as the next warden. Space credits a fallen warden (not fire). Esc is menu. How to play pauses. Eight-way aim follows the last move. Hold fire to stream (one bolt live unless Codex).</p>
+
+  <h2>8. Multiplayer</h2>
+  <p>Cabinet rules: everyone shares the camera and the floor. Food is contested. Vials are personal. A fallen warden can credit-in. Same-machine 1–4. Gamepads hot-join. Optional live lobby (same socket pattern as Lattice Golf) when the crypt lobby Space is up — room code, shared seed, ghost wardens.</p>
+
+  <h2>9. Score</h2>
+  <p>Foe + nexus + chest + floor clear bonus. Health remaining at exit is a small bonus. Credits used divide the posted score on the live hall. Local best stays in this browser.</p>
+
+  <h2>10. Shell</h2>
+  <p>Title menu, How to play, radio (Excavationpro listen portal), PayPal.me/ExcavationPro, All games, live hall via arcade-ledger <code>game: lattice-crypt</code>. Pixel atlas is original (16×16 nearest, baked). Portraits and menu art are original key art.</p>
+</div>
+</body>
+</html>

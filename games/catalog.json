@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-06",
+  "updated": "2026-09-09",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -81,7 +81,7 @@
       "slug": "lattice-golf",
       "title": "Lattice Golf",
       "tagline": "Marker, club, wind",
-      "blurb": "2.5D course: plant a marker, read the wind pip, watch the ball fly. Pine Haven, Coral Lattice, Singularity Nine, endless, campaign vs AI. Live hall.",
+      "blurb": "2.5D course: plant a marker, read the wind pip, watch the ball fly. Pine Haven, Coral Lattice, Singularity Nine, endless, campaign vs AI. Live hall. Live lobby 1–4.",
       "status": "live",
       "featured": true,
       "order": 5,
@@ -89,7 +89,7 @@
       "cover": "/games/lattice-golf/assets/og.jpg",
       "coverAlt": "Lattice Golf twilight course",
       "genre": ["sports", "golf"],
-      "players": "1",
+      "players": "1–4 live",
       "links": [
         { "label": "Live hall", "href": "/games/lattice-golf/ledger.html" }
       ]
@@ -111,6 +111,25 @@
       "links": [
         { "label": "Live hall", "href": "/games/haven-rally/ledger.html" },
         { "label": "Whitepaper", "href": "/games/haven-rally/whitepaper.html" }
+      ]
+    },
+    {
+      "id": "lattice-crypt",
+      "slug": "lattice-crypt",
+      "title": "Lattice Crypt",
+      "tagline": "Four wardens",
+      "blurb": "Pixel dungeon co-op. Smash nexuses, spend vials, don't shoot the flask. Kael, Vale, Orin, Nia. Keyboard and gamepad. Live hall.",
+      "status": "live",
+      "featured": true,
+      "order": 7,
+      "href": "/games/lattice-crypt/",
+      "cover": "/games/lattice-crypt/assets/og.jpg",
+      "coverAlt": "Lattice Crypt dungeon gate",
+      "genre": ["action", "co-op", "dungeon"],
+      "players": "1–4 local, gamepad",
+      "links": [
+        { "label": "Live hall", "href": "/games/lattice-crypt/ledger.html" },
+        { "label": "Whitepaper", "href": "/games/lattice-crypt/whitepaper.html" }
       ]
     },
     {

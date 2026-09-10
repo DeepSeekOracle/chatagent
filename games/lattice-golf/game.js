@@ -909,7 +909,299 @@
     campaign: 0,
     name: "",
     mulligans: 0,
+    mp: null,
+    matchSeed: null,
+    mpPending: null,
+    mpRemote: null,
   };
+
+  function mpOn() { return !!(G.mp && G.mp.code); }
+  function mpMyTurn() { return !mpOn() || G.mp.turn === G.mp.pid; }
+  function mpName(pid) {
+    const p = mpFind(pid);
+    return (p && p.name) || "Golfer";
+  }
+  function mpFind(pid) {
+    if (!G.mp || !G.mp.players) return null;
+    for (let i = 0; i < G.mp.players.length; i++) {
+      if (G.mp.players[i].pid === pid) return G.mp.players[i];
+    }
+    return null;
+  }
+  function courseById(id) {
+    if (id === "coral-lattice") return CORAL;
+    if (id === "singularity-nine") return STAR;
+    if (id === "haven-open") {
+      return { id: "haven-open", name: "Haven Open 18", wind: [1, 7], holes: PINE.holes.concat(CORAL.holes) };
+    }
+    return PINE;
+  }
+  function mpGhosts() {
+    if (!mpOn()) return [];
+    const flyingPid = G.mpWatchPid;
+    const out = [];
+    G.mp.players.forEach(function (p) {
+      if (p.pid === G.mp.pid && !G.flying) return;
+      if (p.pid === flyingPid) return;
+      let pos = p.ball;
+      if (p.pid === G.mp.pid) pos = G.ball;
+      if (!pos && G.hole) pos = G.hole.tee;
+      if (!pos) return;
+      out.push({
+        id: p.pid,
+        x: pos.x, y: pos.y, z: 0,
+        mine: p.pid === G.mp.pid,
+        name: p.name
+      });
+    });
+    return out;
+  }
+  function mpBindNet() {
+    if (!window.GolfNet || GolfNet._bound) return;
+    GolfNet._bound = true;
+    GolfNet.on("*", function (msg) {
+      if (!msg || !msg.type) return;
+      if (msg.type === "error") {
+        if ($("dockStatus")) $("dockStatus").textContent = msg.msg;
+        if ($("lobbyErr")) $("lobbyErr").textContent = msg.msg;
+        log(msg.msg);
+      }
+      if (msg.type === "welcome") {
+        if (G.mp) G.mp.pid = msg.pid;
+      }
+      if (msg.type === "room") applyRoom(msg);
+      if (msg.type === "start") mpBegin(msg);
+      if (msg.type === "shot") mpOnShot(msg);
+      if (msg.type === "turn") {
+        if (G.mp) G.mp.turn = msg.turn;
+        paintMpHud();
+        renderHoleCard();
+      }
+      if (msg.type === "aim" && msg.pid !== (G.mp && G.mp.pid)) {
+        G.mpRemote = msg;
+        draw();
+      }
+      if (msg.type === "next_hole") {
+        if (G.flying) G.mpPending = { kind: "next", msg: msg };
+        else mpNextHole(msg);
+      }
+      if (msg.type === "round_over") {
+        if (G.flying) G.mpPending = { kind: "over", msg: msg };
+        else mpRoundOver(msg);
+      }
+      if (msg.type === "chat") {
+        log((msg.name || "Golfer") + ": " + msg.text);
+      }
+      if (msg.type === "left") {
+        G.mp = null;
+        liveLobby();
+      }
+      if (msg.type === "open") {
+        if ($("lobbyStatus")) $("lobbyStatus").textContent = "Connected.";
+      }
+      if (msg.type === "close") {
+        if ($("lobbyStatus")) $("lobbyStatus").textContent = "Disconnected — retrying…";
+      }
+    });
+  }
+  function applyRoom(msg) {
+    G.mp = G.mp || {};
+    G.mp.code = msg.code;
+    G.mp.pid = GolfNet.pid();
+    G.mp.host = msg.host;
+    G.mp.courseId = msg.courseId;
+    G.mp.mode = msg.mode;
+    G.mp.state = msg.state;
+    G.mp.hi = msg.hi;
+    G.mp.turn = msg.turn;
+    G.mp.seed = msg.seed;
+    G.mp.players = msg.players || [];
+    if (G.mode === "menu" || (G.mp.state === "lobby")) paintLobbyBody();
+    paintMpHud();
+  }
+  function mpBegin(msg) {
+    applyRoom(msg);
+    const course = courseById(msg.courseId);
+    startRound(msg.mode === "18" ? "18" : "9", course, 0, { seed: msg.seed, live: true });
+    log("Live match " + msg.code + " — " + mpName(msg.turn) + " tees off.");
+    paintMpHud();
+  }
+  function mpOnShot(msg) {
+    if (!G.mp) return;
+    G.mp.turn = msg.turn || G.mp.turn;
+    const p = mpFind(msg.pid);
+    if (p) {
+      p.ball = msg.dest;
+      p.strokes = msg.strokes;
+      p.holed = !!msg.holed;
+    }
+    if (msg.pid === G.mp.pid) {
+      paintMpHud();
+      return;
+    }
+    const club = CLUBS.find(function (c) { return c.id === msg.club; }) || G.club;
+    const from = msg.from || G.hole.tee;
+    const model = {
+      carry: msg.carry || msg.dest,
+      dest: msg.dest,
+      rollPath: msg.rollPath,
+      blocked: msg.blocked,
+      holed: msg.holed,
+      landLie: msg.landLie,
+      roll: msg.roll || 0
+    };
+    G.mpWatchPid = msg.pid;
+    log(mpName(msg.pid) + " hits " + (club && club.name || "a club") + ".");
+    animateShot(from, model, function () {
+      G.mpWatchPid = null;
+      G.flying = null;
+      if (p) p.ball = msg.dest;
+      if (G.mpPending) {
+        const pend = G.mpPending;
+        G.mpPending = null;
+        if (pend.kind === "next") mpNextHole(pend.msg);
+        else if (pend.kind === "over") mpRoundOver(pend.msg);
+      }
+      paintMpHud();
+      draw();
+    }, club);
+  }
+  function mpNextHole(msg) {
+    applyRoom(msg);
+    G.hi = msg.hi || 0;
+    G.strokes = 0;
+    G.card = G.card || [];
+    setupHole();
+    log("Hole " + (G.hi + 1) + " — " + mpName(G.mp.turn) + " to play.");
+    paintMpHud();
+  }
+  function mpRoundOver(msg) {
+    applyRoom(msg);
+    const rows = (msg.players || []).map(function (p) {
+      const t = (p.card || []).reduce(function (n, h) { return n + (h.strokes || 0); }, 0);
+      const par = (p.card || []).reduce(function (n, h) { return n + (h.par || 0); }, 0);
+      return "<tr><td>" + (p.name || "").replace(/</g, "") + "</td><td>" + t + "</td><td>" + vsLabel(t - par) + "</td></tr>";
+    }).join("");
+    showSheet(
+      "<p class='kicker'>Live match closed</p><h2>Room " + (G.mp && G.mp.code || "") + "</h2>" +
+      "<table class='score-table'><thead><tr><th>Golfer</th><th>Total</th><th>vs par</th></tr></thead><tbody>" +
+      (rows || "<tr><td colspan=3>No card.</td></tr>") + "</tbody></table>" +
+      "<div class='modes'><button class='btn gold' id='toMenu'>Menu</button></div>"
+    );
+    G.mp = null;
+    $("toMenu").onclick = menu;
+  }
+  function paintMpHud() {
+    if (!mpOn() || !G.hole) return;
+    const turnName = mpName(G.mp.turn);
+    const mine = mpMyTurn();
+    if ($("dockStatus")) {
+      $("dockStatus").textContent = mine
+        ? ("LIVE " + G.mp.code + " · your shot")
+        : ("LIVE " + G.mp.code + " · " + turnName + " is up");
+    }
+    if ($("btnShoot")) $("btnShoot").disabled = !mine || !!G.flying;
+    const names = (G.mp.players || []).map(function (p) {
+      return (p.pid === G.mp.turn ? "▸ " : "") + p.name + " " + (p.strokes || 0) + (p.holed ? " ✓" : "");
+    }).join(" · ");
+    if ($("hudMeta")) {
+      $("hudMeta").innerHTML =
+        "<span>LIVE <b>" + G.mp.code + "</b></span>" +
+        "<span>Hole <b>" + (G.hi + 1) + "/" + G.holes.length + "</b></span>" +
+        "<span>" + names.replace(/</g, "") + "</span>";
+    }
+  }
+  function liveLobby() {
+    mpBindNet();
+    if (window.GolfNet) GolfNet.connect();
+    G.mode = "menu";
+    abortShot();
+    $("app").classList.add("hidden");
+    $("boot").classList.add("hidden");
+    showSheet(
+      "<p class='kicker'>Live match</p><h2>Lobby</h2>" +
+      "<p class='lore'>Create a room or enter a code. Two to four golfers, same island, take turns. Watch the ball fly, then hit yours.</p>" +
+      "<p class='lore' id='lobbyStatus'>Connecting…</p>" +
+      "<p class='lore' id='lobbyErr' style='color:#fb7185'></p>" +
+      "<label>Course</label>" +
+      "<select id='lobbyCourse' class='name'>" +
+        "<option value='pine-haven'>Pine Haven 9</option>" +
+        "<option value='coral-lattice'>Coral Lattice 9</option>" +
+        "<option value='singularity-nine'>Singularity Nine</option>" +
+        "<option value='haven-open'>Haven Open 18</option>" +
+      "</select>" +
+      "<div class='modes' style='margin-top:.8rem'>" +
+        "<button class='btn gold' id='lobbyCreate'>Create room</button>" +
+        "<button class='btn' id='lobbyJoin'>Join</button>" +
+      "</div>" +
+      "<label>Room code</label>" +
+      "<input class='name' id='lobbyCode' maxlength='6' placeholder='K7Q2' style='text-transform:uppercase'>" +
+      "<div id='lobbyBody'></div>" +
+      "<p class='lore' style='margin-top:.8rem'>Share <b id='lobbyLink'></b></p>" +
+      "<div class='modes'><button class='btn' id='lobbyBack'>Back</button></div>"
+    , false, true);
+    $("lobbyCreate").onclick = function () {
+      const nm = ($("nm") && $("nm").value) || G.save.name || "Operator";
+      GolfNet.connect();
+      GolfNet.send({ type: "hello", name: nm, golfer: G.save.golfer || "mira" });
+      GolfNet.send({ type: "create", name: nm, golfer: G.save.golfer || "mira", courseId: $("lobbyCourse").value });
+    };
+    $("lobbyJoin").onclick = function () {
+      const code = ($("lobbyCode").value || "").toUpperCase().trim();
+      if (!code) { $("lobbyErr").textContent = "Enter a room code."; return; }
+      const nm = G.save.name || "Operator";
+      GolfNet.connect();
+      GolfNet.send({ type: "hello", name: nm, golfer: G.save.golfer || "mira" });
+      GolfNet.send({ type: "join", code: code, name: nm, golfer: G.save.golfer || "mira" });
+    };
+    $("lobbyBack").onclick = function () {
+      if (window.GolfNet) GolfNet.send({ type: "leave" });
+      G.mp = null;
+      menu();
+    };
+    $("lobbyCourse").onchange = function () {
+      if (G.mp && G.mp.host === G.mp.pid) {
+        GolfNet.send({ type: "course", courseId: $("lobbyCourse").value });
+      }
+    };
+    if (GolfNet.open()) $("lobbyStatus").textContent = "Connected.";
+    else $("lobbyStatus").textContent = "Connecting to " + GolfNet.url() + " …";
+    const pre = (location.search.match(/[?&]room=([A-Za-z0-9]+)/) || [])[1];
+    if (pre && $("lobbyCode")) $("lobbyCode").value = pre.toUpperCase();
+    paintLobbyBody();
+  }
+  function paintLobbyBody() {
+    const el = $("lobbyBody");
+    if (!el) return;
+    if (!G.mp || !G.mp.code) {
+      el.innerHTML = "";
+      return;
+    }
+    if ($("lobbyCode")) $("lobbyCode").value = G.mp.code;
+    if ($("lobbyCourse") && G.mp.courseId) $("lobbyCourse").value = G.mp.courseId;
+    const origin = location.origin + location.pathname.replace(/index\.html$/, "");
+    const link = origin + "?room=" + G.mp.code;
+    if ($("lobbyLink")) $("lobbyLink").textContent = link;
+    const host = G.mp.host === G.mp.pid;
+    const rows = (G.mp.players || []).map(function (p) {
+      return "<li>" + (p.host ? "Host · " : "") + (p.name || "Golfer").replace(/</g, "") +
+        " · " + golferOf(p.golfer).name + (p.ready ? " · ready" : " · waiting") +
+        (p.pid === G.mp.pid ? " · you" : "") + "</li>";
+    }).join("");
+    el.innerHTML =
+      "<p class='kicker' style='margin-top:.8rem'>Room " + G.mp.code + "</p>" +
+      "<ul class='lore'>" + rows + "</ul>" +
+      "<div class='modes'>" +
+        "<button class='btn' id='lobbyReady'>Ready</button>" +
+        (host ? "<button class='btn gold' id='lobbyStart'>Start match</button>" : "<span class='lore'>Waiting on the host.</span>") +
+      "</div>";
+    if ($("lobbyReady")) $("lobbyReady").onclick = function () {
+      GolfNet.send({ type: "ready", ready: true, name: G.save.name, golfer: G.save.golfer });
+    };
+    if ($("lobbyStart")) $("lobbyStart").onclick = function () {
+      GolfNet.send({ type: "start", seed: ((Date.now() ^ (Math.random() * 1e9)) >>> 0) });
+    };
+  }
 
   const $ = function (id) { return document.getElementById(id); };
   const canvas = $("fairway");
@@ -980,6 +1272,9 @@
       return;
     }
     abortShot();
+    if (mpOn() && G.matchSeed != null) {
+      G.rng = mulberry((G.matchSeed ^ ((G.hi + 1) * 9973)) >>> 0);
+    }
     G.hole = worldHole(src);
     G.ball = { x: G.hole.tee.x, y: G.hole.tee.y };
     G.marker = nextAim(G.hole, G.ball);
@@ -995,6 +1290,7 @@
       (G.hole.hint ? " — " + G.hole.hint : ""));
     view.user = 1;
     fitView({ reset: true });
+    paintMpHud();
     draw();
   }
 
@@ -1061,7 +1357,8 @@
         carry: G.flying ? 0 : intendedCarry(),
         wind: G.wind,
         trail: G.trail || [],
-        phase: G.flying && G.flying.phase
+        phase: G.flying && G.flying.phase,
+        ghosts: mpGhosts()
       });
       return;
     }
@@ -1457,6 +1754,25 @@
     c.beginPath();
     c.arc(bp.x, bp.y, r * 0.55, -0.4, 1.1);
     c.stroke();
+    if (mpOn()) {
+      mpGhosts().forEach(function (g) {
+        const gp = toScr(g);
+        c.fillStyle = g.mine ? "#5eead4" : "#fbbf24";
+        c.beginPath();
+        c.arc(gp.x, gp.y, 5, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = "#e8f5ec";
+        c.font = "600 10px Syne, sans-serif";
+        c.fillText(g.name || "", gp.x + 7, gp.y - 6);
+      });
+      if (G.mpRemote && G.mpRemote.marker && G.mp.turn !== G.mp.pid) {
+        const rm = toScr(G.mpRemote.marker);
+        c.strokeStyle = "rgba(251,191,36,.7)";
+        c.beginPath();
+        c.arc(rm.x, rm.y, 8, 0, Math.PI * 2);
+        c.stroke();
+      }
+    }
   }
 
   function renderHoleCard() {
@@ -1544,6 +1860,7 @@
 
   function shoot() {
     if (G.flying || G.mode === "menu" || !G.hole || !G.marker || !G.club) return;
+    if (mpOn() && !mpMyTurn()) { log("Wait your turn."); return; }
     const pin = G.hole.pin;
     const onG = lieAt(G.hole, G.ball) === "green";
     if (G.club.putt && !onG && dist(G.ball, pin) > 40) {
@@ -1560,6 +1877,21 @@
     if (onG && dist(from, pin) <= GIMME) {
       G.strokes += 1;
       G.ball = { x: pin.x, y: pin.y };
+      if (mpOn() && window.GolfNet) {
+        GolfNet.send({
+          type: "shot",
+          from: from,
+          dest: { x: pin.x, y: pin.y },
+          carry: { x: pin.x, y: pin.y },
+          rollPath: [from, { x: pin.x, y: pin.y }],
+          club: G.club.id,
+          power: G.power,
+          marker: G.marker,
+          holed: true,
+          strokes: G.strokes,
+          card: G.card.concat([{ hole: G.hi + 1, par: G.hole.par, strokes: G.strokes }])
+        });
+      }
       log("Tap-in. " + G.strokes + " · par " + G.hole.par);
       holeDone();
       return;
@@ -1567,6 +1899,30 @@
     const m = shotModel(true);
     if (!m) return;
     G.strokes += 1;
+    const endLie = lieAt(G.hole, m.dest);
+    const drop = endLie === "water" || endLie === "oob";
+    const willHole = !drop && (m.holed || dist(m.dest, pin) <= CUP || (lieAt(G.hole, m.dest) === "green" && dist(m.dest, pin) <= GIMME));
+    if (mpOn() && window.GolfNet) {
+      GolfNet.send({
+        type: "shot",
+        from: from,
+        dest: drop ? from : m.dest,
+        carry: m.carry,
+        rollPath: m.rollPath || [],
+        club: G.club.id,
+        power: G.power,
+        marker: G.marker,
+        blocked: m.blocked,
+        holed: willHole,
+        strokes: G.strokes + (drop ? 1 : 0),
+        landLie: endLie,
+        actual: m.actual,
+        roll: m.roll,
+        card: willHole ? G.card.concat([{
+          hole: G.hi + 1, par: G.hole.par, strokes: G.strokes + (drop ? 1 : 0)
+        }]) : (G.card || [])
+      });
+    }
     G.flying = { x: from.x, y: from.y, z: 0, phase: G.club.putt ? "roll" : "fly" };
     animateShot(from, m, function () {
       if (G.mode === "menu" || !G.hole) return;
@@ -1594,10 +1950,11 @@
     });
   }
 
-  function animateShot(from, model, done) {
+  function animateShot(from, model, done, club) {
+    club = club || G.club;
     const carry = model.carry || model.dest;
     const rest = model.dest;
-    const putt = !!(G.club && G.club.putt);
+    const putt = !!(club && club.putt);
     const blocked = !!model.blocked;
     const landLie = model.landLie || lieAt(G.hole, carry);
     const rollPts = (model.rollPath && model.rollPath.length > 1)
@@ -1696,6 +2053,18 @@
     const prev = G.save.bestHole[key];
     if (prev == null || G.strokes < prev) G.save.bestHole[key] = G.strokes;
     writeSave(G.save);
+    if (mpOn()) {
+      log("Cup. " + G.strokes + " · waiting on the field…");
+      paintMpHud();
+      draw();
+      if (G.mpPending) {
+        const pend = G.mpPending;
+        G.mpPending = null;
+        if (pend.kind === "next") mpNextHole(pend.msg);
+        else if (pend.kind === "over") mpRoundOver(pend.msg);
+      }
+      return;
+    }
     G.hi += 1;
     if (G.mode === "endless") {
       G.save.endlessHoles = (G.save.endlessHoles || 0) + 1;
@@ -2180,11 +2549,13 @@
     });
   }
 
-  function startRound(mode, course, campaign) {
+  function startRound(mode, course, campaign, opts) {
+    opts = opts || {};
     G.mode = mode;
     G.course = course || null;
     G.campaign = campaign || 0;
-    G.rng = mulberry((Date.now() ^ (Math.random() * 1e9)) >>> 0);
+    G.matchSeed = opts.seed != null ? (opts.seed >>> 0) : ((Date.now() ^ (Math.random() * 1e9)) >>> 0);
+    G.rng = mulberry(G.matchSeed);
     G.card = [];
     G.log = [];
     G.hi = 0;
@@ -2282,6 +2653,8 @@
   }
 
   function menu() {
+    if (mpOn() && window.GolfNet) GolfNet.send({ type: "leave" });
+    G.mp = null;
     G.mode = "menu";
     abortShot();
     paintEndBtn();
@@ -2318,6 +2691,7 @@
             "<button type='button' class='mode-card' data-go='star'><b>Singularity Nine</b><span>" + STAR.lore + "</span></button>" +
             "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End walk to post the card.</span></button>" +
+            "<button type='button' class='mode-card' data-go='live'><b>Live match</b><span>Lobby, room code, take turns on the same island. Watch their ball, then hit yours.</span></button>" +
             "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public rounds. Names and totals only.</span></a>" +
           "</div>" +
@@ -2349,6 +2723,7 @@
       if (go === "18") startRound("18");
       if (go === "endless") startRound("endless");
       if (go === "campaign") startCampaign();
+      if (go === "live") liveLobby();
     };
     const mr = $("menuRadio");
     if (mr) {
@@ -2380,7 +2755,8 @@
       "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>The hole is a 2.5D course. Click the ground to plant the marker. Gold ring is club carry. Violet pip is the wind landing. Red means trees stop the flight.</li>" +
-      "<li>Scroll or +/− zooms the course. Right-drag orbits. Shift-drag or middle-drag pans. R or double-click fits the hole. Z undoes. M is a mulligan. Esc opens the menu.</li></ol>" +
+      "<li>Scroll or +/− zooms the course. Right-drag orbits. Shift-drag or middle-drag pans. R or double-click fits the hole. Z undoes. M is a mulligan. Esc opens the menu.</li>" +
+      "<li><b>Live match:</b> create a room, share the code. Two to four golfers take turns on the same hole. You watch their shot, then you hit. Undo and mulligan are off.</li></ol>" +
       "<button class='btn gold' id='hk'>Back to the tee</button>"
     );
     $("hk").onclick = hideOverlay;
@@ -2404,6 +2780,7 @@
 
   canvas.addEventListener("pointerdown", function (e) {
     if (!G.hole || G.flying) return;
+    if (mpOn() && !mpMyTurn()) return;
     if (e.button !== 0 || e.shiftKey || e.altKey) return;
     const r = canvas.getBoundingClientRect();
     if (use3d && window.Golf3D) {
@@ -2416,6 +2793,9 @@
     autoClub();
     renderHoleCard();
     draw();
+    if (mpOn() && window.GolfNet && mpMyTurn() && G.marker) {
+      GolfNet.send({ type: "aim", marker: G.marker, club: G.club && G.club.id, power: G.power });
+    }
   });
 
   document.addEventListener("click", function (e) {
@@ -2453,6 +2833,7 @@
 
   $("btnShoot").onclick = shoot;
   $("btnUndo").onclick = function () {
+    if (mpOn()) { log("No undo in a live match."); return; }
     if (!G.undo || G.flying) return;
     G.ball = { x: G.undo.ball.x, y: G.undo.ball.y };
     G.marker = G.undo.marker ? { x: G.undo.marker.x, y: G.undo.marker.y } : nextAim(G.hole, G.ball);
@@ -2469,6 +2850,7 @@
   };
   function useMulligan() {
     if (G.flying || !G.hole || G.mode === "menu") return;
+    if (mpOn()) { log("No mulligan in a live match."); return; }
     if (G.mulligans < 1) {
       log("No mulligans left.");
       return;
@@ -2570,4 +2952,9 @@
 
   $("boot").classList.add("hidden");
   menu();
+  mpBindNet();
+  try {
+    const roomQ = (location.search.match(/[?&]room=([A-Za-z0-9]+)/) || [])[1];
+    if (roomQ) liveLobby();
+  } catch (e) {}
 })();

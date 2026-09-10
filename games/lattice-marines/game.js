@@ -30,6 +30,7 @@
     city: "b-city.png", warhall: "b-warhall.png", bastion: "b-bastion.png",
     mint: "b-mint.png", depot: "b-depot.png", grid: "b-grid.png",
     marine: "u-marine.png", scout: "u-scout.png", tank: "u-tank.png", jet: "u-jet.png",
+    drone: "u-drone.png", hover: "u-hover.png", arty: "u-arty.png",
     missile: "fx-missile.png", boom: "fx-boom.png"
   };
 
@@ -53,9 +54,9 @@
     grid:    { name: "Grid Forum", cost: 0, people: 50, hp: 70, pwr: 1, cat: "population", spr: "grid",
                desc: "Aura 3: Energy Plants inside yield +50% power. Stacks." },
     factory: { name: "Factory", cost: 200, hp: 110, pwr: 1, cat: "production", spr: "factory",
-               desc: "Train Marines and scouts on adjacent tiles." },
+               desc: "Train Marines, scouts, and recon drones on adjacent tiles." },
     hangar:  { name: "Marine Hangar", cost: 240, hp: 120, pwr: 1, cat: "production", spr: "hangar",
-               desc: "One living sortie at a time. Rearms one full turn after that unit dies. Missiles still cycle every turn from silos." },
+               desc: "One living sortie at a time — marine, tank, jet, hovercraft, or howitzer. Rearms one full turn after that unit dies." },
     pad:     { name: "Reclaim Pad", cost: 50, hp: 45, pwr: 0, cat: "core", spr: "pad",
                desc: "50c floating deck. Drops on water, turns it into a buildable surface, and hops command range by 2. Build another structure on it to occupy the deck." },
     relay:   { name: "Command Relay", cost: 160, hp: 70, pwr: 1, cat: "core", spr: "emp",
@@ -67,7 +68,7 @@
     gun:     { name: "Gun Pod", cost: 100, hp: 95, pwr: 0, cat: "defense", spr: "gun",
                desc: "Auto-fires on nearby ground units. Slightly stronger than a Lattice Marine." },
     aa:      { name: "AA Launcher", cost: 160, hp: 75, pwr: 1, cat: "defense", spr: "aa",
-               desc: "Intercepts missiles, drops, and jets that fall inside its range (7+Mk, +2 on hills)." },
+               desc: "Intercepts missiles, drops, and air units. Also shoots grounded jets/drones in range (7+Mk, +2 on hills)." },
     mine:    { name: "Minefield", cost: 55, hp: 28, pwr: 0, cat: "defense", spr: "mine",
                desc: "Damages the first ground unit that steps in." },
     shield:  { name: "Shield Generator", cost: 280, hp: 80, pwr: 1, cat: "defense", spr: "shield", unlock: "shield",
@@ -83,8 +84,8 @@
   };
 
   const WPN = {
-    probe:     { name: "Probe shot", cost: 25, fuel: 0, dmg: 0, r: 0, reveal: 1,
-                 desc: "Battleship ping — fog lifts when the ping lands. 3×3. Limited: 2 + radars per salvo." },
+    probe:     { name: "Probe shot", cost: 28, fuel: 0, dmg: 0, r: 0, reveal: 2,
+                 desc: "Battleship ping — fog lifts when the ping lands. 5×5. Limited: 2 + radars per salvo." },
     missile:   { name: "Cruise missile", cost: 90, fuel: 2, dmg: 52, r: 1, need: "silo",
                  desc: "One shot per live Missile Silo." },
     icbm:      { name: "ICBM", cost: 190, fuel: 6, dmg: 135, r: 2, need: "icbm",
@@ -95,6 +96,14 @@
                  desc: "Hangar stays busy until that tank dies, then one full turn to rearm." },
     scout:     { name: "Scout run", cost: 55, fuel: 2, need: "factory", spawn: "scout", unlock: "scout",
                  desc: "Factory stays busy until that scout dies, then one full turn to rearm." },
+    dronedrop: { name: "Drone run", cost: 40, fuel: 1, need: "factory", spawn: "drone", unlock: "drone",
+                 desc: "Cheap recon. Factory stays busy until the drone dies. Flies water, vision 4." },
+    hoverdrop: { name: "Hover drop", cost: 120, fuel: 3, need: "hangar", spawn: "hover", unlock: "hover",
+                 desc: "Amphibious hull — water costs nothing. Hangar occupied until it dies." },
+    jetdrop:   { name: "Jet sortie", cost: 165, fuel: 4, need: "hangar", spawn: "jet", unlock: "jet",
+                 desc: "Fast air unit. AA can intercept the drop and later shoot the jet." },
+    artydrop:  { name: "Howitzer drop", cost: 145, fuel: 4, need: "hangar", spawn: "arty", unlock: "arty",
+                 desc: "Long-range gun. Slow on the ground. Hangar occupied until it dies." },
     airstrike: { name: "Airstrike", cost: 170, fuel: 4, dmg: 78, r: 1, need: "hangar", unlock: "airstrike",
                  desc: "Uses a free hangar. Rearms one full turn later. AA can intercept." },
     emp:       { name: "EMP pulse", cost: 85, fuel: 2, need: "emp", emp: true, unlock: "emp",
@@ -105,9 +114,16 @@
 
   const UNIT = {
     marine: { name: "Lattice Marine", hp: 42, dmg: 14, mdmg: 20, range: 1, move: 1, vision: 2 },
-    scout:  { name: "Scout", hp: 24, dmg: 0, mdmg: 0, range: 0, move: 2, vision: 2 },
-    tank:   { name: "Tank", hp: 95, dmg: 30, mdmg: 22, range: 2, move: 1, vision: 1 }
+    scout:  { name: "Scout", hp: 24, dmg: 0, mdmg: 0, range: 0, move: 2, vision: 3 },
+    tank:   { name: "Tank", hp: 95, dmg: 30, mdmg: 22, range: 2, move: 1, vision: 1 },
+    drone:  { name: "Recon Drone", hp: 18, dmg: 6, mdmg: 6, range: 1, move: 3, vision: 4, air: true },
+    hover:  { name: "Hovercraft", hp: 62, dmg: 18, mdmg: 16, range: 1, move: 2, vision: 2, amphib: true },
+    jet:    { name: "Strike Jet", hp: 55, dmg: 26, mdmg: 16, range: 2, move: 3, vision: 3, air: true },
+    arty:   { name: "Howitzer", hp: 50, dmg: 34, mdmg: 10, range: 3, move: 1, vision: 2 }
   };
+  const UNIT_COST = { marine: 70, scout: 50, tank: 140, drone: 45, hover: 125, jet: 175, arty: 155 };
+  const UNIT_PAD = { marine: "factory", scout: "factory", drone: "factory", tank: "hangar", hover: "hangar", jet: "hangar", arty: "hangar" };
+  const AIR_SHOTS = ["missile", "icbm", "airstrike", "drop", "tankdrop", "jetdrop", "hoverdrop", "artydrop", "dronedrop"];
 
   const PROFILES = ["Aggressor", "Turtle", "Economist", "Intelligence"];
   const DIFF = {
@@ -339,13 +355,27 @@
     const ry = (my - cam.y) / cam.z;
     const x = (rx / (TW / 2) + ry / (TH / 2)) / 2;
     const y = (ry / (TH / 2) - rx / (TW / 2)) / 2;
-    return { x: Math.round(x), y: Math.round(y) };
+    const cx = Math.round(x), cy = Math.round(y);
+    if (!S) return { x: cx, y: cy };
+    let best = { x: cx, y: cy }, bk = -1e9;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const tx = cx + dx, ty = cy + dy;
+      if (!inB(tx, ty)) continue;
+      const p = isoTop(tx, ty);
+      const nx = (mx - p.sx) / ((TW / 2) * cam.z);
+      const ny = (my - p.sy) / ((TH / 2) * cam.z);
+      if (Math.abs(nx) + Math.abs(ny) > 1.12) continue;
+      const k = tx + ty + tileLiftAmt(visTerr(tx, ty), tx, ty) * 0.02;
+      if (k >= bk) { bk = k; best = { x: tx, y: ty }; }
+    }
+    return best;
   }
 
   function genMap(seed) {
     const sid = seed >>> 0;
     const R = rng(sid);
     const tiles = Array.from({ length: MAP }, () => Array(MAP).fill("water"));
+    const elev = Array.from({ length: MAP }, () => Array(MAP).fill(0));
     const n2 = (x, y, salt) => {
       let n = sid;
       n = Math.imul(n ^ Math.imul(x + 19, 374761393), 2246822519);
@@ -364,14 +394,16 @@
       return n00 + (n10 - n00) * u + (n01 - n00) * v + (n00 - n10 - n01 + n11) * u * v;
     };
     const fbm = (x, y, salt, cell) =>
-      vnoise(x, y, salt, cell) * 0.52
-      + vnoise(x + 3.1, y - 1.7, salt + 19, cell * 0.5) * 0.32
-      + vnoise(x * 1.1, y * 0.9, salt + 41, cell * 0.25) * 0.16;
+      vnoise(x, y, salt, cell) * 0.48
+      + vnoise(x + 3.1, y - 1.7, salt + 19, cell * 0.5) * 0.3
+      + vnoise(x * 1.1, y * 0.9, salt + 41, cell * 0.25) * 0.15
+      + vnoise(x * 0.7, y * 1.3, salt + 73, cell * 0.125) * 0.07;
     const stamp = (cx, cy, rad, warp) => {
       if (rad < 1.5) rad = 1.5;
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
         const w = (n2(x, y, (cx * 13 + cy * 7) | 0) - 0.5) * warp * rad;
-        if (Math.hypot(x - cx, y - cy) < rad + w) tiles[y][x] = "plains";
+        const w2 = (fbm(x, y, 330, Math.max(4, rad * 0.45)) - 0.5) * rad * 0.22;
+        if (Math.hypot(x - cx, y - cy) < rad + w + w2) tiles[y][x] = "plains";
       }
     };
     const stampKind = (cx, cy, rx, ry, ang, kind, warp) => {
@@ -387,55 +419,89 @@
         if (lx * lx + ly * ly < 1 + w) tiles[y][x] = kind;
       }
     };
-    const STYLES = ["continent", "twin isles", "peninsula", "archipelago", "bay"];
+    const STYLES = ["continent", "twin isles", "peninsula", "archipelago", "bay", "caldera"];
     const fillHalf = (south) => {
       const y0 = south ? MAP / 2 : 0;
       const y1 = south ? MAP : MAP / 2;
-      const style = (R() * 5) | 0;
+      const style = (R() * 6) | 0;
       const cx = 3 + R() * (MAP - 6);
       const cy = y0 + 3 + R() * Math.max(3, y1 - y0 - 6);
       if (style === 0) {
-        stamp(cx, cy, MAP * (0.18 + R() * 0.16), 0.42);
+        stamp(cx, cy, MAP * (0.2 + R() * 0.16), 0.48);
+        if (R() > 0.45) stamp(cx + (R() - 0.5) * MAP * 0.12, cy + (R() - 0.5) * MAP * 0.08, MAP * (0.08 + R() * 0.06), 0.4);
       } else if (style === 1) {
-        stamp(cx - MAP * (0.08 + R() * 0.08), cy, MAP * (0.1 + R() * 0.08), 0.4);
-        stamp(cx + MAP * (0.08 + R() * 0.1), cy + (south ? -1 : 1) * MAP * 0.05, MAP * (0.09 + R() * 0.08), 0.4);
+        stamp(cx - MAP * (0.08 + R() * 0.08), cy, MAP * (0.11 + R() * 0.08), 0.44);
+        stamp(cx + MAP * (0.08 + R() * 0.1), cy + (south ? -1 : 1) * MAP * 0.05, MAP * (0.1 + R() * 0.08), 0.44);
       } else if (style === 2) {
         const ang = R() * Math.PI * 2;
-        const n = 3 + ((R() * 4) | 0);
+        const n = 4 + ((R() * 4) | 0);
         for (let i = 0; i < n; i++) {
-          stamp(cx + Math.cos(ang) * i * MAP * 0.055, cy + Math.sin(ang) * i * MAP * 0.05, MAP * (0.07 + R() * 0.05), 0.45);
+          stamp(cx + Math.cos(ang) * i * MAP * 0.055, cy + Math.sin(ang) * i * MAP * 0.05, MAP * (0.065 + R() * 0.05), 0.5);
         }
       } else if (style === 3) {
-        const n = 4 + ((R() * 5) | 0);
+        const n = 5 + ((R() * 5) | 0);
         for (let i = 0; i < n; i++) {
-          stamp(2 + R() * (MAP - 4), y0 + 2 + R() * Math.max(2, y1 - y0 - 4), MAP * (0.05 + R() * 0.055), 0.32);
+          stamp(2 + R() * (MAP - 4), y0 + 2 + R() * Math.max(2, y1 - y0 - 4), MAP * (0.055 + R() * 0.06), 0.36);
+        }
+      } else if (style === 4) {
+        stamp(cx, cy, MAP * (0.24 + R() * 0.1), 0.58);
+        const bay = 2 + ((R() * 2) | 0);
+        for (let i = 0; i < bay; i++) {
+          stampKind(cx + (R() - 0.5) * MAP * 0.22, cy + (R() - 0.5) * MAP * 0.16, MAP * (0.05 + R() * 0.055), MAP * (0.028 + R() * 0.04), R() * Math.PI, "water", 0.34);
         }
       } else {
-        stamp(cx, cy, MAP * (0.22 + R() * 0.1), 0.55);
-        const bay = 1 + ((R() * 2) | 0);
-        for (let i = 0; i < bay; i++) {
-          stampKind(cx + (R() - 0.5) * MAP * 0.2, cy + (R() - 0.5) * MAP * 0.15, MAP * (0.045 + R() * 0.05), MAP * (0.03 + R() * 0.04), R() * Math.PI, "water", 0.3);
-        }
+        stamp(cx, cy, MAP * (0.2 + R() * 0.1), 0.4);
+        stampKind(cx, cy, MAP * (0.07 + R() * 0.05), MAP * (0.055 + R() * 0.04), R() * Math.PI, "water", 0.25);
       }
       let n = 0;
       for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) if (tiles[y][x] !== "water") n++;
-      if (n < MAP * 1.6) stamp(cx, cy, MAP * 0.18, 0.28);
+      if (n < MAP * 1.8) stamp(cx, cy, MAP * 0.2, 0.3);
       return STYLES[style];
     };
     const noteS = fillHalf(true);
     const noteN = fillHalf(false);
 
-    const cellE = Math.max(5, MAP * 0.17);
-    const cellM = Math.max(5, MAP * 0.15);
-    const cellH = Math.max(5, MAP * 0.2);
+    const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+    const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const neighN = (x, y, kind) => {
+      let n = 0;
+      for (const [dx, dy] of N8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < MAP && ny < MAP && tiles[ny][nx] === kind) n++;
+      }
+      return n;
+    };
+    const neighLand = (x, y) => {
+      let n = 0;
+      for (const [dx, dy] of N8) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && ny >= 0 && nx < MAP && ny < MAP && tiles[ny][nx] !== "water") n++;
+      }
+      return n;
+    };
+    const coastSmooth = () => {
+      const next = tiles.map((row) => row.slice());
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        const land = neighLand(x, y);
+        if (tiles[y][x] === "water" && land >= 5) next[y][x] = "plains";
+        else if (tiles[y][x] !== "water" && land <= 2) next[y][x] = "water";
+      }
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) tiles[y][x] = next[y][x];
+    };
+    coastSmooth();
+    coastSmooth();
+
+    const cellE = Math.max(5, MAP * 0.16);
+    const cellM = Math.max(5, MAP * 0.14);
+    const cellH = Math.max(5, MAP * 0.19);
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
       if (tiles[y][x] === "water") continue;
-      const elev = fbm(x, y, 901, cellE);
+      const e = fbm(x, y, 901, cellE);
       const moist = fbm(x + 8, y - 4, 911, cellM);
       const heat = fbm(x - 6, y + 5, 921, cellH);
-      if (elev > 0.61) tiles[y][x] = "hills";
-      else if (moist > 0.57 && heat < 0.7) tiles[y][x] = "forest";
-      else if (heat > 0.6 && moist < 0.45) tiles[y][x] = "desert";
+      if (e > 0.63) tiles[y][x] = "hills";
+      else if (moist > 0.56 && heat < 0.68 && e > 0.32) tiles[y][x] = "forest";
+      else if (heat > 0.62 && moist < 0.44) tiles[y][x] = "desert";
       else tiles[y][x] = "plains";
     }
 
@@ -446,21 +512,21 @@
         x: 2 + R() * (MAP - 4),
         y: y0 + 2 + R() * Math.max(2, y1 - y0 - 4)
       });
-      const ridges = 1 + ((R() * 2) | 0);
+      const ridges = 2 + ((R() * 2) | 0);
       for (let i = 0; i < ridges; i++) {
         const p = pick();
-        stampKind(p.x, p.y, MAP * (0.055 + R() * 0.08), MAP * (0.022 + R() * 0.03), R() * Math.PI, "hills", 0.38);
+        stampKind(p.x, p.y, MAP * (0.07 + R() * 0.09), MAP * (0.02 + R() * 0.028), R() * Math.PI, "hills", 0.4);
       }
       const groves = 2 + ((R() * 3) | 0);
       for (let i = 0; i < groves; i++) {
         const p = pick();
-        const r = MAP * (0.045 + R() * 0.07);
-        stampKind(p.x, p.y, r, r * (0.7 + R() * 0.4), R() * Math.PI, "forest", 0.4);
+        const r = MAP * (0.05 + R() * 0.07);
+        stampKind(p.x, p.y, r, r * (0.7 + R() * 0.4), R() * Math.PI, "forest", 0.42);
       }
       const basins = 1 + ((R() * 2) | 0);
       for (let i = 0; i < basins; i++) {
         const p = pick();
-        const r = MAP * (0.05 + R() * 0.08);
+        const r = MAP * (0.055 + R() * 0.08);
         stampKind(p.x, p.y, r, r * (0.65 + R() * 0.4), R() * Math.PI, "desert", 0.35);
       }
       const ruins = 1 + ((R() * 2) | 0);
@@ -468,23 +534,14 @@
         const p = pick();
         stampKind(p.x, p.y, 2.2 + R() * 3.5, 1.8 + R() * 2.8, R() * Math.PI, "ruins", 0.25);
       }
-      if (R() > 0.35) {
+      if (R() > 0.28) {
         const p = pick();
-        stampKind(p.x, p.y, MAP * (0.03 + R() * 0.04), MAP * (0.022 + R() * 0.03), R() * Math.PI, "water", 0.28);
+        stampKind(p.x, p.y, MAP * (0.035 + R() * 0.045), MAP * (0.022 + R() * 0.03), R() * Math.PI, "water", 0.3);
       }
     };
     paintHalf(true);
     paintHalf(false);
 
-    const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-    const neighN = (x, y, kind) => {
-      let n = 0;
-      for (const [dx, dy] of N8) {
-        const nx = x + dx, ny = y + dy;
-        if (nx >= 0 && ny >= 0 && nx < MAP && ny < MAP && tiles[ny][nx] === kind) n++;
-      }
-      return n;
-    };
     const grow = (kind, need) => {
       const next = tiles.map((row) => row.slice());
       for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
@@ -534,6 +591,33 @@
     despock();
     despock();
 
+    const distW = Array.from({ length: MAP }, () => Array(MAP).fill(99));
+    const q = [];
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (tiles[y][x] === "water") { distW[y][x] = 0; q.push(x, y); }
+    }
+    for (let i = 0; i < q.length; i += 2) {
+      const x = q[i], y = q[i + 1], d = distW[y][x];
+      for (const [dx, dy] of N4) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= MAP || ny >= MAP) continue;
+        if (distW[ny][nx] > d + 1) { distW[ny][nx] = d + 1; q.push(nx, ny); }
+      }
+    }
+    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+      if (tiles[y][x] === "water") { elev[y][x] = 0; continue; }
+      const d = distW[y][x];
+      if (d <= 1 && tiles[y][x] !== "ruins") tiles[y][x] = "plains";
+      const e = fbm(x, y, 901, cellE);
+      let h = 1;
+      if (tiles[y][x] === "hills") h = 3 + (e > 0.72 ? 2 : e > 0.55 ? 1 : 0);
+      else if (tiles[y][x] === "forest") h = 2 + (e > 0.6 ? 1 : 0);
+      else if (tiles[y][x] === "ruins") h = 2;
+      else if (tiles[y][x] === "desert") h = d <= 2 ? 1 : 1 + (e > 0.58 ? 1 : 0);
+      else h = d <= 1 ? 1 : (d >= 6 && e > 0.5 ? 2 : 1);
+      elev[y][x] = h;
+    }
+
     for (const south of [true, false]) {
       const y0 = south ? MAP / 2 : 0;
       const y1 = south ? MAP : MAP / 2;
@@ -543,11 +627,14 @@
       }
       if (open < MAP * 1.2) {
         for (let y = y0; y < y1; y++) for (let x = 0; x < MAP; x++) {
-          if (tiles[y][x] === "forest" && neighN(x, y, "plains") >= 2) tiles[y][x] = "plains";
+          if (tiles[y][x] === "forest" && neighN(x, y, "plains") >= 2) {
+            tiles[y][x] = "plains";
+            elev[y][x] = Math.max(1, elev[y][x] - 1);
+          }
         }
       }
     }
-    return { tiles, note: `south ${noteS} / north ${noteN}` };
+    return { tiles, elev, note: `south ${noteS} / north ${noteN}` };
   }
 
   function onHome(owner, x, y) {
@@ -606,7 +693,7 @@
     return !!persist.unlocks[key] || persist.wins >= unlockWins(key);
   }
   function unlockWins(k) {
-    return { scout: 1, tank: 2, shield: 2, icbm: 3, emp: 4, airstrike: 5, sat: 6 }[k] || 0;
+    return { scout: 1, drone: 0, tank: 2, shield: 2, hover: 3, icbm: 3, arty: 4, emp: 4, airstrike: 5, jet: 5, sat: 6 }[k] || 0;
   }
 
   function newMatch(opts) {
@@ -622,6 +709,7 @@
     S = {
       seed, R, mapN: MAP, mapNote: generated.note,
       tiles: generated.tiles,
+      elev: generated.elev,
       buildings: [],
       units: [],
       fog: [grid(false), grid(false)],
@@ -701,7 +789,7 @@
   function spawnU(type, owner, x, y) {
     const def = UNIT[type];
     const u = { id: S.uid++, type, owner, x, y, hp: def.hp, max: def.hp, vet: 0, portage: 0 };
-    if (inB(x, y) && S.tiles[y][x] === "water") u.portage = 3;
+    if (inB(x, y) && S.tiles[y][x] === "water" && !def.air && !def.amphib) u.portage = 3;
     S.units.push(u);
     return u;
   }
@@ -712,13 +800,21 @@
       const tx = x + dx, ty = y + dy;
       if (!inB(tx, ty)) continue;
       if (opts && opts.disc && Math.hypot(dx, dy) > r + 0.15) continue;
-      if (opts && opts.radar && S.tiles[ty][tx] === "forest") continue;
+      if (opts && opts.radar && S.tiles[ty][tx] === "forest") {
+        let dense = 0;
+        for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          const fx = tx + ox, fy = ty + oy;
+          if (inB(fx, fy) && S.tiles[fy][fx] === "forest") dense++;
+        }
+        if (dense >= 5) continue;
+      }
       S.fog[viewer][ty][tx] = true;
-      S.fogAge[viewer][ty][tx] = S.turn + 4 + (cmdrFor(viewer).fogAge || 0);
+      S.fogAge[viewer][ty][tx] = S.turn + 5 + (cmdrFor(viewer).fogAge || 0);
       const b = buildingAt(tx, ty);
       const u = unitAt(tx, ty);
       S.lastSeen[viewer][ty][tx] = {
         terr: S.tiles[ty][tx],
+        elev: S.elev ? S.elev[ty][tx] : 0,
         b: b && b.owner !== viewer ? { type: b.fake ? "hq" : b.type, hp: b.hp } : null,
         u: u && u.owner !== viewer ? { type: u.type } : null
       };
@@ -961,16 +1057,23 @@
 
   function tryTrain(b, utype) {
     if (!b || (b.type !== "factory" && b.type !== "hangar")) return;
-    if (utype === "scout" && !unlocked("scout")) { if (b.owner === me()) toast("Scout locked."); return; }
-    if (utype === "tank" && !unlocked("tank")) { if (b.owner === me()) toast("Tank locked."); return; }
-    const cost = utype === "tank" ? 140 : utype === "scout" ? 50 : 70;
+    const def = UNIT[utype];
+    if (!def) return;
+    const pad = UNIT_PAD[utype];
+    if (pad && b.type !== pad && !(utype === "marine" && (b.type === "factory" || b.type === "hangar"))) {
+      if (b.owner === me()) toast("Train that kit from a " + BLD[pad].name + ".");
+      return;
+    }
+    if (utype !== "marine" && !unlocked(utype)) { if (b.owner === me()) toast(def.name + " locked."); return; }
+    const cost = UNIT_COST[utype] || 70;
     if (S.players[b.owner].credits < cost) { if (b.owner === me()) toast("Need credits."); return; }
-    const n = neighbors(b.x, b.y).find((t) => inB(t.x, t.y) && S.tiles[t.y][t.x] !== "water" && !occupied(t.x, t.y));
+    const wetOk = def.air || def.amphib;
+    const n = neighbors(b.x, b.y).find((t) => inB(t.x, t.y) && (wetOk || S.tiles[t.y][t.x] !== "water") && !occupied(t.x, t.y));
     if (!n) { if (b.owner === me()) toast("No free adjacent tile."); return; }
     pay(b.owner, cost, 0);
     const nu = spawnU(utype, b.owner, n.x, n.y);
     unitLook(nu);
-    log(`Trained ${UNIT[utype].name}.`);
+    log(`Trained ${def.name}.`);
   }
 
   function neighbors(x, y) {
@@ -980,9 +1083,9 @@
   function launcherOf(kind) {
     if (kind === "missile") return "silo";
     if (kind === "icbm") return "icbm";
-    if (kind === "drop" || kind === "tankdrop" || kind === "airstrike") return "hangar";
+    if (kind === "drop" || kind === "tankdrop" || kind === "airstrike" || kind === "jetdrop" || kind === "hoverdrop" || kind === "artydrop") return "hangar";
     if (kind === "emp") return "emp";
-    if (kind === "scout") return "factory";
+    if (kind === "scout" || kind === "dronedrop") return "factory";
     return null;
   }
   function padReady(b) {
@@ -1004,7 +1107,7 @@
   function markSortie(q, unit) {
     const pad = q.pad && S.buildings.find((b) => b.id === q.pad);
     if (!pad) return;
-    const occupy = q.kind === "drop" || q.kind === "tankdrop" || q.kind === "scout";
+    const occupy = ["drop", "tankdrop", "scout", "dronedrop", "hoverdrop", "jetdrop", "artydrop"].includes(q.kind);
     if (occupy && unit && unit.hp > 0) {
       pad.boundUid = unit.id;
       unit.fromPad = pad.id;
@@ -1210,7 +1313,7 @@
   function rollIntercept(q) {
     const w = WPN[q.kind];
     if (!w) return null;
-    const air = ["missile", "icbm", "airstrike", "drop", "tankdrop"].includes(q.kind);
+    const air = AIR_SHOTS.includes(q.kind);
     if (!air) return null;
     const defender = 1 - q.owner;
     const batteries = aaCovering(defender, q.x, q.y);
@@ -1224,7 +1327,8 @@
     let kindMul = 1;
     if (q.kind === "icbm") kindMul = 0.48;
     else if (q.kind === "airstrike") kindMul = 0.82;
-    else if (q.kind === "drop" || q.kind === "tankdrop") kindMul = 0.62;
+    else if (q.kind === "drop" || q.kind === "tankdrop" || q.kind === "hoverdrop" || q.kind === "artydrop") kindMul = 0.62;
+    else if (q.kind === "jetdrop" || q.kind === "dronedrop") kindMul = 0.78;
     else if (q.kind === "missile") kindMul = 1;
     for (const b of batteries) {
       if (b.shotThis) continue;
@@ -1249,7 +1353,7 @@
     const hx = intercepted ? from.x + (q.x - from.x) * 0.68 : q.x;
     const hy = intercepted ? from.y + (q.y - from.y) * 0.68 : q.y;
     S.fx.push({
-      kind: q.kind === "airstrike" ? "jet" : q.kind === "drop" || q.kind === "tankdrop" || q.kind === "scout" ? "drop" : "missile",
+      kind: (q.kind === "airstrike" || q.kind === "jetdrop" || q.kind === "dronedrop") ? "jet" : (WPN[q.kind] && WPN[q.kind].spawn) ? "drop" : "missile",
       x0: from.x, y0: from.y, x1: hx, y1: hy, life: fly, max: fly,
       onEnd: () => resolveImpact(q, intercepted, hx, hy)
     });
@@ -1281,7 +1385,7 @@
     if (w.spawn) {
       let dropped = null;
       const mine = buildingAt(q.x, q.y);
-      if (mine && mine.type === "mine" && mine.owner !== q.owner) {
+      if (mine && mine.type === "mine" && mine.owner !== q.owner && !(UNIT[w.spawn] && UNIT[w.spawn].air)) {
         dropped = spawnU(w.spawn, q.owner, q.x, q.y);
         hurtU(dropped, 40, mine.owner);
         mine.hp = 0;
@@ -1299,7 +1403,7 @@
       } else dropped = spawnU(w.spawn, q.owner, q.x, q.y);
       if (dropped && dropped.portage) log(`${UNIT[dropped.type].name} portaging — 3 turns on that water tile.`);
       if (dropped && dropped.hp > 0) unitLook(dropped);
-      else reveal(q.owner, q.x, q.y, w.spawn === "scout" ? 3 : 2);
+      else reveal(q.owner, q.x, q.y, (UNIT[w.spawn] && UNIT[w.spawn].vision) || 2);
       markSortie(q, dropped && dropped.hp > 0 ? dropped : null);
       boom(q.x, q.y);
       return;
@@ -1313,7 +1417,7 @@
       }
       applySplash(q.owner, q.x, q.y, dmg, w.r || 0);
     }
-    reveal(q.owner, q.x, q.y, 1 + (w.r || 0) + (cmdrFor(q.owner).reveal || 0));
+    reveal(q.owner, q.x, q.y, (w.reveal != null ? w.reveal : 1) + (w.r || 0) + (cmdrFor(q.owner).reveal || 0));
     if (q.kind === "airstrike") markSortie(q, null);
     boom(q.x, q.y);
   }
@@ -1375,6 +1479,9 @@
   }
   function hurtU(u, dmg, attacker) {
     dmg = Math.round(dmg * defenseTaken(u.owner, u.x, u.y));
+    if (inB(u.x, u.y) && S.tiles[u.y][u.x] === "forest" && !(UNIT[u.type] && UNIT[u.type].air)) {
+      dmg = Math.max(1, Math.round(dmg * 0.82));
+    }
     u.hp -= dmg;
     if (u.hp <= 0) {
       u.hp = 0;
@@ -1400,6 +1507,16 @@
       S.fx.push({ kind: "muzzle", x: g.x, y: g.y, life: 5, max: 5 });
       S.fx.push({ kind: "flash", x: tgt.x, y: tgt.y, life: 8, max: 8 });
     }
+    for (const g of S.buildings.filter((b) => b.type === "aa" && b.hp > 0 && !b.offline && !b.wrecked)) {
+      const foes = S.units.filter((u) => u.owner !== g.owner && u.hp > 0 && UNIT[u.type] && UNIT[u.type].air && cheb(g, u.x, u.y) <= (7 + g.lvl + (S.tiles[g.y][g.x] === "hills" ? 2 : 0) + (cmdrFor(g.owner).aaRange || 0)));
+      if (!foes.length) continue;
+      foes.sort((a, b) => dist(a, g) - dist(b, g));
+      const tgt = foes[0];
+      hurtU(tgt, Math.round((18 + (g.lvl - 1) * 4) * auraMul(g.owner, g.x, g.y, "bastion")), g.owner);
+      S.fx.push({ kind: "tracer", x0: g.x, y0: g.y, x1: tgt.x, y1: tgt.y, life: 7, max: 7, hue: "#fbbf24" });
+      S.fx.push({ kind: "muzzle", x: g.x, y: g.y, life: 5, max: 5 });
+      S.fx.push({ kind: "flash", x: tgt.x, y: tgt.y, life: 8, max: 8 });
+    }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       unitLook(u);
       const def = UNIT[u.type];
@@ -1421,7 +1538,7 @@
     }
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const mine = buildingAt(u.x, u.y);
-      if (mine && mine.type === "mine" && mine.owner !== u.owner && !mine.wrecked) {
+      if (mine && mine.type === "mine" && mine.owner !== u.owner && !mine.wrecked && !(UNIT[u.type] && UNIT[u.type].air)) {
         hurtU(u, 40, mine.owner);
         mine.hp = 0;
         mine.wrecked = false;
@@ -1432,8 +1549,15 @@
   }
 
   function unitVision(u) {
-    const base = (UNIT[u.type] && UNIT[u.type].vision) || 0;
-    return base + (u.type === "marine" ? (cmdrFor(u.owner).vision || 0) : 0);
+    const def = UNIT[u.type];
+    let v = (def && def.vision) || 0;
+    if (u.type === "marine") v += (cmdrFor(u.owner).vision || 0);
+    if (inB(u.x, u.y)) {
+      const terr = S.tiles[u.y][u.x];
+      if (terr === "hills") v += 1;
+      if (terr === "forest" && !(def && def.air)) v = Math.max(1, v - 1);
+    }
+    return v;
   }
   function unitLook(u) {
     const r = unitVision(u);
@@ -1450,7 +1574,8 @@
   function unitStrikeTarget(u) {
     const def = UNIT[u.type];
     if (!def || !def.dmg) return null;
-    const range = Math.max(def.range || 1, 1);
+    let range = Math.max(def.range || 1, 1);
+    if (inB(u.x, u.y) && S.tiles[u.y][u.x] === "hills") range += 1;
     const list = [
       ...S.units.filter((o) => o.owner !== u.owner && o.hp > 0),
       ...S.buildings.filter((o) => o.owner !== u.owner && o.hp > 0)
@@ -1478,7 +1603,8 @@
     const foe = 1 - u.owner;
     let best = null, bd = 1e9, bu = 1e9;
     for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-      if (!onHome(foe, x, y) || S.tiles[y][x] === "water") continue;
+      if (!onHome(foe, x, y)) continue;
+      if (S.tiles[y][x] === "water" && !(UNIT[u.type] && (UNIT[u.type].air || UNIT[u.type].amphib))) continue;
       const unknown = !visible(u.owner, x, y) && !hasMemory(u.owner, x, y);
       const stale = !visible(u.owner, x, y) && hasMemory(u.owner, x, y);
       if (!unknown && !stale) continue;
@@ -1510,10 +1636,15 @@
   }
   function stepToward(u, t) {
     const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+    const def = UNIT[u.type] || {};
     const cost = (p) => {
       if (!inB(p.x, p.y)) return 1e6;
-      const wet = S.tiles[p.y][p.x] === "water" ? 3 : 0;
-      return dist(p, t) + wet;
+      const terr = S.tiles[p.y][p.x];
+      let extra = 0;
+      if (terr === "water") extra = (def.air || def.amphib) ? 0 : 3;
+      else if (terr === "forest" && (u.type === "tank" || u.type === "arty")) extra = 1;
+      else if (terr === "hills" && (u.type === "tank" || u.type === "arty")) extra = 1;
+      return dist(p, t) + extra;
     };
     dirs.sort((a, b) => cost({ x: u.x + a.x, y: u.y + a.y }) - cost({ x: u.x + b.x, y: u.y + b.y }));
     for (const d of dirs) {
@@ -1531,12 +1662,16 @@
     for (const u of S.units.filter((x) => x.hp > 0)) {
       const def = UNIT[u.type];
       unitLook(u);
-      if (inB(u.x, u.y) && S.tiles[u.y][u.x] === "water") {
+      const flies = def.air || def.amphib;
+      if (!flies && inB(u.x, u.y) && S.tiles[u.y][u.x] === "water") {
         u.portage = (u.portage > 0 ? u.portage : 3) - 1;
         if (u.portage > 0) continue;
         u.portage = 0;
       } else u.portage = 0;
-      const steps = (def.move || 1) + (cmdrFor(u.owner).move || 0);
+      let steps = (def.move || 1) + (cmdrFor(u.owner).move || 0);
+      if (inB(u.x, u.y) && (S.tiles[u.y][u.x] === "forest" || S.tiles[u.y][u.x] === "hills") && (u.type === "tank" || u.type === "arty")) {
+        steps = Math.max(1, steps - 1);
+      }
       for (let s = 0; s < steps; s++) {
         if (def.dmg && unitStrikeTarget(u)) break;
         const t = unitObjective(u);
@@ -1544,7 +1679,7 @@
         const step = stepToward(u, t);
         if (!step) break;
         u.x = step.x; u.y = step.y;
-        if (S.tiles[u.y][u.x] === "water") {
+        if (!flies && S.tiles[u.y][u.x] === "water") {
           u.portage = 3;
           break;
         }
@@ -1605,6 +1740,7 @@
         }
       }
     }
+    for (const u of S.units) if (u.hp > 0) unitLook(u);
     for (const b of S.buildings) b.offline = false;
     tickEconomy(false);
     reapplyEmp();
@@ -1794,7 +1930,17 @@
       if (aiPlace(type, o)) built++;
     }
     const fac = S.buildings.find((b) => b.owner === o && b.type === "factory" && b.hp > 0 && !b.wrecked);
-    if (fac && profile !== "Turtle") tryTrain(fac, "marine");
+    const hang = S.buildings.find((b) => b.owner === o && b.type === "hangar" && b.hp > 0 && !b.wrecked);
+    if (fac && profile !== "Turtle") {
+      if (unlocked("drone") && S.R() > 0.55) tryTrain(fac, "drone");
+      else tryTrain(fac, "marine");
+    }
+    if (hang && profile === "Aggressor") {
+      if (unlocked("jet") && S.R() > 0.6) tryTrain(hang, "jet");
+      else if (unlocked("hover") && S.R() > 0.5) tryTrain(hang, "hover");
+      else if (unlocked("arty") && S.R() > 0.45) tryTrain(hang, "arty");
+      else if (unlocked("tank")) tryTrain(hang, "tank");
+    }
   }
 
   function aiAssignTargets(contacts, n, maxStack) {
@@ -1857,9 +2003,14 @@
 
     if (livePads(o, "hangar").length) {
       const dropAt = hqs[0] || valued[0];
-      if (dropAt && (S.ai.profile === "Aggressor" || dropAt.b && dropAt.b.type === "hq")) fire("drop", dropAt);
-      else if (S.ai.profile === "Aggressor") fire("drop", probes[0]);
+      let dropKind = "drop";
+      if (unlocked("jet") && S.ai.profile === "Aggressor" && S.R() > 0.55) dropKind = "jetdrop";
+      else if (unlocked("hover") && S.R() > 0.5) dropKind = "hoverdrop";
+      else if (unlocked("tank") && dropAt && dropAt.b && dropAt.b.type === "hq") dropKind = "tankdrop";
+      if (dropAt && (S.ai.profile === "Aggressor" || dropAt.b && dropAt.b.type === "hq")) fire(dropKind, dropAt);
+      else if (S.ai.profile === "Aggressor") fire(dropKind, probes[0]);
     }
+    if (livePads(o, "factory").length && unlocked("drone") && probes[0]) fire("dronedrop", probes[0]);
 
     if (livePads(o, "emp").length && electronics.length >= 2) {
       electronics.sort((a, b) => {
@@ -1871,7 +2022,7 @@
     }
 
     let p = 0;
-    while (shotsLeft(o, "probe") > 0 && S.players[o].credits >= 25 && probes[p]) {
+    while (shotsLeft(o, "probe") > 0 && S.players[o].credits >= 28 && probes[p]) {
       if (!fire("probe", probes[p])) break;
       p++;
     }
@@ -1908,7 +2059,7 @@
   }
 
   function autoUnlock() {
-    const map = { scout: 1, tank: 2, shield: 2, icbm: 3, emp: 4, airstrike: 5, sat: 6 };
+    const map = { scout: 1, drone: 0, tank: 2, shield: 2, hover: 3, icbm: 3, arty: 4, emp: 4, airstrike: 5, jet: 5, sat: 6 };
     for (const [k, w] of Object.entries(map)) {
       if (persist.wins >= w) persist.unlocks[k] = true;
     }
@@ -2044,9 +2195,22 @@
     return `rgb(${r},${g},${b})`;
   }
 
-  function tileLiftAmt(terr) {
-    void terr;
-    return 0;
+  function tileLiftAmt(terr, x, y) {
+    if (terr === "water" || terr === "fog") return 0;
+    let e = 1;
+    if (S && x != null && inB(x, y)) {
+      if (visible(me(), x, y) && S.elev) e = S.elev[y][x] || 1;
+      else {
+        const ls = S.lastSeen[me()][y] && S.lastSeen[me()][y][x];
+        if (ls && ls.elev != null) e = ls.elev;
+        else if (terr === "hills") e = 4;
+        else if (terr === "forest" || terr === "ruins") e = 2;
+        else e = 1;
+      }
+    } else if (terr === "hills") e = 4;
+    else if (terr === "forest" || terr === "ruins") e = 2;
+    if (terr === "pontoon") e = Math.max(1, e);
+    return e * 6 * cam.z;
   }
   function visTerr(x, y) {
     const viewer = me();
@@ -2057,12 +2221,45 @@
   }
   function isoTop(x, y) {
     const p = iso(x, y);
-    return { sx: p.sx, sy: p.sy - tileLiftAmt(visTerr(x, y)) };
+    return { sx: p.sx, sy: p.sy - tileLiftAmt(visTerr(x, y), x, y) };
   }
   function hash01(x, y, k) {
     let n = (x * 374761393 + y * 668265263 + k * 1274126177) >>> 0;
     n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
     return (n & 0xffff) / 65535;
+  }
+
+  function neighborLift(x, y) {
+    if (!inB(x, y)) return 0;
+    return tileLiftAmt(visTerr(x, y), x, y);
+  }
+  function drawCliffSides(ctx, x, y, terr, base, lift, tw, th) {
+    const hw = tw / 2, hh = th / 2;
+    const top = { sx: base.sx, sy: base.sy - lift };
+    const east = neighborLift(x + 1, y);
+    const south = neighborLift(x, y + 1);
+    const dropE = lift - east;
+    const dropS = lift - south;
+    if (dropE > 2) {
+      ctx.beginPath();
+      ctx.moveTo(top.sx + hw, top.sy);
+      ctx.lineTo(top.sx, top.sy + hh);
+      ctx.lineTo(top.sx, top.sy + hh + dropE);
+      ctx.lineTo(top.sx + hw, top.sy + dropE);
+      ctx.closePath();
+      ctx.fillStyle = terrainShade(terr, -0.28);
+      ctx.fill();
+    }
+    if (dropS > 2) {
+      ctx.beginPath();
+      ctx.moveTo(top.sx - hw, top.sy);
+      ctx.lineTo(top.sx, top.sy + hh);
+      ctx.lineTo(top.sx, top.sy + hh + dropS);
+      ctx.lineTo(top.sx - hw, top.sy + dropS);
+      ctx.closePath();
+      ctx.fillStyle = terrainShade(terr, -0.42);
+      ctx.fill();
+    }
   }
 
   function drawTile(ctx, x, y) {
@@ -2072,9 +2269,10 @@
     const unknown = !vis && !mem;
     const terr = unknown ? "fog" : (vis ? S.tiles[y][x] : (S.lastSeen[viewer][y][x].terr || "fog"));
     const base = iso(x, y);
-    const lift = tileLiftAmt(terr);
+    const lift = tileLiftAmt(terr, x, y);
     const top = { sx: base.sx, sy: base.sy - lift };
     const tw = TW * cam.z, th = TH * cam.z;
+    if (lift > 1.5 && terr !== "fog") drawCliffSides(ctx, x, y, terr, base, lift, tw, th);
     diamondPathAt(ctx, top.sx, top.sy, 1.04);
     ctx.fillStyle = terrainColor(terr);
     ctx.fill();
@@ -2101,9 +2299,25 @@
       const wet = neighbors(x, y).some((n) => inB(n.x, n.y) && S.tiles[n.y][n.x] === "water");
       if (wet) {
         diamondPathAt(ctx, top.sx, top.sy, 1.0);
-        ctx.strokeStyle = "rgba(210, 230, 220, 0.28)";
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = "rgba(226, 242, 232, 0.42)";
+        ctx.lineWidth = 1.6 * Math.max(0.7, cam.z);
         ctx.stroke();
+        diamondPathAt(ctx, top.sx, top.sy, 0.72);
+        ctx.fillStyle = "rgba(212, 196, 140, 0.18)";
+        ctx.fill();
+      }
+    }
+    if (vis && terr === "water") {
+      let shore = 0;
+      for (const n of neighbors(x, y)) if (inB(n.x, n.y) && S.tiles[n.y][n.x] !== "water") shore++;
+      if (shore) {
+        diamondPathAt(ctx, top.sx, top.sy, 1.0);
+        ctx.fillStyle = `rgba(90, 180, 175, ${0.08 + shore * 0.05})`;
+        ctx.fill();
+      } else {
+        diamondPathAt(ctx, top.sx, top.sy, 1.04);
+        ctx.fillStyle = "rgba(4, 18, 32, 0.18)";
+        ctx.fill();
       }
     }
   }
@@ -2218,9 +2432,15 @@
       drawSpr(ctx, SPR[S.lastSeen[viewer][y][x].b.type] || SPR.hq, x, y, true);
       ctx.globalAlpha = 1;
     }
+    else if (!vis && S.lastSeen[viewer][y][x] && S.lastSeen[viewer][y][x].u) {
+      ctx.globalAlpha = 0.32;
+      drawSpr(ctx, SPR[S.lastSeen[viewer][y][x].u.type] || SPR.marine, x, y, true);
+      ctx.globalAlpha = 1;
+    }
     if (u && (u.owner === viewer || vis)) {
       const wet = S.tiles[y][x] === "water";
-      const bob = Math.sin((tFrame + u.id * 7) / 10) * (wet ? 3.2 : 2) * cam.z;
+      const air = UNIT[u.type] && UNIT[u.type].air;
+      const bob = Math.sin((tFrame + u.id * 7) / 10) * (air ? 4.4 : wet ? 3.2 : 2) * cam.z;
       if (wet) {
         const p = isoTop(x, y);
         ctx.globalAlpha = 0.35;
@@ -2230,7 +2450,7 @@
         ctx.fill();
         ctx.globalAlpha = 1;
       }
-      drawSpr(ctx, SPR[u.type], x, y, u.owner !== me(), bob);
+      drawSpr(ctx, SPR[u.type], x, y, u.owner !== me(), bob + (air ? 8 * cam.z : 0));
       hpBar(ctx, x, y, u.hp / u.max, u.owner);
     }
   }
@@ -2471,7 +2691,10 @@
         const cd = w.sat ? S.players[me()].satCD : 0;
         const need = (w.need && !livePads(me(), w.need).length) || left <= 0 || cd > 0;
         const cost = cd > 0 ? ("CD " + cd) : (left < 99 ? `${w.cost}c · ${left} left` : `${w.cost}c · ${w.fuel}f`);
-        html += itemBtn(k, w.name, w.desc, cost, ASSET + (k === "airstrike" ? SPR_FILES.jet : SPR_FILES.missile), weapon === k, lock || need, lock);
+        const icon = k === "airstrike" || k === "jetdrop" ? SPR_FILES.jet
+          : (w.spawn && SPR_FILES[w.spawn]) ? SPR_FILES[w.spawn]
+          : SPR_FILES.missile;
+        html += itemBtn(k, w.name, w.desc, cost, ASSET + icon, weapon === k, lock || need, lock);
       }
       rail.innerHTML = html;
       rail.querySelectorAll("[data-k]").forEach((el) => {
@@ -2567,11 +2790,19 @@
           ${b.type !== "hq" ? `<button class="btn" id="doze">Bulldoze (no refund)</button>` : ""}
           ${!b.wrecked && (b.type === "factory" || b.type === "hangar") ? `<button class="btn" id="trM">Train marine</button>` : ""}
           ${!b.wrecked && b.type === "factory" && unlocked("scout") ? `<button class="btn" id="trS">Train scout</button>` : ""}
+          ${!b.wrecked && b.type === "factory" && unlocked("drone") ? `<button class="btn" id="trD">Train drone</button>` : ""}
           ${!b.wrecked && b.type === "hangar" && unlocked("tank") ? `<button class="btn" id="trT">Build tank</button>` : ""}
+          ${!b.wrecked && b.type === "hangar" && unlocked("hover") ? `<button class="btn" id="trH">Build hovercraft</button>` : ""}
+          ${!b.wrecked && b.type === "hangar" && unlocked("jet") ? `<button class="btn" id="trJ">Ready jet</button>` : ""}
+          ${!b.wrecked && b.type === "hangar" && unlocked("arty") ? `<button class="btn" id="trA">Build howitzer</button>` : ""}
         </div>`;
       }
     }
-    if (u) html += `<p class="sel-meta">${UNIT[u.type].name} ${u.hp}/${u.max}${S.tiles[u.y][u.x] === "water" ? " · portage " + Math.max(1, u.portage || 3) + "/3" : ""}</p>`;
+    if (u) {
+      const ud = UNIT[u.type];
+      const wet = S.tiles[u.y][u.x] === "water" && ud && !ud.air && !ud.amphib;
+      html += `<p class="sel-meta">${ud.name} ${u.hp}/${u.max}${wet ? " · portage " + Math.max(1, u.portage || 3) + "/3" : ""}${ud.air ? " · air" : ""}${ud.amphib ? " · amphibious" : ""} · vis ${unitVision(u)} · rng ${ud.range}${S.tiles[u.y][u.x] === "hills" ? "+1" : ""}</p>`;
+    }
     box.innerHTML = html;
     const bind = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
     bind("upg", () => { tryUpgrade(b); paintUI(); });
@@ -2579,7 +2810,11 @@
     bind("doze", () => { tryBulldoze(b); paintUI(); });
     bind("trM", () => { tryTrain(b, "marine"); paintUI(); });
     bind("trS", () => { tryTrain(b, "scout"); paintUI(); });
+    bind("trD", () => { tryTrain(b, "drone"); paintUI(); });
     bind("trT", () => { tryTrain(b, "tank"); paintUI(); });
+    bind("trH", () => { tryTrain(b, "hover"); paintUI(); });
+    bind("trJ", () => { tryTrain(b, "jet"); paintUI(); });
+    bind("trA", () => { tryTrain(b, "arty"); paintUI(); });
   }
 
   function paintBoard() {
@@ -2618,7 +2853,7 @@
           <p class="kicker">Δ9Φ963 · chatagent.ca</p>
           <h1>LATTICE MARINES</h1>
           <p class="title-tag">Place three command centres. Probe the fog. Watch the island burn.</p>
-          <p>You deploy your own HQs. Fifteen Δ9 council champions from chatagent.ca can command the island — each with Haven lore and a small bonus. Forests, ranges, deserts, and lakes grow in clusters. Maps go up to 192×192.</p>
+          <p>You deploy your own HQs. Fifteen Δ9 council champions from chatagent.ca can command the island — each with Haven lore and a small bonus. Ridges lift off the water, beaches hug the coast, forests hide radar, and new kit — drones, hovercraft, jets, howitzers — joins the marines. Maps go up to 192×192.</p>
           <div class="row">
             <label>Callsign <input id="nm" maxlength="18" value="${esc(persist.name)}"></label>
             <label>Map
@@ -2691,10 +2926,10 @@
       <p><b>Reclaim:</b> 50c Reclaim Pads drop on water, turn the tile into a pontoon deck, and extend command range by 2. Click a pad with another building selected to occupy that deck. Chain pads + relays to hop the sea when the island runs out of land.</p>
       <p><b>Stipend:</b> 150 credits every turn even with no economy, so a wrecked island can always raise a new Economic Centre.</p>
       <p><b>Council:</b> pick one of the 15 Δ9 champions from <a href="https://chatagent.ca/app.html" target="_blank" rel="noopener">chatagent.ca</a>. Each carries Haven lore and a small island bonus. Cycle from the right-rail portrait or the title menu.</p>
-      <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes and strikes paint tiles on impact.</p>
-      <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar marines/tanks and factory scouts stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Probes reveal on impact. Each AA fires once per incoming wave.</p>
-      <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, tanks, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
-      <p>Dropped marines lift fog as they march (vision 2) and hunt Command Centres. All land units <b>portage</b> water at 3 turns per tile so they never stay trapped on a rock. They prefer land when it exists. In range they shoot the highest-priority closest target. Gun pods out-punch a marine (~24 vs 20 melee).</p>
+      <p><b>Fog:</b> queued missiles stay in the black until they hit. Probes paint a 5×5 on impact. Living units keep their vision disc every turn — hills add +1 sight, forest cuts it. Interior forest still blocks radar; the canopy edge does not. Stale scans fade after a few turns but leave a ghost.</p>
+      <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar and factory sorties stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Each AA fires once per incoming wave and also shoots grounded jets/drones.</p>
+      <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, drones, tanks, hovercraft, howitzers, jets, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
+      <p>Units hunt Command Centres. Land units <b>portage</b> water at 3 turns per tile. Hovercraft treat water as land; jets and drones fly it. Forest gives cover. Hills add +1 shot range. Tanks and howitzers slow in woods and mountains. Gun pods out-punch a marine (~24 vs 20 melee).</p>
       <p><b>Keys:</b> WASD / arrows pan · wheel or pinch zoom · 1–9 pick the left-rail list · Enter ends phase · Space skips playback · Esc cancels tool · R repairs the selected friendly · Home recenters. Drag or one-finger pan on touch.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
@@ -2998,7 +3233,7 @@
       out.width = w; out.height = h;
       out.getContext("2d").drawImage(c, minX, minY, w, h, 0, 0, w, h);
       const ratio = h / w;
-      const SIT = { gun: 0.68, mine: 0.7, radar: 0.93, marine: 0.84, tank: 0.84, scout: 0.84, aa: 0.8, pad: 0.7 };
+      const SIT = { gun: 0.68, mine: 0.7, radar: 0.93, marine: 0.84, tank: 0.84, scout: 0.84, aa: 0.8, pad: 0.7, drone: 0.78, hover: 0.8, jet: 0.72, arty: 0.84 };
       out._sit = SIT[kind] || (ratio > 1.35 ? 0.92 : ratio < 0.85 ? 0.7 : 0.86);
       return out;
     }

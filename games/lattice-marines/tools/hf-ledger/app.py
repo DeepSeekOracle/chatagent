@@ -455,6 +455,7 @@ def arcade_snapshot() -> dict:
         ("golf", "lattice-golf.json", "lattice-golf", "Lattice Golf Hall", "rounds"),
         ("swarm", "lattice-swarm.json", "lattice-swarm", "Lattice Swarm Hall", "scores"),
         ("eternal", "eternal-lattice.json", "eternal-lattice", "Eternal Lattice Ladder", "ladder"),
+        ("crypt", "lattice-crypt.json", "lattice-crypt", "Lattice Crypt Hall", "runs"),
     )
     for kind, filename, game, title, key in extras:
         data = arcade_load(kind, filename, game, title, key)
@@ -674,6 +675,38 @@ def eternal_validate(body: dict) -> tuple[dict | None, str]:
     return rec, "ok"
 
 
+def crypt_validate(body: dict) -> tuple[dict | None, str]:
+    if not isinstance(body, dict):
+        return None, "bad payload"
+    if str(body.get("event") or "run") != "run":
+        return None, "only runs are inscribed"
+    name = clean_name(body.get("name") or "Warden")
+    if not name:
+        return None, "name rejected"
+    score = as_int(body.get("score"), 0, 50_000_000)
+    floor = as_int(body.get("floor"), 1, 10000)
+    credits = as_int(body.get("credits"), 1, 999)
+    if None in (score, floor, credits):
+        return None, "numeric field out of range"
+    day = str(body.get("date") or utc_now()[:10])[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+        day = utc_now()[:10]
+    key = f"{name}|{score}|{floor}|{credits}|{day}"
+    rec_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:24]
+    rec = {
+        "id": rec_id,
+        "name": name,
+        "event": "run",
+        "score": score,
+        "floor": floor,
+        "credits": credits,
+        "date": day,
+        "iso": utc_now(),
+        "game": "lattice-crypt",
+    }
+    return rec, "ok"
+
+
 @app.get("/rally/ledger.json")
 def rally_ledger_json():
     data = arcade_load("rally", "haven-rally.json", "haven-rally", "Haven Rally Hall", "rows")
@@ -738,6 +771,22 @@ async def eternal_submit(request: Request):
     )
 
 
+@app.get("/crypt/ledger.json")
+def crypt_ledger_json():
+    data = arcade_load("crypt", "lattice-crypt.json", "lattice-crypt", "Lattice Crypt Hall", "runs")
+    return JSONResponse(data, headers={"Cache-Control": "public, max-age=20"})
+
+
+@app.post("/crypt/submit")
+async def crypt_submit(request: Request):
+    return await arcade_post(
+        request, "crypt", crypt_validate, "lattice-crypt.json", "lattice-crypt",
+        "Lattice Crypt Hall", "runs",
+        lambda w: (-int(w.get("score") or 0), -int(w.get("floor") or 0), str(w.get("iso") or "")),
+        "inscribe crypt run",
+    )
+
+
 @app.get("/arcade.json")
 def arcade_json():
     return JSONResponse(arcade_snapshot(), headers={"Cache-Control": "public, max-age=20"})
@@ -781,6 +830,14 @@ async def arcade_any_submit(request: Request):
             "Eternal Lattice Ladder", "ladder",
             lambda w: (-int(w.get("rating") or 0), -int(w.get("wins") or 0), str(w.get("iso") or "")),
             "inscribe eternal ladder",
+            body=body,
+        )
+    if game == "lattice-crypt":
+        return await arcade_post(
+            request, "crypt", crypt_validate, "lattice-crypt.json", "lattice-crypt",
+            "Lattice Crypt Hall", "runs",
+            lambda w: (-int(w.get("score") or 0), -int(w.get("floor") or 0), str(w.get("iso") or "")),
+            "inscribe crypt run",
             body=body,
         )
     if game == "lattice-marines":

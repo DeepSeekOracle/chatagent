@@ -58,6 +58,15 @@
       ]
     },
     {
+      "id": "lattice-crypt",
+      "play": "/games/lattice-crypt/",
+      "ledger": "/games/lattice-crypt/ledger.html",
+      "feeds": [
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/crypt/ledger.json",
+        "/games/lattice-crypt/ledger.json"
+      ]
+    },
+    {
       "id": "eternal-lattice",
       "play": "/games/eternal-lattice/",
       "ledger": "/games/eternal-lattice/ledger.html",

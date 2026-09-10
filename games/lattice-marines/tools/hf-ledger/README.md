@@ -22,6 +22,7 @@ Public JSON API. **AI wins only.** Commander name + match metadata are appended 
 - `GET /golf/ledger.json` · `POST /golf/submit` — Lattice Golf rounds
 - `GET /swarm/ledger.json` · `POST /swarm/submit` — Lattice Swarm scores
 - `GET /eternal/ledger.json` · `POST /eternal/submit` — Eternal Lattice ladder
+- `GET /crypt/ledger.json` · `POST /crypt/submit` — Lattice Crypt runs
 - `GET /arcade.json` · `POST /arcade/submit` — all titles; Space snapshots dataset `arcade.json`
 - `GET /witness/feed.json` — LYGO Public Witness live RESOURCE overlay (public GET aggregator; failed sources stay named SHADOW)
 - Hub: [chatagent.ca/games/](https://chatagent.ca/games/) · Board: [chatagent.ca/games/board.html](https://chatagent.ca/games/board.html)

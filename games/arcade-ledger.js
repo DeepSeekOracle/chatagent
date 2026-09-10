@@ -77,12 +77,18 @@
       rec.event = rec.event || "ladder";
       return post("lygo-eternal-ledger-q", rec, SPACE + "/arcade/submit");
     },
+    crypt: function (rec) {
+      rec.game = "lattice-crypt";
+      rec.event = rec.event || "run";
+      return post("lygo-lattice-crypt-ledger-q", rec, SPACE + "/arcade/submit");
+    },
     boot: function () {
       var url = SPACE + "/arcade/submit";
       flush("lygo-haven-rally-ledger-q", url);
       flush("lygo-lattice-golf-ledger-q", url);
       flush("lygo-swarm-ledger-q", url);
       flush("lygo-eternal-ledger-q", url);
+      flush("lygo-lattice-crypt-ledger-q", url);
     }
   };
 })(window);
