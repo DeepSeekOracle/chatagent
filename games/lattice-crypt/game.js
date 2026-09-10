@@ -94,8 +94,8 @@
     "KeyQ", "Period", "KeyU", "Numpad7"
   ]);
   const PICK = {
-    food: { heal: 100, score: 100, say: "rations.", glow: "rgba(196,70,50,0.5)" },
-    flask: { heal: 200, score: 100, say: "flask.", glow: "rgba(56,189,248,0.5)", smash: "flask" },
+    food: { heal: 85, score: 100, say: "rations.", glow: "rgba(196,70,50,0.5)" },
+    flask: { heal: 165, score: 100, say: "flask.", glow: "rgba(56,189,248,0.5)", smash: "flask" },
     poison: { special: "poison", glow: "rgba(74,222,128,0.45)", smash: "poison" },
     key: { keys: 1, score: 50, glow: "rgba(250,204,21,0.5)", spin: 1 },
     latch: { keys: 1, score: 70, say: "latch-key.", glow: "rgba(186,230,253,0.5)", spin: 1 },
@@ -140,13 +140,13 @@
     echo: { echo: 14, score: 90, say: "Echo — bolts linger.", glow: "rgba(147,197,253,0.5)" },
     moss: { regen: 14, score: 70, say: "Moss — the well seeps back.", glow: "rgba(74,222,128,0.5)" },
     weave: { regen: 22, score: 90, say: "Weave — slow mend.", glow: "rgba(253,224,71,0.5)", rare: 1 },
-    berry: { heal: 40, score: 40, say: "lattice berry.", glow: "rgba(190,40,70,0.45)" },
-    bread: { heal: 150, score: 80, say: "bread.", glow: "rgba(217,160,70,0.45)" },
-    feast: { heal: 280, max: 20, score: 120, say: "a feast of the Accord.", glow: "rgba(251,191,36,0.55)", rare: 1 },
-    nectar: { heal: 80, vials: 1, score: 90, say: "nectar of the weave.", glow: "rgba(250,204,21,0.5)" },
+    berry: { heal: 32, score: 40, say: "lattice berry.", glow: "rgba(190,40,70,0.45)" },
+    bread: { heal: 120, score: 80, say: "bread.", glow: "rgba(217,160,70,0.45)" },
+    feast: { heal: 240, max: 20, score: 120, say: "a feast of the Accord.", glow: "rgba(251,191,36,0.55)", rare: 1 },
+    nectar: { heal: 65, vials: 1, score: 90, say: "nectar of the weave.", glow: "rgba(250,204,21,0.5)" },
     elixir: { heal: 9999, score: 140, say: "elixir — well restored.", glow: "rgba(45,212,191,0.55)", rare: 1 },
-    scrap: { heal: 50, score: 30, say: "scrap rations.", glow: "rgba(148,163,184,0.35)" },
-    seed: { heal: 40, stride: 1, score: 60, say: "seed-stride.", glow: "rgba(74,222,128,0.45)" },
+    scrap: { heal: 40, score: 30, say: "scrap rations.", glow: "rgba(148,163,184,0.35)" },
+    seed: { heal: 32, stride: 1, score: 60, say: "seed-stride.", glow: "rgba(74,222,128,0.45)" },
     coin: { score: 50, say: "coin.", glow: "rgba(250,204,21,0.5)", spin: 2 },
     gem: { score: 180, say: "gem.", glow: "rgba(56,189,248,0.55)", spin: 2, rare: 1 },
     crown: { cores: 1, score: 200, say: "Crown of the lock.", glow: "rgba(251,191,36,0.6)", rare: 1 },
@@ -185,7 +185,7 @@
     originwell: { heal: 9999, max: 200, vials: 3, lamp: 1, score: 450, rarity: 3, glow: "rgba(253,224,71,0.8)", spin: 2, say: "Origin Well — legendary restoration." }
   };
   const BAG = [
-    "food", "food", "food", "berry", "berry", "bread", "scrap", "flask", "flask", "nectar",
+    "food", "berry", "scrap", "flask", "coin", "key",
     "chest", "chest", "key", "key", "latch", "vial", "vial", "poison", "poison",
     "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "ward", "grit",
     "coin", "coin", "coin", "gem", "boot", "lens", "magnet", "fury", "thorns", "moss", "echo",
@@ -199,11 +199,19 @@
   const LOOT_SUPER = ["sunbolt", "voidlob", "gyre", "truthseek", "wellcrown", "truthlens", "weaveheart", "voidcloak", "chorusflask", "unwriteink"];
   const LOOT_LEGEN = ["latticearc", "accordseal", "originwell"];
   function rollLoot(R) {
-    const u = (R || Math.random)();
-    if (u < 0.012) return LOOT_LEGEN[( (R || Math.random)() * LOOT_LEGEN.length) | 0];
-    if (u < 0.05) return LOOT_SUPER[( (R || Math.random)() * LOOT_SUPER.length) | 0];
-    if (u < 0.18) return LOOT_RARE[( (R || Math.random)() * LOOT_RARE.length) | 0];
-    return BAG[( (R || Math.random)() * BAG.length) | 0];
+    const rnd = R || Math.random;
+    const u = rnd();
+    let k;
+    if (u < 0.012) k = LOOT_LEGEN[(rnd() * LOOT_LEGEN.length) | 0];
+    else if (u < 0.05) k = LOOT_SUPER[(rnd() * LOOT_SUPER.length) | 0];
+    else if (u < 0.18) k = LOOT_RARE[(rnd() * LOOT_RARE.length) | 0];
+    else k = BAG[(rnd() * BAG.length) | 0];
+    const heal = k === "food" || k === "flask" || k === "berry" || k === "bread" || k === "scrap" || k === "nectar" || k === "feast" || k === "elixir" || k === "soul" || k === "seed" || k === "starbread" || k === "heart" || k === "chorusflask";
+    if (heal && rnd() < 0.34) {
+      const swap = ["coin", "key", "moss", "iron", "vial"];
+      k = swap[(rnd() * swap.length) | 0];
+    }
+    return k;
   }
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
@@ -860,7 +868,7 @@
     G.score += 6 + surviveWave() * 2;
     G.xp += 1 + ((surviveWave() / 5) | 0);
     if (Math.random() < 0.07 && G.level.items.length < 90) {
-      dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["food", "berry", "coin", "scrap", "core", "heart", "moss", "vial", "fury", "magnet"][(Math.random() * 10) | 0]);
+      dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
     }
     while (G.xp >= surviveXpNeed(G.lvl)) {
       G.xp -= surviveXpNeed(G.lvl);
@@ -1274,7 +1282,7 @@
       pads.push({ x: p.x, y: p.y, tx: n.x + 0.5, ty: n.y + 0.5 });
     });
     const items = [];
-    const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo", "fan", "cleave", "seek"];
+    const bag = ["food", "berry", "coin", "flask", "vial", "chest", "core", "coin", "moss", "scrap", "magnet", "fury", "echo", "fan", "cleave", "seek", "key", "iron"];
     for (let i = 0; i < 108; i++) {
       let p = null;
       for (let k = 0; k < 40; k++) {
@@ -1349,7 +1357,7 @@
       if (!p) break;
       gens.push({ x: p.x, y: p.y, kind: KINDS[(R() * KINDS.length) | 0], rank, hp: 3 * rank, t: R() * 0.6 });
     }
-    const itemN = treasure ? 18 : Math.max(6, 9 + ((R() * 6) | 0) - (mode === "endless" ? (floor / 10) | 0 : 0));
+    const itemN = treasure ? 16 : Math.max(5, 8 + ((R() * 5) | 0) - (mode === "endless" ? (floor / 9) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
