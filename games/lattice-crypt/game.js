@@ -429,13 +429,14 @@
       return t && t !== "wall" && t !== "door";
     }
     if (ok(tx, ty)) return { x: tx + 0.5, y: ty + 0.5 };
-    for (let r = 1; r < 8; r++) {
+    for (let r = 1; r < 24; r++) {
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           if (ok(tx + dx, ty + dy)) return { x: tx + dx + 0.5, y: ty + dy + 0.5 };
         }
       }
     }
+    if (lv.start) return { x: lv.start.x + 0.5, y: lv.start.y + 0.5 };
     return { x: tx + 0.5, y: ty + 0.5 };
   }
   function unstick(ent) {
@@ -457,14 +458,20 @@
   function spawnSurviveAround(kind, boss) {
     const live = G.players.find((p) => !p.dead) || G.players[0];
     if (!live) return;
-    const ang = Math.random() * 6.28;
-    const dist = 13 + Math.random() * 6;
-    let x = live.x + Math.cos(ang) * dist, y = live.y + Math.sin(ang) * dist;
-    const p = nearestWalk(G.level, x, y);
-    const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
-    const f = makeFoe(kind, rank, p.x, p.y);
-    if (boss) f.boss = true;
-    G.level.foes.push(f);
+    for (let t = 0; t < 12; t++) {
+      const ang = Math.random() * 6.28;
+      const dist = 12 + Math.random() * 5;
+      let x = live.x + Math.cos(ang) * dist, y = live.y + Math.sin(ang) * dist;
+      x = Math.max(2, Math.min(G.level.W - 3, x));
+      y = Math.max(2, Math.min(G.level.H - 3, y));
+      const p = nearestWalk(G.level, x, y);
+      if (blocked(G.level, p.x, p.y)) continue;
+      const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
+      const f = makeFoe(kind, rank, p.x, p.y);
+      if (boss) f.boss = true;
+      G.level.foes.push(f);
+      return;
+    }
   }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
@@ -473,7 +480,6 @@
       G.wave = w;
       say("Wave " + w + " — the pour thickens.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
-      G.level.realm = REALMS[(w / 4 | 0) % 8];
     }
     G.spawnT -= dt;
     const cap = Math.min(64, 10 + w * 1.85);
@@ -496,6 +502,7 @@
   }
   function onSurviveKill(f) {
     G.kills = (G.kills || 0) + 1;
+    G.score += 6 + surviveWave() * 2;
     G.xp += 1 + ((surviveWave() / 5) | 0);
     if (Math.random() < 0.11) dropItemNear(f.x, f.y, Math.random() < 0.55 ? "food" : (Math.random() < 0.5 ? "core" : "heart"));
     while (G.xp >= surviveXpNeed(G.lvl)) {
@@ -554,6 +561,7 @@
       G._ups = null;
       hideOverlay();
       overlayMode = null;
+      $("overlay").onclick = null;
       if (G.pendingLvl > 0) offerSurviveUp();
     };
   }
@@ -886,8 +894,8 @@
     };
     joinHero(opts.hero || persist.hero, 0);
     if (G.mode === "survive") {
-      persist.autoShot = true;
-      G.players.forEach((p) => { p.vials = 2; p.magnet = 0.2; p.might = 0; p.haste = 0; p.stride = 0; p.pierce = 0; p.extraCap = 0; p.vialPow = 0; });
+      G.surviveAuto = true;
+      G.players.forEach((p) => { p.vials = 2; p.magnet = 0.2; });
     }
     loadFloor(0);
     overlayMode = null;
@@ -994,7 +1002,7 @@
     if (keys[map.down]) dy += 1;
     if (keys[map.left]) dx -= 1;
     if (keys[map.right]) dx += 1;
-    let fire = persist.autoShot || map.fire.some((k) => keys[k] || keyEdge[k]);
+    let fire = persist.autoShot || G.surviveAuto || map.fire.some((k) => keys[k] || keyEdge[k]);
     let mag = map.mag.some((k) => keys[k] || keyEdge[k]);
     let cycle = (map.cycle || []).some((k) => keyEdge[k]);
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -1250,7 +1258,7 @@
     if (f.kind === "drain") return;
     f.hp -= dmg;
     f.hurt = 0.12;
-    if (f.hp <= 0) G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
+    if (f.hp <= 0 && G.mode !== "survive") G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
   }
 
   function stepPad(p) {
@@ -1274,12 +1282,12 @@
       if (lv.treasure <= 0) { say("Rush over."); nextFloor(); return; }
     }
     lv.quiet += dt;
-    if (lv.quiet > 14) {
+    if (lv.quiet > 14 && G.mode !== "survive") {
       for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
         if (lv.tiles[y][x] === "door") lv.tiles[y][x] = "door_open";
       }
     }
-    if (lv.quiet > 180 && !lv._stallExit && !lv.seal) {
+    if (lv.quiet > 180 && !lv._stallExit && !lv.seal && G.mode !== "survive") {
       lv._stallExit = true;
       const live = G.players.find((p) => !p.dead);
       if (live) {
@@ -1717,7 +1725,7 @@
       const sz = boss ? 64 : 48;
       const dx = f.x * TILE - sz / 2 - cam.x, dy = f.y * TILE - sz / 2 - cam.y;
       drawFoeSpr("foe_" + f.kind + "_" + fr, dx, dy, sz);
-      if (f.rank >= 3 && !boss) {
+      if (f.rank >= 3 && !boss && G.mode !== "survive") {
         ctx.strokeStyle = "#fbbf24";
         ctx.lineWidth = 1;
         ctx.strokeRect(Math.round(dx) + 2, Math.round(dy) + 2, sz - 4, sz - 4);
@@ -1790,9 +1798,10 @@
       (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
       " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
     ).join("");
-    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (persist.autoShot ? "AUTO · survive · stack" : "Fire · vial · survive") : (persist.autoShot ? "AUTO shot · vial · exit" : "Fire · vial · smash nexuses · find the exit"));
+    const autoOn = persist.autoShot || G.surviveAuto;
+    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (autoOn ? "AUTO · survive · stack" : "Fire · vial · survive") : (autoOn ? "AUTO shot · vial · exit" : "Fire · vial · smash nexuses · find the exit"));
     const autoBtn = $("btnAuto");
-    if (autoBtn) autoBtn.textContent = persist.autoShot ? "Auto shot ON" : "Auto shot";
+    if (autoBtn) autoBtn.textContent = autoOn ? "Auto shot ON" : "Auto shot";
     $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b>" + (G.level.layout ? " · " + G.level.layout : " floor " + (G.floor + 1)) + "</p>" +
       (G.mode === "survive" ? "<p class='lore'>Wave " + surviveWave() + " · " + (G.t | 0) + "s · kills " + (G.kills || 0) + " · XP " + G.xp + "/" + surviveXpNeed(G.lvl) + "</p><div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * G.xp / surviveXpNeed(G.lvl))) + "%;background:#fbbf24'></i></div>" : "") +
       "<p class='lore'>" + (G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
@@ -1903,10 +1912,19 @@
   window.addEventListener("keydown", (e) => {
     if (!keys[e.code]) keyEdge[e.code] = true;
     keys[e.code] = true;
-    if (e.code === "Escape") { menu(); return; }
+    if (e.code === "Escape") {
+      if (G && G._ups) return;
+      menu();
+      return;
+    }
     if (overlayMode === "menu" || overlayMode === "sheet") return;
     if (PLAY_CODES.has(e.code)) e.preventDefault();
-    if (e.code === "KeyL" && G) { persist.autoShot = !persist.autoShot; savePersist(); paintHud(); say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off."); return; }
+    if (e.code === "KeyL" && G) {
+      G.surviveAuto = false;
+      persist.autoShot = !persist.autoShot; savePersist(); paintHud();
+      say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off.");
+      return;
+    }
     if ((e.code === "Space" || e.code === "Enter") && G) {
       if (e.code === "Space" && !G.players.some((p) => p.dead)) return;
       credit();
@@ -1916,11 +1934,12 @@
   window.addEventListener("blur", () => { keys = {}; keyEdge = {}; });
 
   function toggleAuto() {
+    if (G) G.surviveAuto = false;
     persist.autoShot = !persist.autoShot; savePersist();
     if (G) { paintHud(); say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off."); }
   }
-  $("btnHelp").onclick = help;
-  $("btnMenu").onclick = menu;
+  $("btnHelp").onclick = () => { if (G && G._ups) return; help(); };
+  $("btnMenu").onclick = () => { if (G && G._ups) return; menu(); };
   $("btnCredit").onclick = () => { if (G) credit(); };
   if ($("btnAuto")) $("btnAuto").onclick = toggleAuto;
 

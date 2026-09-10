@@ -46,8 +46,8 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   width: 176px; background: #07080ee8; border: 1px solid var(--line); border-radius: 8px; padding: .3rem .4rem;
 }
 .pip .nm { font: 700 .72rem Syne, sans-serif; }
-.pip .bar { height: 6px; background: #1a2030; border-radius: 99px; margin: .2rem 0; }
-.pip .bar i { display: block; height: 100%; border-radius: 99px; background: var(--gold); }
+.pip .bar, .panel .bar { height: 6px; background: #1a2030; border-radius: 99px; margin: .2rem 0; }
+.pip .bar i, .panel .bar i { display: block; height: 100%; border-radius: 99px; background: var(--gold); }
 .pip .st { font: 500 .62rem "IBM Plex Mono", monospace; color: var(--mute); }
 .rail {
   background: #0a0d14; border-left: 1px solid var(--line); overflow: auto;
