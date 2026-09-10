@@ -412,8 +412,32 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
   background: #10141c; border: 1px solid var(--line); border-radius: 10px;
   padding: .3rem; cursor: pointer; color: var(--text); text-align: center; font-family: inherit;
 }
-.cast img { width: 100%; height: 88px; object-fit: cover; object-position: 50% 18%; border-radius: 7px; display: block; }
-.roster .cast img { height: 72px; object-position: 50% 12%; }
+.cast-art {
+  width: 100%; height: 88px; border-radius: 7px; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(251,191,36,0.18), transparent 55%),
+    repeating-linear-gradient(90deg, #1a1520 0 8px, #221c2a 8px 16px),
+    linear-gradient(180deg, #2a2234, #0c0a10);
+  border: 1px solid #3f2a12;
+}
+.roster .cast-art { height: 78px; }
+.cast-art img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%;
+  display: block; image-rendering: pixelated;
+}
+.cast[data-h="kael"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #7f1d1d88, #1a1010); }
+.cast[data-h="vale"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #0e749088, #0b1220); }
+.cast[data-h="orin"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #a1620788, #1a1208); }
+.cast[data-h="nia"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #16653488, #0c140e); }
+.cast[data-h="lyra"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #0e749088, #10141c); }
+.cast[data-h="arkos"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #0f766e88, #0a1414); }
+.cast[data-h="d9ra"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #7f1d1d88, #140a0a); }
+.cast[data-h="srath"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #14532d88, #0a100c); }
+.cast[data-h="kairos"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #5b21b688, #12081c); }
+.cast[data-h="justicae"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #1e3a8a88, #0c1018); }
+.cast[data-h="seidon"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #0e749088, #061018); }
+.cast[data-h="sancora"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #a1620788, #14100a); }
+.cast[data-h="lightfather"] .cast-art { background: radial-gradient(ellipse at 50% 100%, #b4530988, #1a1208); }
 .cast b { display: block; font-size: .78rem; margin-top: .25rem; font-family: Syne, sans-serif; }
 .cast span { display: block; font-size: .62rem; color: var(--mute); }
 .cast .spec-tag { color: var(--cyan); font-size: .58rem; letter-spacing: .04em; }
@@ -479,7 +503,7 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
 .char-sheet {
   display: grid; grid-template-columns: 200px 1fr 1fr; gap: .7rem .8rem;
 }
-.char-hero img { width: 100%; height: 168px; object-fit: cover; object-position: 50% 12%; border-radius: 10px; display: block; border: 1px solid var(--line); }
+.char-hero img { width: 100%; height: 168px; object-fit: cover; object-position: 50% 12%; border-radius: 10px; display: block; border: 1px solid var(--line); background: #161018; }
 .char-hero b { display: block; font: 800 1.05rem Syne, sans-serif; margin-top: .35rem; }
 .char-hero span, .char-hero em { display: block; font-size: .75rem; }
 .char-hero em { color: var(--cyan); font-style: normal; font-weight: 700; }

@@ -31,7 +31,8 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=41") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=42") >= 0, "cache-bust");
+must(game.indexOf("minSep") >= 0 && game.indexOf("cast-art") >= 0, "fog spawn + roster art");
 must(game.indexOf("hp: 200") >= 0 && game.indexOf("cistern") >= 0 && game.indexOf("originpulse") >= 0, "200hp+well cards");
 must(game.indexOf("stitch") >= 0 && game.indexOf("echoer") >= 0 && game.indexOf("veilkin") >= 0 && game.indexOf("rollFoeMut") >= 0, "new foes+muts");
 must(game.indexOf("hpScale") >= 0 && game.indexOf("hallMark") >= 0, "scale+hall");

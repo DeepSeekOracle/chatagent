@@ -812,22 +812,19 @@
     const live = G.players.find((p) => !p.dead) || G.players[0];
     if (!live) return 0;
     const cap = surviveCap(surviveWave());
-    const vw = Math.max(16, (canvas.clientWidth / TILE) * 0.58);
-    const vh = Math.max(12, (canvas.clientHeight / TILE) * 0.58);
-    const ring = Math.max(vw, vh) + 2;
-    let made = 0, base = null;
-    for (let t = 0; t < 36 && made < n; t++) {
+    const visR = visionRange(live);
+    const minD = boss ? visR + 1.2 : Math.max(3.4, visR * 0.55);
+    const maxD = boss ? visR + 8 : visR * 1.08;
+    const minSep = boss ? 1.4 : 0.78;
+    const tries = Math.max(48, n * 8);
+    let made = 0;
+    const spin = Math.random() * 6.28;
+    for (let t = 0; t < tries && made < n; t++) {
       if (G.level.foes.length >= cap) break;
-      let x, y;
-      if (base && made > 0) {
-        x = base.x + (Math.random() - 0.5) * 4.5;
-        y = base.y + (Math.random() - 0.5) * 4.5;
-      } else {
-        const ang = Math.random() * 6.28;
-        const dist = ring + Math.random() * 18;
-        x = live.x + Math.cos(ang) * dist;
-        y = live.y + Math.sin(ang) * dist;
-      }
+      const ang = spin + (made / Math.max(1, n)) * 6.28 + (Math.random() - 0.5) * 0.7;
+      const dist = minD + Math.random() * Math.max(0.4, maxD - minD);
+      let x = live.x + Math.cos(ang) * dist;
+      let y = live.y + Math.sin(ang) * dist;
       x = Math.max(4, Math.min(G.level.W - 5, x));
       y = Math.max(4, Math.min(G.level.H - 5, y));
       const tx = Math.floor(x), ty = Math.floor(y);
@@ -835,12 +832,19 @@
       if (G.level.tiles[ty] && G.level.tiles[ty][tx] === "floor") p = { x: tx + 0.5, y: ty + 0.5 };
       else p = nearestWalk(G.level, x, y);
       if (blocked(G.level, p.x, p.y)) continue;
-      if (Math.hypot(p.x - live.x, p.y - live.y) < 11) continue;
+      const d = Math.hypot(p.x - live.x, p.y - live.y);
+      if (d < minD || d > maxD + 3) continue;
+      if (!boss && d < visR * 0.82 && hasLos(live.x, live.y, p.x, p.y)) continue;
+      let packed = false;
+      const foes = G.level.foes;
+      for (let i = 0; i < foes.length; i++) {
+        if (Math.hypot(foes[i].x - p.x, foes[i].y - p.y) < minSep) { packed = true; break; }
+      }
+      if (packed) continue;
       const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
       const f = makeFoe(kind, rank, p.x, p.y);
       if (boss) f.boss = true;
       G.level.foes.push(f);
-      if (!base) base = { x: p.x, y: p.y };
       made++;
     }
     return made;
@@ -3672,7 +3676,7 @@
       HEROES.map((x) => {
         const open = (persist.unlocked || []).indexOf(x.id) >= 0 || x.unlock === 0;
         return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
-          "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
+          "<span class='cast-art'><img src='" + ASSET + x.file + "' alt='" + x.name + "'></span><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +
       "</div>" + heroSheet(heroOf(persist.hero)) +
       "<div class='mode-grid'>" +
