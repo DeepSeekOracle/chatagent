@@ -1012,7 +1012,7 @@
   function onSurviveKill(f) {
     G.kills = (G.kills || 0) + 1;
     G.score += 6 + surviveWave() * 2;
-    G.xp += 1 + ((surviveWave() / 5) | 0) + (((G.lvl || 1) / 8) | 0);
+    G.xp += 1 + ((surviveWave() / 7) | 0);
     if (Math.random() < 0.07 && G.level.items.length < 90) {
       dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
     }
@@ -1485,7 +1485,10 @@
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
-  function surviveXpNeed(lv) { return 10 + lv * 6; }
+  function surviveXpNeed(lv) {
+    lv = Math.max(1, lv | 0);
+    return Math.round(14 + lv * 6 + (lv * lv) * 0.28);
+  }
   function threatIndex() {
     if (!G) return 0;
     if (G.mode === "survive") {
