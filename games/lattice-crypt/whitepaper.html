@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lattice Crypt — Whitepaper v1.0 | chatagent.ca</title>
+<title>Lattice Crypt — Whitepaper v1.1 | chatagent.ca</title>
 <meta name="description" content="Design canon for Lattice Crypt: four wardens, eight realms, vials, nexuses, local co-op, gamepads, live hall.">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-crypt/whitepaper.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -28,7 +28,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 <body>
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · design canon</p>
-  <h1>Lattice Crypt v1.0</h1>
+  <h1>Lattice Crypt v1.1</h1>
   <p>Four-warden co-op dungeon crawl in this browser. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
@@ -38,8 +38,9 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </div>
 
   <h2>1. Loop</h2>
-  <p>You drop into a seeded maze. Health ticks down every second. Find the exit. Nexuses spawn foes until you smash them. Keys open doors. Rations buy time. Vials are smart bombs. Treasure rooms every eighth floor are a thirty-second grab. After eight realms (96 floors) the crypt loops harder. Score is the run. Insert a credit (Space / Start) when a warden falls to stand them back up at 700 health.</p>
-  <p>There is no last floor. The hall ranks score per credit, not floors cheesed with infinite continues.</p>
+  <p><b>Campaign — First Descent</b> is 24 hand-built floors across eight realms. Every third floor is a <b>seal</b>: the cyan exit stays dim until every nexus on that floor is smashed. Difficulty steps: more nexuses, higher rank, blight, gates, thieves, then the Drain. Finish the 24th floor and the lock opens — you may walk into Endless from there.</p>
+  <p><b>Endless</b> is the old forever-crypt: seeded rooms, treasure every eighth, rank that keeps climbing, no last floor. The hall ranks score per credit.</p>
+  <p>Health ticks down every second. Smash nexuses. Keys open doors. Vials are smart bombs. Insert a credit (Space / Start) when a warden falls. <b>Auto-shoot</b> (menu tick or L in play) fires for you; aim still follows the last move.</p>
 
   <h2>2. Wardens</h2>
   <table>
@@ -50,6 +51,8 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td><b>Nia</b> Path</td><td>Green</td><td>4</td><td>5</td><td>3</td><td>2</td><td>2</td></tr>
   </table>
   <p>Armor reduces incoming hits. Magic scales vial radius and Drain damage. Speed is tiles per second. Shot is projectile damage. Melee is bump damage. One shot on screen per warden unless a Shot Codex is held.</p>
+  <p><b>Roster</b> (unique jobs, Eternal Haven lore): four start — Gallant Blade, Aegis Knight, Black Sigil, Path Archer. Seals recruit Spiral Bard (Lyra), Lattice Lancer (Arkos), Wolf Monk (D9ra), Shadow Needle (Srath), Hour Mage (Kairos), Accord Knight (Justicae), Tide Seer (Seidon), Weave Chemist (Sancora). Locked portraits stay grey until the matching seal cracks. Each job has a special: hymn-stun, starting arm, extra melee, veil, vial-warp, iron, fast gates, party flask.</p>
+  <p>Eight <b>named guardians</b> stand on seals: Gate-Warden, Frost-Crown, Ember-Smith, Root-Heart, Tide-Levi, Gold-Tithe, the Unnamer, Lattice-Lock. Large sprites, health bars, unique motion.</p>
 
   <h2>3. Foes</h2>
   <table>
@@ -70,6 +73,8 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <li><b>Blight</b> looks like a flask — −100 and strips a buff.</li>
     <li><b>Key</b> opens one door. Doors also yawn open if the floor stays quiet long enough.</li>
     <li><b>Chest</b> score. <b>Vial</b> stored magic. Shooting a vial on the floor is a weaker room-clear.</li>
+    <li><b>Weapons (Q to cycle)</b> — <b>Shard</b> default bolt. <b>Fan</b> three-way. <b>Needle</b> pierces. <b>Cinder</b> leaves fire. <b>Comet</b> lobs over walls. <b>Halo</b> orbiting wards plus a bolt.</li>
+    <li><b>Core / Heart / Iron / Phial</b> grow the run: shot power, max health, armor, extra vials. Seals gift one.</li>
     <li><b>Shot Codex / Swift / Aegis</b> timed buffs (fire rate, speed, armor).</li>
     <li><b>Veil</b> foes lose the warden unless they bump. <b>Reflect</b> shots bounce once; bumpers take damage.</li>
     <li><b>Pulse</b> freezes nearby foes. <b>Warp</b> relocates the warden. <b>Gates</b> teleport between paired pads.</li>
@@ -80,8 +85,9 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>K / Magic / pad B: spend one vial. Damage in view = 20 × magic rank. Clears fodder, wounds elites, deletes the Drain. Orin clears rooms. Kael’s vial is a slap. Floor vials that get shot do half of that.</p>
   <p>Hidden vials on some floors (banner: “A hidden vial waits”). Treasure rush floors (every 8th) are 30 seconds, extra chests, exit in a random corner. Layouts cycle: rooms, cross, cells, halls, arena, ring, vault, spiral.</p>
 
-  <h2>6. Realms</h2>
-  <p>Eight palettes, twelve floors each: Stone, Frost, Ember, Root, Tide, Gold, Void, Lattice. Seeded rooms + corridors. Same seed is the same crypt. After 96, the eight cycle with +rank on nexuses.</p>
+  <h2>6. Realms and campaign</h2>
+  <p>Eight palettes: Stone, Frost, Ember, Root, Tide, Gold, Void, Lattice. Campaign spends three floors in each — approach, knot, seal — with unique rooms, keys, gates, and lore in the rail. Endless uses seeded rooms + corridors (same seed is the same crypt) and cycles the eight palettes harder as the floor count rises.</p>
+  <p>Lore: the crypt is a lock, not a tomb. Four names were cut as teeth. The Drain keeps the ledger of what gets unnamed. Tithe rooms are the thief-god's joke. The last geometry is the door you hold or the door that holds you.</p>
 
   <h2>7. Controls</h2>
   <table>
@@ -92,7 +98,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
     <tr><td>P4</td><td>Num 8456</td><td>Num0</td><td>Num Enter</td></tr>
     <tr><td>Pads</td><td>Left stick / d-pad</td><td>A / RT</td><td>B / Y / LT</td></tr>
   </table>
-  <p>Start / Enter joins an empty slot as the next warden. Space credits a fallen warden (not fire). Esc is menu. How to play pauses. Eight-way aim follows the last move. Hold fire to stream (one bolt live unless Codex).</p>
+  <p>Start / Enter joins an empty slot as the next warden. Space credits a fallen warden (not fire). L toggles auto-shoot. Esc is menu. How to play pauses. Eight-way aim follows the last move. Hold fire (or auto-shoot) to stream — one bolt live unless Codex.</p>
 
   <h2>8. Multiplayer</h2>
   <p>Cabinet rules: everyone shares the camera and the floor. Food is contested. Vials are personal. A fallen warden can credit-in. Same-machine 1–4. Gamepads hot-join. Optional live lobby (same socket pattern as Lattice Golf) when the crypt lobby Space is up — room code, shared seed, ghost wardens.</p>

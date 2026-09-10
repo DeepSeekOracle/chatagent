@@ -4,10 +4,18 @@
   const SAVE = "lygo_lattice_crypt_v1";
   const ASSET = "./assets/";
   const HEROES = [
-    { id: "kael", name: "Kael", tag: "Blade", shot: 3, speed: 3.1, magic: 2, armor: 4, melee: 5, color: "#ef4444", file: "p-kael.jpg" },
-    { id: "vale", name: "Vale", tag: "Aegis", shot: 3, speed: 3.6, magic: 3, armor: 5, melee: 4, color: "#22d3ee", file: "p-vale.jpg" },
-    { id: "orin", name: "Orin", tag: "Sigil", shot: 5, speed: 3.0, magic: 5, armor: 1, melee: 1, color: "#fbbf24", file: "p-orin.jpg" },
-    { id: "nia", name: "Nia", tag: "Path", shot: 4, speed: 4.4, magic: 3, armor: 2, melee: 2, color: "#4ade80", file: "p-nia.jpg" }
+    { id: "kael", name: "Kael", tag: "Gallant Blade", shot: 3, speed: 3.1, magic: 2, armor: 4, melee: 5, color: "#ef4444", file: "p-kael.jpg", lore: "First tooth of the lock. A squire of the Accord who would not drop the door.", unlock: 0, wep: "shard" },
+    { id: "vale", name: "Vale", tag: "Aegis Knight", shot: 3, speed: 3.6, magic: 3, armor: 5, melee: 4, color: "#22d3ee", file: "p-vale.jpg", lore: "Plate of the second circle. She learned to stand still so others could move.", unlock: 0, wep: "shard" },
+    { id: "orin", name: "Orin", tag: "Black Sigil", shot: 5, speed: 3.0, magic: 5, armor: 1, melee: 1, color: "#fbbf24", file: "p-orin.jpg", lore: "A chemist of names. His vials remember what the Drain would unwrite.", unlock: 0, wep: "shard" },
+    { id: "nia", name: "Nia", tag: "Path Archer", shot: 4, speed: 4.4, magic: 3, armor: 2, melee: 2, color: "#4ade80", file: "p-nia.jpg", lore: "She maps the corridors by running them. Speed is how the lattice stays honest.", unlock: 0, wep: "shard" },
+    { id: "lyra", name: "Lyra", tag: "Spiral Bard", shot: 3, speed: 3.4, magic: 4, armor: 2, melee: 2, color: "#67e8f9", file: "p-lyra.jpg", lore: "Seat of spiral memory. Her hymn is a lockpoint — the crypt cannot erase a song it has heard.", unlock: 1, wep: "fan", hymn: true },
+    { id: "arkos", name: "Arkos", tag: "Lattice Lancer", shot: 4, speed: 3.2, magic: 2, armor: 3, melee: 4, color: "#2dd4bf", file: "p-arkos.jpg", lore: "Explorer of ethical cosmos. The spear is a geodesic: shortest true line through a lie.", unlock: 2, wep: "comet" },
+    { id: "d9ra", name: "D9ra", tag: "Wolf Monk", shot: 2, speed: 3.8, magic: 2, armor: 3, melee: 7, color: "#f87171", file: "p-d9ra.jpg", lore: "Wolf-edge of the council. Fists first. The crypt respects what will not flinch.", unlock: 3, wep: "cinder" },
+    { id: "srath", name: "Srath", tag: "Shadow Needle", shot: 4, speed: 4.2, magic: 2, armor: 1, melee: 3, color: "#86efac", file: "p-srath.jpg", lore: "Sentinel of doublespeak. She steals the vial back before the thief knows it left.", unlock: 4, wep: "needle" },
+    { id: "kairos", name: "Kairos", tag: "Hour Mage", shot: 4, speed: 3.3, magic: 5, armor: 1, melee: 1, color: "#c4b5fd", file: "p-kairos.jpg", lore: "Keeper of right-time. A vial in his hand is also a door — he spends seconds like keys.", unlock: 5, wep: "shard", time: true },
+    { id: "justicae", name: "Justicae", tag: "Accord Knight", shot: 3, speed: 3.0, magic: 3, armor: 6, melee: 4, color: "#e2e8f0", file: "p-justicae.jpg", lore: "Fairness as plate. She will not open a seal that would crush the unnamed.", unlock: 6, wep: "fan" },
+    { id: "seidon", name: "Seidon", tag: "Tide Seer", shot: 4, speed: 3.5, magic: 4, armor: 2, melee: 2, color: "#22d3ee", file: "p-seidon.jpg", lore: "Depth and current. Gates listen to him because the lattice learned to drink.", unlock: 7, wep: "halo" },
+    { id: "sancora", name: "Sancora", tag: "Weave Chemist", shot: 3, speed: 3.2, magic: 5, armor: 3, melee: 1, color: "#fde68a", file: "p-sancora.jpg", lore: "Collective healing nexus. Her flask is a chorus: one drink, four pulses.", unlock: 8, wep: "shard", heal: true }
   ];
   const REALMS = [
     { id: "stone", name: "Stone", floor: "floor", wall: "wall" },
@@ -26,21 +34,39 @@
     hurler: { hp: 1, dmg: 10, speed: 1.1, melee: true, lob: true, pts: 14 },
     shade: { hp: 2, dmg: 11, speed: 1.6, melee: true, flicker: true, pts: 16 },
     thief: { hp: 2, dmg: 4, speed: 2.4, melee: true, steal: true, pts: 50 },
-    drain: { hp: 99, dmg: 4, speed: 1.35, melee: true, drain: true, ghost: true, pts: 250 }
+    drain: { hp: 99, dmg: 4, speed: 1.35, melee: true, drain: true, ghost: true, pts: 250 },
+    gate: { hp: 28, dmg: 16, speed: 0.85, melee: true, pts: 400, boss: true },
+    crown: { hp: 30, dmg: 15, speed: 0.9, melee: true, lob: true, pts: 450, boss: true },
+    smith: { hp: 32, dmg: 18, speed: 0.8, melee: true, shoot: true, pts: 500, boss: true },
+    heartboss: { hp: 34, dmg: 14, speed: 0.95, melee: true, pts: 520, boss: true },
+    levi: { hp: 36, dmg: 16, speed: 1.05, melee: true, ghost: true, pts: 560, boss: true },
+    tithe: { hp: 30, dmg: 12, speed: 1.2, melee: true, steal: true, pts: 540, boss: true },
+    unnamer: { hp: 40, dmg: 10, speed: 1.1, melee: true, drain: true, ghost: true, pts: 800, boss: true },
+    lock: { hp: 48, dmg: 18, speed: 0.75, melee: true, shoot: true, pts: 1000, boss: true }
   };
   const KEYS_P = [
-    { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", fire: ["KeyJ"], mag: ["KeyK", "ShiftLeft"] },
-    { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", fire: ["Semicolon", "Numpad1"], mag: ["Quote", "Numpad2"] },
-    { up: "KeyT", down: "KeyG", left: "KeyF", right: "KeyH", fire: ["KeyR"], mag: ["KeyY"] },
-    { up: "Numpad8", down: "Numpad5", left: "Numpad4", right: "Numpad6", fire: ["Numpad0"], mag: ["NumpadEnter"] }
+    { up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD", fire: ["KeyJ"], mag: ["KeyK", "ShiftLeft"], cycle: ["KeyQ"] },
+    { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", fire: ["Semicolon", "Numpad1"], mag: ["Quote", "Numpad2"], cycle: ["Period"] },
+    { up: "KeyT", down: "KeyG", left: "KeyF", right: "KeyH", fire: ["KeyR"], mag: ["KeyY"], cycle: ["KeyU"] },
+    { up: "Numpad8", down: "Numpad5", left: "Numpad4", right: "Numpad6", fire: ["Numpad0"], mag: ["NumpadEnter"], cycle: ["Numpad7"] }
   ];
   const PLAY_CODES = new Set([
     "KeyW", "KeyA", "KeyS", "KeyD", "KeyJ", "KeyK", "ShiftLeft", "Space",
     "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Semicolon", "Quote",
     "KeyT", "KeyG", "KeyF", "KeyH", "KeyR", "KeyY",
-    "Numpad8", "Numpad5", "Numpad4", "Numpad6", "Numpad0", "Numpad1", "Numpad2", "NumpadEnter", "Enter"
+    "Numpad8", "Numpad5", "Numpad4", "Numpad6", "Numpad0", "Numpad1", "Numpad2", "NumpadEnter", "Enter", "KeyL",
+    "KeyQ", "Period", "KeyU", "Numpad7"
   ]);
-  const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect"];
+  const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "core", "heart", "iron", "phial"];
+  const WEAPONS = {
+    shard: { name: "Shard", cap: 1, spd: 11, life: 1.15, cool: 0.28, dmg: 0 },
+    fan: { name: "Fan", cap: 3, spd: 10, life: 0.85, cool: 0.32, dmg: -1, spread: 0.38 },
+    needle: { name: "Needle", cap: 1, spd: 16, life: 1.25, cool: 0.2, dmg: 1, pierce: 2 },
+    cinder: { name: "Cinder", cap: 2, spd: 8, life: 0.5, cool: 0.18, dmg: 1, flame: 1.8 },
+    comet: { name: "Comet", cap: 1, spd: 7.2, life: 1.45, cool: 0.38, dmg: 3, lob: true },
+    halo: { name: "Halo", cap: 1, spd: 11, life: 1.1, cool: 0.3, dmg: 0, halo: true }
+  };
+  const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
 
   const $ = (id) => document.getElementById(id);
@@ -54,12 +80,13 @@
   let G = null;
   let overlayMode = "menu";
   let announce = { t: "", life: 0 };
-  let persist = { name: "Warden", best: 0, runs: 0, hero: "kael" };
+  let persist = { name: "Warden", best: 0, runs: 0, hero: "kael", autoShot: false, campaignBest: 0, unlocked: ["kael", "vale", "orin", "nia"] };
   let cam = { x: 0, y: 0 };
   let actx = null;
 
   function loadPersist() {
     try { Object.assign(persist, JSON.parse(localStorage.getItem(SAVE) || "{}")); } catch (_) {}
+    if (!Array.isArray(persist.unlocked) || persist.unlocked.length < 4) persist.unlocked = ["kael", "vale", "orin", "nia"];
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -187,7 +214,10 @@
     return out;
   }
 
-  function genLevel(seed, floor) {
+  function genLevel(seed, floor, mode) {
+    if (mode === "campaign" && window.LatticeCampaign && floor < window.LatticeCampaign.LEN) {
+      return window.LatticeCampaign.build(floor, makeFoe);
+    }
     const R = rng(seed ^ (floor * 7919));
     const W = 30, H = 26;
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
@@ -218,7 +248,7 @@
     const foes = [];
     const doors = [];
     const pads = [];
-    const rank = 1 + Math.min(2, (floor / 12) | 0);
+    const rank = 1 + Math.min(2, (floor / (mode === "endless" ? 6 : 12)) | 0);
     const used = {};
     function mark(x, y) { used[x + "," + y] = 1; }
     mark(start.x, start.y); mark(exit.x, exit.y);
@@ -234,13 +264,13 @@
       }
       return null;
     }
-    const gN = 3 + ((R() * 4) | 0) + Math.min(4, (floor / 8) | 0);
+    const gN = 3 + ((R() * 4) | 0) + Math.min(mode === "endless" ? 7 : 4, (floor / (mode === "endless" ? 5 : 8)) | 0);
     for (let i = 0; i < gN; i++) {
       const p = empty();
       if (!p) break;
       gens.push({ x: p.x, y: p.y, kind: KINDS[(R() * KINDS.length) | 0], rank, hp: 3 * rank, t: R() * 0.6 });
     }
-    const itemN = treasure ? 14 : 6 + ((R() * 5) | 0);
+    const itemN = treasure ? 14 : Math.max(3, 6 + ((R() * 5) | 0) - (mode === "endless" ? (floor / 10) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
@@ -277,7 +307,7 @@
       if (!p) break;
       foes.push(makeFoe(KINDS[(R() * KINDS.length) | 0], rank, p.x + 0.5, p.y + 0.5));
     }
-    if (floor >= 6 && R() < 0.22 + floor * 0.01) {
+    if (floor >= (mode === "endless" ? 3 : 6) && R() < 0.22 + floor * 0.01) {
       foes.push(makeFoe("drain", 1, exit.x + 0.5, exit.y + 0.5));
     }
     return {
@@ -293,8 +323,9 @@
     const d = FOE[kind];
     return {
       kind, rank, x, y,
-      hp: kind === "drain" ? 99 : d.hp * rank,
-      max: kind === "drain" ? 99 : d.hp * rank,
+      hp: kind === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
+      max: kind === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
+      boss: !!d.boss,
       vx: 0, vy: 0, t: 0, hurt: 0, flicker: 0, stun: 0
     };
   }
@@ -307,7 +338,7 @@
   }
   function blocked(lv, x, y) {
     const t = tileAt(lv, x, y);
-    return t === "wall" || t === "door";
+    return t === "wall" || t === "door" || t === "exit_lock";
   }
   function shadeHidden(f) {
     return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
@@ -321,14 +352,16 @@
       level: null, shots: [], fx: [],
       players: [],
       thiefT: 8,
-      over: false
+      over: false,
+      mode: opts.mode || "campaign"
     };
     joinHero(opts.hero || persist.hero, 0);
     loadFloor(0);
     overlayMode = null;
     hideOverlay();
     $("app").classList.remove("hidden");
-    say("The lattice opens.");
+    if (G.mode === "campaign") say("Campaign — the First Descent.");
+    else say("Endless — the crypt does not end.");
     if (opts.coop) {
       credit();
       say("Cabinet co-op — P2 arrows · ; fire · ' vial.");
@@ -344,7 +377,10 @@
       slot: s, hero: h, x: 2, y: 2, hp: 700, max: 700,
       keys: 0, vials: 1, facing: 2, aimX: 1, aimY: 0, walk: 0, fireT: 0, magT: 0,
       shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0,
-      dead: false, pad: -1, hurtBeep: 0
+      weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
+      arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
+      cores: 0, iron: h.id === "justicae" ? 1 : 0,
+      dead: false, pad: -1, hurtBeep: 0, halo: null
     };
     G.players.push(p);
     return p;
@@ -352,7 +388,7 @@
 
   function loadFloor(n) {
     G.floor = n;
-    G.level = genLevel(G.seed, n);
+    G.level = genLevel(G.seed, n, G.mode);
     const st = G.level.start;
     G.players.forEach((p, i) => {
       if (p.dead) return;
@@ -362,10 +398,16 @@
     });
     G.shots = [];
     G.thiefT = 10 + (Math.random() * 18);
-    $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1);
-    if (G.level.treasure) say("Treasure rush — thirty seconds.");
+    if (G.mode === "campaign") {
+      $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
+    } else {
+      $("holePill").textContent = (G.mode === "endless" ? "ENDLESS " : "") + G.level.realm.name.toUpperCase() + " " + (n + 1);
+    }
+    if (G.level.layout) say(G.level.layout + (G.level.seal ? " — smash the nexuses." : "."));
+    else if (G.level.treasure) say("Treasure rush — grab and go.");
     else if (G.level.items.some((it) => it.hidden)) say("A hidden vial waits.");
     if (G.level.foes.some((f) => f.kind === "drain")) say("The Drain walks.");
+    if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].boss)) say("A named guardian holds this seal.");
     const foc = G.players.find((p) => !p.dead) || G.players[0];
     const cw = canvas.clientWidth || 800, ch = canvas.clientHeight || 480;
     cam.x = foc.x * TILE - cw / 2;
@@ -407,8 +449,9 @@
     if (keys[map.down]) dy += 1;
     if (keys[map.left]) dx -= 1;
     if (keys[map.right]) dx += 1;
-    let fire = map.fire.some((k) => keys[k] || keyEdge[k]);
+    let fire = persist.autoShot || map.fire.some((k) => keys[k] || keyEdge[k]);
     let mag = map.mag.some((k) => keys[k] || keyEdge[k]);
+    let cycle = (map.cycle || []).some((k) => keyEdge[k]);
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = p.pad >= 0 ? pads[p.pad] : null;
     if (pad) {
@@ -424,6 +467,8 @@
       if (pad.buttons[1] && pad.buttons[1].pressed) mag = true;
       if (pad.buttons[2] && pad.buttons[2].pressed) mag = true;
       if (pad.buttons[6] && pad.buttons[6].pressed) mag = true;
+      if (pad.buttons[4] && pad.buttons[4].pressed && !p._lbLatch) { cycle = true; p._lbLatch = true; }
+      if (pad.buttons[4] && !pad.buttons[4].pressed) p._lbLatch = false;
     }
     if (dx || dy) {
       const l = Math.hypot(dx, dy) || 1;
@@ -431,7 +476,7 @@
       p.facing = dirFrom(dx, dy);
       p.aimX = dx; p.aimY = dy;
     }
-    return { dx, dy, fire, mag };
+    return { dx, dy, fire, mag, cycle };
   }
 
   function tryMove(ent, dx, dy, speed, dt, ghost) {
@@ -458,21 +503,63 @@
     }
   }
 
+  function wepOf(p) { return WEAPONS[p.weapon] || WEAPONS.shard; }
+
+  function shotDmg(p, w) {
+    return Math.max(1, p.hero.shot + (p.cores || 0) + (w.dmg || 0));
+  }
+
+  function spawnBolt(p, ax, ay, w) {
+    let sx = p.x + ax * 0.35, sy = p.y + ay * 0.35;
+    if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
+    G.shots.push({
+      x: sx, y: sy, vx: ax * w.spd, vy: ay * w.spd,
+      dmg: shotDmg(p, w), owner: p, life: w.life, grace: 0.08,
+      hero: p.hero.id, wep: p.weapon, bounced: false,
+      pierce: w.pierce || 0, lob: !!w.lob, flame: w.flame || 0
+    });
+  }
+
   function fireShot(p) {
-    const live = G.shots.filter((s) => s.owner === p).length;
-    const cap = p.shotBoost > 0 ? 3 : 1;
+    const w = wepOf(p);
+    const live = G.shots.filter((s) => s.owner === p && !s.orbit).length;
+    const cap = p.shotBoost > 0 ? Math.max(3, w.cap) : w.cap;
     if (live >= cap || p.fireT > 0) return;
     let ax = p.aimX, ay = p.aimY;
     const l = Math.hypot(ax, ay) || 1;
     ax /= l; ay /= l;
-    let sx = p.x + ax * 0.35, sy = p.y + ay * 0.35;
-    if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
-    G.shots.push({
-      x: sx, y: sy, vx: ax * 11, vy: ay * 11,
-      dmg: p.hero.shot, owner: p, life: 1.15, grace: 0.08, hero: p.hero.id, bounced: false
-    });
+    if (w.halo && (!p.halo || p.halo.length < 2)) {
+      p.halo = [{ ang: 0, r: 0.82 }, { ang: Math.PI, r: 0.82 }];
+    }
+    if (w.spread) {
+      const ang = Math.atan2(ay, ax);
+      [-w.spread, 0, w.spread].forEach((off) => {
+        spawnBolt(p, Math.cos(ang + off), Math.sin(ang + off), w);
+      });
+    } else {
+      spawnBolt(p, ax, ay, w);
+    }
+    G.fx.push({ x: p.x + ax * 0.4, y: p.y + ay * 0.4, life: 0.09, kind: "muzzle" });
+    if (p.hero.hymn) {
+      G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 3.2) f.stun = Math.max(f.stun || 0, 0.35); });
+    }
     beep("shot");
-    p.fireT = p.shotBoost > 0 ? 0.12 : 0.28;
+    p.fireT = p.shotBoost > 0 ? Math.min(0.12, w.cool) : w.cool;
+  }
+
+  function giveWep(p, id) {
+    if (!WEAPONS[id]) return false;
+    if (!p.arsenal.includes(id)) p.arsenal.push(id);
+    p.weapon = id;
+    say(p.hero.name + " arms " + WEAPONS[id].name + ".");
+    return true;
+  }
+
+  function cycleWep(p) {
+    if (!p.arsenal || p.arsenal.length < 2) { say("Only Shard — find a relic."); return; }
+    const i = p.arsenal.indexOf(p.weapon);
+    p.weapon = p.arsenal[(i + 1) % p.arsenal.length];
+    say(WEAPONS[p.weapon].name);
   }
 
   function useVial(p) {
@@ -489,6 +576,12 @@
     });
     G.level.gens.forEach((g) => { g.hp -= Math.max(1, (pow / 20) | 0); });
     G.fx.push({ x: p.x, y: p.y, life: 0.45, kind: "nova" });
+    if (p.hero.heal) {
+      G.players.forEach((o) => { if (!o.dead) o.hp = Math.min(o.max, o.hp + 80); });
+      say("The weave drinks with you.");
+    }
+    if (p.hero.time) randomFloor(p);
+    if (p.hero.id === "srath") p.veil = Math.max(p.veil, 2.2);
   }
 
   function randomFloor(p) {
@@ -509,13 +602,18 @@
       else if (it.kind === "flask") { p.hp = Math.min(9999, p.hp + 200); G.score += 100; say(p.hero.name + " drinks a flask."); }
       else if (it.kind === "poison") { p.hp -= 100; p.shotBoost = 0; p.swift = 0; p.aegis = 0; p.veil = 0; p.reflect = 0; say(p.hero.name + " drank blight."); }
       else if (it.kind === "key") { p.keys++; G.score += 50; }
-      else if (it.kind === "chest") { G.score += 200; }
+      else if (it.kind === "chest") { G.score += 200; if (Math.random() < 0.35) { const drop = ["fan", "needle", "cinder", "core", "heart"][(Math.random() * 5) | 0]; G.level.items.push({ x: it.x, y: it.y, kind: drop }); } }
       else if (it.kind === "vial") { p.vials++; G.score += 50; say("Vial."); }
-      else if (it.kind === "codex") { p.shotBoost = 12; G.score += 80; say("Shot Codex."); }
+      else if (it.kind === "codex") { p.shotBoost = 14; G.score += 80; say("Shot Codex."); }
       else if (it.kind === "swift") { p.swift = 12; G.score += 80; say("Swift."); }
       else if (it.kind === "aegis") { p.aegis = 14; G.score += 80; say("Aegis."); }
       else if (it.kind === "veil") { p.veil = 8; G.score += 80; say("Veil."); }
       else if (it.kind === "reflect") { p.reflect = 10; G.score += 80; say("Reflect."); }
+      else if (WEAPONS[it.kind]) { giveWep(p, it.kind); G.score += 90; }
+      else if (it.kind === "core") { p.cores = (p.cores || 0) + 1; G.score += 120; say("Core — shot +" + p.cores); }
+      else if (it.kind === "heart") { p.max += 80; p.hp = Math.min(p.max, p.hp + 80); G.score += 100; say("Heart — deeper well."); }
+      else if (it.kind === "iron") { p.iron = (p.iron || 0) + 1; G.score += 100; say("Iron — armor +" + p.iron); }
+      else if (it.kind === "phial") { p.vials += 2; G.score += 90; say("Phial — two vials."); }
       else if (it.kind === "pulse") {
         G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 8) f.stun = 3; });
         G.score += 80; say("Pulse — foes freeze.");
@@ -542,7 +640,7 @@
     const tx = Math.floor(p.x), ty = Math.floor(p.y);
     const pad = (G.level.pads || []).find((d) => d.x === tx && d.y === ty);
     if (!pad) return;
-    p.x = pad.tx; p.y = pad.ty; p.padT = 0.85;
+    p.x = pad.tx; p.y = pad.ty; p.padT = p.hero.id === "seidon" ? 0.35 : 0.85;
     beep("pad");
     say("Lattice gate.");
   }
@@ -562,7 +660,7 @@
         if (lv.tiles[y][x] === "door") lv.tiles[y][x] = "door_open";
       }
     }
-    if (lv.quiet > 180 && !lv._stallExit) {
+    if (lv.quiet > 180 && !lv._stallExit && !lv.seal) {
       lv._stallExit = true;
       const live = G.players.find((p) => !p.dead);
       if (live) {
@@ -592,11 +690,12 @@
       }
     });
     lv.gens = lv.gens.filter((g) => g.hp > 0);
+    if (lv.seal && lv.gens.length === 0) unlockSeal();
 
     bindIdlePads();
     G.players.forEach((p) => {
       if (p.dead) return;
-      p.hp -= dt * 1.05;
+      p.hp -= dt * (G.mode === "endless" ? 1.12 + Math.min(0.6, G.floor * 0.02) : (G.floor >= 18 ? 1.15 : 1.05));
       p.fireT = Math.max(0, p.fireT - dt);
       p.magT = Math.max(0, p.magT - dt);
       p.stun = Math.max(0, p.stun - dt);
@@ -621,7 +720,17 @@
       }
       if (inn.fire) fireShot(p);
       if (inn.mag) useVial(p);
+      if (inn.cycle) cycleWep(p);
       pickup(p);
+      if (p.halo) {
+        p.halo.forEach((h) => {
+          h.ang += dt * 5.2;
+          const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
+          G.level.foes.forEach((f) => {
+            if (Math.hypot(f.x - hx, f.y - hy) < 0.42) hitFoe(f, Math.max(2, 2 + (p.cores || 0)), false);
+          });
+        });
+      }
       stepPad(p);
       unstack(p);
       if (tileAt(lv, p.x, p.y) === "exit") G._exit = true;
@@ -673,7 +782,7 @@
       }
       tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
       if (bd < 0.55) {
-        const arm = tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor;
+        const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
         const dmg = Math.max(2, def.dmg * f.rank - arm);
         tgt.hp -= dmg * dt * (f.kind === "drain" ? 8 : 3.2);
         lv.quiet = 0;
@@ -695,7 +804,11 @@
         G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, lob: true, hero: "hurler" });
       }
     });
-    lv.foes = lv.foes.filter((f) => f.hp > 0);
+    lv.foes = lv.foes.filter((f) => {
+      if (f.hp > 0) return true;
+      G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
+      return false;
+    });
 
     G.shots.forEach((s) => {
       s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
@@ -713,25 +826,41 @@
         liveP.forEach((p) => {
           if (p.veil > 0) return;
           if (Math.hypot(p.x - s.x, p.y - s.y) < 0.38) {
-            p.hp -= Math.max(3, s.dmg - p.hero.armor);
+            p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             s.life = 0;
           }
         });
       } else {
         lv.gens.forEach((g) => {
           if (s.life <= 0) return;
-          if (Math.hypot(g.x + 0.5 - s.x, g.y + 0.5 - s.y) <= 0.62) { g.hp -= 1; s.life = 0; G.score += 5; lv.quiet = 0; beep("hit"); }
+          if (Math.hypot(g.x + 0.5 - s.x, g.y + 0.5 - s.y) <= 0.62) {
+            g.hp -= 1; G.score += 5; lv.quiet = 0; beep("hit");
+            G.fx.push({ x: s.x, y: s.y, life: 0.12, kind: "spark" });
+            if (s.pierce > 0) s.pierce--; else s.life = 0;
+          }
         });
         if (s.life > 0) {
           lv.foes.forEach((f) => {
             if (s.life <= 0) return;
-            if (Math.hypot(f.x - s.x, f.y - s.y) < 0.48) { hitFoe(f, s.dmg, false); s.life = 0; beep("hit"); }
+            if (Math.hypot(f.x - s.x, f.y - s.y) < 0.48) {
+              hitFoe(f, s.dmg, false); beep("hit");
+              G.fx.push({ x: s.x, y: s.y, life: 0.14, kind: "spark" });
+              if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
+              if (s.pierce > 0) s.pierce--; else s.life = 0;
+            }
           });
         }
         if (s.life > 0) smashItem(s);
       }
+      if (s.life <= 0 && s.flame) G.fx.push({ x: s.x, y: s.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
     });
     G.shots = G.shots.filter((s) => s.life > 0);
+    G.fx.forEach((f) => {
+      if (f.kind !== "cinder") return;
+      lv.foes.forEach((foe) => {
+        if (Math.hypot(foe.x - f.x, foe.y - f.y) < 0.55) hitFoe(foe, (f.dmg || 2) * dt * 3.5, false);
+      });
+    });
     G.fx = G.fx.filter((f) => { f.life -= dt; return f.life > 0; });
     pollJoin();
     paintHud();
@@ -786,8 +915,66 @@
     });
   }
 
+  function unlockSeal() {
+    const lv = G.level;
+    if (!lv.seal) return;
+    for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
+      if (lv.tiles[y][x] === "exit_lock") lv.tiles[y][x] = "exit";
+    }
+    lv.seal = false;
+    say("The seal cracks. The exit wakes.");
+    if (G.mode === "campaign" && lv.index != null) {
+      const gift = SEAL_GIFT[(lv.index / 3) | 0];
+      if (gift) {
+        G.players.forEach((p) => {
+          if (p.dead) return;
+          if (WEAPONS[gift]) giveWep(p, gift);
+          else if (gift === "core") { p.cores++; say("Seal core."); }
+          else if (gift === "phial") { p.vials += 2; say("Seal phial."); }
+          else if (gift === "iron") { p.iron++; say("Seal iron."); }
+        });
+      }
+      const recruit = ["lyra", "arkos", "d9ra", "srath", "kairos", "justicae", "seidon", "sancora"][(lv.index / 3) | 0];
+      if (recruit && persist.unlocked.indexOf(recruit) < 0) {
+        persist.unlocked.push(recruit);
+        savePersist();
+        const rh = heroOf(recruit);
+        say(rh.name + " the " + rh.tag + " joins the roster.");
+      }
+    }
+  }
+
+  function winCampaign() {
+    G.over = true;
+    persist.runs++;
+    persist.best = Math.max(persist.best, G.score);
+    persist.campaignBest = Math.max(persist.campaignBest || 0, G.score);
+    savePersist();
+    const posted = Math.max(0, (G.score / Math.max(1, G.credits)) | 0);
+    if (window.ArcadeLedger) {
+      ArcadeLedger.crypt({
+        name: (persist.name || "Warden").slice(0, 18),
+        score: posted, raw: G.score, floor: G.floor + 1, credits: G.credits,
+        date: new Date().toISOString().slice(0, 10)
+      });
+    }
+    showSheet(
+      "<p class='kicker'>The lock opens</p><h2>First Descent complete</h2>" +
+      "<p class='lore'>Four names held the door. Score " + G.score + " · hall " + posted + " · credits " + G.credits + ".</p>" +
+      "<p class='lore'>The crypt still goes down. Endless does not keep a last floor.</p>" +
+      "<div class='modes'><button class='btn gold' id='toEndless'>Enter endless</button><button class='btn' id='mm'>Menu</button></div>"
+    );
+    $("toEndless").onclick = () => newRun({ hero: persist.hero, mode: "endless" });
+    $("mm").onclick = menu;
+  }
+
   function nextFloor() {
     G.score += 80 + G.players.filter((p) => !p.dead).reduce((n, p) => n + Math.min(40, (p.hp / 20) | 0), 0);
+    if (G.mode === "campaign" && window.LatticeCampaign && G.floor + 1 >= window.LatticeCampaign.LEN) {
+      say("Floor " + (G.floor + 1) + " sealed.");
+      winCampaign();
+      return;
+    }
     say("Floor " + (G.floor + 1) + " sealed.");
     loadFloor(G.floor + 1);
   }
@@ -798,7 +985,8 @@
     if (!down) {
       if (G.players.length < 4) {
         const used = G.players.map((p) => p.hero.id);
-        const next = HEROES.find((h) => !used.includes(h.id)) || HEROES[G.players.length % 4];
+        const pool = HEROES.filter((h) => (persist.unlocked || ["kael"]).indexOf(h.id) >= 0);
+        const next = pool.find((h) => !used.includes(h.id)) || pool[G.players.length % pool.length];
         const p = joinHero(next.id);
         if (!p) return;
         const st = G.level.start;
@@ -842,11 +1030,15 @@
         if (t === "door") drawSpr("door", px, py);
         if (t === "door_open") drawSpr("door_open", px, py);
         if (t === "exit") drawSpr("exit", px, py);
+        if (t === "exit_lock") { ctx.globalAlpha = 0.32; drawSpr("exit", px, py); ctx.globalAlpha = 1; }
         if (t === "pad") drawSpr("pad", px, py);
       }
     }
     lv.gens.forEach((g) => {
+      const pulse = 0.78 + 0.22 * Math.sin((G.t + g.x) * 7);
+      ctx.globalAlpha = pulse;
       drawSpr("gen_" + g.kind + "_" + g.rank, g.x * TILE - cam.x, g.y * TILE - cam.y);
+      ctx.globalAlpha = 1;
     });
     lv.items.forEach((it) => {
       if (it.hidden) {
@@ -857,16 +1049,66 @@
     });
     lv.foes.forEach((f) => {
       const hid = shadeHidden(f);
-      const fr = hid ? 1 : ((f.t * 6) | 0) % 2;
-      ctx.globalAlpha = f.hurt > 0 ? 0.55 : (hid ? 0.22 : (f.stun > 0 ? 0.7 : 1));
-      drawSpr("foe_" + f.kind + "_" + fr, f.x * TILE - TILE / 2 - cam.x, f.y * TILE - TILE / 2 - cam.y);
+      const rate = f.kind === "drain" || f.kind === "wraith" ? 5 : 8;
+      const fr = ((f.t * rate) | 0) % 4;
+      ctx.globalAlpha = f.hurt > 0 ? 0.55 : (hid ? 0.28 : (f.stun > 0 ? 0.7 : 1));
+      if (f.rank >= 3) {
+        ctx.save();
+        ctx.shadowColor = "#fbbf24";
+        ctx.shadowBlur = 6;
+      }
+      const boss = FOE[f.kind] && FOE[f.kind].boss;
+      const sz = boss ? 52 : TILE;
+      drawSpr("foe_" + f.kind + "_" + fr, f.x * TILE - sz / 2 - cam.x, f.y * TILE - sz / 2 - cam.y, sz);
+      if (boss) {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(f.x * TILE - 18 - cam.x, f.y * TILE - sz / 2 - 8 - cam.y, 36, 4);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(f.x * TILE - 18 - cam.x, f.y * TILE - sz / 2 - 8 - cam.y, 36 * Math.max(0, f.hp / f.max), 4);
+      }
+      if (f.rank >= 3) ctx.restore();
       ctx.globalAlpha = 1;
     });
     G.shots.forEach((s) => {
-      const sz = 16;
-      drawSpr("shot_" + (s.hero === "imp" || s.hero === "hurler" ? "orin" : (s.hero || "kael")), s.x * TILE - sz / 2 - cam.x, s.y * TILE - sz / 2 - cam.y, sz);
+      const fr = ((1.2 - s.life) * 8) | 0;
+      const wep = s.wep || (s.hero === "imp" || s.hero === "hurler" ? s.hero : "shard");
+      const nm = spr("shot_" + wep + "_" + (fr & 1)) ? ("shot_" + wep + "_" + (fr & 1)) : ("shot_" + (s.hero || "kael"));
+      const sz = wep === "cinder" ? 22 : (wep === "comet" ? 20 : 16);
+      const dx = s.x * TILE - sz / 2 - cam.x, dy = s.y * TILE - sz / 2 - cam.y;
+      if ((wep === "needle" || wep === "shard") && (s.vx || s.vy)) {
+        ctx.save();
+        ctx.translate(s.x * TILE - cam.x, s.y * TILE - cam.y);
+        ctx.rotate(Math.atan2(s.vy, s.vx));
+        drawSpr(nm, -sz / 2, -sz / 2, sz);
+        ctx.restore();
+      } else {
+        drawSpr(nm, dx, dy, sz);
+      }
     });
     G.fx.forEach((f) => {
+      if (f.kind === "puff") {
+        const pf = Math.min(3, 3 - ((f.life * 8) | 0));
+        ctx.globalAlpha = Math.max(0, f.life * 3);
+        drawSpr("puff_" + pf, f.x * TILE - TILE / 2 - cam.x, f.y * TILE - TILE / 2 - cam.y);
+        ctx.globalAlpha = 1;
+        return;
+      }
+      if (f.kind === "spark") {
+        drawSpr("spark_" + (((f.life * 10) | 0) & 1), f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
+        return;
+      }
+      if (f.kind === "muzzle") {
+        ctx.globalAlpha = Math.max(0, f.life * 10);
+        drawSpr("muzzle", f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
+        ctx.globalAlpha = 1;
+        return;
+      }
+      if (f.kind === "cinder") {
+        ctx.globalAlpha = Math.min(1, f.life);
+        drawSpr("flame_" + (((G.t * 8) | 0) & 1), f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
+        ctx.globalAlpha = 1;
+        return;
+      }
       ctx.globalAlpha = Math.max(0, f.life * 2);
       ctx.strokeStyle = "#5eead4";
       ctx.beginPath();
@@ -885,6 +1127,12 @@
         ctx.stroke();
       }
       drawSpr("hero_" + p.hero.id + "_" + p.facing + "_" + fr, p.x * TILE - TILE / 2 - cam.x, p.y * TILE - TILE / 2 - cam.y);
+      if (p.halo) {
+        p.halo.forEach((h) => {
+          const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
+          drawSpr("shot_halo_" + ((G.t * 8 | 0) & 1), hx * TILE - 16 - cam.x, hy * TILE - 16 - cam.y);
+        });
+      }
       ctx.globalAlpha = 1;
     });
     $("announce").textContent = announce.life > 0 ? announce.t : "";
@@ -902,14 +1150,19 @@
 
   function paintHud() {
     if (!G) return;
-    $("hudMeta").innerHTML = "<span>Score <b>" + G.score + "</b></span><span>Floor <b>" + (G.floor + 1) + "</b></span><span>Credits <b>" + G.credits + "</b></span>";
+    $("hudMeta").innerHTML = "<span>Score <b>" + G.score + "</b></span><span>" + (G.mode === "campaign" ? "Campaign" : "Endless") + " <b>" + (G.floor + 1) + (G.mode === "campaign" && window.LatticeCampaign ? "/" + window.LatticeCampaign.LEN : "") + "</b></span><span>Credits <b>" + G.credits + "</b></span>";
     $("pips").innerHTML = G.players.map((p) =>
       "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.dead ? " · DOWN" : "") + "</div>" +
       "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, p.hp / 10)) + "%;background:" + p.hero.color + "'></i></div>" +
-      "<div class='st'>HP " + Math.max(0, p.hp | 0) + " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
+      "<div class='st'>HP " + Math.max(0, p.hp | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
+      (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
+      " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
     ).join("");
-    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : "Fire · vial · smash nexuses · find the exit";
-    $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b> floor " + (G.floor + 1) + "</p><p class='lore'>Seed " + G.seed + " · " + (G.level.layout || "rooms") + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + "</p>";
+    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (persist.autoShot ? "AUTO shot · vial · exit" : "Fire · vial · smash nexuses · find the exit");
+    const autoBtn = $("btnAuto");
+    if (autoBtn) autoBtn.textContent = persist.autoShot ? "Auto shot ON" : "Auto shot";
+    $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b>" + (G.level.layout ? " · " + G.level.layout : " floor " + (G.floor + 1)) + "</p>" +
+      "<p class='lore'>" + (G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
   }
   function paintUI() { if (G) paintHud(); }
 
@@ -928,35 +1181,49 @@
     showSheet(
       "<div class='title-screen'><div class='title-art'><img src='./assets/menu.jpg' alt='Lattice Crypt'><div class='title-art-fade'></div></div>" +
       "<div class='title-panel'><p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LATTICE CRYPT</h1>" +
-      "<p class='lore'>Four wardens. Endless floors. Smash the nexuses. Don't shoot the flask.</p>" +
+      "<p class='lore'>The crypt is a lock. Four wardens are the teeth. Smash nexuses. Don't shoot the flask.</p>" +
       "<label>Callsign</label><input class='name' id='nm' maxlength='18' value='" + String(persist.name).replace(/[<>]/g, "") + "'>" +
-      "<p class='kicker' style='margin-top:.7rem'>Choose warden</p><div class='cast-grid'>" +
-      HEROES.map((x) => "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + "' data-h='" + x.id + "'>" +
-        "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span></button>").join("") +
-      "</div><div class='mode-grid'>" +
-      "<button type='button' class='mode-card' data-go='solo'><b>Descend</b><span>One credit. Survive the lattice.</span></button>" +
-      "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Drop in a second warden. Pads and keyboards, up to four.</span></button>" +
+      "<p class='kicker' style='margin-top:.7rem'>Roster — jobs of the Accord</p><div class='cast-grid roster'>" +
+      HEROES.map((x) => {
+        const open = (persist.unlocked || []).indexOf(x.id) >= 0 || x.unlock === 0;
+        return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
+          "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
+      }).join("") +
+      "</div><p class='lore' id='heroLore'>" + (heroOf(persist.hero).lore || "") + "</p>" +
+      "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
+      "<div class='mode-grid'>" +
+      "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
+      "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
+      "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Campaign with a second warden. Pads and keyboards, up to four.</span></button>" +
       "</div><div class='modes' style='margin-top:.6rem'><button class='btn' id='menuRadio'>Play radio</button>" +
       "<a class='btn ghost' href='/games/'>All games</a></div>" +
       "<div class='donate-row'><a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
       "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener'>Patreon</a></div>" +
-      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Runs " + persist.runs + " · <a href='./whitepaper.html'>Whitepaper</a></p></div></div>",
+      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='./whitepaper.html'>Whitepaper</a></p></div></div>",
       true
     );
     $("overlay").onclick = function (e) {
       const c = e.target.closest("[data-h]");
       if (c) {
+        if (c.getAttribute("data-open") === "0") return;
         persist.hero = c.getAttribute("data-h"); savePersist();
         document.querySelectorAll(".cast").forEach((el) => el.classList.toggle("on", el.getAttribute("data-h") === persist.hero));
+        const lore = $("heroLore");
+        if (lore) lore.textContent = heroOf(persist.hero).lore || "";
         return;
       }
       const b = e.target.closest("[data-go]");
       if (!b) return;
-      persist.name = ($("nm").value || "Warden").slice(0, 18); savePersist();
-      newRun({ hero: persist.hero, coop: b.getAttribute("data-go") === "coop" });
+      persist.name = ($("nm").value || "Warden").slice(0, 18);
+      persist.autoShot = !!($("autoBox") && $("autoBox").checked);
+      savePersist();
+      const go = b.getAttribute("data-go");
+      newRun({ hero: persist.hero, mode: go === "endless" ? "endless" : "campaign", coop: go === "coop" });
     };
     const mr = $("menuRadio");
     if (mr) mr.onclick = (e) => { e.stopPropagation(); const p = $("radioPlay"); if (p) p.click(); };
+    const ab = $("autoBox");
+    if (ab) ab.onclick = (e) => e.stopPropagation();
   }
 
   function help() {
@@ -965,7 +1232,9 @@
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
-      "<li>Codex / Swift / Aegis / Veil / Reflect / Pulse / Warp. Gates teleport. Help pauses.</li></ol>" +
+      "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops.</li>" +
+      "<li>Weapons: Shard, Fan, Needle, Cinder, Comet, Halo. Q cycles. Cores / Hearts / Iron grow the run. Seals gift a relic.</li>" +
+      "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -985,6 +1254,7 @@
     if (e.code === "Escape") { menu(); return; }
     if (overlayMode === "menu" || overlayMode === "sheet") return;
     if (PLAY_CODES.has(e.code)) e.preventDefault();
+    if (e.code === "KeyL" && G) { persist.autoShot = !persist.autoShot; savePersist(); paintHud(); say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off."); return; }
     if ((e.code === "Space" || e.code === "Enter") && G) {
       if (e.code === "Space" && !G.players.some((p) => p.dead)) return;
       credit();
@@ -993,9 +1263,14 @@
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
   window.addEventListener("blur", () => { keys = {}; keyEdge = {}; });
 
+  function toggleAuto() {
+    persist.autoShot = !persist.autoShot; savePersist();
+    if (G) { paintHud(); say(persist.autoShot ? "Auto-shoot on." : "Auto-shoot off."); }
+  }
   $("btnHelp").onclick = help;
   $("btnMenu").onclick = menu;
   $("btnCredit").onclick = () => { if (G) credit(); };
+  if ($("btnAuto")) $("btnAuto").onclick = toggleAuto;
 
   window.LatticeCrypt = {
     get: () => G,
@@ -1008,7 +1283,7 @@
     loadPersist();
     try {
       const [img, meta] = await Promise.all([
-        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=4"; }),
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=7"; }),
         fetch(ASSET + "sprites.json").then((r) => r.json())
       ]);
       atlas = img; names = meta.names; cell = meta.cell; cols = meta.cols;

@@ -1,12 +1,14 @@
 """Bake original 16×16 arcade-pixel atlas for Lattice Crypt. No third-party art."""
 from __future__ import annotations
+import json
 from pathlib import Path
 from PIL import Image, ImageDraw
 
 OUT = Path(r"D:\chatagent\games\lattice-crypt\assets")
+FOE32 = OUT / "foes" / "32"
 CELL = 16
 COLS = 16
-ROWS = 20
+ROWS = 32
 CLEAR = (0, 0, 0, 0)
 
 def blank():
@@ -125,6 +127,36 @@ def item(kind):
         rect(im, 1, 1, 14, 14, (40, 80, 90, 255))
         circ(im, 8, 8, 4, (80, 220, 200, 255))
         circ(im, 8, 8, 2, (20, 40, 40, 255))
+    elif kind == "fan":
+        circ(im, 8, 8, 5, (240, 180, 40, 255))
+        px(im, 3, 8, (255, 220, 80, 255)); px(im, 13, 8, (255, 220, 80, 255)); px(im, 8, 3, (255, 220, 80, 255))
+    elif kind == "needle":
+        rect(im, 3, 7, 10, 2, (180, 220, 255, 255))
+        px(im, 13, 7, (255, 255, 255, 255)); px(im, 13, 8, (255, 255, 255, 255))
+    elif kind == "cinder":
+        circ(im, 8, 9, 5, (220, 80, 20, 255))
+        circ(im, 8, 7, 3, (255, 180, 40, 255))
+        px(im, 8, 3, (255, 255, 160, 255))
+    elif kind == "comet":
+        circ(im, 10, 6, 4, (160, 200, 255, 255))
+        rect(im, 3, 8, 6, 3, (80, 120, 200, 180))
+    elif kind == "halo":
+        circ(im, 8, 8, 6, (255, 220, 80, 255))
+        circ(im, 8, 8, 3, (20, 20, 20, 0))
+        px(im, 8, 2, (255, 255, 200, 255))
+    elif kind == "core":
+        circ(im, 8, 8, 5, (255, 80, 60, 255))
+        circ(im, 8, 8, 2, (255, 240, 180, 255))
+    elif kind == "heart":
+        circ(im, 6, 7, 3, (200, 40, 60, 255))
+        circ(im, 10, 7, 3, (200, 40, 60, 255))
+        rect(im, 5, 8, 6, 5, (200, 40, 60, 255))
+    elif kind == "iron":
+        rect(im, 4, 4, 8, 9, (140, 150, 160, 255))
+        rect(im, 6, 2, 4, 3, (180, 190, 200, 255))
+    elif kind == "phial":
+        rect(im, 6, 3, 4, 10, (80, 220, 160, 255))
+        rect(im, 7, 1, 2, 3, (200, 255, 230, 255))
     return im
 
 def generator(kind, lvl):
@@ -140,41 +172,89 @@ def generator(kind, lvl):
     circ(im, 8, 9, s, pal + (255,))
     circ(im, 8, 9, max(2, s - 3), (20, 10, 20, 255))
     rect(im, 3, 13, 10, 3, (40, 30, 40, 255))
+    px(im, 8, 8, pal + (255,))
+    if lvl >= 2:
+        px(im, 4, 6, pal + (255,))
+        px(im, 12, 6, pal + (255,))
+    if lvl >= 3:
+        rect(im, 7, 2, 2, 2, pal + (255,))
+    return im
+
+
+def puff(frame):
+    im = blank()
+    c = (255, 220, 120, 255)
+    r = 2 + frame
+    circ(im, 8, 8, r, c)
+    if frame:
+        circ(im, 8, 8, max(1, r - 2), (255, 80, 40, 200))
+    if frame >= 2:
+        px(im, 3, 4, c)
+        px(im, 13, 5, c)
+        px(im, 5, 13, c)
+        px(im, 12, 12, c)
+    if frame >= 3:
+        circ(im, 8, 8, 1, (255, 255, 220, 255))
     return im
 
 def foe(kind, lvl, frame=0):
     im = blank()
+    bob = (0, -1, 0, 1)[frame % 4]
+    step = (0, 1, 0, -1)[frame % 4]
     if kind == "wraith":
-        c = (200 - lvl * 20, 230, 255, 180 + frame * 20)
-        circ(im, 8, 7, 4 + lvl, c)
-        px(im, 6, 6, (20, 20, 40, 255)); px(im, 10, 6, (20, 20, 40, 255))
+        c = (200, 230, 255, 200)
+        circ(im, 8, 6 + bob, 4, c)
+        rect(im, 5, 8 + bob, 6, 5, c)
+        px(im, 6, 5 + bob, (20, 20, 40, 255))
+        px(im, 10, 5 + bob, (20, 20, 40, 255))
+        rect(im, 11 + step, 10 + bob, 4, 3, (160, 180, 220, 180))
     elif kind == "brute":
-        c = (160 + lvl * 20, 70, 40, 255)
-        rect(im, 4, 4, 8, 10, c)
-        rect(im, 5, 2, 6, 3, (40, 20, 16, 255))
-        rect(im, 2, 6, 3, 6, c)
+        c = (180, 70, 40, 255)
+        rect(im, 4, 4 + bob, 8, 8, c)
+        rect(im, 5, 2 + bob, 6, 3, (40, 20, 16, 255))
+        rect(im, 3 + step, 12 + bob, 3, 3, c)
+        rect(im, 9 - step, 12 + bob, 3, 3, c)
+        rect(im, 12, 6 + bob, 3, 6, (140, 90, 40, 255))
+        px(im, 6, 5 + bob, (20, 10, 10, 255))
+        px(im, 9, 5 + bob, (20, 10, 10, 255))
     elif kind == "imp":
-        c = (220, 40 + lvl * 20, 30, 255)
-        circ(im, 8, 8, 4 + lvl, c)
-        px(im, 5, 3, c); px(im, 11, 3, c)
+        c = (220, 50, 30, 255)
+        circ(im, 8, 8 + bob, 4, c)
+        px(im, 5, 3 + bob, (80, 20, 80, 255))
+        px(im, 11, 3 + bob, (80, 20, 80, 255))
+        px(im, 6, 7 + bob, (255, 220, 40, 255))
+        px(im, 10, 7 + bob, (255, 220, 40, 255))
+        circ(im, 3, 6 + bob, 1 + (frame % 2), (255, 160, 40, 255))
+        rect(im, 12, 9 + bob, 3, 2, c)
     elif kind == "hurler":
         c = (210, 150, 40, 255)
-        rect(im, 5, 5, 6, 8, c)
-        circ(im, 8, 4, 3, c)
+        rect(im, 5, 5 + bob, 6, 7, c)
+        circ(im, 8, 4 + bob, 3, c)
+        circ(im, 12, 3 + bob - (frame % 2), 2, (160, 160, 170, 255))
+        rect(im, 4 + step, 12, 3, 3, (80, 50, 20, 255))
+        rect(im, 9 - step, 12, 3, 3, (80, 50, 20, 255))
     elif kind == "shade":
-        if frame:
-            return im
-        c = (140, 60, 200, 220)
-        circ(im, 8, 8, 5, c)
+        c = (140, 60, 200, 200 if frame % 2 == 0 else 120)
+        circ(im, 8, 7 + bob, 4, c)
+        rect(im, 5, 9 + bob, 6, 5, c)
+        px(im, 6, 6 + bob, (255, 120, 255, 255))
+        px(im, 10, 6 + bob, (255, 120, 255, 255))
     elif kind == "thief":
         c = (40, 140, 70, 255)
-        rect(im, 5, 4, 6, 9, c)
-        circ(im, 8, 4, 3, (20, 80, 40, 255))
+        rect(im, 5, 5 + bob, 6, 7, c)
+        circ(im, 8, 4 + bob, 3, (20, 80, 40, 255))
+        px(im, 7, 4 + bob, (255, 220, 40, 255))
+        px(im, 9, 4 + bob, (255, 220, 40, 255))
+        rect(im, 2, 8 + bob, 3, 2, (200, 200, 210, 255))
+        rect(im, 4 + step, 12, 3, 3, (80, 50, 20, 255))
+        rect(im, 9 - step, 12, 3, 3, (80, 50, 20, 255))
     elif kind == "drain":
-        c = (20, 0, 0, 255)
-        circ(im, 8, 8, 6, (80, 0, 0, 255))
-        circ(im, 8, 8, 3, c)
-        px(im, 6, 6, (255, 40, 40, 255)); px(im, 10, 6, (255, 40, 40, 255))
+        c = (80, 0, 0, 255)
+        circ(im, 8, 7 + bob, 5, c)
+        circ(im, 8, 7 + bob, 3, (10, 0, 0, 255))
+        px(im, 6, 6 + bob, (255, 40, 40, 255))
+        px(im, 10, 6 + bob, (255, 40, 40, 255))
+        rect(im, 4, 10 + bob, 8, 5, (40, 0, 0, 255))
     return im
 
 def hero(hid, dx, frame):
@@ -184,6 +264,14 @@ def hero(hid, dx, frame):
         "vale": ((32, 168, 196), (230, 240, 245)),
         "orin": ((212, 168, 36), (140, 80, 210)),
         "nia": ((36, 148, 64), (160, 230, 90)),
+        "lyra": ((80, 180, 200), (240, 200, 80)),
+        "sancora": ((240, 230, 210), (180, 160, 80)),
+        "arkos": ((32, 120, 140), (196, 140, 48)),
+        "d9ra": ((120, 80, 80), (200, 60, 50)),
+        "srath": ((30, 70, 50), (200, 220, 80)),
+        "kairos": ((90, 50, 140), (220, 180, 255)),
+        "justicae": ((200, 210, 230), (240, 200, 80)),
+        "seidon": ((30, 120, 140), (80, 220, 180)),
     }[hid]
     body, accent = pal[0] + (255,), pal[1] + (255,)
     skin = (240, 208, 176, 255)
@@ -231,6 +319,52 @@ def shot(color):
     circ(im, 8, 8, 2, color)
     return im
 
+def shot_wep(kind, frame=0):
+    im = blank()
+    if kind == "shard":
+        circ(im, 8, 8, 2 + frame, (255, 220, 90, 255))
+        px(im, 8, 8, (255, 255, 220, 255))
+    elif kind == "fan":
+        circ(im, 8, 8, 2, (255, 160, 40, 255))
+        px(im, 5, 8, (255, 200, 80, 255)); px(im, 11, 8, (255, 200, 80, 255))
+    elif kind == "needle":
+        rect(im, 2 + frame, 7, 12, 2, (180, 230, 255, 255))
+        px(im, 14, 7, (255, 255, 255, 255))
+    elif kind == "cinder":
+        circ(im, 8, 8, 3 + frame, (255, 100, 20, 230))
+        circ(im, 8, 8, 1, (255, 240, 120, 255))
+    elif kind == "comet":
+        circ(im, 9, 7, 3, (160, 210, 255, 255))
+        rect(im, 3, 8, 5, 2, (100, 140, 220, 180))
+        if frame:
+            px(im, 2, 9, (200, 230, 255, 255))
+    elif kind == "halo":
+        circ(im, 8, 8, 4 + frame, (255, 220, 80, 200))
+        circ(im, 8, 8, 2, (255, 255, 180, 255))
+    return im
+
+def spark(frame):
+    im = blank()
+    c = (255, 230, 120, 255)
+    px(im, 8, 8, c)
+    if frame:
+        px(im, 6, 7, c); px(im, 10, 9, c); px(im, 8, 5, c); px(im, 8, 11, c)
+    else:
+        px(im, 7, 8, c); px(im, 9, 8, c)
+    return im
+
+def muzzle():
+    im = blank()
+    circ(im, 8, 8, 3, (255, 240, 160, 220))
+    circ(im, 8, 8, 1, (255, 255, 255, 255))
+    return im
+
+def flame_patch(frame):
+    im = blank()
+    circ(im, 8, 10, 4 + frame, (220, 70, 20, 180))
+    circ(im, 8, 8, 2, (255, 180, 40, 220))
+    return im
+
 def main():
     atlas = Image.new("RGBA", (COLS * CELL, ROWS * CELL), CLEAR)
     names = {}
@@ -268,29 +402,58 @@ def main():
     put("warp", item("warp"))
     put("reflect", item("reflect"))
     put("pad", item("pad"))
+    for k in ("fan", "needle", "cinder", "comet", "halo", "core", "heart", "iron", "phial"):
+        put(k, item(k))
     put("shot_kael", shot((255, 80, 60, 255)))
     put("shot_vale", shot((80, 220, 240, 255)))
     put("shot_orin", shot((255, 220, 80, 255)))
     put("shot_nia", shot((120, 255, 90, 255)))
+    put("shot_imp", shot((255, 140, 40, 255)))
+    put("shot_hurler", shot((180, 180, 190, 255)))
+    for k in ("shard", "fan", "needle", "cinder", "comet", "halo"):
+        put(f"shot_{k}_0", shot_wep(k, 0))
+        put(f"shot_{k}_1", shot_wep(k, 1))
+    put("spark_0", spark(0))
+    put("spark_1", spark(1))
+    put("muzzle", muzzle())
+    put("flame_0", flame_patch(0))
+    put("flame_1", flame_patch(1))
+    for n in range(4):
+        put(f"puff_{n}", puff(n))
     for k in ("wraith", "brute", "imp", "hurler", "shade"):
         for lv in (1, 2, 3):
             put(f"gen_{k}_{lv}", generator(k, lv))
     for k in ("wraith", "brute", "imp", "hurler", "shade", "thief", "drain"):
-        put(f"foe_{k}_0", foe(k, 1, 0))
-        put(f"foe_{k}_1", foe(k, 1, 1))
-    for hid in ("kael", "vale", "orin", "nia"):
+        for f in range(4):
+            put(f"foe_{k}_{f}", foe(k, 1, f))
+    for k in ("gate", "smith", "unnamer", "lock", "crown", "heartboss", "levi", "tithe"):
+        for f in range(4):
+            put(f"foe_{k}_{f}", foe("drain" if k == "unnamer" else "brute", 1, f))
+    for hid in ("kael", "vale", "orin", "nia", "lyra", "sancora", "arkos", "d9ra", "srath", "kairos", "justicae", "seidon"):
         for d in range(4):
             for f in range(2):
                 put(f"hero_{hid}_{d}_{f}", hero(hid, d, f))
 
     atlas = atlas.resize((atlas.width * 2, atlas.height * 2), Image.NEAREST)
+    stamped = 0
+    if FOE32.exists():
+        for name, idx in names.items():
+            p = FOE32 / f"{name}.png"
+            if not p.exists():
+                continue
+            im = Image.open(p).convert("RGBA")
+            if im.size != (32, 32):
+                im = im.resize((32, 32), Image.NEAREST)
+            x, y = (idx % COLS) * 32, (idx // COLS) * 32
+            atlas.paste(im, (x, y), im)
+            stamped += 1
     OUT.mkdir(parents=True, exist_ok=True)
     atlas.save(OUT / "sprites.png")
     (OUT / "sprites.json").write_text(
-        __import__("json").dumps({"cell": 32, "cols": COLS, "names": names}, indent=2),
+        json.dumps({"cell": 32, "cols": COLS, "names": names}, indent=2),
         encoding="utf-8",
     )
-    print("baked", i, "cells", atlas.size)
+    print("baked", i, "cells", atlas.size, "stamped", stamped)
 
 if __name__ == "__main__":
     main()

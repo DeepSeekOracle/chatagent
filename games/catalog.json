@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-09",
+  "updated": "2026-09-10",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -117,8 +117,8 @@
       "id": "lattice-crypt",
       "slug": "lattice-crypt",
       "title": "Lattice Crypt",
-      "tagline": "Four wardens",
-      "blurb": "Pixel dungeon co-op. Smash nexuses, spend vials, don't shoot the flask. Kael, Vale, Orin, Nia. Keyboard and gamepad. Live hall.",
+      "tagline": "Jobs of the Accord",
+      "blurb": "24-floor campaign, endless, 12-job roster, six arms, eight named seal-guardians. Smash nexuses. Don't shoot the flask. Keyboard, gamepad, auto-shoot. Live hall.",
       "status": "live",
       "featured": true,
       "order": 7,
