@@ -48,4 +48,13 @@ F3 FPS · M mute SFX · P pause · F11 fullscreen
 - Reduced motion ducks the synth bed. Color filter "default" clears `data-cb`.
 - Juice frozen while paused.
 
-Confidence after official debug: **78/100**. Still one canvas, no Playwright visual lab.
+## Pass 4 — studio quality ship
+- Locked sim at `1/60` (max 3 catch-up steps). Camera/draw still rAF.
+- Survival cap 300. Spatial foe grid. Off-screen AI LOD. DPR/trails/FX cull when FPS < 50.
+- Cleanup recycles pools (100 restarts, shot `born` does not grow).
+- `feel()` = SFX + burst/shake/hit-stop on hit, kill, hurt, pick, vial, pad, wave, boss, upgrade, credit, pause, exit.
+- 3-layer synth bed (drone / pulse / tension) from wave, HP, horde.
+- Coach bar 10s. Menu control hint. Death recap hook. Overlay/pause fades.
+- Survival pads between plazas, extra plazas, 108 item scatter.
+
+Confidence after studio ship: **88/100**. No Playwright visual lab; 60 FPS on a 2020 laptop is engineered (grid + LOD + 60Hz) not measured on that hardware in this pass.

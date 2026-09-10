@@ -380,6 +380,7 @@
     const wep = wepKey(s);
     const L = WEP_LOOK[wep] || WEP_LOOK.shard;
     const px = s.x * TILE - cam.x, py = s.y * TILE - cam.y;
+    if (px < -40 || py < -40 || px > canvas.clientWidth + 40 || py > canvas.clientHeight + 40) return;
     const u = 1 - s.life / Math.max(0.05, s.maxLife || 1.2);
     const lift = s.lob ? Math.sin(u * Math.PI) * 22 : 0;
     if (s.lob) {
@@ -390,7 +391,7 @@
       ctx.fill();
       ctx.globalAlpha = 1;
     }
-    const tr = s.trail || [];
+    const tr = lodOn() ? [] : (s.trail || []);
     tr.forEach((t, i) => {
       const a = (i + 1) / tr.length;
       ctx.globalAlpha = a * 0.55;
@@ -675,7 +676,7 @@
     }
     return false;
   }
-  function surviveCap(w) { return Math.min(280, 36 + w * 12); }
+  function surviveCap(w) { return Math.min(300, 36 + w * 12); }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
     const w = surviveWave();
@@ -684,7 +685,7 @@
       say("Wave " + w + " — the pour thickens.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
-      if (window.CryptStudio) { CryptStudio.sfx("wave"); CryptStudio.shake(3); }
+      feel("wave");
     }
     const cap = surviveCap(w);
     G.spawnT -= dt;
@@ -765,6 +766,8 @@
       else if (WEAPONS[u.id]) giveWep(p, u.id);
     });
     say(u.name + " — " + u.spec);
+    const p0 = G.players[0];
+    feel("upgrade", p0 && p0.x, p0 && p0.y);
   }
   function markUpgradeSel() {
     const cards = document.querySelectorAll("[data-up]");
@@ -1045,9 +1048,21 @@
     stampPlaza(start.x + 48, start.y - 40, 10);
     stampPlaza(start.x - 48, start.y + 40, 10);
     stampPlaza(start.x + 48, start.y + 40, 10);
+    stampPlaza(18 + ((R() * 20) | 0), 18 + ((R() * 20) | 0), 8);
+    stampPlaza(W - 28 - ((R() * 16) | 0), H - 28 - ((R() * 16) | 0), 8);
+    const pads = [];
+    const plazas = [
+      { x: start.x - 48, y: start.y - 40 }, { x: start.x + 48, y: start.y - 40 },
+      { x: start.x - 48, y: start.y + 40 }, { x: start.x + 48, y: start.y + 40 }
+    ];
+    plazas.forEach(function (p, i) {
+      const n = plazas[(i + 1) % plazas.length];
+      tiles[p.y][p.x] = "pad";
+      pads.push({ x: p.x, y: p.y, tx: n.x + 0.5, ty: n.y + 0.5 });
+    });
     const items = [];
-    const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
-    for (let i = 0; i < 96; i++) {
+    const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo", "fan", "cleave", "seek"];
+    for (let i = 0; i < 108; i++) {
       let p = null;
       for (let k = 0; k < 40; k++) {
         const x = 6 + ((R() * (W - 12)) | 0), y = 6 + ((R() * (H - 12)) | 0);
@@ -1056,7 +1071,7 @@
       if (p) items.push({ x: p.x, y: p.y, kind: bag[(R() * bag.length) | 0] });
     }
     return contentBox({
-      W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: [],
+      W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: pads,
       realm: REALMS[seed % 8],
       layout: "The Long Crypt",
       lore: "No exit. A continent of stone. The lattice pours. Grow or be unnamed.",
@@ -1201,7 +1216,7 @@
   function firstWallOnSeg(x0, y0, x1, y1) {
     const lv = G.level;
     const dist = Math.hypot(x1 - x0, y1 - y0);
-    const steps = Math.max(1, Math.ceil(dist * 12));
+    const steps = Math.max(1, Math.ceil(dist * (lodOn() ? 6 : 12)));
     for (let i = 1; i <= steps; i++) {
       const t = i / steps;
       const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
@@ -1228,14 +1243,62 @@
     return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
   }
 
+  function rebuildFoeGrid() {
+    if (!G || !G.level) return;
+    const cell = 2, map = new Map();
+    const foes = G.level.foes;
+    for (let i = 0; i < foes.length; i++) {
+      const f = foes[i];
+      const k = ((f.x / cell) | 0) + "," + ((f.y / cell) | 0);
+      let a = map.get(k);
+      if (!a) { a = []; map.set(k, a); }
+      a.push(f);
+    }
+    G._fgrid = { cell: cell, map: map };
+  }
+  function queryFoes(x, y, r) {
+    const foes = G.level.foes;
+    if (foes.length < 40 || !G._fgrid) return foes;
+    const g = G._fgrid, out = [], c = g.cell;
+    const x0 = Math.floor((x - r) / c), x1 = Math.floor((x + r) / c);
+    const y0 = Math.floor((y - r) / c), y1 = Math.floor((y + r) / c);
+    for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
+      const a = g.map.get(gx + "," + gy);
+      if (!a) continue;
+      for (let i = 0; i < a.length; i++) out.push(a[i]);
+    }
+    return out;
+  }
+  function lodOn() { return !!(window.CryptStudio && CryptStudio.fps.lod); }
+  function feel(kind, x, y, col) {
+    if (window.CryptStudio && CryptStudio.feel) CryptStudio.feel(kind, x, y, col);
+  }
+  function showCoach(mode) {
+    const el = $("coach");
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.innerHTML = mode === "survive"
+      ? "<b>WASD</b> move · auto-fire on · <b>K</b> vial · grab relics · <b>P</b> pause"
+      : "<b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · smash nexuses · cyan exit";
+    if (G) G._coach = 10;
+  }
+  function hideCoach() {
+    const el = $("coach");
+    if (el) el.classList.add("hidden");
+    if (G) G._coach = 0;
+  }
   function cleanupGameState() {
+    if (G && G.shots && window.CryptStudio) {
+      G.shots.forEach((s) => CryptStudio.pool.shot.free(s));
+    }
     if (window.CryptStudio) CryptStudio.cleanup();
     if (G) {
-      G.shots = []; G.fx = [];
+      G.shots = []; G.fx = []; G._fgrid = null;
       if (G.level) G.level.foes = [];
     }
     keys = {}; keyEdge = {};
     announce = { t: "", life: 0 };
+    hideCoach();
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
   }
   function newRun(opts) {
@@ -1264,12 +1327,13 @@
     $("app").classList.toggle("survive-mode", G.mode === "survive");
     const sh = $("studioHud");
     if (sh) sh.classList.toggle("hidden", G.mode !== "survive");
-    if (G.mode === "campaign") say("Campaign — the First Descent.");
+    showCoach(G.mode);
+    if (G.mode === "campaign") say("Campaign — WASD, J fire, smash nexuses, find the cyan exit.");
     else if (G.mode === "survive") {
-      say("Survival — the Long Crypt. A continent of stone. Grow or drown.");
+      say("Survival — auto-fire is on. Move. Stack. Don't stop.");
       for (let i = 0; i < 22; i++) spawnSurviveAround(surviveKind(1), false);
     }
-    else say("Endless — the crypt does not end.");
+    else say("Endless — WASD, J fire. The crypt does not end.");
     if (opts.coop) {
       credit();
       say("Cabinet co-op — P2 arrows · ; fire · ' vial.");
@@ -1546,7 +1610,7 @@
         const range = 1.42 + lvC * 0.2;
         const ax = p.aimX || 1, ay = p.aimY || 0;
         const dmg = shotDmg(p, WEAPONS.cleave) + lvC;
-        G.level.foes.forEach((f) => {
+        queryFoes(p.x, p.y, range).forEach((f) => {
           const dx = f.x - p.x, dy = f.y - p.y;
           const d = Math.hypot(dx, dy);
           if (d > range || d < 0.04) return;
@@ -1568,7 +1632,7 @@
         o.r = r;
         o.ang += dt * (4.4 + lvO * 0.35);
         const hx = p.x + Math.cos(o.ang) * o.r, hy = p.y + Math.sin(o.ang) * o.r;
-        G.level.foes.forEach((f) => {
+        queryFoes(hx, hy, 0.7).forEach((f) => {
           if (Math.hypot(f.x - hx, f.y - hy) < 0.62) hitFoe(f, Math.max(2, 2 + lvO + (p.might || 0)), true);
         });
       });
@@ -1577,7 +1641,7 @@
     if (lvA) {
       const rad = 1.18 + lvA * 0.2;
       const dps = 3.2 + lvA * 1.4 + (p.might || 0);
-      G.level.foes.forEach((f) => {
+      queryFoes(p.x, p.y, rad).forEach((f) => {
         if (Math.hypot(f.x - p.x, f.y - p.y) < rad) hitFoe(f, dps * dt, true);
       });
     }
@@ -1657,7 +1721,7 @@
     if (p.vials < 1 || p.magT > 0) return;
     p.vials--;
     p.magT = 0.22;
-    beep("vial");
+    feel("vial", p.x, p.y);
     const pow = Math.round(20 * p.hero.magic * faithMul(p) * (1 + (p.vialPow || 0) * 0.15));
     say(p.hero.name + " — " + (p.hero.special || "vial") + ".");
     G.level.foes.forEach((f) => {
@@ -1754,7 +1818,7 @@
     G.level.items = G.level.items.filter((it) => {
       if (Math.hypot(it.x + 0.5 - p.x, it.y + 0.5 - p.y) > 0.72 + (p.magnet || 0)) return true;
       G.level.quiet = 0;
-      beep("pick");
+      feel("pick", p.x, p.y);
       applyPickup(p, it);
       return false;
     });
@@ -1770,8 +1834,8 @@
     emit("onEnemyHit", { f: f, dmg: dmg, melee: melee });
     if (window.CryptStudio && dmg >= 1) {
       CryptStudio.floater(f.x, f.y - 0.3, Math.max(1, dmg | 0), f.boss ? "#fbbf24" : "#e2e8f0");
-      if (f.boss) { CryptStudio.shake(5); CryptStudio.hitstop(70); CryptStudio.sfx("boss"); }
-      else if (!G._hitSfx) { CryptStudio.sfx("hit"); G._hitSfx = true; }
+      if (f.boss) feel("boss", f.x, f.y);
+      else if (!G._hitSfx) { feel("hit", f.x, f.y); G._hitSfx = true; }
     }
     if (f.hp <= 0 && G.mode !== "survive") G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
   }
@@ -1783,7 +1847,7 @@
     const pad = (G.level.pads || []).find((d) => d.x === tx && d.y === ty);
     if (!pad) return;
     p.x = pad.tx; p.y = pad.ty; p.padT = p.hero.id === "seidon" ? 0.35 : 0.85;
-    beep("pad");
+    feel("pad", p.x, p.y);
     say("Lattice gate.");
   }
 
@@ -1793,6 +1857,10 @@
     G._killSfx = false;
     G.t += dt;
     announce.life -= dt;
+    if (G._coach > 0) {
+      G._coach -= dt;
+      if (G._coach <= 0) hideCoach();
+    }
     const lv = G.level;
     if (lv.treasure > 0) {
       lv.treasure -= dt;
@@ -1842,9 +1910,13 @@
     if (lv.seal && lv.gens.length === 0) unlockSeal();
 
     bindIdlePads();
+    rebuildFoeGrid();
     G.players.forEach((p) => {
       if (p.dead) return;
-      p.hp -= dt * (G.mode === "survive" ? 0.22 : (G.mode === "endless" ? 0.72 + Math.min(0.45, G.floor * 0.014) : (0.58 + G.floor * 0.016)));
+      const drain = G.mode === "survive"
+        ? ((G._coach > 0 ? 0.08 : 0.22))
+        : (G.mode === "endless" ? 0.72 + Math.min(0.45, G.floor * 0.014) : (0.58 + G.floor * 0.016));
+      p.hp -= dt * drain;
       p.fireT = Math.max(0, p.fireT - dt);
       p.coolT = p.coolT || {};
       Object.keys(p.coolT).forEach((k) => { p.coolT[k] = Math.max(0, p.coolT[k] - dt); });
@@ -1911,9 +1983,15 @@
           date: new Date().toISOString().slice(0, 10)
         });
       }
+      const rec = G.mode === "survive"
+        ? "Wave " + surviveWave() + " · " + (G.kills || 0) + " kills · lv " + G.lvl
+        : "Floor " + (G.floor + 1) + " · hall " + posted;
+      const pb = G.mode === "survive" ? (persist.surviveBest || persist.best) : persist.best;
+      const hook = G.score >= pb ? "New mark on the hall. The door is still open." : "The crypt remembers. One more descent.";
       showSheet(
         "<p class='kicker'>Run closed</p><h2>" + G.score + (G.mode === "survive" ? " · wave " + surviveWave() : " · floor " + (G.floor + 1)) + "</h2>" +
-        "<p class='lore'>Hall score " + posted + " (per credit)" + (G.mode === "survive" ? " · kills " + (G.kills || 0) + " · lv " + G.lvl : "") + " · Best " + persist.best + " · credits " + G.credits + "</p>" +
+        "<p class='lore'>" + rec + " · Best " + persist.best + " · credits " + G.credits + "</p>" +
+        "<p class='lore'>" + hook + "</p>" +
         "<div class='modes'><button class='btn gold' id='again'>Descend again</button><button class='btn' id='mm'>Menu</button></div>"
       );
       $("again").onclick = () => newRun({ hero: persist.hero, mode: G.mode });
@@ -1923,6 +2001,7 @@
 
     const liveP = G.players.filter((p) => !p.dead);
     liveP.forEach((p) => { p._touch = 0; });
+    rebuildFoeGrid();
     lv.foes.forEach((f) => {
       f.t += dt; f.hurt = Math.max(0, f.hurt - dt); f.flicker += dt;
       f.stun = Math.max(0, (f.stun || 0) - dt);
@@ -1938,6 +2017,10 @@
       if (!tgt) return;
       const ang = Math.atan2(tgt.y - f.y, tgt.x - f.x);
       const ghost = !!def.ghost;
+      if (lodOn() && bd > 22 && !def.boss) {
+        tryMove(f, Math.cos(ang), Math.sin(ang), def.speed * 0.85, dt, ghost);
+        return;
+      }
       let mx = Math.cos(ang), my = Math.sin(ang);
       if (def.shoot) {
         if (bd < 3.2) { mx = -mx; my = -my; }
@@ -1976,9 +2059,8 @@
         }
         lv.quiet = 0;
         if (!tgt.hurtBeep) {
-          beep("hurt"); tgt.hurtBeep = 0.25;
+          feel("hurt", tgt.x, tgt.y); tgt.hurtBeep = 0.25;
           emit("onPlayerHit", { p: tgt, f: f });
-          if (window.CryptStudio) { CryptStudio.shake(4); CryptStudio.juice.flash = 1; CryptStudio.hitstop(45); }
         }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
         if (tgt.thorns > 0) f.hp -= 22 * dt;
@@ -2004,11 +2086,10 @@
       f.isActive = false;
       emit("onEnemyDeath", { f: f });
       if (window.CryptStudio) {
-        CryptStudio.burst(f.x, f.y, f.boss ? "#fbbf24" : "#fb923c", f.boss ? 18 : 8);
-        if (f.boss) { CryptStudio.sfx("boss"); CryptStudio.shake(10); CryptStudio.hitstop(140); }
+        if (f.boss) feel("boss", f.x, f.y);
         else {
-          if (!G._killSfx) { CryptStudio.sfx("kill"); G._killSfx = true; }
-          CryptStudio.shake(2);
+          if (!G._killSfx) { feel("kill", f.x, f.y); G._killSfx = true; }
+          else CryptStudio.burst(f.x, f.y, "#fb923c", lodOn() ? 3 : 8);
         }
       }
       if (f.explode) {
@@ -2037,7 +2118,7 @@
       s.x += s.vx * dt; s.y += s.vy * dt;
       if (s.seek && !s.foe && lv.foes.length) {
         let best = null, bd = 9;
-        lv.foes.forEach((f) => {
+        queryFoes(s.x, s.y, 9).forEach((f) => {
           const d = Math.hypot(f.x - s.x, f.y - s.y);
           if (d < bd) { bd = d; best = f; }
         });
@@ -2049,9 +2130,11 @@
         }
       }
       s.grace = Math.max(0, (s.grace || 0) - dt);
-      s.trail = s.trail || [];
-      s.trail.push({ x: s.x, y: s.y });
-      if (s.trail.length > (s.wep === "needle" ? 12 : 8)) s.trail.shift();
+      if (!lodOn()) {
+        s.trail = s.trail || [];
+        s.trail.push({ x: s.x, y: s.y });
+        if (s.trail.length > (s.wep === "needle" ? 12 : 8)) s.trail.shift();
+      } else s.trail = s.trail && s.trail.length ? [s.trail[s.trail.length - 1]] : [];
       const wallHit = (s.foe || !s.lob) ? firstWallOnSeg(s.px || s.x, s.py || s.y, s.x, s.y) : null;
       if (!wallHit) s.air = true;
       if (wallHit && (s.air || (s.grace || 0) <= 0)) {
@@ -2084,10 +2167,10 @@
           }
         });
         if (s.life > 0) {
-          lv.foes.forEach((f) => {
+          queryFoes(s.x, s.y, 1.2).forEach((f) => {
             if (s.life <= 0) return;
             if (distSeg(f.x, f.y, s.px || s.x, s.py || s.y, s.x, s.y) < ((FOE[f.kind] && FOE[f.kind].boss) ? 0.9 : 0.66)) {
-              hitFoe(f, s.dmg, false); beep("hit");
+              hitFoe(f, s.dmg, false);
               G.fx.push({ x: s.x, y: s.y, life: 0.22, kind: "hit", wep: wepKey(s) });
               if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
               if (s.chain && !s._chained) {
@@ -2131,7 +2214,17 @@
     G.fx = G.fx.filter((f) => { f.life -= dt; return f.life > 0; });
     pollJoin();
     G.score = Math.min(999999999, G.score);
-    if (window.CryptStudio) CryptStudio.musicTick(G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, G.floor / 16));
+    if (window.CryptStudio) {
+      const p0 = liveP[0];
+      CryptStudio.musicTick(
+        G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, G.floor / 16),
+        {
+          danger: p0 ? 1 - (p0.hp / Math.max(1, p0.max)) : 0,
+          horde: Math.min(1, lv.foes.length / 300)
+        }
+      );
+    }
+    if (lodOn() && G.fx.length > 48) G.fx = G.fx.slice(-48);
     G._hudT = (G._hudT || 0) + dt;
     if (G._hudT > 0.1) { G._hudT = 0; paintHud(); }
     keyEdge = {};
@@ -2254,12 +2347,14 @@
       return;
     }
     say("Floor " + (G.floor + 1) + " sealed.");
+    feel("exit");
     loadFloor(G.floor + 1);
   }
 
   function credit() {
     if (!G || G.over) return;
     if (overlayMode === "pause" || overlayMode === "menu") return;
+    feel("credit", G.players[0] && G.players[0].x, G.players[0] && G.players[0].y);
     const down = G.players.find((p) => p.dead);
     if (!down) {
       if (G.players.length < 4) {
@@ -2281,7 +2376,7 @@
 
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const dpr = lodOn() ? 1 : Math.min(2, window.devicePixelRatio || 1);
     if (canvas.width !== (w * dpr | 0) || canvas.height !== (h * dpr | 0)) {
       canvas.width = w * dpr | 0; canvas.height = h * dpr | 0;
     }
@@ -2596,6 +2691,7 @@
     showSheet(
       "<div class='title-screen'><div class='title-art'><img src='./assets/menu.jpg' alt='Lattice Crypt'><div class='title-art-fade'></div></div>" +
       "<div class='title-panel'><p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LATTICE CRYPT</h1>" +
+      "<p class='ctrl-hint'><b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · pick a door</p>" +
       "<p class='lore'>The crypt is a lock. Four wardens are the teeth. The Architect remembers why it was cut. Smash nexuses. Don't shoot the flask.</p>" +
       "<label>Callsign</label><input class='name' id='nm' maxlength='18' value='" + String(persist.name).replace(/[<>]/g, "") + "'>" +
       "<p class='kicker' style='margin-top:.7rem'>Roster — jobs of the Accord</p><div class='cast-grid roster'>" +
@@ -2675,15 +2771,28 @@
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
 
+  const STEP = (window.CryptStudio && CryptStudio.STEP) || (1 / 60);
   let last = performance.now();
+  let acc = 0;
   function loop(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const raw = Math.min(0.08, (now - last) / 1000);
     last = now;
-    if (window.CryptStudio) CryptStudio.fpsTick(dt);
-    if (window.CryptStudio && overlayMode !== "pause") CryptStudio.juiceTick(dt);
-    const frozen = window.CryptStudio && CryptStudio.juice.hitstop > 0;
-    if (!frozen && overlayMode !== "menu" && overlayMode !== "sheet" && overlayMode !== "pause") update(dt);
-    else if (G && G._ups) pollUpgradePick();
+    if (window.CryptStudio) CryptStudio.fpsTick(raw);
+    const paused = overlayMode === "pause";
+    const blocked = overlayMode === "menu" || overlayMode === "sheet" || paused;
+    if (!paused && window.CryptStudio) CryptStudio.juiceTick(raw);
+    if (G && G._ups) pollUpgradePick();
+    if (!blocked && G && !G.over) {
+      acc += raw;
+      let n = 0;
+      while (acc >= STEP && n < 3) {
+        const frozen = window.CryptStudio && CryptStudio.juice.hitstop > 0;
+        if (!frozen) update(STEP);
+        acc -= STEP;
+        n++;
+      }
+      if (acc > STEP * 4) acc = 0;
+    } else acc = 0;
     draw();
     requestAnimationFrame(loop);
   }
@@ -2743,6 +2852,7 @@
     if (overlayMode != null) return;
     overlayMode = "pause";
     if (layer) layer.classList.remove("hidden");
+    feel("pause");
   }
   function toggleFull() {
     const el = document.documentElement;

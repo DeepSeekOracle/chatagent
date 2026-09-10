@@ -1,4 +1,4 @@
-/* Node smoke: studio pools recycle; cleanup zeros live counts. */
+/* Node smoke: 100 restarts, pool recycle, studio strings. */
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -13,6 +13,9 @@ g.globalThis = g;
 vm.runInNewContext(src, g);
 const S = g.CryptStudio;
 if (!S) throw new Error("no CryptStudio");
+if (S.STEP !== 1 / 60) throw new Error("STEP not 60Hz");
+if (typeof S.feel !== "function") throw new Error("no feel");
+
 const a = S.pool.shot.alloc();
 const b = S.pool.shot.alloc();
 if (!a.isActive || !b.isActive) throw new Error("alloc inactive");
@@ -29,22 +32,27 @@ S.cleanup();
 const c = S.counts();
 if (c.particles !== 0 || c.floaters !== 0) throw new Error("cleanup leak " + JSON.stringify(c));
 if (S.restarts < 1) throw new Error("restarts");
-for (let i = 0; i < 40; i++) {
+
+const born0 = S.counts().shotsBorn;
+for (let i = 0; i < 100; i++) {
   const s = S.pool.shot.alloc();
   S.burst(0, 0, "#fff", 6);
   S.floater(0, 0, "1", "#fff");
+  S.feel("kill", 0, 0);
   S.pool.shot.free(s);
   S.cleanup();
 }
 if (S.counts().particles !== 0) throw new Error("restart leak");
-if (S.restarts < 40) throw new Error("restart count");
+if (S.restarts < 100) throw new Error("restart count " + S.restarts);
+if (S.counts().shotsBorn > born0 + 2) throw new Error("shot born grew " + S.counts().shotsBorn + " from " + born0);
+
 const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
 ["seek", "chain", "barrage", "nova", "burst", "spawnling", "mend"].forEach(function (k) {
   if (game.indexOf(k) < 0) throw new Error("missing " + k);
 });
-if (game.indexOf("togglePause") < 0) throw new Error("no pause");
-if (game.indexOf("cleanupGameState") < 0) throw new Error("no cleanup");
-if (game.indexOf("keyEdge.KeyP") < 0) throw new Error("pause key-repeat");
-if (game.indexOf("pool.shot.free") < 0) throw new Error("no floor shot free");
-if (game.indexOf("s._chained = false") < 0) throw new Error("no chain reset");
+["togglePause", "cleanupGameState", "keyEdge.KeyP", "pool.shot.free", "s._chained = false",
+  "queryFoes", "rebuildFoeGrid", "showCoach", "lodOn", "CryptStudio.STEP"].forEach(function (k) {
+  if (game.indexOf(k) < 0) throw new Error("missing " + k);
+});
+if (game.indexOf("Math.min(300") < 0) throw new Error("cap not 300");
 console.log("crypt_studio_smoke ok", S.counts());
