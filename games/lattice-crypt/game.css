@@ -442,6 +442,11 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
 .cast span { display: block; font-size: .62rem; color: var(--mute); }
 .cast .spec-tag { color: var(--cyan); font-size: .58rem; letter-spacing: .04em; }
 .cast.on { border-color: var(--gold); }
+.cast-grid.bond { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.bond .cast-art { height: 52px; }
+.bond .pet-art img { object-fit: contain; object-position: 50% 70%; background: transparent; }
+.bond .cast b { font-size: .68rem; }
+.bond .cast span { font-size: .55rem; }
 .dossier {
   margin: .45rem 0 .2rem; padding: .55rem .65rem;
   background: #10141c; border: 1px solid var(--line); border-radius: 10px;
@@ -555,4 +560,5 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
   .title-panel { min-height: auto; border-left: 0; }
   .modes { grid-template-columns: 1fr; }
   .cast-grid.roster { grid-template-columns: 1fr 1fr; }
+  .cast-grid.bond { grid-template-columns: 1fr 1fr 1fr; }
 }

@@ -31,7 +31,9 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=46") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=47") >= 0, "cache-bust");
+must(game.indexOf("function spawnPet") >= 0 && game.indexOf("Ashmane") >= 0 && game.indexOf("Glassbarb") >= 0, "mythic pets");
+must(game.indexOf("function aiInput") >= 0 && game.indexOf("bondPickHtml") >= 0, "AI companion pick");
 must(game.indexOf("Brotato") < 0 && html.indexOf("Brotato") < 0, "haven-original copy");
 must(game.indexOf("strokeRect(Math.round(dx)") < 0, "no foe square frame");
 must(game.indexOf("Start small. The lattice grows with you.") >= 0, "survive start dump");

@@ -247,6 +247,13 @@
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
   const KINDS_NEW = ["stitch", "echoer", "veilkin", "knot", "choir"];
   const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend", "stitch", "echoer", "veilkin", "knot", "choir"];
+  const PETS = {
+    wolf: { name: "Ashmane", tag: "Dash · Bite", hp: 42, armor: 1, speed: 3.9, col: "#94a3b8" },
+    lion: { name: "Solstride", tag: "Jump · Roar · Claw", hp: 50, armor: 1, speed: 3.55, col: "#fbbf24" },
+    bear: { name: "Ironhide", tag: "Swipe · Maul", hp: 88, armor: 4, speed: 2.35, col: "#fb923c" },
+    elephant: { name: "Tuskward", tag: "Stomp", hp: 76, armor: 3, speed: 2.15, col: "#67e8f9" },
+    scorpion: { name: "Glassbarb", tag: "Clamp · Tail", hp: 38, armor: 2, speed: 2.95, col: "#c4b5fd" }
+  };
   const INV_BAG = 24;
   const INV_WEP = 6;
   const INV_RELIC = 4;
@@ -311,6 +318,7 @@
   let tileAtlas = null, tileNames = {}, tileCell = 32, tileCols = 16;
   let fxAtlas = null, fxNames = {}, fxCell = 32, fxCols = 8;
   let itemAtlas = null, itemNames = {}, itemCell = 32, itemCols = 8;
+  let petAtlas = null, petNames = {}, petCell = 64, petCols = 8;
   const WEP_LOOK = {
     shard: { size: 28, col: "#fbbf24", glow: "rgba(251,191,36,0.38)" },
     fan: { size: 26, col: "#fb923c", glow: "rgba(249,115,22,0.38)" },
@@ -370,6 +378,8 @@
     });
     if (persist.cb) document.documentElement.setAttribute("data-cb", persist.cb);
     else document.documentElement.removeAttribute("data-cb");
+    if (persist.comp == null) persist.comp = "";
+    if (persist.pet == null) persist.pet = "";
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -684,6 +694,35 @@
       ctx.globalAlpha = 1;
       return;
     }
+    if (f.kind === "stomp") {
+      ctx.strokeStyle = "rgba(251,191,36,0.85)";
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 1 - u;
+      ctx.beginPath();
+      ctx.ellipse(px, py + 6, 10 + u * 38, 5 + u * 14, 0, 0, 6.28);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "roar") {
+      ctx.strokeStyle = "rgba(251,191,36,0.7)";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 1 - u;
+      ctx.beginPath();
+      ctx.arc(px, py, 12 + u * 36, 0, 6.28);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "poison") {
+      ctx.fillStyle = "rgba(74,222,128,0.28)";
+      ctx.globalAlpha = 1 - u * 0.4;
+      ctx.beginPath();
+      ctx.ellipse(px, py + 4, 16, 8, 0, 0, 6.28);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
     ctx.globalAlpha = Math.max(0, f.life * 2);
     ctx.strokeStyle = "#5eead4";
     ctx.lineWidth = 2;
@@ -705,6 +744,23 @@
     const sx = (i % foeCols) * foeCell, sy = Math.floor(i / foeCols) * foeCell;
     w = w || foeCell;
     blit(foeAtlas, sx, sy, foeCell, foeCell, x, y, w, w);
+  }
+  function drawPetSpr(kind, fr, x, y, w, flip) {
+    const name = "pet_" + kind + "_" + fr;
+    const i = petNames[name];
+    w = w || 44;
+    if (i == null || !petAtlas) return;
+    const sx = (i % petCols) * petCell, sy = Math.floor(i / petCols) * petCell;
+    if (flip) {
+      ctx.save();
+      ctx.translate(Math.round(x + w), Math.round(y));
+      ctx.scale(-1, 1);
+      blit(petAtlas, sx, sy, petCell, petCell, 0, 0, w, w);
+      ctx.restore();
+      ctx.imageSmoothingEnabled = false;
+    } else {
+      blit(petAtlas, sx, sy, petCell, petCell, x, y, w, w);
+    }
   }
   function drawHeroSpr(p, camx, camy) {
     const fr = (p.walk | 0) % 2;
@@ -1020,7 +1076,7 @@
   }
   function applySurviveUp(u) {
     G.players.forEach((p) => {
-      if (p.dead) return;
+      if (p.dead || p.ai) return;
       if (u.id === "might") p.might = (p.might || 0) + 1;
       else if (u.id === "haste") { p.haste = (p.haste || 0) + 1; p.shotBoost = Math.max(p.shotBoost || 0, 4); }
       else if (u.id === "iron") { p.iron = (p.iron || 0) + 1; p.aegis = Math.max(p.aegis || 0, 4); }
@@ -1774,6 +1830,170 @@
     }
     return out;
   }
+  function nearestFoe(x, y, r) {
+    let best = null, bd = r;
+    const foes = (G && G.level && G.level.foes) || [];
+    for (let i = 0; i < foes.length; i++) {
+      const f = foes[i];
+      if (!f || f.hp <= 0) continue;
+      const d = Math.hypot(f.x - x, f.y - y);
+      if (d < bd) { bd = d; best = f; }
+    }
+    return best;
+  }
+  function spawnPet(kind) {
+    const d = PETS[kind];
+    if (!d || !G) return null;
+    const lead = G.players[0];
+    const pet = {
+      kind, x: (lead ? lead.x : 2) - 0.85, y: (lead ? lead.y : 2) + 0.45,
+      hp: d.hp, max: d.hp, armor: d.armor, facing: 2, walk: 0,
+      sleepT: 0, hurtT: 0, atk: 0, t: 0, cd: {}
+    };
+    G.pets = G.pets || [];
+    G.pets.push(pet);
+    say(d.name + " pads beside you.");
+    return pet;
+  }
+  function petStrike(pet, r, dmg, fx) {
+    queryFoes(pet.x, pet.y, r).forEach(function (f) {
+      if (Math.hypot(f.x - pet.x, f.y - pet.y) <= r) hitFoe(f, dmg, true);
+    });
+    if (fx) G.fx.push(fx);
+  }
+  function tickPets(dt) {
+    if (!G || G.over) return;
+    G.pets = G.pets || [];
+    G.pools = G.pools || [];
+    const lead = G.players.find(function (p) { return !p.ai && !p.dead; }) || G.players[0];
+    G.pets.forEach(function (pet) {
+      const spec = PETS[pet.kind];
+      if (!spec) return;
+      pet.t += dt;
+      pet.hurtT = Math.max(0, (pet.hurtT || 0) - dt);
+      pet.atk = Math.max(0, (pet.atk || 0) - dt);
+      if (pet.sleepT > 0) {
+        pet.sleepT -= dt;
+        if (pet.sleepT <= 0) {
+          pet.hp = Math.round(pet.max * 0.45);
+          say(spec.name + " wakes.");
+        }
+        return;
+      }
+      const foe = nearestFoe(pet.x, pet.y, 7.6);
+      let tx, ty;
+      if (foe) { tx = foe.x; ty = foe.y; }
+      else if (lead) {
+        tx = lead.x + (lead.facing === 1 ? 1.2 : (lead.facing === 2 ? -1.2 : 0.4));
+        ty = lead.y + (lead.facing === 0 ? 1.2 : (lead.facing === 3 ? -1.2 : 0.5));
+      } else return;
+      let dx = tx - pet.x, dy = ty - pet.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      if (dist > 0.58) {
+        dx /= dist; dy /= dist;
+        tryMove(pet, dx, dy, spec.speed * (foe && dist < 1.15 ? 0.45 : 1), dt, false);
+        pet.facing = dirFrom(dx, dy);
+        pet.walk += dt * 9;
+      }
+      pet.cd = pet.cd || {};
+      function ready(id, gap) {
+        pet.cd[id] = (pet.cd[id] == null ? 0 : pet.cd[id]) - dt;
+        if (pet.cd[id] > 0) return false;
+        pet.cd[id] = gap;
+        pet.atk = 0.32;
+        return true;
+      }
+      const ang = foe ? Math.atan2(foe.y - pet.y, foe.x - pet.x) : 0;
+      if (pet.kind === "wolf") {
+        if (foe && dist < 4.3 && ready("dash", 1.55)) {
+          tryMove(pet, (foe.x - pet.x) / dist, (foe.y - pet.y) / dist, 20, 0.11, false);
+          petStrike(pet, 1.2, 3, { x: pet.x, y: pet.y, life: 0.2, kind: "slash", ang: ang, r: 1.2 });
+        } else if (foe && dist < 1.4 && ready("bite", 2.2)) {
+          petStrike(pet, 1.3, 2, { x: pet.x, y: pet.y, life: 0.22, kind: "slash", ang: ang, r: 1.3 });
+        }
+      } else if (pet.kind === "lion") {
+        if (foe && dist < 4.1 && ready("jump", 2.1)) {
+          tryMove(pet, (foe.x - pet.x) / dist, (foe.y - pet.y) / dist, 18, 0.13, false);
+          petStrike(pet, 1.25, 4, { x: pet.x, y: pet.y, life: 0.22, kind: "slash", ang: ang, r: 1.25 });
+        }
+        if (ready("roar", 3.4)) {
+          queryFoes(pet.x, pet.y, 2.15).forEach(function (f) {
+            if (Math.hypot(f.x - pet.x, f.y - pet.y) < 2.15) f.stun = Math.max(f.stun || 0, 0.55);
+          });
+          G.fx.push({ x: pet.x, y: pet.y, life: 0.4, kind: "roar" });
+        }
+        if (foe && dist < 1.25 && ready("claw", 1.35)) {
+          petStrike(pet, 1.15, 3, { x: pet.x, y: pet.y, life: 0.16, kind: "slash", ang: ang, r: 1.15 });
+        }
+      } else if (pet.kind === "bear") {
+        if (foe && dist < 1.55 && ready("swipe", 1.7)) {
+          const ax = foe.x - pet.x, ay = foe.y - pet.y, al = Math.hypot(ax, ay) || 1;
+          queryFoes(pet.x, pet.y, 1.45).forEach(function (f) {
+            const dx2 = f.x - pet.x, dy2 = f.y - pet.y, d2 = Math.hypot(dx2, dy2);
+            if (d2 < 1.45 && (dx2 * ax + dy2 * ay) / (d2 * al) > 0.1) hitFoe(f, 3, true);
+          });
+          G.fx.push({ x: pet.x, y: pet.y, life: 0.18, kind: "slash", ang: ang, r: 1.45 });
+        }
+        if (foe && dist < 1.05 && ready("maul", 2.5)) {
+          petStrike(pet, 1.05, 5, { x: pet.x, y: pet.y, life: 0.24, kind: "slash", ang: ang, r: 1.05 });
+        }
+      } else if (pet.kind === "elephant") {
+        if (ready("stomp", 3)) {
+          petStrike(pet, 1.9, 4, { x: pet.x, y: pet.y, life: 0.38, kind: "stomp" });
+          feel("hit", pet.x, pet.y);
+        }
+      } else if (pet.kind === "scorpion") {
+        if (foe && dist < 1.15 && ready("clamp", 1.4)) {
+          hitFoe(foe, 2, true);
+          G.fx.push({ x: foe.x, y: foe.y, life: 0.16, kind: "slash", ang: ang, r: 0.7 });
+        }
+        if (foe && dist < 3.4 && ready("tail", 2.8)) {
+          hitFoe(foe, 2, true);
+          G.pools.push({ x: foe.x, y: foe.y, r: 1.15, life: 2.2, dps: 2.4, tick: 0 });
+          G.fx.push({ x: foe.x, y: foe.y, life: 0.35, kind: "poison" });
+        }
+      }
+    });
+    G.pools.forEach(function (pool) {
+      pool.life -= dt;
+      pool.tick = (pool.tick || 0) + dt;
+      if (pool.tick >= 0.28) {
+        pool.tick = 0;
+        queryFoes(pool.x, pool.y, pool.r).forEach(function (f) {
+          if (Math.hypot(f.x - pool.x, f.y - pool.y) <= pool.r) hitFoe(f, 1, true);
+        });
+      }
+    });
+    G.pools = G.pools.filter(function (p) { return p.life > 0; });
+  }
+  function aiInput(p) {
+    if ((p.sleepT || 0) > 0) return { dx: 0, dy: 0, fire: false, mag: false, cycle: false };
+    const lead = G.players.find(function (x) { return !x.ai && !x.dead; }) || G.players[0];
+    const foe = nearestFoe(p.x, p.y, 8.2);
+    let tx, ty;
+    if (foe && lead && Math.hypot(foe.x - lead.x, foe.y - lead.y) < 9.5) {
+      tx = foe.x; ty = foe.y;
+    } else if (lead) {
+      tx = lead.x + (lead.facing === 1 ? 1.25 : (lead.facing === 2 ? -1.25 : 0.4));
+      ty = lead.y + (lead.facing === 0 ? 1.2 : (lead.facing === 3 ? -1.2 : 0.5));
+    } else {
+      return { dx: 0, dy: 0, fire: false, mag: false, cycle: false };
+    }
+    let dx = tx - p.x, dy = ty - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 0.58) { dx = 0; dy = 0; }
+    else { dx /= d; dy /= d; }
+    if (dx || dy) { p.facing = dirFrom(dx, dy); p.aimX = dx; p.aimY = dy; }
+    else if (foe) {
+      p.aimX = foe.x - p.x; p.aimY = foe.y - p.y;
+      p.facing = dirFrom(p.aimX, p.aimY);
+    }
+    const near = foe && Math.hypot(foe.x - p.x, foe.y - p.y) < 6.4;
+    const mag = p.hp < p.max * 0.34 && p.vials > 0 && G.level.foes.filter(function (f) {
+      return Math.hypot(f.x - p.x, f.y - p.y) < 2.8;
+    }).length >= 4;
+    return { dx: dx, dy: dy, fire: !!near, mag: mag, cycle: false };
+  }
   function lodOn() { return !!(window.CryptStudio && CryptStudio.fps.lod); }
   function feel(kind, x, y, col) {
     let pan = 0;
@@ -1830,15 +2050,25 @@
       players: [],
       thiefT: 24,
       over: false,
+      pets: [], pools: [],
       mode: opts.mode || "campaign",
       xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.7, bossAt: 0, pendingLvl: 0, hordeT: 14
     };
     joinHero(opts.hero || persist.hero, 0);
+    if (persist.comp) {
+      const c = joinHero(persist.comp);
+      if (c) {
+        c.ai = true;
+        c.vials = G.mode === "survive" ? 2 : 1;
+        c.magnet = 0.12;
+      }
+    }
     if (G.mode === "survive") {
       G.surviveAuto = true;
-      G.players.forEach((p) => { p.vials = 2; p.magnet = 0.35; });
+      G.players.forEach((p) => { if (!p.ai) { p.vials = 2; p.magnet = 0.35; } });
     }
     loadFloor(0);
+    if (persist.pet && PETS[persist.pet]) spawnPet(persist.pet);
     overlayMode = null;
     hideOverlay();
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
@@ -1894,6 +2124,10 @@
       p.y = st.y + 0.5 + ((i / 2) | 0) * 0.4;
       p.padT = 0;
     });
+    (G.pets || []).forEach(function (pet, i) {
+      pet.x = st.x + 0.15;
+      pet.y = st.y + 0.5 + i * 0.45;
+    });
     G.level.foes.forEach((f) => {
       const p = nearestWalk(G.level, f.x, f.y);
       f.x = p.x; f.y = p.y;
@@ -1922,7 +2156,7 @@
     if (G.level.foes.some((f) => f.kind === "drain")) say("The Drain walks.");
     if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].super)) say((BOSS_NAME[G.level.foes.find(function (x) { return FOE[x.kind] && FOE[x.kind].super; }).kind] || "A super guardian") + " holds this seal.");
     else if (G.level.foes.some((f) => FOE[f.kind] && FOE[f.kind].boss)) say("A named guardian holds this seal.");
-    const foc = G.players.find((p) => !p.dead) || G.players[0];
+    const foc = G.players.find((p) => !p.dead && !p.ai) || G.players.find((p) => !p.dead) || G.players[0];
     const cw = canvas.clientWidth || 800, ch = canvas.clientHeight || 480;
     cam.x = foc.x * TILE - cw / 2;
     cam.y = foc.y * TILE - ch / 2;
@@ -1957,6 +2191,7 @@
   }
 
   function inputFor(p) {
+    if (p.ai) return aiInput(p);
     const map = p.slot === 0 ? p1Map() : (KEYS_P[p.slot] || KEYS_P[0]);
     let dx = 0, dy = 0;
     if (keys[map.up]) dy -= 1;
@@ -2571,10 +2806,18 @@
     rebuildFoeGrid();
     G.players.forEach((p) => {
       if (p.dead) return;
+      if ((p.sleepT || 0) > 0) {
+        p.sleepT -= dt;
+        if (p.sleepT <= 0) {
+          p.hp = Math.round(p.max * 0.4);
+          say(p.hero.name + " wakes.");
+        }
+        return;
+      }
       const drain = G.mode === "survive"
         ? ((G._coach > 0 ? 0.05 : 0.11))
         : (G.mode === "endless" ? 0.22 + Math.min(0.28, G.floor * 0.008) : (0.16 + G.floor * 0.007));
-      p.hp -= dt * drain;
+      p.hp -= dt * drain * (p.ai ? 0.42 : 1);
       p.fireT = Math.max(0, p.fireT - dt);
       p.coolT = p.coolT || {};
       Object.keys(p.coolT).forEach((k) => { p.coolT[k] = Math.max(0, p.coolT[k] - dt); });
@@ -2597,8 +2840,13 @@
       if (p.regen > 0) p.hp = Math.min(p.max, p.hp + dt * 18);
       p.hurtBeep = Math.max(0, (p.hurtBeep || 0) - dt);
       if (p.hp <= 0) {
-        p.dead = true;
         p.hp = 0;
+        if (p.ai) {
+          p.sleepT = 60;
+          say(p.hero.name + " sleeps — one minute.");
+          return;
+        }
+        p.dead = true;
         emit("onPlayerDeath", { p: p });
         say(p.hero.name + " falls. Credit to rise.");
         return;
@@ -2628,9 +2876,11 @@
       unstick(p);
       if (G.mode !== "survive" && tileAt(lv, p.x, p.y) === "exit") G._exit = true;
     });
+    tickPets(dt);
     if (G._exit) { G._exit = false; nextFloor(); return; }
 
-    if (G.players.every((p) => p.dead)) {
+    const humans = G.players.filter((p) => !p.ai);
+    if ((humans.length ? humans : G.players).every((p) => p.dead)) {
       G.over = true;
       persist.runs++;
       persist.best = Math.max(persist.best, G.score);
@@ -2654,8 +2904,9 @@
       return;
     }
 
-    const liveP = G.players.filter((p) => !p.dead);
+    const liveP = G.players.filter((p) => !p.dead && (p.sleepT || 0) <= 0);
     liveP.forEach((p) => { p._touch = 0; });
+    (G.pets || []).forEach(function (pet) { if ((pet.sleepT || 0) <= 0) pet._touch = 0; });
     rebuildFoeGrid();
     lv.foes.forEach((f) => {
       f.t += dt; f.hurt = Math.max(0, f.hurt - dt); f.flicker += dt;
@@ -2664,11 +2915,14 @@
       const def = FOE[f.kind];
       if (!def) return;
       let tgt = null, bd = 1e9;
-      liveP.forEach((p) => {
-        if (p.veil > 0 && Math.hypot(p.x - f.x, p.y - f.y) > 0.42) return;
-        const d = Math.hypot(p.x - f.x, p.y - f.y);
-        if (d < bd) { bd = d; tgt = p; }
-      });
+      function consider(ent) {
+        if (!ent || ent.hp <= 0 || ent.dead || (ent.sleepT || 0) > 0) return;
+        if (ent.veil > 0 && Math.hypot(ent.x - f.x, ent.y - f.y) > 0.42) return;
+        const d = Math.hypot(ent.x - f.x, ent.y - f.y);
+        if (d < bd) { bd = d; tgt = ent; }
+      }
+      liveP.forEach(consider);
+      (G.pets || []).forEach(consider);
       if (!tgt) return;
       const ang = Math.atan2(tgt.y - f.y, tgt.x - f.x);
       const ghost = foeHas(f, "ghost");
@@ -2707,7 +2961,9 @@
       }
       const hitR = def.boss ? 0.72 : 0.48;
       if (bd < hitR) {
-        const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
+        const arm = tgt.hero
+          ? ((tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0))
+          : (tgt.armor || 0);
         const dmgMul = G.mode === "survive"
           ? (0.48 + 0.035 * Math.max(0, (G.lvl || 1) - 1) + 0.018 * Math.max(0, surviveWave() - 1))
           : (f.rank * dmgScale());
@@ -2731,9 +2987,17 @@
           }
         }
         lv.quiet = 0;
+        if (!tgt.hero && tgt.hp <= 0) {
+          tgt.hp = 0;
+          if (!(tgt.sleepT > 0)) {
+            tgt.sleepT = 60;
+            const nm = PETS[tgt.kind] && PETS[tgt.kind].name;
+            if (nm) say(nm + " sleeps — one minute.");
+          }
+        }
         if (!tgt.hurtBeep) {
           feel("hurt", tgt.x, tgt.y); tgt.hurtBeep = 0.25;
-          emit("onPlayerHit", { p: tgt, f: f });
+          if (tgt.hero) emit("onPlayerHit", { p: tgt, f: f });
         }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
         if (tgt.thorns > 0) f.hp -= 22 * dt;
@@ -2744,7 +3008,7 @@
           f._sip = (f._sip || 0) + dmg * dt * 8;
           if (f._sip > 200) { f.hp = 0; say("The Drain leaves, sated."); }
         }
-        if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
+        if (def.melee && f.kind !== "wraith" && tgt.hero) f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
       }
       if (foeHas(f, "hymn") && bd < 3.3 && bd > 0.5) {
         tgt.hp -= Math.max(1, def.dmg * 0.35) * dt * (G.mode === "survive" ? 1.1 : 1.4);
@@ -2877,6 +3141,19 @@
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
             G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
             s.life = 0;
+          }
+        });
+        (G.pets || []).forEach(function (pet) {
+          if (s.life <= 0 || (pet.sleepT || 0) > 0) return;
+          if (distSeg(pet.x, pet.y, s.px || s.x, s.py || s.y, s.x, s.y) < 0.48) {
+            pet.hp -= Math.max(2, s.dmg - (pet.armor || 0));
+            G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
+            s.life = 0;
+            if (pet.hp <= 0) {
+              pet.hp = 0; pet.sleepT = 60;
+              const nm = PETS[pet.kind] && PETS[pet.kind].name;
+              if (nm) say(nm + " sleeps — one minute.");
+            }
           }
         });
       } else {
@@ -3148,9 +3425,11 @@
     }
     if (!G || !G.level) return;
     const lv = G.level;
-    const live = G.players.filter((p) => !p.dead);
+    const live = G.players.filter((p) => !p.dead && (p.sleepT || 0) <= 0);
+    const camSrc = live.filter((p) => !p.ai);
+    const follow = camSrc.length ? camSrc : live;
     let fx = 0, fy = 0, fn = 0;
-    live.forEach((p) => { fx += p.x; fy += p.y; fn++; });
+    follow.forEach((p) => { fx += p.x; fy += p.y; fn++; });
     const focus = fn ? { x: fx / fn, y: fy / fn } : (G.players[0] || { x: 2, y: 2 });
     const bb = lv.box || { x0: 1, y0: 1, x1: lv.W - 2, y1: lv.H - 2 };
     const pad = TILE * 2.4;
@@ -3266,7 +3545,7 @@
     G.fx.forEach((f) => drawVfx(f));
     G.players.forEach((p) => {
       if (p.dead) return;
-      ctx.globalAlpha = p.veil > 0 ? 0.45 : 1;
+      ctx.globalAlpha = (p.sleepT || 0) > 0 ? 0.38 : (p.veil > 0 ? 0.45 : 1);
       if (p.reflect > 0) {
         ctx.strokeStyle = "#93c5fd";
         ctx.beginPath();
@@ -3336,6 +3615,43 @@
           drawFxSpr("bolt_halo_" + ((G.t * 10 | 0) % 4), sx - 14, sy - 14, 28);
         });
       }
+      if ((p.sleepT || 0) > 0) {
+        ctx.fillStyle = "#fde68a";
+        ctx.globalAlpha = 0.8;
+        ctx.font = "12px sans-serif";
+        ctx.fillText("z", p.x * TILE + 6 - cam.x, p.y * TILE - 18 - cam.y - Math.sin(G.t * 4) * 3);
+      }
+      ctx.globalAlpha = 1;
+    });
+    (G.pools || []).forEach(function (pool) {
+      const px = pool.x * TILE - cam.x, py = pool.y * TILE - cam.y;
+      ctx.fillStyle = "rgba(74,222,128," + (0.18 + 0.12 * Math.sin(G.t * 6)) + ")";
+      ctx.beginPath();
+      ctx.ellipse(px, py + 4, pool.r * TILE, pool.r * TILE * 0.45, 0, 0, 6.28);
+      ctx.fill();
+    });
+    (G.pets || []).forEach(function (pet) {
+      const spec = PETS[pet.kind];
+      if (!spec) return;
+      if (!tileVis(pet.x, pet.y)) return;
+      const sz = pet.kind === "elephant" ? 54 : (pet.kind === "bear" ? 50 : 44);
+      const dx = pet.x * TILE - sz / 2 - cam.x, dy = pet.y * TILE - sz / 2 - cam.y;
+      const fr = (pet.atk || 0) > 0 ? 2 : [0, 1, 3][(pet.walk | 0) % 3];
+      ctx.globalAlpha = (pet.sleepT || 0) > 0 ? 0.36 : ((pet.hurtT || 0) > 0 ? 0.62 : 1);
+      drawPetSpr(pet.kind, fr, dx, dy, sz, pet.facing === 1);
+      if ((pet.sleepT || 0) > 0) {
+        ctx.fillStyle = "#fde68a";
+        ctx.globalAlpha = 0.85;
+        ctx.font = "11px sans-serif";
+        ctx.fillText("z", pet.x * TILE + 8 - cam.x, pet.y * TILE - 16 - cam.y);
+      } else {
+        const bx = Math.round(pet.x * TILE - 14 - cam.x), by = Math.round(dy - 5);
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = "#111";
+        ctx.fillRect(bx, by, 28, 3);
+        ctx.fillStyle = spec.col;
+        ctx.fillRect(bx, by, 28 * Math.max(0, pet.hp / pet.max), 3);
+      }
       ctx.globalAlpha = 1;
     });
     $("announce").textContent = announce.life > 0 ? announce.t : "";
@@ -3381,7 +3697,7 @@
       "</span><span>Credits <b>" + G.credits + "</b></span>";
     if (G.mode !== "survive") {
       $("pips").innerHTML = G.players.map((p) =>
-        "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + " · " + (p.hero.special || p.hero.tag) + (p.dead ? " · DOWN" : "") + "</div>" +
+        "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.ai ? " · AI" : "") + " · " + (p.hero.special || p.hero.tag) + ((p.sleepT || 0) > 0 ? " · SLEEP" : "") + (p.dead ? " · DOWN" : "") + "</div>" +
         "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max))) + "%;background:" + p.hero.color + "'></i></div>" +
         "<div class='st'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
         (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
@@ -3391,7 +3707,12 @@
           return n.slice(0, 3) + (lv > 1 ? lv : "");
         }).join("/") +
         " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
-      ).join("");
+      ).join("") + (G.pets || []).map(function (pet) {
+        const spec = PETS[pet.kind];
+        if (!spec) return "";
+        return "<div class='pip'><div class='nm' style='color:" + spec.col + "'>" + spec.name + " · " + spec.tag + ((pet.sleepT || 0) > 0 ? " · SLEEP" : "") + "</div>" +
+          "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * pet.hp / Math.max(1, pet.max))) + "%;background:" + spec.col + "'></i></div></div>";
+      }).join("");
     }
     $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (autoOn ? "AUTO · Tab sheet · survive" : "Fire · vial · Tab · survive") : (autoOn ? "AUTO · Tab character · exit" : "Fire · vial · Tab character · exit"));
     const autoBtn = $("btnAuto");
@@ -3437,11 +3758,17 @@
         if (hp > p._ghost) p._ghost = hp;
         const ghost = Math.max(hp, p._ghost);
         const hpCol = hp < 25 ? "#ef4444" : (hp < 50 ? "#fbbf24" : p.hero.color);
-        return "<div class='hud-ward'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.dead ? " · DOWN" : "") + "</div>" +
+        return "<div class='hud-ward'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.ai ? " · AI" : "") + (p.sleepT > 0 ? " · SLEEP" : "") + (p.dead ? " · DOWN" : "") + "</div>" +
           "<div class='hud-hp'><b style='width:" + ghost + "%'></b><i style='width:" + hp + "%;background:" + hpCol + "'></i></div>" +
           "<div class='hud-meta-row'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) +
           " · vials " + p.vials + " · keys " + p.keys +
           "<span class='hud-buffs'>" + buffs(p) + "</span></div></div>";
+      }).join("") + (G.pets || []).map(function (pet) {
+        const spec = PETS[pet.kind];
+        if (!spec) return "";
+        const hp = Math.max(0, Math.min(100, 100 * pet.hp / Math.max(1, pet.max)));
+        return "<div class='hud-ward'><div class='nm' style='color:" + spec.col + "'>" + spec.name + ((pet.sleepT || 0) > 0 ? " · SLEEP" : " · PET") + "</div>" +
+          "<div class='hud-hp'><i style='width:" + hp + "%;background:" + spec.col + "'></i></div></div>";
       }).join("");
     }
     if ($("hudArms") && p0) {
@@ -3711,6 +4038,25 @@
     }
     menu();
   }
+  function bondPickHtml() {
+    const unlocked = persist.unlocked || [];
+    let h = "<p class='kicker' style='margin-top:.55rem'>AI companion — unlocked job, follows you</p><div class='cast-grid bond'>";
+    h += "<button type='button' class='cast" + (!persist.comp ? " on" : "") + "' data-comp=''><b>None</b><span>Solo</span></button>";
+    HEROES.forEach(function (x) {
+      const open = unlocked.indexOf(x.id) >= 0 || x.unlock === 0;
+      if (!open) return;
+      h += "<button type='button' class='cast" + (persist.comp === x.id ? " on" : "") + "' data-comp='" + x.id + "'>" +
+        "<span class='cast-art'><img src='" + ASSET + x.file + "' alt=''></span><b>" + x.name + "</b><span>AI follow</span></button>";
+    });
+    h += "</div><p class='kicker'>Mythic pet — sleeps 60s if downed</p><div class='cast-grid bond pets'>";
+    h += "<button type='button' class='cast" + (!persist.pet ? " on" : "") + "' data-pet=''><b>None</b><span>No pet</span></button>";
+    Object.keys(PETS).forEach(function (id) {
+      const d = PETS[id];
+      h += "<button type='button' class='cast" + (persist.pet === id ? " on" : "") + "' data-pet='" + id + "'>" +
+        "<span class='cast-art pet-art'><img src='./assets/pets/64/pet_" + id + "_0.png' alt=''></span><b>" + d.name + "</b><span>" + d.tag + "</span></button>";
+    });
+    return h + "</div>";
+  }
   function menu() {
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
@@ -3733,7 +4079,7 @@
         return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
           "<span class='cast-art'><img src='" + ASSET + x.file + "' alt='" + x.name + "'></span><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +
-      "</div>" + heroSheet(heroOf(persist.hero)) +
+      "</div>" + heroSheet(heroOf(persist.hero)) + bondPickHtml() +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
@@ -3753,9 +4099,27 @@
       if (c) {
         if (c.getAttribute("data-open") === "0") return;
         persist.hero = c.getAttribute("data-h"); savePersist();
-        document.querySelectorAll(".cast").forEach((el) => el.classList.toggle("on", el.getAttribute("data-h") === persist.hero));
+        document.querySelectorAll(".cast[data-h]").forEach((el) => el.classList.toggle("on", el.getAttribute("data-h") === persist.hero));
         const lore = $("heroLore");
         if (lore) lore.outerHTML = heroSheet(heroOf(persist.hero));
+        return;
+      }
+      const cp = e.target.closest("[data-comp]");
+      if (cp) {
+        persist.comp = cp.getAttribute("data-comp") || "";
+        savePersist();
+        document.querySelectorAll("[data-comp]").forEach(function (el) {
+          el.classList.toggle("on", (el.getAttribute("data-comp") || "") === persist.comp);
+        });
+        return;
+      }
+      const pt = e.target.closest("[data-pet]");
+      if (pt) {
+        persist.pet = pt.getAttribute("data-pet") || "";
+        savePersist();
+        document.querySelectorAll("[data-pet]").forEach(function (el) {
+          el.classList.toggle("on", (el.getAttribute("data-pet") || "") === persist.pet);
+        });
         return;
       }
       const b = e.target.closest("[data-go]");
@@ -3810,6 +4174,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): fog-band hordes that grow with your level, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
+      "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets and AI sleep 60s if downed — they do not end the run.</li>" +
       "<li><b>Tab</b> character sheet — model, stats, arms, spell, bag. Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
@@ -4019,6 +4384,13 @@
         fetch(ASSET + "items.json").then((r) => r.json())
       ]);
       itemAtlas = iimg; itemNames = imeta.names; itemCell = imeta.cell; itemCols = imeta.cols;
+    } catch (_) {}
+    try {
+      const [pimg, pmeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "pets.png?v=1"; }),
+        fetch(ASSET + "pets.json").then((r) => r.json())
+      ]);
+      petAtlas = pimg; petNames = pmeta.names; petCell = pmeta.cell; petCols = pmeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();
