@@ -27,7 +27,7 @@ a { color:#5eead4; }
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · live hall</p>
   <h1>Lattice Crypt ledger</h1>
-  <p class="muted">Public runs. Names, score, floor. Empty beats a fake board.</p>
+  <p class="muted">Public runs. Names, score, floor (Survival writes wave here). Empty beats a fake board.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="/games/">Hub</a>
@@ -66,7 +66,7 @@ a { color:#5eead4; }
     document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " · " + src) : "Hall is empty — a real zero.";
     document.getElementById("hall").innerHTML = rows.slice(0,40).map(function(r){
       return "<div class='round'><div class='rtop'><b>"+esc(r.name||"Warden")+"</b><span>"+(r.score||0)+"</span></div>"+
-        "<div class='rmeta'>floor <b>"+esc(r.floor||"—")+"</b></div></div>";
+        "<div class='rmeta'>wave/floor <b>"+esc(r.floor||"—")+"</b></div></div>";
     }).join("") || "<p class='muted'>No runs yet.</p>";
   }
   pull();
