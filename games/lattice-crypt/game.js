@@ -104,6 +104,7 @@
   let atlas = null, names = {}, cell = 32, cols = 16;
   let foeAtlas = null, foeNames = {}, foeCell = 64, foeCols = 8;
   let heroAtlas = null, heroNames = {}, heroCell = 64, heroCols = 8;
+  let tileAtlas = null, tileNames = {}, tileCell = 32, tileCols = 16;
   const BOSS_LOOT = {
     gate: ["core", "heart"],
     crown: ["comet", "swift"],
@@ -178,6 +179,19 @@
     if (!s || !atlas) return;
     w = w || TILE;
     ctx.drawImage(atlas, s.sx, s.sy, cell, cell, Math.round(x), Math.round(y), w, w);
+  }
+  function drawTile(name, x, y) {
+    const i = tileNames[name];
+    if (i == null || !tileAtlas) {
+      drawSpr(name, x, y);
+      return;
+    }
+    const sx = (i % tileCols) * tileCell, sy = Math.floor(i / tileCols) * tileCell;
+    ctx.drawImage(tileAtlas, sx, sy, tileCell, tileCell, Math.round(x), Math.round(y), TILE, TILE);
+  }
+  function solidAt(lv, x, y) {
+    const t = tileAt(lv, x, y);
+    return t === "wall" || t === "door" || t === "exit_lock";
   }
   function drawFoeSpr(name, x, y, w) {
     const i = foeNames[name];
@@ -264,8 +278,16 @@
     }
     function tunnel(a, b) {
       let x = a.cx, y = a.cy;
-      while (x !== b.cx) { tiles[y][x] = "floor"; x += x < b.cx ? 1 : -1; }
-      while (y !== b.cy) { tiles[y][x] = "floor"; y += y < b.cy ? 1 : -1; }
+      while (x !== b.cx) {
+        tiles[y][x] = "floor";
+        if (tiles[y][x - 1] === "wall") tiles[y][x - 1] = "floor";
+        x += x < b.cx ? 1 : -1;
+      }
+      while (y !== b.cy) {
+        tiles[y][x] = "floor";
+        if (tiles[y - 1] && tiles[y - 1][x] === "wall") tiles[y - 1][x] = "floor";
+        y += y < b.cy ? 1 : -1;
+      }
     }
     if (kind === "cross") {
       addRoom(2, (H >> 1) - 2, W - 4, 5);
@@ -612,12 +634,40 @@
     return { dx, dy, fire, mag, cycle };
   }
 
+  function resolveCircle(lv, x, y, r) {
+    const tx = Math.floor(x), ty = Math.floor(y);
+    for (let iy = ty - 1; iy <= ty + 1; iy++) {
+      for (let ix = tx - 1; ix <= tx + 1; ix++) {
+        if (!blocked(lv, ix + 0.5, iy + 0.5)) continue;
+        const cx = Math.max(ix, Math.min(ix + 1, x));
+        const cy = Math.max(iy, Math.min(iy + 1, y));
+        const ox = x - cx, oy = y - cy;
+        const d = Math.hypot(ox, oy);
+        if (d < 1e-4) {
+          const p = nearestWalk(lv, x, y);
+          x = p.x; y = p.y;
+          continue;
+        }
+        if (d < r) {
+          const s = (r - d) / d;
+          x += ox * s;
+          y += oy * s;
+        }
+      }
+    }
+    return { x, y };
+  }
   function tryMove(ent, dx, dy, speed, dt, ghost) {
-    const nx = ent.x + dx * speed * dt;
-    const ny = ent.y + dy * speed * dt;
-    const r = 0.28;
-    if (ghost || (!blocked(G.level, nx, ent.y) && !blocked(G.level, nx - r, ent.y) && !blocked(G.level, nx + r, ent.y))) ent.x = nx;
-    if (ghost || (!blocked(G.level, ent.x, ny) && !blocked(G.level, ent.x, ny - r) && !blocked(G.level, ent.x, ny + r))) ent.y = ny;
+    let nx = ent.x + dx * speed * dt;
+    let ny = ent.y + dy * speed * dt;
+    const r = 0.22;
+    if (!ghost) {
+      const ax = resolveCircle(G.level, nx, ent.y, r);
+      nx = ax.x;
+      const ay = resolveCircle(G.level, nx, ny, r);
+      nx = ay.x; ny = ay.y;
+    }
+    ent.x = nx; ent.y = ny;
     if (ent.keys != null) bumpDoor(ent);
   }
 
@@ -1203,15 +1253,30 @@
     else ty = Math.max(minY, Math.min(maxY, ty));
     cam.x += (tx - cam.x) * 0.18;
     cam.y += (ty - cam.y) * 0.18;
-    const fl = lv.realm.floor || "floor";
-    const wl = lv.realm.wall || "wall";
+    const z = lv.realm.id || "stone";
     for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
       const px = x * TILE - cam.x, py = y * TILE - cam.y;
       if (px < -TILE || py < -TILE || px > w || py > h) continue;
       const t = lv.tiles[y][x];
-      if (t === "wall") drawSpr(wl, px, py);
-      else {
-        drawSpr(fl, px, py);
+      if (t === "wall") {
+        const N = !solidAt(lv, x, y - 1), S = !solidAt(lv, x, y + 1);
+        const E = !solidAt(lv, x + 1, y), W = !solidAt(lv, x - 1, y);
+        if (!N && !S && !E && !W) {
+          drawTile("void", px, py);
+          continue;
+        }
+        drawTile(z + "_top", px, py);
+        if (S) drawTile(z + "_face", px, py);
+        if (N) drawTile(z + "_n", px, py);
+        if (E) drawTile(z + "_e", px, py);
+        if (W) drawTile(z + "_w", px, py);
+      } else {
+        const v = (x * 3 + y * 7) & 1;
+        drawTile(z + "_floor" + v, px, py);
+        if (((x * 13 + y * 5) % 19) === 0) drawTile(z + "_deco", px, py);
+        if (solidAt(lv, x, y - 1)) drawTile(z + "_n", px, py);
+        if (solidAt(lv, x + 1, y)) drawTile(z + "_e", px, py);
+        if (solidAt(lv, x - 1, y)) drawTile(z + "_w", px, py);
         if (t === "door") drawSpr("door", px, py);
         if (t === "door_open") drawSpr("door_open", px, py);
         if (t === "exit") drawSpr("exit", px, py);
@@ -1222,7 +1287,7 @@
     lv.gens.forEach((g) => {
       const pulse = 0.78 + 0.22 * Math.sin((G.t + g.x) * 7);
       ctx.globalAlpha = pulse;
-      drawSpr("gen_" + g.kind + "_" + g.rank, g.x * TILE - cam.x, g.y * TILE - cam.y);
+      drawSpr("gen_" + g.kind + "_" + g.rank, g.x * TILE + TILE / 2 - 16 - cam.x, g.y * TILE + TILE / 2 - 16 - cam.y);
       ctx.globalAlpha = 1;
     });
     lv.items.forEach((it) => {
@@ -1507,6 +1572,13 @@
         fetch(ASSET + "heroes.json").then((r) => r.json())
       ]);
       heroAtlas = himg; heroNames = hmeta.names; heroCell = hmeta.cell; heroCols = hmeta.cols;
+    } catch (_) {}
+    try {
+      const [timg, tmeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "tiles.png?v=1"; }),
+        fetch(ASSET + "tiles.json").then((r) => r.json())
+      ]);
+      tileAtlas = timg; tileNames = tmeta.names; tileCell = tmeta.cell; tileCols = tmeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();

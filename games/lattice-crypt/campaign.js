@@ -201,11 +201,24 @@ window.LatticeCampaign = (function () {
       }
     }
   }
-  function tunnel(tiles, x1, y1, x2, y2) {
+  function tunnel(tiles, x1, y1, x2, y2, wide) {
     let x = x1, y = y1;
-    while (x !== x2) { if (tiles[y]) tiles[y][x] = "floor"; x += x < x2 ? 1 : -1; }
-    while (y !== y2) { if (tiles[y]) tiles[y][x] = "floor"; y += y < y2 ? 1 : -1; }
-    if (tiles[y2]) tiles[y2][x2] = "floor";
+    const carve = (cx, cy) => {
+      if (tiles[cy]) tiles[cy][cx] = "floor";
+      if (!wide) return;
+      if (x1 === x2) {
+        if (tiles[cy] && tiles[cy][cx - 1] === "wall") tiles[cy][cx - 1] = "floor";
+      } else if (tiles[cy - 1] && tiles[cy - 1][cx] === "wall") tiles[cy - 1][cx] = "floor";
+    };
+    while (x !== x2) { carve(x, y); x += x < x2 ? 1 : -1; }
+    while (y !== y2) { carve(x, y); y += y < y2 ? 1 : -1; }
+    carve(x2, y2);
+  }
+  function onHall(d, h) {
+    const x1 = h[0], y1 = h[1], x2 = h[2], y2 = h[3];
+    if (x1 === x2) return d[0] === x1 && d[1] >= Math.min(y1, y2) && d[1] <= Math.max(y1, y2);
+    if (y1 === y2) return d[1] === y1 && d[0] >= Math.min(x1, x2) && d[0] <= Math.max(x1, x2);
+    return false;
   }
 
   function build(i, makeFoe) {
@@ -214,7 +227,29 @@ window.LatticeCampaign = (function () {
     const W = 30, H = 26;
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
     (spec.rooms || []).forEach((r) => fill(tiles, r[0], r[1], r[2], r[3], "floor"));
-    (spec.halls || []).forEach((h) => tunnel(tiles, h[0], h[1], h[2], h[3]));
+    const doorPts = (spec.doors || []);
+    (spec.halls || []).forEach((h) => {
+      const wide = !doorPts.some((d) => onHall(d, h));
+      tunnel(tiles, h[0], h[1], h[2], h[3], wide);
+    });
+    (spec.rooms || []).forEach((r) => {
+      if (r[2] < 10 || r[3] < 8) return;
+      const inset = 2;
+      const spots = [
+        [r[0] + inset, r[1] + inset], [r[0] + r[2] - 1 - inset, r[1] + inset],
+        [r[0] + inset, r[1] + r[3] - 1 - inset], [r[0] + r[2] - 1 - inset, r[1] + r[3] - 1 - inset]
+      ];
+      spots.forEach((p) => {
+        if (!tiles[p[1]] || tiles[p[1]][p[0]] !== "floor") return;
+        const s = spec.start, e = spec.exit;
+        if (Math.abs(p[0] - s[0]) + Math.abs(p[1] - s[1]) < 3) return;
+        if (Math.abs(p[0] - e[0]) + Math.abs(p[1] - e[1]) < 3) return;
+        tiles[p[1]][p[0]] = "wall";
+      });
+    });
+    (spec.pillars || []).forEach((p) => {
+      if (tiles[p[1]]) tiles[p[1]][p[0]] = "wall";
+    });
     if (spec.inner) spec.inner.forEach((r) => {
       const x = r[0], y = r[1], w = r[2], h = r[3];
       for (let xx = x; xx < x + w; xx++) {
