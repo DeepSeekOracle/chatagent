@@ -920,6 +920,11 @@
       G.xp -= surviveXpNeed(G.lvl);
       G.lvl++;
       G.pendingLvl = (G.pendingLvl || 0) + 1;
+      G.players.forEach(function (p) {
+        if (p.dead) return;
+        p.max += 10;
+        p.hp = Math.min(p.max, p.hp + 10);
+      });
     }
   }
   function rollSurviveUps() {
@@ -966,6 +971,7 @@
       const n = p[u.stack] || 0;
       return "NOW " + n + "  →  " + (n + 1);
     }
+    if (u.maxHp) return "MAX " + (p.max | 0) + "  →  " + ((p.max | 0) + u.maxHp);
     return u.bonus;
   }
   function applySurviveUp(u) {
@@ -993,8 +999,33 @@
       else if (u.id === "veilstep") { p.veil = Math.max(p.veil || 0, 6); p.stride = (p.stride || 0) + 1; }
       else if (u.id === "furyhour") { p.fury = Math.max(p.fury || 0, 10); p.might = (p.might || 0) + 1; }
       else if (WEAPONS[u.id]) giveWep(p, u.id);
+      if (u.maxHp) {
+        p.max += u.maxHp;
+        p.hp = Math.min(p.max, p.hp + (u.fill != null ? u.fill : u.maxHp));
+      }
+      if (u.addIron) p.iron = (p.iron || 0) + u.addIron;
+      if (u.addVials) p.vials += u.addVials;
+      if (u.addCore) p.cores = (p.cores || 0) + u.addCore;
+      if (u.addMight) p.might = (p.might || 0) + u.addMight;
+      if (u.addHaste) p.haste = (p.haste || 0) + u.addHaste;
+      if (u.addPierce) p.pierce = (p.pierce || 0) + u.addPierce;
+      if (u.addCap) p.extraCap = (p.extraCap || 0) + u.addCap;
+      if (u.addStride) p.stride = (p.stride || 0) + u.addStride;
+      if (u.addMagnet) p.magnet = (p.magnet || 0) + u.addMagnet;
+      if (u.addVialPow) p.vialPow = (p.vialPow || 0) + u.addVialPow;
+      if (u.addLamp) p.lamp = (p.lamp || 0) + u.addLamp;
+      if (u.tFury) p.fury = Math.max(p.fury || 0, u.tFury);
+      if (u.tRegen) p.regen = Math.max(p.regen || 0, u.tRegen);
+      if (u.tThorns) p.thorns = Math.max(p.thorns || 0, u.tThorns);
+      if (u.tAegis) p.aegis = Math.max(p.aegis || 0, u.tAegis);
+      if (u.tSwift) p.swift = Math.max(p.swift || 0, u.tSwift);
+      if (u.tVeil) p.veil = Math.max(p.veil || 0, u.tVeil);
+      if (u.tReflect) p.reflect = Math.max(p.reflect || 0, u.tReflect);
+      if (u.tShot) p.shotBoost = Math.max(p.shotBoost || 0, u.tShot);
     });
     if (u.id === "goldrush") G.score += 500;
+    if (u.addScore) G.score += u.addScore;
+    if (u.stunR && G.players[0]) novaStun(G.players[0].x, G.players[0].y, 7, 1.6, "#7dd3fc");
     say("LEVEL " + G.lvl + " · " + u.name + " — " + u.bonus);
     const p0 = G.players[0];
     feel("upgrade", p0 && p0.x, p0 && p0.y);
@@ -1241,7 +1272,31 @@
     { id: "gyre", kind: "arm", tier: 2, glyph: "gyre", name: "Gyre", tag: "SUPER ARM", bonus: "ARM / STACK GYRE", spec: "The blades remember a wider ring." },
     { id: "hymnfield", kind: "arm", tier: 1, glyph: "hymn", name: "Hymnfield", tag: "RARE ARM", bonus: "ARM / STACK HYMN", spec: "The song has reach. Rare aura." },
     { id: "truthseek", kind: "arm", tier: 2, glyph: "truth", name: "Truthseek", tag: "SUPER ARM", bonus: "ARM / STACK TRUTH", spec: "It will not miss a lie. Super hunt." },
-    { id: "latticearc", kind: "arm", tier: 3, glyph: "arc", name: "Lattice Arc", tag: "LEGEND ARM", bonus: "ARM / STACK ARC", spec: "A legendary jump of light. The hall will remember." }
+    { id: "latticearc", kind: "arm", tier: 3, glyph: "arc", name: "Lattice Arc", tag: "LEGEND ARM", bonus: "ARM / STACK ARC", spec: "A legendary jump of light. The hall will remember." },
+    { id: "cistern", kind: "gift", tier: 0, glyph: "well", name: "Cistern", tag: "WELL", bonus: "+25 MAX HP", spec: "A cistern cut in the floor. The well is 25 deeper and you drink it.", maxHp: 25 },
+    { id: "deepwell", kind: "gift", tier: 1, glyph: "well", name: "Deep Well", tag: "WELL", bonus: "+40 MAX HP", spec: "Stone remembers a deeper cup. Forty more, filled now.", maxHp: 40 },
+    { id: "marrow", kind: "gift", tier: 0, glyph: "plate", name: "Marrow Plate", tag: "WELL", bonus: "+15 MAX · +1 IRON", spec: "Bone in the plate. A little well, a little fairness.", maxHp: 15, addIron: 1 },
+    { id: "secondcup", kind: "gift", tier: 0, glyph: "flask", name: "Second Cup", tag: "WELL", bonus: "+20 MAX · +1 VIAL", spec: "Another flask in the belt, and room to drink it.", maxHp: 20, addVials: 1 },
+    { id: "latticeblood", kind: "gift", tier: 1, glyph: "wind", name: "Lattice Blood", tag: "WELL", bonus: "+30 MAX · REGEN 8s", spec: "The weave seeps. Thirty more, then a short mend.", maxHp: 30, tRegen: 8 },
+    { id: "doorflesh", kind: "gift", tier: 0, glyph: "thorn", name: "Door Flesh", tag: "WELL", bonus: "+12 MAX · THORNS 8s", spec: "The door grows a hide. Bumpers bleed.", maxHp: 12, tThorns: 8 },
+    { id: "namedpulse", kind: "gift", tier: 1, glyph: "spark", name: "Named Pulse", tag: "WELL", bonus: "+20 MAX · COD 6s", spec: "The name in the well fires with you.", maxHp: 20, tShot: 6 },
+    { id: "fairwell", kind: "gift", tier: 1, glyph: "ward", name: "Fair Well", tag: "WELL", bonus: "+12 MAX (PARTY)", spec: "Everyone living drinks. Fairness as a cistern.", maxHp: 12 },
+    { id: "frostmarrow", kind: "gift", tier: 1, glyph: "void", name: "Frost Marrow", tag: "WELL", bonus: "+18 MAX · STUN PULSE", spec: "Cold in the cup. A pulse that stills, then you drink.", maxHp: 18, stunR: 1 },
+    { id: "emberwell", kind: "gift", tier: 1, glyph: "cinder", name: "Ember Well", tag: "WELL", bonus: "+18 MAX · +1 HASTE", spec: "The forge in the well. Hands quicker after the drink.", maxHp: 18, addHaste: 1 },
+    { id: "rootdrink", kind: "gift", tier: 0, glyph: "pull", name: "Root Drink", tag: "WELL", bonus: "+22 MAX · PULL", spec: "Living stone in the cup. Relics lean harder.", maxHp: 22, addMagnet: 0.4 },
+    { id: "tidecup", kind: "gift", tier: 0, glyph: "boot", name: "Tide Cup", tag: "WELL", bonus: "+16 MAX · SWIFT 5s", spec: "The lattice learned to drink. You learned to run.", maxHp: 16, tSwift: 5 },
+    { id: "goldsip", kind: "gift", tier: 0, glyph: "coin", name: "Gold Sip", tag: "WELL", bonus: "+10 MAX · +250 HALL", spec: "Tithe in the cup. A mark and a little well.", maxHp: 10, addScore: 250 },
+    { id: "voidsip", kind: "gift", tier: 1, glyph: "veil", name: "Void Sip", tag: "WELL", bonus: "+14 MAX · VEIL 4s", spec: "A sip where names go. You are harder to hold.", maxHp: 14, tVeil: 4 },
+    { id: "lanternsip", kind: "gift", tier: 1, glyph: "lamp", name: "Lantern Sip", tag: "WELL", bonus: "+10 MAX · +FOG", spec: "Light in the cup. The fog yields a step.", maxHp: 10, addLamp: 1 },
+    { id: "corewell", kind: "gift", tier: 1, glyph: "core", name: "Core Well", tag: "WELL", bonus: "+15 MAX · +1 CORE", spec: "A named coal in the cistern. Shot and well together.", maxHp: 15, addCore: 1 },
+    { id: "phialheart", kind: "gift", tier: 1, glyph: "sigil", name: "Phial Heart", tag: "WELL", bonus: "+20 MAX · +1 RES", spec: "Resonance in the blood. Vials hit, the well holds.", maxHp: 20, addVialPow: 1 },
+    { id: "longstride", kind: "gift", tier: 0, glyph: "boot", name: "Long Stride", tag: "WELL", bonus: "+10 MAX · +2 STRIDE", spec: "The corridor shortens and the cup is a little deeper.", maxHp: 10, addStride: 2 },
+    { id: "volleywell", kind: "gift", tier: 0, glyph: "volley", name: "Volley Well", tag: "WELL", bonus: "+10 MAX · +1 VOLLEY", spec: "One more bolt in the air, and room to stand it.", maxHp: 10, addCap: 1 },
+    { id: "piercevein", kind: "gift", tier: 0, glyph: "lens", name: "Pierce Vein", tag: "WELL", bonus: "+10 MAX · +1 PIERCE", spec: "The well is a lens. Bolts pass; you last.", maxHp: 10, addPierce: 1 },
+    { id: "mightwell", kind: "gift", tier: 0, glyph: "tooth", name: "Might Well", tag: "WELL", bonus: "+12 MAX · +1 MIGHT", spec: "A sharper tooth and a deeper cup.", maxHp: 12, addMight: 1 },
+    { id: "reboundcup", kind: "gift", tier: 1, glyph: "mirror", name: "Rebound Cup", tag: "WELL", bonus: "+8 MAX · REFLECT 6s", spec: "Fairness in the drink. Shots turn for a short hour.", maxHp: 8, tReflect: 6 },
+    { id: "choruswell", kind: "gift", tier: 1, glyph: "flask", name: "Chorus Well", tag: "WELL", bonus: "+24 MAX · +2 VIALS", spec: "The chorus fills the cistern. Two flasks, twenty-four more.", maxHp: 24, addVials: 2 },
+    { id: "originpulse", kind: "gift", tier: 2, glyph: "sun", name: "Origin Pulse", tag: "WELL", bonus: "+50 MAX HP", spec: "A taste of the Origin Well. Fifty more, filled.", maxHp: 50 }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
@@ -1766,7 +1821,7 @@
     const h = heroOf(id);
     const s = slot != null ? slot : G.players.length;
     const p = {
-      slot: s, hero: h, x: 2, y: 2, hp: 700, max: 700,
+      slot: s, hero: h, x: 2, y: 2, hp: 200, max: 200,
       keys: 0, vials: 1, facing: 2, aimX: 1, aimY: 0, walk: 0, fireT: 0, magT: 0,
       shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, fury: 0, thorns: 0, echo: 0, regen: 0, stun: 0, padT: 0, hurtT: 0,
       weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
@@ -2471,8 +2526,8 @@
     G.players.forEach((p) => {
       if (p.dead) return;
       const drain = G.mode === "survive"
-        ? ((G._coach > 0 ? 0.08 : 0.22))
-        : (G.mode === "endless" ? 0.72 + Math.min(0.45, G.floor * 0.014) : (0.58 + G.floor * 0.016));
+        ? ((G._coach > 0 ? 0.05 : 0.11))
+        : (G.mode === "endless" ? 0.22 + Math.min(0.28, G.floor * 0.008) : (0.16 + G.floor * 0.007));
       p.hp -= dt * drain;
       p.fireT = Math.max(0, p.fireT - dt);
       p.coolT = p.coolT || {};
@@ -2962,9 +3017,12 @@
     const sip = live.reduce((n, p) => n + Math.min(50, (p.hp / 14) | 0), 0);
     const bonus = 140 + G.floor * 22 + sip;
     G.score += bonus;
-    live.forEach((p) => { p.hp = Math.min(p.max, p.hp + Math.round(p.max * 0.1)); });
+    live.forEach((p) => {
+      p.max += 10;
+      p.hp = Math.min(p.max, p.hp + 10 + Math.round(p.max * 0.08));
+    });
     hallMark("floor");
-    say("Floor " + (G.floor + 1) + " sealed · +" + bonus + " hall · a sip and a relic at the door.");
+    say("Floor " + (G.floor + 1) + " sealed · +10 well · +" + bonus + " hall · a relic at the door.");
     feel("exit");
     loadFloor(G.floor + 1);
     dropItemNear(G.level.start.x, G.level.start.y, rollLoot());
