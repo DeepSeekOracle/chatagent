@@ -15,6 +15,8 @@ const S = g.CryptStudio;
 if (!S) throw new Error("no CryptStudio");
 if (S.STEP !== 1 / 60) throw new Error("STEP not 60Hz");
 if (typeof S.feel !== "function") throw new Error("no feel");
+if (!S.pool.foe) throw new Error("no foe pool");
+if (typeof S.setSfxVol !== "function" || typeof S.setMusicVol !== "function") throw new Error("no volume");
 
 const a = S.pool.shot.alloc();
 const b = S.pool.shot.alloc();
@@ -51,8 +53,19 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
   if (game.indexOf(k) < 0) throw new Error("missing " + k);
 });
 ["togglePause", "cleanupGameState", "keyEdge.KeyP", "pool.shot.free", "s._chained = false",
-  "queryFoes", "rebuildFoeGrid", "showCoach", "lodOn", "CryptStudio.STEP"].forEach(function (k) {
+  "queryFoes", "rebuildFoeGrid", "showCoach", "lodOn", "CryptStudio.STEP",
+  "onBossSpawn", "onWaveComplete", "onPlayerDeath", "onHeal", "onDash",
+  "setSfxVol", "cryptFx", "visibilitychange"].forEach(function (k) {
   if (game.indexOf(k) < 0) throw new Error("missing " + k);
 });
 if (game.indexOf("Math.min(300") < 0) throw new Error("cap not 300");
+const foe = S.pool.foe.alloc();
+S.pool.foe.free(foe);
+const bornF = S.counts().foesBorn;
+for (let i = 0; i < 40; i++) {
+  const f = S.pool.foe.alloc();
+  S.pool.foe.free(f);
+  S.cleanup();
+}
+if (S.counts().foesBorn > bornF + 1) throw new Error("foe born grew");
 console.log("crypt_studio_smoke ok", S.counts());

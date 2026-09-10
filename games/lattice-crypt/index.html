@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=11">
+<link rel="stylesheet" href="./game.css?v=12">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 </head>
 <body>
@@ -41,6 +41,7 @@
   <div class="stage">
     <div class="viewport">
       <canvas id="crypt" tabindex="0" aria-label="Lattice Crypt dungeon"></canvas>
+      <canvas id="cryptFx" class="fx-canvas" aria-hidden="true"></canvas>
       <div class="announce" id="announce"></div>
       <div id="coach" class="coach hidden" aria-live="polite"></div>
       <div class="pips" id="pips"></div>
@@ -54,6 +55,10 @@
           <div class="hud-score"><span class="k">SCORE</span><b id="hudScore">0</b></div>
         </div>
         <div class="hud-clock" id="hudClock">0:00</div>
+        <div id="bossHud" class="boss-hud hidden">
+          <span id="bossName">Guardian</span>
+          <div class="boss-hp"><i id="bossHpFill"></i></div>
+        </div>
         <div class="hud-left" id="hudPlayers"></div>
         <div class="hud-right">
           <div class="hud-kills" id="hudKills"></div>
@@ -91,7 +96,7 @@
     <button type="button" class="btn" id="btnMenu">Menu</button>
   </footer>
 </div>
-<div id="pauseLayer" class="pause-layer hidden">
+<div id="pauseLayer" class="pause-layer hidden" role="dialog" aria-modal="true" aria-label="Paused">
   <p class="kicker">Paused</p>
   <h2>Hold the door.</h2>
   <div class="modes">
@@ -103,7 +108,7 @@
 <script src="./radio.js"></script>
 <script src="/games/arcade-ledger.js?v=2"></script>
 <script src="./campaign.js?v=6"></script>
-<script src="./studio.js?v=4"></script>
-<script src="./game.js?v=27"></script>
+<script src="./studio.js?v=5"></script>
+<script src="./game.js?v=28"></script>
 </body>
 </html>

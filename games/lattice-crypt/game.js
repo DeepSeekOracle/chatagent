@@ -681,7 +681,9 @@
     if (!G || G.mode !== "survive" || G.over) return;
     const w = surviveWave();
     if (w !== G.wave) {
+      emit("onWaveComplete", { w: G.wave });
       G.wave = w;
+      G._wavePulse = 1;
       say("Wave " + w + " — the pour thickens.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
@@ -714,6 +716,7 @@
       for (let i = 0; i < nB; i++) {
         const bk = SURVIVE_BOSSES[(((w / 5) | 0) + i) % SURVIVE_BOSSES.length];
         spawnSurviveAround(bk, true);
+        emit("onBossSpawn", { w: w });
       }
       say(nB > 1 ? "Named guardians enter the long crypt." : "A named guardian enters the long crypt.");
     }
@@ -1194,13 +1197,14 @@
       hp = k === "drain" ? 40 + w * 6 : (d.boss ? Math.round(16 + w * 9) : Math.max(1, Math.round(1 + w * 1.15)));
       rank = 1 + Math.min(8, (w / 4) | 0);
     }
-    return {
-      kind: k, rank, x, y,
-      hp, max: hp,
-      boss: !!d.boss,
-      explode: !!d.explode, split: !!d.split, heal: !!d.heal, spr: d.spr || k,
-      vx: 0, vy: 0, t: 0, hurt: 0, flicker: 0, stun: 0, isActive: true
-    };
+    const f = window.CryptStudio && CryptStudio.pool.foe ? CryptStudio.pool.foe.alloc() : {};
+    f.kind = k; f.rank = rank; f.x = x; f.y = y;
+    f.hp = hp; f.max = hp;
+    f.boss = !!d.boss;
+    f.explode = !!d.explode; f.split = !!d.split; f.heal = !!d.heal; f.spr = d.spr || k;
+    f.vx = 0; f.vy = 0; f.t = 0; f.hurt = 0; f.flicker = 0; f.stun = 0;
+    f.phase = 1; f._splitDone = false; f._sip = 0; f.isActive = true;
+    return f;
   }
 
   function inB(lv, x, y) { return x >= 0 && y >= 0 && x < lv.W && y < lv.H; }
@@ -1288,8 +1292,9 @@
     if (G) G._coach = 0;
   }
   function cleanupGameState() {
-    if (G && G.shots && window.CryptStudio) {
-      G.shots.forEach((s) => CryptStudio.pool.shot.free(s));
+    if (G && window.CryptStudio) {
+      if (G.shots) G.shots.forEach((s) => CryptStudio.pool.shot.free(s));
+      if (G.level && G.level.foes) G.level.foes.forEach((f) => CryptStudio.pool.foe.free(f));
     }
     if (window.CryptStudio) CryptStudio.cleanup();
     if (G) {
@@ -1688,7 +1693,11 @@
         }
       });
     }
-    if (id === "nia") p.swift = Math.max(p.swift, 3.4);
+    if (id === "nia") {
+      p.swift = Math.max(p.swift, 3.4);
+      emit("onDash", { p: p });
+      feel("dash", p.x, p.y);
+    }
     if (id === "d9ra") {
       const md = Math.max(4, (p.hero.melee || 7) * 1.4 * braveMul(p));
       G.level.foes.forEach((f) => {
@@ -1704,6 +1713,8 @@
     if (id === "justicae") p.reflect = Math.max(p.reflect, 5.2);
     if (p.hero.heal) {
       G.players.forEach((o) => { if (!o.dead) o.hp = Math.min(o.max, o.hp + Math.round(70 * faithMul(p))); });
+      emit("onHeal", { p: p });
+      feel("heal", p.x, p.y);
     }
     if (p.hero.accord) {
       G.level.foes.forEach((f) => {
@@ -1759,7 +1770,11 @@
     if (window.CryptStudio) CryptStudio.burst(p.x, p.y, "#fde68a", 6);
     G.fx.push({ x: p.x, y: p.y, life: 0.3, kind: "pick", col: spec.glow || "#fde68a" });
     if (WEAPONS[k]) { giveWep(p, k); G.score += spec.score || 90; return; }
-    if (spec.heal) p.hp = Math.min(9999, (spec.heal >= 9999 ? p.max : p.hp + spec.heal));
+    if (spec.heal) {
+      p.hp = Math.min(9999, (spec.heal >= 9999 ? p.max : p.hp + spec.heal));
+      emit("onHeal", { p: p, n: spec.heal });
+      feel("heal", p.x, p.y);
+    }
     if (spec.max) { p.max += spec.max; p.hp = Math.min(p.max, p.hp + spec.max); }
     if (spec.vials) p.vials += spec.vials;
     if (spec.keys) p.keys += spec.keys;
@@ -1832,6 +1847,15 @@
     f.hp -= dmg;
     f.hurt = 0.12;
     emit("onEnemyHit", { f: f, dmg: dmg, melee: melee });
+    if (f.boss) emit("onBossHit", { f: f, dmg: dmg });
+    if (dmg >= 1 && G) {
+      const src = G.players.find((p) => !p.dead);
+      if (src) {
+        const dx = f.x - src.x, dy = f.y - src.y, d = Math.hypot(dx, dy) || 1;
+        const kb = f.boss ? 0.04 : 0.14;
+        f.x += (dx / d) * kb; f.y += (dy / d) * kb;
+      }
+    }
     if (window.CryptStudio && dmg >= 1) {
       CryptStudio.floater(f.x, f.y - 0.3, Math.max(1, dmg | 0), f.boss ? "#fbbf24" : "#e2e8f0");
       if (f.boss) feel("boss", f.x, f.y);
@@ -1861,6 +1885,7 @@
       G._coach -= dt;
       if (G._coach <= 0) hideCoach();
     }
+    if (G._wavePulse) G._wavePulse = Math.max(0, G._wavePulse - dt * 1.6);
     const lv = G.level;
     if (lv.treasure > 0) {
       lv.treasure -= dt;
@@ -1938,6 +1963,7 @@
       if (p.hp <= 0) {
         p.dead = true;
         p.hp = 0;
+        emit("onPlayerDeath", { p: p });
         say(p.hero.name + " falls. Credit to rise.");
         return;
       }
@@ -2017,8 +2043,14 @@
       if (!tgt) return;
       const ang = Math.atan2(tgt.y - f.y, tgt.x - f.x);
       const ghost = !!def.ghost;
+      if (f.boss && f.hp < f.max * 0.5 && (f.phase || 1) < 2) {
+        f.phase = 2;
+        emit("onBossPhase", { f: f, phase: 2 });
+        say("The guardian breaks its first seal.");
+      }
+      const spdMul = (f.phase >= 2 ? 1.32 : 1);
       if (lodOn() && bd > 22 && !def.boss) {
-        tryMove(f, Math.cos(ang), Math.sin(ang), def.speed * 0.85, dt, ghost);
+        tryMove(f, Math.cos(ang), Math.sin(ang), def.speed * 0.85 * spdMul, dt, ghost);
         return;
       }
       let mx = Math.cos(ang), my = Math.sin(ang);
@@ -2026,7 +2058,7 @@
         if (bd < 3.2) { mx = -mx; my = -my; }
         else if (bd < 5.2) { mx = -my; my = mx; }
       }
-      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
+      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15) * spdMul, dt, ghost);
       if (!ghost) unstick(f);
       else if (blocked(lv, f.x, f.y)) unstick(f);
       if (def.heal) {
@@ -2071,7 +2103,7 @@
         }
         if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
       }
-      if (def.shoot && f.t > 1.1 && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
+      if (def.shoot && f.t > (f.phase >= 2 ? 0.7 : 1.1) && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
         pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
       }
@@ -2083,8 +2115,9 @@
     const born = [];
     lv.foes = lv.foes.filter((f) => {
       if (f.hp > 0) return true;
-      f.isActive = false;
       emit("onEnemyDeath", { f: f });
+      emit("onKill", { f: f });
+      if (f.boss) emit("onBossDeath", { f: f });
       if (window.CryptStudio) {
         if (f.boss) feel("boss", f.x, f.y);
         else {
@@ -2107,6 +2140,7 @@
       if (f.boss) dropBoss(f);
       if (G.mode === "survive") onSurviveKill(f);
       G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
+      if (window.CryptStudio) CryptStudio.pool.foe.free(f);
       return false;
     });
     const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 64;
@@ -2220,7 +2254,8 @@
         G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, G.floor / 16),
         {
           danger: p0 ? 1 - (p0.hp / Math.max(1, p0.max)) : 0,
-          horde: Math.min(1, lv.foes.length / 300)
+          horde: Math.min(1, lv.foes.length / 300),
+          boss: lv.foes.some((f) => f.boss && f.hp > 0)
         }
       );
     }
@@ -2456,7 +2491,16 @@
       const boss = FOE[f.kind] && FOE[f.kind].boss;
       const sz = boss ? 64 : 48;
       const dx = f.x * TILE - sz / 2 - cam.x, dy = f.y * TILE - sz / 2 - cam.y;
-      drawFoeSpr("foe_" + (f.spr || f.kind) + "_" + fr, dx, dy, sz);
+      const sprName = "foe_" + (f.spr || f.kind) + "_" + fr;
+      if (f.hurt > 0 && !(window.CryptStudio && CryptStudio.reduced)) {
+        ctx.save();
+        ctx.translate(Math.round(dx + sz / 2), Math.round(dy + sz / 2));
+        ctx.scale(1.14, 0.86);
+        drawFoeSpr(sprName, -sz / 2, -sz / 2, sz);
+        ctx.restore();
+      } else {
+        drawFoeSpr(sprName, dx, dy, sz);
+      }
       if (f.rank >= 3 && !boss && G.mode !== "survive") {
         ctx.strokeStyle = "#fbbf24";
         ctx.lineWidth = 1;
@@ -2551,8 +2595,22 @@
     });
     $("announce").textContent = announce.life > 0 ? announce.t : "";
     if (window.CryptStudio) {
-      CryptStudio.juiceDraw(ctx, cam, TILE, w, h);
-      CryptStudio.fpsDraw(ctx, w);
+      CryptStudio.fps.draws = (x1 - x0) * (y1 - y0) + lv.foes.length + G.shots.length + lv.items.length;
+      const fxC = $("cryptFx");
+      if (fxC) {
+        const dpr2 = dpr;
+        if (fxC.width !== (w * dpr2 | 0) || fxC.height !== (h * dpr2 | 0)) {
+          fxC.width = w * dpr2 | 0; fxC.height = h * dpr2 | 0;
+        }
+        const fxCtx = fxC.getContext("2d");
+        fxCtx.setTransform(dpr2, 0, 0, dpr2, 0, 0);
+        fxCtx.clearRect(0, 0, w, h);
+        CryptStudio.juiceDraw(fxCtx, cam, TILE, w, h);
+        CryptStudio.fpsDraw(fxCtx, w);
+      } else {
+        CryptStudio.juiceDraw(ctx, cam, TILE, w, h);
+        CryptStudio.fpsDraw(ctx, w);
+      }
     }
   }
 
@@ -2606,8 +2664,22 @@
     const t = G.t | 0;
     const mm = (t / 60) | 0, ss = t % 60;
     const waveLeft = Math.max(0, 28 - (G.t % 28));
-    if ($("hudWave")) $("hudWave").textContent = w;
-    if ($("hudScore")) $("hudScore").textContent = G.score;
+    if ($("hudWave")) {
+      $("hudWave").textContent = w;
+      $("hudWave").classList.toggle("pulse", !!(G._wavePulse));
+    }
+    G._scoreShow = G._scoreShow == null ? G.score : G._scoreShow + (G.score - G._scoreShow) * 0.28;
+    if (Math.abs(G.score - G._scoreShow) < 1) G._scoreShow = G.score;
+    if ($("hudScore")) $("hudScore").textContent = G._scoreShow | 0;
+    const boss = G.level.foes.find((f) => f.boss && f.hp > 0);
+    const bh = $("bossHud");
+    if (bh) {
+      bh.classList.toggle("hidden", !boss);
+      if (boss) {
+        if ($("bossName")) $("bossName").textContent = (FOE[boss.kind] && boss.kind === "lock" ? "The Lock" : "Named guardian") + (boss.phase >= 2 ? " · II" : "");
+        if ($("bossHpFill")) $("bossHpFill").style.width = Math.max(0, Math.min(100, 100 * boss.hp / Math.max(1, boss.max))) + "%";
+      }
+    }
     if ($("hudXpFill")) $("hudXpFill").style.width = Math.max(0, Math.min(100, 100 * G.xp / need)) + "%";
     if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + G.xp + "/" + need;
     if ($("hudClock")) $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  next wave " + waveLeft.toFixed(0) + "s";
@@ -2653,6 +2725,8 @@
   function showSheet(html, studio) {
     const o = $("overlay");
     o.className = "overlay" + (studio ? " studio" : "");
+    o.setAttribute("role", "dialog");
+    o.setAttribute("aria-modal", "true");
     o.innerHTML = studio ? html : "<div class='sheet'>" + html + "</div>";
     overlayMode = studio ? "menu" : "sheet";
   }
@@ -2704,6 +2778,8 @@
       "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
       "<label class='auto-lab'><input type='checkbox' id='redBox'" + (window.CryptStudio && CryptStudio.reduced ? " checked" : "") + "> Reduced motion</label>" +
       "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed</label>" +
+      "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
+      "<label class='auto-lab'>Bed <input type='range' id='musVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.musicVol : 1) * 100) + "'></label>" +
       "<label class='auto-lab'>Color <select id='cbSel'><option value=''>default</option><option value='deut'>deuteranopia</option><option value='prot'>protanopia</option><option value='trit'>tritanopia</option></select></label>" +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
@@ -2743,6 +2819,16 @@
     if (rb) rb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setReduced(rb.checked); };
     const mb = $("musBox");
     if (mb) mb.onclick = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusic(mb.checked); };
+    const sv = $("sfxVol");
+    if (sv) {
+      sv.onclick = (e) => e.stopPropagation();
+      sv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setSfxVol(sv.value / 100); };
+    }
+    const mv = $("musVol");
+    if (mv) {
+      mv.onclick = (e) => e.stopPropagation();
+      mv.oninput = (e) => { e.stopPropagation(); if (window.CryptStudio) CryptStudio.setMusicVol(mv.value / 100); };
+    }
     const cb = $("cbSel");
     if (cb) {
       cb.onclick = (e) => e.stopPropagation();
@@ -2840,6 +2926,9 @@
   });
   window.addEventListener("keyup", (e) => { keys[e.code] = false; });
   window.addEventListener("blur", () => { keys = {}; keyEdge = {}; });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && G && !G.over && overlayMode == null) togglePause();
+  });
 
   function togglePause() {
     if (!G || G.over) return;
@@ -2894,6 +2983,9 @@
 
   async function boot() {
     loadPersist();
+    const bootEl = document.querySelector(".boot-msg");
+    function bootSay(t) { if (bootEl) bootEl.textContent = t; }
+    bootSay("Loading sprites…");
     try {
       const [img, meta] = await Promise.all([
         new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=9"; }),
@@ -2901,6 +2993,7 @@
       ]);
       atlas = img; names = meta.names; cell = meta.cell; cols = meta.cols;
     } catch (_) {}
+    bootSay("Loading wardens…");
     try {
       const [cimg, cmeta] = await Promise.all([
         new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "creatures.png?v=1"; }),

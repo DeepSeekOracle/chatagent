@@ -8,11 +8,15 @@
   let reduced = false;
   let muted = false;
   let musicOn = true;
+  let sfxVol = 1;
+  let musicVol = 1;
   try {
     const a = JSON.parse(localStorage.getItem(SAVE_AUDIO) || "{}");
     muted = !!a.muted;
     reduced = !!a.reduced;
     if (a.music === false) musicOn = false;
+    if (typeof a.sfxVol === "number") sfxVol = Math.max(0, Math.min(1, a.sfxVol));
+    if (typeof a.musicVol === "number") musicVol = Math.max(0, Math.min(1, a.musicVol));
   } catch (_) {}
 
   function on(ev, fn) {
@@ -82,11 +86,19 @@
   function resetFloat(p) {
     p.x = p.y = 0; p.life = 0; p.max = 0.7; p.text = ""; p.col = "#fff";
   }
+  function resetFoe(f) {
+    f.kind = "brute"; f.rank = 1; f.x = 0; f.y = 0;
+    f.hp = 1; f.max = 1; f.boss = false;
+    f.explode = false; f.split = false; f.heal = false; f.spr = "brute";
+    f.vx = 0; f.vy = 0; f.t = 0; f.hurt = 0; f.flicker = 0; f.stun = 0;
+    f.phase = 1; f._splitDone = false; f._sip = 0;
+  }
 
   const pool = {
     shot: makePool(resetShot, 320),
     particle: makePool(resetPart, 420),
-    floater: makePool(resetFloat, 96)
+    floater: makePool(resetFloat, 96),
+    foe: makePool(resetFoe, 320)
   };
   const particles = [];
   const floaters = [];
@@ -200,7 +212,10 @@
         upgrade: { f: 520, t: 0.14, type: "sine", q: 900 },
         credit: { f: 360, t: 0.12, type: "triangle", q: 700 },
         pause: { f: 180, t: 0.08, type: "sine", q: 400 },
-        exit: { f: 300, t: 0.18, type: "triangle", q: 500 }
+        exit: { f: 300, t: 0.18, type: "triangle", q: 500 },
+        heal: { f: 520, t: 0.12, type: "sine", q: 900 },
+        dash: { f: 740, t: 0.08, type: "square", q: 1100 },
+        heart: { f: 70, t: 0.09, type: "sine", q: 160 }
       };
       const m = table[kind] || table.hit;
       const varp = 1 + ((Math.random() - 0.5) * 0.1);
@@ -208,7 +223,8 @@
       o.frequency.setValueAtTime((m.f * varp) * (pitch || 1), now);
       f.type = "lowpass";
       f.frequency.value = m.q;
-      g.gain.setValueAtTime(0.045, now);
+      const amp = 0.045 * (muted ? 0 : sfxVol);
+      g.gain.setValueAtTime(Math.max(0.0001, amp), now);
       g.gain.exponentialRampToValueAtTime(0.001, now + m.t);
       o.start(now); o.stop(now + m.t + 0.02);
     } catch (_) {}
@@ -228,7 +244,9 @@
       upgrade: { sfx: "upgrade", burst: 10, shake: 2, col: "#fbbf24" },
       credit: { sfx: "credit", burst: 8, col: "#5eead4" },
       pause: { sfx: "pause" },
-      exit: { sfx: "exit", burst: 10, shake: 3, col: "#22d3ee" }
+      exit: { sfx: "exit", burst: 10, shake: 3, col: "#22d3ee" },
+      heal: { sfx: "heal", burst: 6, col: "#4ade80" },
+      dash: { sfx: "dash", burst: 4, col: "#86efac" }
     };
     const m = T[kind] || T.hit;
     if (m.sfx) sfx(m.sfx);
@@ -239,7 +257,7 @@
     emit("feel", { kind: kind, x: x, y: y });
   }
 
-  const fps = { frames: 0, acc: 0, value: 60, ms: 16, show: false, draws: 0, lod: false };
+  const fps = { frames: 0, acc: 0, value: 60, ms: 16, show: false, draws: 0, lod: false, mem: 0, lowAcc: 0 };
   function fpsTick(dt) {
     fps.frames++;
     fps.acc += dt;
@@ -247,13 +265,24 @@
     if (fps.acc >= 0.5) {
       fps.value = Math.round(fps.frames / fps.acc);
       fps.lod = fps.value < 50;
+      if (fps.value < 55) fps.lowAcc += fps.acc; else fps.lowAcc = 0;
+      if (fps.lowAcc >= 2) fps.lod = true;
       fps.frames = 0; fps.acc = 0;
+      try {
+        if (root.performance && performance.memory) {
+          fps.mem = performance.memory.usedJSHeapSize;
+          if (fps.mem > 150 * 1048576 && !fps._memWarn) {
+            fps._memWarn = true;
+            try { console.warn("Lattice Crypt heap > 150MB"); } catch (_) {}
+          }
+        }
+      } catch (_) {}
     }
   }
   function fpsDraw(ctx, w) {
     if (!fps.show) return;
     ctx.fillStyle = "rgba(7,8,14,0.72)";
-    ctx.fillRect(w - 168, 8, 158, 52);
+    ctx.fillRect(w - 168, 8, 158, 66);
     ctx.fillStyle = fps.value < 50 ? "#f87171" : "#86efac";
     ctx.font = "700 11px IBM Plex Mono, monospace";
     ctx.textAlign = "left";
@@ -261,6 +290,7 @@
     ctx.fillStyle = "#94a3b8";
     ctx.fillText("E " + counts().entities + "  P " + particles.length, w - 160, 40);
     ctx.fillText("R " + restarts + "  shots " + (pool.shot.live()), w - 160, 54);
+    ctx.fillText("D " + (fps.draws || 0) + "  " + ((fps.mem / 1048576) | 0) + "MB", w - 160, 68);
   }
 
   function counts() {
@@ -271,7 +301,9 @@
       shotFree: pool.shot.freeN(),
       particles: particles.length,
       floaters: floaters.length,
-      entities: pool.shot.live() + particles.length + floaters.length
+      foesLive: pool.foe.live(),
+      foesBorn: pool.foe.born(),
+      entities: pool.shot.live() + pool.foe.live() + particles.length + floaters.length
     };
   }
 
@@ -281,6 +313,7 @@
     while (particles.length) pool.particle.free(particles.pop());
     while (floaters.length) pool.floater.free(floaters.pop());
     pool.shot.drain();
+    pool.foe.drain();
     emit("cleanup", { restarts: restarts });
   }
 
@@ -341,16 +374,25 @@
       const danger = Math.max(0, Math.min(1, extra.danger || 0));
       const horde = Math.max(0, Math.min(1, extra.horde || 0));
       const now = actx.currentTime;
+      const duck = extra.boss ? 0.55 : 1;
+      const mv = musicVol * duck;
       musicOsc.frequency.setTargetAtTime(92 + i * 70, now, 0.4);
-      musicGain.gain.setTargetAtTime(0.011 + i * 0.012, now, 0.3);
+      musicGain.gain.setTargetAtTime((0.011 + i * 0.012) * mv, now, 0.3);
       pulseOsc.frequency.setTargetAtTime(164 + i * 90, now, 0.35);
-      pulseGain.gain.setTargetAtTime(0.002 + i * 0.012 + horde * 0.01, now, 0.25);
+      pulseGain.gain.setTargetAtTime((0.002 + i * 0.012 + horde * 0.01) * mv, now, 0.25);
       tenseOsc.frequency.setTargetAtTime(64 + danger * 90 + horde * 40, now, 0.3);
-      tenseGain.gain.setTargetAtTime(danger * 0.014 + horde * 0.01, now, 0.28);
+      tenseGain.gain.setTargetAtTime((danger * 0.014 + horde * 0.01) * mv, now, 0.28);
+      if (danger > 0.68 && !muted) {
+        const beat = ((now * 2) | 0);
+        if (beat !== musicTick._beat) {
+          musicTick._beat = beat;
+          sfx("heart");
+        }
+      }
     } catch (_) {}
   }
   function saveAudio() {
-    try { localStorage.setItem(SAVE_AUDIO, JSON.stringify({ muted: muted, reduced: reduced, music: musicOn })); } catch (_) {}
+    try { localStorage.setItem(SAVE_AUDIO, JSON.stringify({ muted: muted, reduced: reduced, music: musicOn, sfxVol: sfxVol, musicVol: musicVol })); } catch (_) {}
   }
   function setMute(v) {
     muted = !!v;
@@ -362,6 +404,15 @@
     duckMusic();
     saveAudio();
   }
+  function setSfxVol(v) {
+    sfxVol = Math.max(0, Math.min(1, +v || 0));
+    saveAudio();
+  }
+  function setMusicVol(v) {
+    musicVol = Math.max(0, Math.min(1, +v || 0));
+    duckMusic();
+    saveAudio();
+  }
 
   root.CryptStudio = {
     STEP: STEP,
@@ -370,10 +421,12 @@
     shake: shake, hitstop: hitstop, burst: burst, floater: floater, feel: feel,
     juiceTick: juiceTick, juiceDraw: juiceDraw,
     sfx: sfx, resumeAudio: resumeAudio, setMute: setMute, setReduced: setReduced,
-    setMusic: setMusic, musicTick: musicTick,
+    setMusic: setMusic, setSfxVol: setSfxVol, setMusicVol: setMusicVol, musicTick: musicTick,
     get muted() { return muted; },
     get reduced() { return reduced; },
     get music() { return musicOn; },
+    get sfxVol() { return sfxVol; },
+    get musicVol() { return musicVol; },
     fps: fps, fpsTick: fpsTick, fpsDraw: fpsDraw,
     cleanup: cleanup, counts: counts,
     get restarts() { return restarts; }

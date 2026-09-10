@@ -1,60 +1,65 @@
-# Lattice Crypt — Phase 0 audit (pipeline pass 1)
+# Lattice Crypt — studio brief (phases 0–8)
 
 Entry: `index.html` → `radio.js`, `arcade-ledger.js`, `campaign.js`, `studio.js`, `game.js` IIFE.
 
-## Architecture
-- Single 2500-line IIFE. Overlay modes: `menu | sheet | null`. One `requestAnimationFrame` loop.
-- No `setInterval`/`setTimeout` in the sim. Listeners are window-level and persist (by design).
-- **Was:** `newRun` allocated shots/fx arrays without recycling; menu left live arrays until next run.
-- **Now:** `cleanupGameState()` + `CryptStudio` pools, EventBus, juice, synth SFX.
+## Phase 0 — Audit
+- Loop: rAF draw + locked `1/60` sim (max 3 catch-up steps). Overlays: `menu | sheet | pause | null`.
+- No `setInterval` in the sim. Window listeners persist by design (one set).
+- Entities: players, foes (pooled), shots (pooled), items, gens, pads, FX, particles, floaters.
+- Systems: spawn, swept collision, spatial foe grid, scoring, waves, upgrades, vials, ledger.
 
-## Performance
-- Tiles already camera-culled. Foes/items culled. 280-cap Survival.
-- **Was:** `getContext("2d")` with alpha; shot objects `new` every fire.
-- **Now:** `{ alpha: false }`, shot pool, particle cap, F3 FPS meter, offscreen foe skip already in draw.
+## Phase 1 — Architecture
+- `cleanupGameState()` frees shots + foes, then `CryptStudio.cleanup()`.
+- `isActive` on shots/foes; pool `free` is a no-op if already inactive.
+- EventBus: `onFire`, `onPickup`, `onEnemyHit`, `onBossHit`, `onEnemyDeath`, `onKill`, `onBossDeath`, `onBossSpawn`, `onBossPhase`, `onPlayerHit`, `onPlayerDeath`, `onWaveStart`, `onWaveComplete`, `onHeal`, `onDash`.
+- Pools: shots 320, particles 420, floaters 96, foes 320. Drain keeps the free list.
+- 100-restart smoke: shot `born` stays flat.
 
-## Game feel
-- **Was:** beep() one oscillator, no shake/stop/numbers.
-- **Now:** hit-stop, shake ≤12px, particle burst, damage floaters, player-hit flash. Aura ticks skip juice (`dmg < 1`).
+## Phase 2 — Performance
+- `{ alpha: false }` world canvas. Integer `drawImage` positions. No `shadowBlur`.
+- Layered: world `#crypt`, VFX `#cryptFx`, HUD CSS.
+- F3 FPS: fps, ms, entities, particles, restarts, shots, draws, MB.
+- LOD when FPS < 50 or < 55 for 2s: DPR 1, trail skip, particle cap, off-screen AI.
+- Survival cap 300. Spatial query for shots/melee. Camera tile cull.
+- Atlases already packed. Heap warn at 150MB (Chromium `performance.memory`).
 
-## UI
-- Survival studio HUD exists. Ghost HP bar + color shift added. Button hover/active.
+## Phase 3 — Juice
+- `feel()` layers SFX + burst/shake/hit-stop/flash per event.
+- Knockback on hit. Squash/stretch while `hurt`. Damage floaters. Player-hit flash.
+- Hit-stop scaled (hit vs boss). Shake ≤ 12px.
+- Buttons: hover/active scale. Overlay/pause opacity fades.
 
-## Audio
-- Radio is separate. Combat SFX now Web Audio via `CryptStudio.sfx` with ±5% pitch. **M** mutes. Autoplay resumes on first gesture.
+## Phase 4 — UI
+- Survival HUD: wave (pulse), score (count-up), XP, clock, ghost HP, arms, pills.
+- Full-width-ish boss bar (name + fill, phase II).
+- Coach 10s. Menu control hint. Death recap hook.
+- Loading boot copy. Pause/menu `role=dialog`. Buttons ≥ 44px.
 
-## QA risks remaining
-- No Playwright yet. No 100-restart memory lab in CI.
-- Layered canvases not split (one canvas; juice drawn on top).
-- 8 authored jobs / 9 arms / 19 survive cards — not 12 weapons.
-- Foe archetypes mapped onto existing atlas (no new exploder/splitter sprites this pass).
+## Phase 5 — Audio
+- Web Audio SFX, ±5% pitch. Autoplay resume on first gesture.
+- Independent SFX / bed sliders + mute + synth toggle, persisted.
+- 3-layer bed (drone / pulse / tension). Boss ducks bed. Low HP heartbeat.
+- Radio remains a separate dock.
 
-## Controls added
-F3 FPS · M mute SFX · P pause · F11 fullscreen
+## Phase 6 — Content
+- Seeded Survival 256×224 + plazas, highways, pad links, 108 items.
+- 8+ jobs: wraith, brute, imp, hurler, shade, burst, spawnling, mend (+ thief, drain).
+- 8 named bosses, phase II at 50% HP (speed + fire rate).
+- 13 arms. 23 Survival upgrade cards. Campaign 24 authored floors.
 
-## Pass 2 debug (launch)
-- 13 arms (Seek/Chain/Barrage/Nova) with FX aliases so missing atlas cells do not blank bolts.
-- Burst / spawnling / mend jobs reuse brute/wraith/shade frames.
-- Pause layer hidden on new run, menu, and cleanup. Help will not stack on pause. Credit/fire blocked while paused.
-- Mute restores synth bed. Menu ducks music.
-- 40× pool restart smoke + string checks for new kinds.
+## Phase 7 — QA
+- Node smoke: syntax, 100 restarts, foe pool recycle, string matrix (pause, events, coach, volumes, fx layer, tab-pause).
+- Blur clears keys. `visibilitychange` pauses. Canvas follows resize. Color filters. Score cap 999999999.
+- Playwright visual lab not in this repo (no browser CI here).
 
-## Pass 3 debug (official launch)
-- Pooled chain bolts reset `_chained` so jumps work after recycle.
-- Chain child spawns offset + grace so it does not immediately re-hit the same foe.
-- `loadFloor` frees the shot pool (was leaking live counts every floor).
-- Key-repeat no longer toggles P / M / F3 / F11 / L / Esc or spams credit.
-- Deuteranopia filter is CSS-only (no missing `#cb-deut` SVG).
-- Reduced motion ducks the synth bed. Color filter "default" clears `data-cb`.
-- Juice frozen while paused.
+## Phase 8 — Polish
+- Reduced motion. Colorblind modes. Volume sliders. Screen-reader dialogs.
+- Auto particle cull. Entity cap 300. Pitch variation on SFX.
 
-## Pass 4 — studio quality ship
-- Locked sim at `1/60` (max 3 catch-up steps). Camera/draw still rAF.
-- Survival cap 300. Spatial foe grid. Off-screen AI LOD. DPR/trails/FX cull when FPS < 50.
-- Cleanup recycles pools (100 restarts, shot `born` does not grow).
-- `feel()` = SFX + burst/shake/hit-stop on hit, kill, hurt, pick, vial, pad, wave, boss, upgrade, credit, pause, exit.
-- 3-layer synth bed (drone / pulse / tension) from wave, HP, horde.
-- Coach bar 10s. Menu control hint. Death recap hook. Overlay/pause fades.
-- Survival pads between plazas, extra plazas, 108 item scatter.
+## Release readiness
+Live: https://chatagent.ca/games/lattice-crypt/  
+Cache: `game.js?v=28` `studio.js?v=5` `game.css?v=12`
 
-Confidence after studio ship: **88/100**. No Playwright visual lab; 60 FPS on a 2020 laptop is engineered (grid + LOD + 60Hz) not measured on that hardware in this pass.
+**Known deferrals (do not claim done):** Playwright screenshots, remappable keys, true 4-layer static background cache, WebP conversion, Howler spatial panning, multi-stem audio files, chunk streaming of the Survival continent.
+
+**Confidence: 91/100** for a Haven-original browser cabinet. 60 FPS @ 300 foes is engineered (grid + LOD + 60Hz), not timed on a 2020 laptop in this pass.
