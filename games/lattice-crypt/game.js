@@ -3250,6 +3250,25 @@
     }
     if (!start) G._startLatch = false;
   }
+  function pollSelectChar() {
+    if (!G || G.over || G._ups) return;
+    if (overlayMode === "menu" || overlayMode === "options" || overlayMode === "sheet") return;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    let sel = false;
+    for (let i = 0; i < pads.length; i++) {
+      const pad = pads[i];
+      if (!pad || !pad.buttons) continue;
+      const b = pad.buttons[8];
+      if (b && (b.pressed || b.value > 0.5)) { sel = true; break; }
+    }
+    if (sel) {
+      if (G._selectLatch) return;
+      G._selectLatch = true;
+      toggleChar();
+      return;
+    }
+    G._selectLatch = false;
+  }
 
   function unstack(p) {
     G.players.forEach((o) => {
@@ -3860,7 +3879,7 @@
       "<p class='lore'>Bag: click to use or equip. Armed slot (not Shard): click to unequip into the bag. Extra rations stash when your well is full.</p>" +
       "<div class='bag-grid'>" + bag.join("") + "</div>" +
       "<div class='modes char-party'>" + party + "</div>" +
-      "<button type='button' class='btn gold' id='charClose'>Close (Tab)</button></div></div>";
+      "<button type='button' class='btn gold' id='charClose'>Close (Tab / Select)</button></div></div>";
   }
   function openChar(slot) {
     if (!G || G.over) return;
@@ -4169,13 +4188,13 @@
     showSheet("<h2>How to play</h2><ol class='lore'>" +
       "<li>Health ticks down. Smash <b>nexuses</b> or the floor fills. Find the cyan exit. The crypt is dark — lanterns push the fog.</li>" +
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
-      "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
+      "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join, Select/Back/View character sheet. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): fog-band hordes that grow with your level, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets and AI sleep 60s if downed — they do not end the run.</li>" +
-      "<li><b>Tab</b> character sheet — model, stats, arms, spell, bag. Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
+      "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -4191,6 +4210,7 @@
     const blocked = overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "options" || overlayMode === "char" || paused;
     if (!paused && window.CryptStudio) CryptStudio.juiceTick(raw);
     if (G && G._ups) pollUpgradePick();
+    pollSelectChar();
     if (G && G._upTaken > 0) {
       G._upTaken -= raw;
       if (G._upTaken <= 0) {
