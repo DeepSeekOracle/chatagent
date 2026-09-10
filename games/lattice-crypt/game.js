@@ -75,7 +75,12 @@
     lock: { hp: 48, dmg: 18, speed: 0.75, melee: true, shoot: true, pts: 1000, boss: true },
     unspool: { hp: 96, dmg: 22, speed: 0.68, melee: true, radial: true, shoot: true, pts: 2800, boss: true, super: true, spr: "lock" },
     titheking: { hp: 88, dmg: 17, speed: 0.92, melee: true, pull: true, lob: true, steal: true, pts: 2600, boss: true, super: true, spr: "tithe" },
-    nameeater: { hp: 110, dmg: 15, speed: 1.12, melee: true, blink: true, silence: true, drain: true, ghost: true, pts: 3200, boss: true, super: true, spr: "unnamer" }
+    nameeater: { hp: 110, dmg: 15, speed: 1.12, melee: true, blink: true, silence: true, drain: true, ghost: true, pts: 3200, boss: true, super: true, spr: "unnamer" },
+    stitch: { hp: 2, dmg: 6, speed: 1.22, melee: true, slow: true, pts: 18, spr: "brute" },
+    echoer: { hp: 1, dmg: 8, speed: 1.38, melee: true, shoot: true, echo: true, pts: 16, spr: "imp" },
+    veilkin: { hp: 2, dmg: 10, speed: 1.88, melee: true, flicker: true, ghost: true, pts: 20, spr: "shade" },
+    knot: { hp: 2, dmg: 9, speed: 0.92, melee: true, lob: true, root: true, pts: 18, spr: "hurler" },
+    choir: { hp: 2, dmg: 5, speed: 1.18, melee: true, hymn: true, pts: 17, spr: "wraith" }
   };
   const BOSS_NAME = {
     lock: "The Lock", unspool: "The Unspooler", titheking: "The Tithe-King", nameeater: "The Name-Eater"
@@ -240,7 +245,8 @@
   };
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
-  const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend"];
+  const KINDS_NEW = ["stitch", "echoer", "veilkin", "knot", "choir"];
+  const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend", "stitch", "echoer", "veilkin", "knot", "choir"];
   const INV_BAG = 24;
   const INV_WEP = 6;
   const INV_RELIC = 4;
@@ -765,9 +771,41 @@
     if (w > 8 && Math.random() < 0.12) return "burst";
     if (w > 6 && Math.random() < 0.12) return "spawnling";
     if (w > 7 && Math.random() < 0.1) return "mend";
+    if (w > 4 && Math.random() < 0.16) return KINDS_NEW[(Math.random() * KINDS_NEW.length) | 0];
     if (w > 6 && Math.random() < 0.14) return "shade";
     const pool = w >= 5 ? KINDS_HOT : KINDS;
     return pool[(Math.random() * pool.length) | 0];
+  }
+  function foeHas(f, key) {
+    if (!f) return false;
+    if (f.mut && f.mut.indexOf(key) >= 0) return true;
+    const d = FOE[f.kind];
+    return !!(d && d[key]);
+  }
+  function rollFoeMut(f) {
+    if (!f || f.boss || f.super || f.kind === "drain" || f.kind === "thief") return;
+    const t = G ? threatIndex() : 0;
+    const p1 = 0.18 + Math.min(0.32, t * 0.014);
+    const p2 = 0.05 + Math.min(0.14, t * 0.007);
+    const bag = [["shoot", 3], ["lob", 2], ["flicker", 2], ["explode", 2], ["heal", 2], ["haste", 3], ["tough", 3], ["ghost", 1], ["blink", 1], ["pull", 1], ["split", 1], ["hymn", 1], ["slow", 2], ["root", 1]];
+    function one() {
+      let s = 0; bag.forEach(function (x) { s += x[1]; });
+      let r = Math.random() * s;
+      for (let i = 0; i < bag.length; i++) { r -= bag[i][1]; if (r <= 0) return bag[i][0]; }
+      return "haste";
+    }
+    const n = Math.random() < p1 ? (Math.random() < p2 ? 2 : 1) : 0;
+    f.mut = [];
+    for (let i = 0; i < n; i++) {
+      const m = one();
+      if (f.mut.indexOf(m) >= 0) continue;
+      f.mut.push(m);
+      if (m === "explode") f.explode = true;
+      if (m === "split") f.split = true;
+      if (m === "heal") f.heal = true;
+      if (m === "haste") f.spdBonus = 1.28;
+      if (m === "tough") { f.hp = Math.max(f.hp + 1, Math.round(f.hp * 1.4)); f.max = f.hp; }
+    }
   }
   function spawnSurviveAround(kind, boss, n) {
     n = Math.max(1, n || 1);
@@ -1398,7 +1436,8 @@
     for (let i = 0; i < gN; i++) {
       const p = empty();
       if (!p) break;
-      gens.push({ x: p.x, y: p.y, kind: KINDS[(R() * KINDS.length) | 0], rank, hp: 3 * rank, t: R() * 0.6 });
+      const gk = (floor >= 5 && R() < 0.4) ? KINDS_HOT[(R() * KINDS_HOT.length) | 0] : KINDS[(R() * KINDS.length) | 0];
+      gens.push({ x: p.x, y: p.y, kind: gk, rank, hp: 3 * rank, t: R() * 0.6 });
     }
     const itemN = treasure ? 16 : Math.max(5, 8 + ((R() * 5) | 0) - (mode === "endless" ? (floor / 9) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
@@ -1435,7 +1474,8 @@
     for (let i = 0; i < idle; i++) {
       const p = empty();
       if (!p) break;
-      foes.push(makeFoe(KINDS[(R() * KINDS.length) | 0], rank, p.x + 0.5, p.y + 0.5));
+      const pool = floor >= 4 ? KINDS_HOT : KINDS;
+      foes.push(makeFoe(pool[(R() * pool.length) | 0], rank, p.x + 0.5, p.y + 0.5));
     }
     if (floor >= (mode === "endless" ? 3 : 6) && R() < 0.22 + floor * 0.01) {
       foes.push(makeFoe("drain", 1, exit.x + 0.5, exit.y + 0.5));
@@ -1478,6 +1518,8 @@
     f.explode = !!d.explode; f.split = !!d.split; f.heal = !!d.heal; f.spr = d.spr || k;
     f.vx = 0; f.vy = 0; f.t = 0; f.hurt = 0; f.flicker = 0; f.stun = 0;
     f.phase = 1; f._splitDone = false; f._sip = 0; f.isActive = true;
+    f.mut = []; f.spdBonus = 1;
+    rollFoeMut(f);
     return f;
   }
 
@@ -1518,7 +1560,7 @@
     return true;
   }
   function shadeHidden(f) {
-    return FOE[f.kind] && FOE[f.kind].flicker && (f.flicker % 1.2) < 0.5;
+    return foeHas(f, "flicker") && ((f.flicker || 0) % 1.2) < 0.5;
   }
   function initFog(lv) {
     if (!lv) return;
@@ -2439,6 +2481,8 @@
       p.magT = Math.max(0, p.magT - dt);
       p.stun = Math.max(0, p.stun - dt);
       p.muteT = Math.max(0, (p.muteT || 0) - dt);
+      p.slowT = Math.max(0, (p.slowT || 0) - dt);
+      p.rootT = Math.max(0, (p.rootT || 0) - dt);
       p.padT = Math.max(0, p.padT - dt);
       p.shotBoost = Math.max(0, p.shotBoost - dt);
       p.swift = Math.max(0, p.swift - dt);
@@ -2459,8 +2503,8 @@
         return;
       }
       const inn = inputFor(p);
-      if (p.stun <= 0) {
-        const spd = (2.55 + p.hero.speed * 0.6) * (p.swift > 0 ? 1.32 : 1) * (1 + (p.stride || 0) * 0.08);
+      if (p.stun <= 0 && (p.rootT || 0) <= 0) {
+        const spd = (2.55 + p.hero.speed * 0.6) * (p.swift > 0 ? 1.32 : 1) * (1 + (p.stride || 0) * 0.08) * ((p.slowT || 0) > 0 ? 0.52 : 1);
         tryMove(p, inn.dx, inn.dy, spd, dt, false);
         if (inn.dx || inn.dy) p.walk += dt * 8;
       }
@@ -2526,7 +2570,7 @@
       });
       if (!tgt) return;
       const ang = Math.atan2(tgt.y - f.y, tgt.x - f.x);
-      const ghost = !!def.ghost;
+      const ghost = foeHas(f, "ghost");
       if (f.boss && f.hp < f.max * 0.5 && (f.phase || 1) < 2) {
         f.phase = 2;
         emit("onBossPhase", { f: f, phase: 2 });
@@ -2547,14 +2591,14 @@
         return;
       }
       let mx = Math.cos(ang), my = Math.sin(ang);
-      if (def.shoot) {
+      if (foeHas(f, "shoot")) {
         if (bd < 3.2) { mx = -mx; my = -my; }
         else if (bd < 5.2) { mx = -my; my = mx; }
       }
-      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15) * spdMul * spdScale(), dt, ghost);
+      tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15) * spdMul * spdScale() * (f.spdBonus || 1), dt, ghost);
       if (!ghost) unstick(f);
       else if (blocked(lv, f.x, f.y)) unstick(f);
-      if (def.heal) {
+      if (foeHas(f, "heal")) {
         lv.foes.forEach((o) => {
           if (o === f || o.hp <= 0) return;
           if (Math.hypot(o.x - f.x, o.y - f.y) < 2.4) o.hp = Math.min(o.max, o.hp + dt * 1.4);
@@ -2589,6 +2633,8 @@
         }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
         if (tgt.thorns > 0) f.hp -= 22 * dt;
+        if (foeHas(f, "slow")) tgt.slowT = Math.max(tgt.slowT || 0, 1.55);
+        if (foeHas(f, "root")) tgt.rootT = Math.max(tgt.rootT || 0, 0.5);
         if (f.kind === "thief" && tgt.vials > 0 && !iframe && !surviveIframe) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
         if (f.kind === "drain") {
           f._sip = (f._sip || 0) + dmg * dt * 8;
@@ -2596,11 +2642,21 @@
         }
         if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
       }
-      if (def.shoot && f.t > (f.phase >= 2 ? 0.7 : 1.1) && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
+      if (foeHas(f, "hymn") && bd < 3.3 && bd > 0.5) {
+        tgt.hp -= Math.max(1, def.dmg * 0.35) * dt * (G.mode === "survive" ? 1.1 : 1.4);
+      }
+      if (foeHas(f, "shoot") && f.t > (f.phase >= 2 ? 0.7 : 1.1) && bd < 9 && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
         pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        if (foeHas(f, "echo")) f._echo = 0.18;
       }
-      if (def.lob && f.t > (f.phase >= 2 && def.super ? 0.7 : 1.4) && hasLos(f.x, f.y, tgt.x, tgt.y)) {
+      if ((f._echo || 0) > 0) {
+        f._echo -= dt;
+        if (f._echo <= 0) {
+          pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(ang) * 6.4, vy: Math.sin(ang) * 6.4, dmg: 6, foe: true, life: 1.1, maxLife: 1.1, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
+        }
+      }
+      if (foeHas(f, "lob") && f.t > (f.phase >= 2 && def.super ? 0.7 : 1.4) && hasLos(f.x, f.y, tgt.x, tgt.y)) {
         f.t = 0;
         const nLob = def.super && f.phase >= 2 ? 3 : 1;
         for (let i = 0; i < nLob; i++) {
@@ -2608,7 +2664,7 @@
           pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(a) * 4, vy: Math.sin(a) * 4, dmg: def.super ? 14 : 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
         }
       }
-      if (def.radial && f.t > (f.phase >= 2 ? 0.8 : 1.25)) {
+      if (foeHas(f, "radial") && f.t > (f.phase >= 2 ? 0.8 : 1.25)) {
         f.t = 0;
         const n = f.phase >= 2 ? 12 : 8;
         for (let i = 0; i < n; i++) {
@@ -2616,14 +2672,14 @@
           pushShot({ x: f.x, y: f.y, px: f.x, py: f.y, vx: Math.cos(a) * 7.2, vy: Math.sin(a) * 7.2, dmg: 13, foe: true, life: 1.45, maxLife: 1.45, hero: "imp", wep: "imp", air: true, grace: 0, trail: [{ x: f.x, y: f.y }] });
         }
       }
-      if (def.pull && bd < 8.5 && bd > 0.8) {
+      if (foeHas(f, "pull") && bd < 8.5 && bd > 0.8) {
         const pull = (f.phase >= 2 ? 2.6 : 1.6) * dt;
         tgt.x -= Math.cos(ang) * pull;
         tgt.y -= Math.sin(ang) * pull;
         if (f.phase >= 2 && def.heal) { /* no */ }
         if (f.phase >= 2) f.hp = Math.min(f.max, f.hp + dt * 2.2);
       }
-      if (def.blink && f.t > (f.phase >= 2 ? 1.35 : 2.1)) {
+      if (foeHas(f, "blink") && f.t > (f.phase >= 2 ? 1.35 : 2.1)) {
         f.t = 0;
         const ox = tgt.x + (Math.random() - 0.5) * 5;
         const oy = tgt.y + (Math.random() - 0.5) * 5;
@@ -3067,6 +3123,11 @@
         ctx.restore();
       } else {
         drawFoeSpr(sprName, dx, dy, sz);
+      }
+      if (f.mut && f.mut.length) {
+        ctx.strokeStyle = "rgba(251,191,36,0.7)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(Math.round(dx) + 1, Math.round(dy) + 1, sz - 2, sz - 2);
       }
       if (f.rank >= 3 && !boss && G.mode !== "survive") {
         ctx.strokeStyle = "#fbbf24";

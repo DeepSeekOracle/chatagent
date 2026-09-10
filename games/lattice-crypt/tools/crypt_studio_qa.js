@@ -31,7 +31,8 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=39") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=40") >= 0, "cache-bust");
+must(game.indexOf("stitch") >= 0 && game.indexOf("echoer") >= 0 && game.indexOf("veilkin") >= 0 && game.indexOf("rollFoeMut") >= 0, "new foes+muts");
 must(game.indexOf("hpScale") >= 0 && game.indexOf("hallMark") >= 0, "scale+hall");
 must(game.indexOf("up-cabinet") >= 0 && game.indexOf("secondwind") >= 0, "arcade upgrade");
 must(game.indexOf("latticearc") >= 0 && game.indexOf("unspool") >= 0 && game.indexOf("titheking") >= 0 && game.indexOf("nameeater") >= 0, "new loot and super bosses");
