@@ -116,11 +116,12 @@
   }
 
   function play() {
+    st.wantPlay = true;
     if (!st.tracks.length) return;
     const a = el();
     if (!a.src) next();
     a.play().then(() => { st.playing = true; paint(); }).catch(() => {
-      next();
+      if (st.tracks.length > 1) next();
     });
   }
 
@@ -151,7 +152,10 @@
 
   function bootRadio() {
     ensureDsp();
-    loadPlaylists().then(paint);
+    loadPlaylists().then(function () {
+      paint();
+      if (st.wantPlay) play();
+    });
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });
     a.addEventListener("error", () => { if (st.playing) next(); });
@@ -179,6 +183,12 @@
     };
     paint();
   }
+
+  window.LatticeRadio = {
+    play: play,
+    pause: pauseKeep,
+    playing: function () { return st.playing; }
+  };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootRadio);
   else bootRadio();

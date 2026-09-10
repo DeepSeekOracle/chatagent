@@ -2286,7 +2286,7 @@
     if (window.CryptStudio) {
       const p0 = liveP[0];
       CryptStudio.musicTick(
-        G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, G.floor / 16),
+        Math.max(0.18, G.mode === "survive" ? Math.min(1, surviveWave() / 20) : Math.min(1, (G.floor + 3) / 18)),
         {
           danger: p0 ? 1 - (p0.hp / Math.max(1, p0.max)) : 0,
           horde: Math.min(1, lv.foes.length / 300),
@@ -2823,7 +2823,8 @@
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
-    if (window.CryptStudio) CryptStudio.musicTick(0);
+    if (window.CryptStudio && CryptStudio.stopBed) CryptStudio.stopBed();
+    if (window.LatticeRadio) LatticeRadio.play();
     $("app").classList.add("hidden");
     $("app").classList.remove("survive-mode");
     const sh = $("studioHud");
@@ -2867,6 +2868,7 @@
       true
     );
     $("overlay").onclick = function (e) {
+      if (window.LatticeRadio && !LatticeRadio.playing()) LatticeRadio.play();
       const c = e.target.closest("[data-h]");
       if (c) {
         if (c.getAttribute("data-open") === "0") return;

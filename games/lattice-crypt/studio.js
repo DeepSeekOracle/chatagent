@@ -9,7 +9,7 @@
   let muted = false;
   let musicOn = true;
   let sfxVol = 1;
-  let musicVol = 1;
+  let musicVol = 0.42;
   try {
     const a = JSON.parse(localStorage.getItem(SAVE_AUDIO) || "{}");
     muted = !!a.muted;
@@ -326,13 +326,21 @@
   let musicGain = null, musicOsc = null, musicLfo = null;
   let pulseOsc = null, pulseGain = null, tenseOsc = null, tenseGain = null;
   let drumOsc = null, drumGain = null, drumLfo = null;
+  function stopBed() {
+    if (!actx) return;
+    try {
+      const t = actx.currentTime;
+      if (musicGain) musicGain.gain.setTargetAtTime(0.0001, t, 0.08);
+      if (pulseGain) pulseGain.gain.setTargetAtTime(0.0001, t, 0.08);
+      if (tenseGain) tenseGain.gain.setTargetAtTime(0.0001, t, 0.08);
+      if (drumGain) drumGain.gain.setTargetAtTime(0.0001, t, 0.08);
+    } catch (_) {}
+  }
   function duckMusic() {
     if (!actx) return;
     const silent = muted || !musicOn || reduced;
     try {
-      if (musicGain) musicGain.gain.setTargetAtTime(silent ? 0.0001 : 0.016, actx.currentTime, 0.15);
-      if (pulseGain) pulseGain.gain.setTargetAtTime(silent ? 0.0001 : 0.0001, actx.currentTime, 0.15);
-      if (tenseGain) tenseGain.gain.setTargetAtTime(0.0001, actx.currentTime, 0.15);
+      if (silent) stopBed();
     } catch (_) {}
   }
   function setMusic(on) {
@@ -349,16 +357,19 @@
     f.type = "lowpass"; f.frequency.value = 420;
     musicOsc.type = "triangle"; musicOsc.frequency.value = 98;
     musicLfo.type = "sine"; musicLfo.frequency.value = 0.28;
-    const lfoG = actx.createGain(); lfoG.gain.value = 14;
+    const lfoG = actx.createGain(); lfoG.gain.value = 7;
     musicLfo.connect(lfoG); lfoG.connect(musicOsc.frequency);
     musicOsc.connect(f); f.connect(musicGain); musicGain.connect(actx.destination);
-    musicGain.gain.value = 0.016;
+    musicGain.gain.value = 0.0001;
+    f.frequency.value = 260;
 
     pulseOsc = actx.createOscillator();
     pulseGain = actx.createGain();
-    pulseOsc.type = "square"; pulseOsc.frequency.value = 196;
+    const pf = actx.createBiquadFilter();
+    pf.type = "lowpass"; pf.frequency.value = 240;
+    pulseOsc.type = "sine"; pulseOsc.frequency.value = 128;
     pulseGain.gain.value = 0.0001;
-    pulseOsc.connect(pulseGain); pulseGain.connect(actx.destination);
+    pulseOsc.connect(pf); pf.connect(pulseGain); pulseGain.connect(actx.destination);
 
     tenseOsc = actx.createOscillator();
     tenseGain = actx.createGain();
@@ -376,33 +387,44 @@
     drumLfo.type = "square"; drumLfo.frequency.value = 2.1;
     const dmod = actx.createGain(); dmod.gain.value = 48;
     drumLfo.connect(dmod); dmod.connect(drumOsc.frequency);
-    drumOsc.connect(drumGain); drumGain.connect(actx.destination);
+    const df = actx.createBiquadFilter();
+    df.type = "lowpass"; df.frequency.value = 140;
+    drumOsc.connect(df); df.connect(drumGain); drumGain.connect(actx.destination);
 
     musicOsc.start(); musicLfo.start(); pulseOsc.start(); tenseOsc.start();
     drumOsc.start(); drumLfo.start();
   }
+  function radioPlaying() {
+    try {
+      const a = root.document && root.document.getElementById("radioEl");
+      return !!(a && !a.paused && !a.muted && a.volume > 0);
+    } catch (_) { return false; }
+  }
   function musicTick(intensity, extra) {
+    extra = extra || {};
+    if (extra.menu || extra.off) { stopBed(); return; }
     if (muted || !musicOn || reduced) { duckMusic(); return; }
+    const i = Math.max(0, Math.min(1, intensity || 0));
+    if (i <= 0) { stopBed(); return; }
     resumeAudio();
     if (!actx) return;
-    extra = extra || {};
     try {
       ensureBed();
-      const i = Math.max(0, Math.min(1, intensity || 0));
       const danger = Math.max(0, Math.min(1, extra.danger || 0));
       const horde = Math.max(0, Math.min(1, extra.horde || 0));
       const now = actx.currentTime;
-      const duck = extra.boss ? 0.55 : 1;
-      const mv = musicVol * duck;
-      musicOsc.frequency.setTargetAtTime(92 + i * 70, now, 0.4);
-      musicGain.gain.setTargetAtTime((0.011 + i * 0.012) * mv, now, 0.3);
-      pulseOsc.frequency.setTargetAtTime(164 + i * 90, now, 0.35);
-      pulseGain.gain.setTargetAtTime((0.002 + i * 0.012 + horde * 0.01) * mv, now, 0.25);
-      tenseOsc.frequency.setTargetAtTime(64 + danger * 90 + horde * 40, now, 0.3);
-      tenseGain.gain.setTargetAtTime((danger * 0.014 + horde * 0.01) * mv, now, 0.28);
+      const duck = extra.boss ? 0.45 : 1;
+      const underRadio = radioPlaying() ? 0.28 : 1;
+      const mv = musicVol * duck * underRadio;
+      musicOsc.frequency.setTargetAtTime(78 + i * 36, now, 0.5);
+      musicGain.gain.setTargetAtTime((0.0032 + i * 0.0045) * mv, now, 0.35);
+      pulseOsc.frequency.setTargetAtTime(110 + i * 40, now, 0.45);
+      pulseGain.gain.setTargetAtTime((0.0004 + i * 0.0022 + horde * 0.0015) * mv, now, 0.3);
+      tenseOsc.frequency.setTargetAtTime(58 + danger * 50 + horde * 18, now, 0.4);
+      tenseGain.gain.setTargetAtTime((danger * 0.005 + horde * 0.003) * mv, now, 0.32);
       if (drumGain && drumLfo) {
-        drumLfo.frequency.setTargetAtTime(1.6 + i * 2.2 + horde * 1.4, now, 0.4);
-        drumGain.gain.setTargetAtTime((0.001 + i * 0.008 + horde * 0.006) * mv, now, 0.3);
+        drumLfo.frequency.setTargetAtTime(1.2 + i * 1.1, now, 0.5);
+        drumGain.gain.setTargetAtTime((i > 0.28 ? (0.0008 + i * 0.002 + horde * 0.0015) : 0.0001) * mv, now, 0.35);
       }
       if (danger > 0.68 && !muted) {
         const beat = ((now * 2) | 0);
@@ -443,7 +465,8 @@
     shake: shake, hitstop: hitstop, burst: burst, floater: floater, feel: feel,
     juiceTick: juiceTick, juiceDraw: juiceDraw,
     sfx: sfx, resumeAudio: resumeAudio, setMute: setMute, setReduced: setReduced,
-    setMusic: setMusic, setSfxVol: setSfxVol, setMusicVol: setMusicVol, musicTick: musicTick,
+    setMusic: setMusic, setSfxVol: setSfxVol, setMusicVol: setMusicVol,
+    musicTick: musicTick, stopBed: stopBed,
     get muted() { return muted; },
     get reduced() { return reduced; },
     get music() { return musicOn; },
