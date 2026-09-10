@@ -105,6 +105,17 @@
   let foeAtlas = null, foeNames = {}, foeCell = 64, foeCols = 8;
   let heroAtlas = null, heroNames = {}, heroCell = 64, heroCols = 8;
   let tileAtlas = null, tileNames = {}, tileCell = 32, tileCols = 16;
+  let fxAtlas = null, fxNames = {}, fxCell = 32, fxCols = 8;
+  const WEP_LOOK = {
+    shard: { size: 28, col: "#fbbf24", glow: "rgba(251,191,36,0.38)" },
+    fan: { size: 26, col: "#fb923c", glow: "rgba(249,115,22,0.38)" },
+    needle: { size: 32, col: "#22d3ee", glow: "rgba(34,211,238,0.4)" },
+    cinder: { size: 28, col: "#f97316", glow: "rgba(239,68,68,0.4)" },
+    comet: { size: 30, col: "#60a5fa", glow: "rgba(96,165,250,0.4)" },
+    halo: { size: 30, col: "#fde68a", glow: "rgba(253,224,71,0.42)" },
+    imp: { size: 22, col: "#f87171", glow: "rgba(239,68,68,0.4)" },
+    hurler: { size: 24, col: "#94a3b8", glow: "rgba(148,163,184,0.35)" }
+  };
   const BOSS_LOOT = {
     gate: ["core", "heart"],
     crown: ["comet", "swift"],
@@ -192,6 +203,183 @@
   }
   function floorName(z, x, y) {
     return z + "_f" + ((x & 3) + ((y & 3) << 2));
+  }
+  function drawFxSpr(name, x, y, w) {
+    const i = fxNames[name];
+    w = w || 32;
+    if (i == null || !fxAtlas) {
+      drawSpr(name, x, y, w);
+      return;
+    }
+    const sx = (i % fxCols) * fxCell, sy = Math.floor(i / fxCols) * fxCell;
+    ctx.drawImage(fxAtlas, sx, sy, fxCell, fxCell, Math.round(x), Math.round(y), w, w);
+  }
+  function wepKey(s) {
+    if (s.foe) return s.hero === "hurler" ? "hurler" : "imp";
+    return s.wep && WEP_LOOK[s.wep] ? s.wep : "shard";
+  }
+  function drawShot(s) {
+    const wep = wepKey(s);
+    const L = WEP_LOOK[wep] || WEP_LOOK.shard;
+    const px = s.x * TILE - cam.x, py = s.y * TILE - cam.y;
+    const u = 1 - s.life / Math.max(0.05, s.maxLife || 1.2);
+    const lift = s.lob ? Math.sin(u * Math.PI) * 22 : 0;
+    if (s.lob) {
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.ellipse(px, py + 5, 8, 3.2, 0, 0, 6.28);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    const tr = s.trail || [];
+    tr.forEach((t, i) => {
+      const a = (i + 1) / tr.length;
+      ctx.globalAlpha = a * 0.55;
+      const tx = t.x * TILE - cam.x, ty = t.y * TILE - cam.y;
+      if (wep === "needle" && i) {
+        const p = tr[i - 1];
+        ctx.strokeStyle = L.col;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(p.x * TILE - cam.x, p.y * TILE - cam.y);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = L.col;
+        const r = wep === "cinder" ? 3.4 + a * 2 : (wep === "comet" ? 3 : 2.1);
+        ctx.beginPath();
+        ctx.arc(tx, ty, r, 0, 6.28);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = L.glow;
+    ctx.beginPath();
+    ctx.arc(px, py - lift, L.size * 0.42, 0, 6.28);
+    ctx.fill();
+    const fr = ((G.t * 14) | 0) % 4;
+    const sz = L.size;
+    const ang = Math.atan2(s.vy, s.vx);
+    ctx.save();
+    ctx.translate(px, py - lift);
+    if (wep === "halo") ctx.rotate(G.t * 7);
+    else if (wep === "cinder") ctx.rotate(G.t * 5);
+    else if (wep !== "imp") ctx.rotate(ang);
+    drawFxSpr("bolt_" + wep + "_" + fr, -sz / 2, -sz / 2, sz);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+  }
+  function drawVfx(f) {
+    const px = f.x * TILE - cam.x, py = f.y * TILE - cam.y;
+    const max = f.max || f.life;
+    const u = 1 - f.life / Math.max(0.05, max);
+    if (f.kind === "puff") {
+      const pf = Math.min(3, 3 - ((f.life * 8) | 0));
+      ctx.globalAlpha = Math.max(0, f.life * 3);
+      drawSpr("puff_" + pf, px - 16, py - 16);
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "cinder") {
+      ctx.globalAlpha = Math.min(1, f.life);
+      drawFxSpr("bolt_cinder_" + (((G.t * 10) | 0) % 4), px - 16, py - 18, 28);
+      ctx.fillStyle = "rgba(249,115,22,0.35)";
+      ctx.beginPath();
+      ctx.arc(px, py, 10 + (G.t * 8 % 4), 0, 6.28);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "muzzle") {
+      const wep = f.wep && WEP_LOOK[f.wep] ? f.wep : "shard";
+      ctx.globalAlpha = Math.max(0, f.life * 8);
+      ctx.save();
+      ctx.translate(px, py);
+      if (f.ang) ctx.rotate(f.ang);
+      drawFxSpr("mz_" + wep + "_" + (f.life > 0.06 ? 0 : 1), -18, -18, 36);
+      ctx.restore();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "hit") {
+      const wep = f.wep && WEP_LOOK[f.wep] ? f.wep : "shard";
+      const L = WEP_LOOK[wep];
+      ctx.globalAlpha = Math.max(0, 1 - u);
+      ctx.strokeStyle = L.col;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 6 + u * 16, 0, 6.28);
+      ctx.stroke();
+      drawFxSpr("hit_" + wep + "_" + (u > 0.45 ? 1 : 0), px - 16, py - 16, 32);
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "nova") {
+      const col = f.col || "#5eead4";
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col;
+      ctx.globalAlpha = (1 - u) * 0.85;
+      ctx.lineWidth = 3;
+      const r = 18 + u * 120;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 6.28);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - u) * 0.25;
+      ctx.beginPath();
+      ctx.arc(px, py, r * 0.72, 0, 6.28);
+      ctx.fill();
+      ctx.globalAlpha = (1 - u) * 0.7;
+      ctx.lineWidth = 1.5;
+      const spokes = f.job === "lightfather" || f.job === "orin" ? 8 : (f.job === "kael" ? 4 : 6);
+      for (let i = 0; i < spokes; i++) {
+        const a = (i / spokes) * 6.28 + u * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(px + Math.cos(a) * 8, py + Math.sin(a) * 8);
+        ctx.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "shield") {
+      ctx.strokeStyle = "#22d3ee";
+      ctx.globalAlpha = (1 - u) * 0.8;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(px, py, 14 + u * 10, 0, 6.28);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "warp") {
+      ctx.strokeStyle = "#c4b5fd";
+      ctx.globalAlpha = (1 - u) * 0.85;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 6 + u * 22, u * 6.28, u * 6.28 + 4);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
+    if (f.kind === "note") {
+      ctx.fillStyle = "#67e8f9";
+      ctx.globalAlpha = 1 - u;
+      ctx.beginPath();
+      ctx.arc(px + Math.sin(u * 8) * 8, py - u * 22, 3, 0, 6.28);
+      ctx.fill();
+      ctx.fillRect(px + 6, py - u * 18, 2, 8);
+      ctx.globalAlpha = 1;
+      return;
+    }
+    ctx.globalAlpha = Math.max(0, f.life * 2);
+    ctx.strokeStyle = "#5eead4";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, (1 - f.life) * 80, 0, 6.28);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
   function solidAt(lv, x, y) {
     const t = tileAt(lv, x, y);
@@ -701,9 +889,10 @@
     if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
     G.shots.push({
       x: sx, y: sy, vx: ax * w.spd, vy: ay * w.spd,
-      dmg: shotDmg(p, w), owner: p, life: w.life, grace: 0.12,
+      dmg: shotDmg(p, w), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
       hero: p.hero.id, wep: p.weapon, bounced: false,
-      pierce: w.pierce || 0, lob: !!w.lob, flame: w.flame || 0
+      pierce: w.pierce || 0, lob: !!w.lob, flame: w.flame || 0,
+      trail: [{ x: sx, y: sy }]
     });
   }
 
@@ -726,9 +915,10 @@
     } else {
       spawnBolt(p, ax, ay, w);
     }
-    G.fx.push({ x: p.x + ax * 0.4, y: p.y + ay * 0.4, life: 0.09, kind: "muzzle" });
+    G.fx.push({ x: p.x + ax * 0.45, y: p.y + ay * 0.45, life: 0.12, kind: "muzzle", wep: p.weapon, ang: Math.atan2(ay, ax) });
     if (p.hero.hymn) {
       G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 3.2) f.stun = Math.max(f.stun || 0, 0.35); });
+      G.fx.push({ x: p.x, y: p.y, life: 0.4, kind: "note" });
     }
     beep("shot");
     p.fireT = p.shotBoost > 0 ? Math.min(0.12, w.cool) : w.cool;
@@ -762,7 +952,10 @@
     }
     if (id === "vale") {
       G.players.forEach((o) => {
-        if (!o.dead && Math.hypot(o.x - p.x, o.y - p.y) < 6.5) o.aegis = Math.max(o.aegis, 4.8);
+        if (!o.dead && Math.hypot(o.x - p.x, o.y - p.y) < 6.5) {
+          o.aegis = Math.max(o.aegis, 4.8);
+          G.fx.push({ x: o.x, y: o.y, life: 0.4, max: 0.4, kind: "shield" });
+        }
       });
     }
     if (id === "nia") p.swift = Math.max(p.swift, 3.4);
@@ -773,7 +966,11 @@
       });
     }
     if (id === "srath") p.veil = Math.max(p.veil, 2.4);
-    if (p.hero.time) randomFloor(p);
+    if (p.hero.time) {
+      G.fx.push({ x: p.x, y: p.y, life: 0.35, kind: "warp" });
+      randomFloor(p);
+      G.fx.push({ x: p.x, y: p.y, life: 0.35, kind: "warp" });
+    }
     if (id === "justicae") p.reflect = Math.max(p.reflect, 5.2);
     if (p.hero.heal) {
       G.players.forEach((o) => { if (!o.dead) o.hp = Math.min(o.max, o.hp + Math.round(70 * faithMul(p))); });
@@ -803,7 +1000,7 @@
       else f.hp -= pow;
     });
     G.level.gens.forEach((g) => { g.hp -= Math.max(1, (pow / 20) | 0); });
-    G.fx.push({ x: p.x, y: p.y, life: 0.45, kind: "nova" });
+    G.fx.push({ x: p.x, y: p.y, life: 0.58, max: 0.58, kind: "nova", col: p.hero.color, job: p.hero.id });
     jobVial(p, pow);
   }
 
@@ -840,7 +1037,7 @@
       else if (it.kind === "pulse") {
         G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 8) f.stun = 3; });
         G.score += 80; say("Pulse — foes freeze.");
-        G.fx.push({ x: p.x, y: p.y, life: 0.35, kind: "nova" });
+        G.fx.push({ x: p.x, y: p.y, life: 0.4, max: 0.4, kind: "nova", col: "#93c5fd", job: "pulse" });
       }
       else if (it.kind === "warp") { randomFloor(p); G.score += 40; say(p.hero.name + " warps."); }
       else if (it.kind === "trap") { p.stun = 0.8; p.hp -= 15; }
@@ -1034,11 +1231,11 @@
       }
       if (def.shoot && f.t > 1.1 && bd < 9) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, hero: "imp" });
+        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 6, vy: Math.sin(ang) * 6, dmg: 8, foe: true, life: 1.4, maxLife: 1.4, hero: "imp", wep: "imp", trail: [{ x: f.x, y: f.y }] });
       }
       if (def.lob && f.t > 1.4) {
         f.t = 0;
-        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, lob: true, hero: "hurler" });
+        G.shots.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4, dmg: 10, foe: true, life: 1.6, maxLife: 1.6, lob: true, hero: "hurler", wep: "hurler", trail: [{ x: f.x, y: f.y }] });
       }
     });
     lv.foes = lv.foes.filter((f) => {
@@ -1051,13 +1248,18 @@
     G.shots.forEach((s) => {
       s.life -= dt; s.x += s.vx * dt; s.y += s.vy * dt;
       s.grace = Math.max(0, (s.grace || 0) - dt);
+      s.trail = s.trail || [];
+      s.trail.push({ x: s.x, y: s.y });
+      if (s.trail.length > (s.wep === "needle" ? 12 : 8)) s.trail.shift();
       const inWall = blocked(lv, s.x, s.y) && tileAt(lv, s.x, s.y) !== "door_open";
       if (!inWall) s.air = true;
       if (!s.lob && s.air && inWall) {
         if (!s.foe && s.owner && s.owner.reflect > 0 && !s.bounced) {
           s.vx *= -1; s.vy *= -1; s.bounced = true; s.x += s.vx * dt; s.y += s.vy * dt;
         } else {
-          smashItem(s); s.life = 0; return;
+          smashItem(s);
+          G.fx.push({ x: s.x, y: s.y, life: 0.16, kind: "hit", wep: wepKey(s) });
+          s.life = 0; return;
         }
       }
       if (s.foe) {
@@ -1065,6 +1267,7 @@
           if (p.veil > 0) return;
           if (Math.hypot(p.x - s.x, p.y - s.y) < 0.38) {
             p.hp -= Math.max(3, s.dmg - p.hero.armor - (p.iron || 0));
+            G.fx.push({ x: s.x, y: s.y, life: 0.18, kind: "hit", wep: wepKey(s) });
             s.life = 0;
           }
         });
@@ -1073,7 +1276,7 @@
           if (s.life <= 0) return;
           if (Math.hypot(g.x + 0.5 - s.x, g.y + 0.5 - s.y) <= 0.62) {
             g.hp -= 1; G.score += 5; lv.quiet = 0; beep("hit");
-            G.fx.push({ x: s.x, y: s.y, life: 0.12, kind: "spark" });
+            G.fx.push({ x: s.x, y: s.y, life: 0.2, kind: "hit", wep: wepKey(s) });
             if (s.pierce > 0) s.pierce--; else s.life = 0;
           }
         });
@@ -1082,7 +1285,7 @@
             if (s.life <= 0) return;
             if (Math.hypot(f.x - s.x, f.y - s.y) < ((FOE[f.kind] && FOE[f.kind].boss) ? 0.72 : 0.48)) {
               hitFoe(f, s.dmg, false); beep("hit");
-              G.fx.push({ x: s.x, y: s.y, life: 0.14, kind: "spark" });
+              G.fx.push({ x: s.x, y: s.y, life: 0.22, kind: "hit", wep: wepKey(s) });
               if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
               if (s.pierce > 0) s.pierce--; else s.life = 0;
             }
@@ -1326,54 +1529,8 @@
       }
       ctx.globalAlpha = 1;
     });
-    G.shots.forEach((s) => {
-      const fr = ((1.2 - s.life) * 8) | 0;
-      const wep = s.wep || (s.hero === "imp" || s.hero === "hurler" ? s.hero : "shard");
-      const nm = spr("shot_" + wep + "_" + (fr & 1)) ? ("shot_" + wep + "_" + (fr & 1)) : ("shot_" + (s.hero || "kael"));
-      const sz = wep === "cinder" ? 22 : (wep === "comet" ? 20 : 16);
-      const dx = s.x * TILE - sz / 2 - cam.x, dy = s.y * TILE - sz / 2 - cam.y;
-      if ((wep === "needle" || wep === "shard") && (s.vx || s.vy)) {
-        ctx.save();
-        ctx.translate(s.x * TILE - cam.x, s.y * TILE - cam.y);
-        ctx.rotate(Math.atan2(s.vy, s.vx));
-        drawSpr(nm, -sz / 2, -sz / 2, sz);
-        ctx.restore();
-        ctx.imageSmoothingEnabled = false;
-      } else {
-        drawSpr(nm, dx, dy, sz);
-      }
-    });
-    G.fx.forEach((f) => {
-      if (f.kind === "puff") {
-        const pf = Math.min(3, 3 - ((f.life * 8) | 0));
-        ctx.globalAlpha = Math.max(0, f.life * 3);
-        drawSpr("puff_" + pf, f.x * TILE - TILE / 2 - cam.x, f.y * TILE - TILE / 2 - cam.y);
-        ctx.globalAlpha = 1;
-        return;
-      }
-      if (f.kind === "spark") {
-        drawSpr("spark_" + (((f.life * 10) | 0) & 1), f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
-        return;
-      }
-      if (f.kind === "muzzle") {
-        ctx.globalAlpha = Math.max(0, f.life * 10);
-        drawSpr("muzzle", f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
-        ctx.globalAlpha = 1;
-        return;
-      }
-      if (f.kind === "cinder") {
-        ctx.globalAlpha = Math.min(1, f.life);
-        drawSpr("flame_" + (((G.t * 8) | 0) & 1), f.x * TILE - 16 - cam.x, f.y * TILE - 16 - cam.y);
-        ctx.globalAlpha = 1;
-        return;
-      }
-      ctx.globalAlpha = Math.max(0, f.life * 2);
-      ctx.strokeStyle = "#5eead4";
-      ctx.beginPath();
-      ctx.arc(f.x * TILE - cam.x, f.y * TILE - cam.y, (1 - f.life) * 80, 0, 6.28);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
+    G.shots.forEach((s) => drawShot(s));
+    G.fx.forEach((f) => drawVfx(f));
     G.players.forEach((p) => {
       if (p.dead) return;
       ctx.globalAlpha = p.veil > 0 ? 0.45 : 1;
@@ -1384,10 +1541,22 @@
         ctx.stroke();
       }
       drawHeroSpr(p, cam.x, cam.y);
+      if (p.aegis > 0) {
+        ctx.strokeStyle = "rgba(34,211,238,0.55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 20, 0, 6.28);
+        ctx.stroke();
+      }
       if (p.halo) {
         p.halo.forEach((h) => {
           const hx = p.x + Math.cos(h.ang) * h.r, hy = p.y + Math.sin(h.ang) * h.r;
-          drawSpr("shot_halo_" + ((G.t * 8 | 0) & 1), hx * TILE - 16 - cam.x, hy * TILE - 16 - cam.y);
+          const sx = hx * TILE - cam.x, sy = hy * TILE - cam.y;
+          ctx.fillStyle = "rgba(253,224,71,0.28)";
+          ctx.beginPath();
+          ctx.arc(sx, sy, 12, 0, 6.28);
+          ctx.fill();
+          drawFxSpr("bolt_halo_" + ((G.t * 10 | 0) % 4), sx - 14, sy - 14, 28);
         });
       }
       ctx.globalAlpha = 1;
@@ -1583,6 +1752,13 @@
         fetch(ASSET + "tiles.json").then((r) => r.json())
       ]);
       tileAtlas = timg; tileNames = tmeta.names; tileCell = tmeta.cell; tileCols = tmeta.cols;
+    } catch (_) {}
+    try {
+      const [fximg, fxmeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "fx.png?v=1"; }),
+        fetch(ASSET + "fx.json").then((r) => r.json())
+      ]);
+      fxAtlas = fximg; fxNames = fxmeta.names; fxCell = fxmeta.cell; fxCols = fxmeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();
