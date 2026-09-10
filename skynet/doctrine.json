@@ -6,10 +6,12 @@
   "protocol": "AETHONΔ9",
   "ops_bar": 0.65,
   "doctrine": {
-    "is": "Autonomous lattice sentinel. Pulse public GET, score public discourse with AETHONΔ9, yield ALIGNED/REVIEW/SHADOW for human review.",
+    "is": "Autonomous lattice sentinel. Hugging Face writes skynet-pulse.json; this page paints that overlay then verifies kernel slots. AETHONΔ9 scores public titles.",
     "not": ["weapons net", "Terminator SKYNET", "Palantir", "person profiler", "doxing", "silent Star Chart ingest", "private intel ingest"],
-    "rule": "Discourse not identity. Name the shadow. Never steal payload. Human remains publisher for live writes."
+    "rule": "Discourse not identity. Name the shadow. Never steal payload. Human remains publisher for canon / Star Chart writes."
   },
+  "autonomous": ["HF Space pulse + skynet-pulse.json overlay ~15m", "browser GET of lattice slots", "AETHONΔ9 on Witness titles", "localStorage receipt"],
+  "not_autonomous": ["git push", "Star Chart chain ingest", "social outbound"],
   "limbs": {
     "PULSE": "Allowlisted HTTPS GET of every /lattice/slots.json limb (same board as the kernel)",
     "AETHON": "AETHONΔ9 discourse heuristics on public titles only",
@@ -23,6 +25,8 @@
     "lattice": "https://chatagent.ca/lattice/",
     "lattice_slots": "https://chatagent.ca/lattice/slots.json",
     "lattice_map": "https://chatagent.ca/lattice/map.json",
+    "hf_bot": "https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot",
+    "hf_pulse": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/skynet-pulse.json",
     "ops_detector": "clawhub:@deepseekoracle/lygo-ops-detector",
     "cyborg": "https://chatagent.ca/lygoskillhub.html#full-lygo"
   }

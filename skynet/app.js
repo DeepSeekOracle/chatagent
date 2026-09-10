@@ -7,6 +7,7 @@
   const SLOTS = "/lattice/slots.json";
   const KERNEL = "/lattice/doctrine.json";
   const MAP = "/lattice/map.json";
+  const HF_PULSE = "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/skynet-pulse.json";
   const canvas = document.getElementById("net");
   const ctx = canvas.getContext("2d");
   const LIMBS = [
@@ -19,7 +20,7 @@
     tick: 0, yield: "ALIGNED", latticeYield: "…",
     live: 0, miss: 0, future: 0, queue: [], board: [],
     maxOps: 0, pick: null, lastPulse: null,
-    slots: [], results: {}, extras: {}, claims: []
+    slots: [], results: {}, extras: {}, claims: [], hf: null
   };
 
   function size() {
@@ -156,6 +157,69 @@
       ctx.stroke();
     }
     requestAnimationFrame(draw);
+  }
+
+  function setHfChip(doc, src) {
+    const el = document.getElementById("hf-chip");
+    if (!el) return;
+    if (!doc) {
+      el.textContent = "HF overlay · named miss";
+      el.className = "chip";
+      return;
+    }
+    el.textContent = "HF · " + (doc.yield || "…") + " · " + String(doc.utc || "").replace("T", " ").slice(0, 19) + "Z";
+    el.className = "chip " + (doc.yield === "ALIGNED" ? "ok" : (doc.yield === "REVIEW" ? "review" : "shadow"));
+    el.title = src || "huggingface overlay";
+  }
+
+  function applyHfDoc(doc) {
+    if (!doc || !doc.signature) return false;
+    state.hf = doc;
+    (doc.slots || []).forEach(function (row) {
+      if (!row || !row.id) return;
+      state.results[row.id] = {
+        live: !!row.live,
+        note: row.note || "",
+        future: row.era === "future" || row.class === "FUTURE"
+      };
+    });
+    if (!state.slots.length && doc.slots && doc.slots.length) {
+      state.slots = doc.slots.map(function (row) {
+        return {
+          id: row.id, title: row.title, class: row.class, era: row.era, url: row.url,
+          why: row.note
+        };
+      });
+    }
+    state.live = doc.live || 0;
+    state.miss = doc.miss || 0;
+    state.future = doc.future || 0;
+    state.latticeYield = doc.lattice_yield || "…";
+    state.maxOps = doc.max_ops || 0;
+    state.queue = doc.queue || [];
+    state.claims = doc.claims || [];
+    state.extras = doc.extras || {};
+    setYield(doc.yield || "ALIGNED");
+    const rows = (doc.slots || []).map(function (s) {
+      const future = s.era === "future" || s.class === "FUTURE";
+      const tag = future ? "future" : (s.live ? "ok" : "shadow");
+      return "<div class=\"row\" data-slot=\"" + esc(s.id) + "\"><span>" + esc(s.title) + "</span><span class=\"tag " + tag + "\">" +
+        (future ? "future" : (s.live ? "live" : "named")) + "</span></div>";
+    });
+    const board = document.getElementById("board");
+    if (board) {
+      board.innerHTML = rows.join("");
+      board.querySelectorAll("[data-slot]").forEach(function (row) {
+        row.style.cursor = "pointer";
+        row.addEventListener("click", function () {
+          const s = state.slots.filter(function (x) { return x.id === row.getAttribute("data-slot"); })[0];
+          if (s) briefSlot(s);
+        });
+      });
+    }
+    renderQueue();
+    setHfChip(doc, "huggingface");
+    return true;
   }
 
   function setYield(y) {
@@ -444,6 +508,9 @@
     draw();
     const spec = await getAny(SLOTS);
     state.slots = (spec.json && spec.json.slots) || [];
+    const hf = await getAny(HF_PULSE);
+    if (hf.json && hf.json.signature) applyHfDoc(hf.json);
+    else setHfChip(null);
     await pulse();
     setInterval(pulse, 90000);
   }

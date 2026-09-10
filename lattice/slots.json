@@ -126,6 +126,15 @@
       "expect": "json"
     },
     {
+      "id": "skynet_pulse",
+      "title": "HF SKYNET pulse",
+      "era": "now",
+      "class": "RESOURCE",
+      "url": "https://huggingface.co/datasets/DeepSeekOracle/lygo-public-witness-feed/resolve/main/skynet-pulse.json",
+      "expect": "json",
+      "expect_sig": "LYGO-SKYNET"
+    },
+    {
       "id": "free_sources",
       "title": "Free sources portal catalog",
       "era": "now",
