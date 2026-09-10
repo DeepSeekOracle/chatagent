@@ -246,7 +246,7 @@ window.LatticeCampaign = (function () {
     else tiles[exit.y][exit.x] = "exit";
     if (spec.drain) foes.push(makeFoe("drain", 1, exit.x + 0.5, exit.y + 0.5));
 
-    return {
+    const built = {
       W, H, tiles, start, exit, items, gens, foes, doors, pads,
       realm: { id: ["stone", "frost", "ember", "root", "tide", "gold", "void", "lattice"][ch.realm],
         name: ch.title, floor: ["floor", "floor2", "floor3", "floor", "floor2", "floor3", "floor2", "floor"][ch.realm],
@@ -260,6 +260,14 @@ window.LatticeCampaign = (function () {
       campaign: true,
       index: i
     };
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (tiles[y][x] === "wall") continue;
+      if (x < x0) x0 = x; if (y < y0) y0 = y;
+      if (x > x1) x1 = x; if (y > y1) y1 = y;
+    }
+    built.box = { x0, y0, x1, y1 };
+    return built;
   }
 
   return { CHAPTERS, FLOORS, LEN: FLOORS.length, build };

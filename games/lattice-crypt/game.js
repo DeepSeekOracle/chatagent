@@ -75,6 +75,7 @@
   ctx.imageSmoothingEnabled = false;
 
   let atlas = null, names = {}, cell = 32, cols = 16;
+  let foeAtlas = null, foeNames = {}, foeCell = 64, foeCols = 8;
   let keys = {};
   let keyEdge = {};
   let G = null;
@@ -134,7 +135,17 @@
     const s = spr(name);
     if (!s || !atlas) return;
     w = w || TILE;
-    ctx.drawImage(atlas, s.sx, s.sy, cell, cell, x, y, w, w);
+    ctx.drawImage(atlas, s.sx, s.sy, cell, cell, Math.round(x), Math.round(y), w, w);
+  }
+  function drawFoeSpr(name, x, y, w) {
+    const i = foeNames[name];
+    if (i == null || !foeAtlas) {
+      drawSpr(name, x, y, w);
+      return;
+    }
+    const sx = (i % foeCols) * foeCell, sy = Math.floor(i / foeCols) * foeCell;
+    w = w || foeCell;
+    ctx.drawImage(foeAtlas, sx, sy, foeCell, foeCell, Math.round(x), Math.round(y), w, w);
   }
 
   function fillRect(tiles, W, H, x, y, w, h, t) {
@@ -202,6 +213,19 @@
     for (let x = 0; x < W; x++) { tiles[0][x] = "wall"; tiles[H - 1][x] = "wall"; }
     for (let y = 0; y < H; y++) { tiles[y][0] = "wall"; tiles[y][W - 1] = "wall"; }
     return rooms;
+  }
+
+  function contentBox(lv) {
+    let x0 = lv.W, y0 = lv.H, x1 = 0, y1 = 0;
+    for (let y = 0; y < lv.H; y++) {
+      for (let x = 0; x < lv.W; x++) {
+        if (lv.tiles[y][x] === "wall") continue;
+        if (x < x0) x0 = x; if (y < y0) y0 = y;
+        if (x > x1) x1 = x; if (y > y1) y1 = y;
+      }
+    }
+    lv.box = { x0, y0, x1, y1 };
+    return lv;
   }
 
   function floorsOf(tiles, W, H) {
@@ -310,13 +334,13 @@
     if (floor >= (mode === "endless" ? 3 : 6) && R() < 0.22 + floor * 0.01) {
       foes.push(makeFoe("drain", 1, exit.x + 0.5, exit.y + 0.5));
     }
-    return {
+    return contentBox({
       W, H, tiles, start, items, gens, foes, doors, pads,
       realm: REALMS[floor % 8],
       layout: kind,
       treasure: treasure ? 30 : 0,
       quiet: 0
-    };
+    });
   }
 
   function makeFoe(kind, rank, x, y) {
@@ -781,7 +805,8 @@
         else if (bd < 5.2) { mx = -my; my = mx; }
       }
       tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
-      if (bd < 0.55) {
+      const hitR = def.boss ? 0.78 : 0.52;
+      if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
         const dmg = Math.max(2, def.dmg * f.rank - arm);
         tgt.hp -= dmg * dt * (f.kind === "drain" ? 8 : 3.2);
@@ -842,7 +867,7 @@
         if (s.life > 0) {
           lv.foes.forEach((f) => {
             if (s.life <= 0) return;
-            if (Math.hypot(f.x - s.x, f.y - s.y) < 0.48) {
+            if (Math.hypot(f.x - s.x, f.y - s.y) < ((FOE[f.kind] && FOE[f.kind].boss) ? 0.72 : 0.48)) {
               hitFoe(f, s.dmg, false); beep("hit");
               G.fx.push({ x: s.x, y: s.y, life: 0.14, kind: "spark" });
               if (s.flame) G.fx.push({ x: f.x, y: f.y, life: s.flame, kind: "cinder", dmg: Math.max(2, s.dmg - 1) });
@@ -1016,8 +1041,17 @@
     let fx = 0, fy = 0, fn = 0;
     live.forEach((p) => { fx += p.x; fy += p.y; fn++; });
     const focus = fn ? { x: fx / fn, y: fy / fn } : (G.players[0] || { x: 2, y: 2 });
-    cam.x += (focus.x * TILE - w / 2 - cam.x) * 0.14;
-    cam.y += (focus.y * TILE - h / 2 - cam.y) * 0.14;
+    const bb = lv.box || { x0: 1, y0: 1, x1: lv.W - 2, y1: lv.H - 2 };
+    const pad = TILE * 2.4;
+    const minX = bb.x0 * TILE - pad, maxX = (bb.x1 + 1) * TILE + pad - w;
+    const minY = bb.y0 * TILE - pad, maxY = (bb.y1 + 1) * TILE + pad - h;
+    let tx = focus.x * TILE - w / 2, ty = focus.y * TILE - h / 2;
+    if (maxX < minX) tx = ((bb.x0 + bb.x1 + 1) * TILE - w) / 2;
+    else tx = Math.max(minX, Math.min(maxX, tx));
+    if (maxY < minY) ty = ((bb.y0 + bb.y1 + 1) * TILE - h) / 2;
+    else ty = Math.max(minY, Math.min(maxY, ty));
+    cam.x += (tx - cam.x) * 0.18;
+    cam.y += (ty - cam.y) * 0.18;
     const fl = lv.realm.floor || "floor";
     const wl = lv.realm.wall || "wall";
     for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
@@ -1049,24 +1083,27 @@
     });
     lv.foes.forEach((f) => {
       const hid = shadeHidden(f);
-      const rate = f.kind === "drain" || f.kind === "wraith" ? 5 : 8;
+      const rate = f.kind === "drain" || f.kind === "wraith" || f.kind === "unnamer" ? 5 : 8;
       const fr = ((f.t * rate) | 0) % 4;
-      ctx.globalAlpha = f.hurt > 0 ? 0.55 : (hid ? 0.28 : (f.stun > 0 ? 0.7 : 1));
-      if (f.rank >= 3) {
-        ctx.save();
-        ctx.shadowColor = "#fbbf24";
-        ctx.shadowBlur = 6;
-      }
+      ctx.globalAlpha = f.hurt > 0 ? 0.6 : (hid ? 0.32 : (f.stun > 0 ? 0.7 : 1));
       const boss = FOE[f.kind] && FOE[f.kind].boss;
-      const sz = boss ? 52 : TILE;
-      drawSpr("foe_" + f.kind + "_" + fr, f.x * TILE - sz / 2 - cam.x, f.y * TILE - sz / 2 - cam.y, sz);
-      if (boss) {
-        ctx.fillStyle = "#111";
-        ctx.fillRect(f.x * TILE - 18 - cam.x, f.y * TILE - sz / 2 - 8 - cam.y, 36, 4);
-        ctx.fillStyle = "#ef4444";
-        ctx.fillRect(f.x * TILE - 18 - cam.x, f.y * TILE - sz / 2 - 8 - cam.y, 36 * Math.max(0, f.hp / f.max), 4);
+      const sz = boss ? 64 : 48;
+      const dx = f.x * TILE - sz / 2 - cam.x, dy = f.y * TILE - sz / 2 - cam.y;
+      drawFoeSpr("foe_" + f.kind + "_" + fr, dx, dy, sz);
+      if (f.rank >= 3 && !boss) {
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(Math.round(dx) + 2, Math.round(dy) + 2, sz - 4, sz - 4);
       }
-      if (f.rank >= 3) ctx.restore();
+      if (boss) {
+        const bx = Math.round(f.x * TILE - 22 - cam.x), by = Math.round(dy - 7);
+        ctx.fillStyle = "#111";
+        ctx.fillRect(bx, by, 44, 5);
+        ctx.fillStyle = "#ef4444";
+        ctx.fillRect(bx, by, 44 * Math.max(0, f.hp / f.max), 5);
+        ctx.strokeStyle = "#fbbf24";
+        ctx.strokeRect(bx, by, 44, 5);
+      }
       ctx.globalAlpha = 1;
     });
     G.shots.forEach((s) => {
@@ -1081,6 +1118,7 @@
         ctx.rotate(Math.atan2(s.vy, s.vx));
         drawSpr(nm, -sz / 2, -sz / 2, sz);
         ctx.restore();
+        ctx.imageSmoothingEnabled = false;
       } else {
         drawSpr(nm, dx, dy, sz);
       }
@@ -1283,10 +1321,17 @@
     loadPersist();
     try {
       const [img, meta] = await Promise.all([
-        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=7"; }),
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=8"; }),
         fetch(ASSET + "sprites.json").then((r) => r.json())
       ]);
       atlas = img; names = meta.names; cell = meta.cell; cols = meta.cols;
+    } catch (_) {}
+    try {
+      const [cimg, cmeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "creatures.png?v=1"; }),
+        fetch(ASSET + "creatures.json").then((r) => r.json())
+      ]);
+      foeAtlas = cimg; foeNames = cmeta.names; foeCell = cmeta.cell; foeCols = cmeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();

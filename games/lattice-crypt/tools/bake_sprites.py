@@ -377,9 +377,9 @@ def main():
         names[name] = i
         i += 1
 
-    put("floor", floor_tile((48, 52, 44)))
-    put("floor2", floor_tile((40, 44, 56)))
-    put("floor3", floor_tile((56, 40, 36)))
+    put("floor", floor_tile((70, 76, 62)))
+    put("floor2", floor_tile((58, 64, 80)))
+    put("floor3", floor_tile((80, 58, 50)))
     put("wall", wall_tile())
     put("wall2", wall_tile((36, 52, 72), (16, 24, 40), (90, 140, 180)))
     put("wall3", wall_tile((72, 36, 28), (36, 16, 12), (140, 80, 50)))

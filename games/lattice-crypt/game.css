@@ -43,7 +43,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   position: absolute; left: 10px; bottom: 10px; display: flex; gap: .4rem; pointer-events: none;
 }
 .pip {
-  width: 150px; background: #07080ee8; border: 1px solid var(--line); border-radius: 8px; padding: .3rem .4rem;
+  width: 176px; background: #07080ee8; border: 1px solid var(--line); border-radius: 8px; padding: .3rem .4rem;
 }
 .pip .nm { font: 700 .72rem Syne, sans-serif; }
 .pip .bar { height: 6px; background: #1a2030; border-radius: 99px; margin: .2rem 0; }
@@ -139,4 +139,5 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   .title-art { min-height: 32vh; }
   .title-panel { min-height: auto; border-left: 0; }
   .modes { grid-template-columns: 1fr; }
+  .cast-grid.roster { grid-template-columns: 1fr 1fr; }
 }
