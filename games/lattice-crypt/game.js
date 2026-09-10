@@ -3231,15 +3231,25 @@
       } else {
         drawFoeSpr(sprName, dx, dy, sz);
       }
-      if (f.mut && f.mut.length) {
-        ctx.strokeStyle = "rgba(251,191,36,0.7)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(Math.round(dx) + 1, Math.round(dy) + 1, sz - 2, sz - 2);
-      }
-      if (f.rank >= 3 && !boss && G.mode !== "survive") {
-        ctx.strokeStyle = "#fbbf24";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(Math.round(dx) + 2, Math.round(dy) + 2, sz - 4, sz - 4);
+      const marked = (f.mut && f.mut.length) || (f.rank >= 3 && !boss && G.mode !== "survive");
+      if (marked) {
+        const mx = Math.round(dx + sz / 2), my = Math.round(dy + sz * 0.86);
+        ctx.save();
+        ctx.globalAlpha *= 0.7;
+        ctx.fillStyle = (f.mut && f.mut.length) ? "rgba(251,191,36,0.45)" : "rgba(253,224,71,0.28)";
+        ctx.beginPath();
+        ctx.ellipse(mx, my, sz * 0.26, sz * 0.09, 0, 0, 6.28);
+        ctx.fill();
+        ctx.restore();
+        if (f.mut && f.mut.length) {
+          const n = Math.min(3, f.mut.length);
+          for (let mi = 0; mi < n; mi++) {
+            ctx.fillStyle = "#fde68a";
+            ctx.beginPath();
+            ctx.arc(mx + (mi - (n - 1) / 2) * 5, Math.round(dy) + 4, 1.6, 0, 6.28);
+            ctx.fill();
+          }
+        }
       }
       if (boss) {
         const bx = Math.round(f.x * TILE - 22 - cam.x), by = Math.round(dy - 7);
@@ -3977,7 +3987,7 @@
     bootSay("Loading wardens…");
     try {
       const [cimg, cmeta] = await Promise.all([
-        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "creatures.png?v=1"; }),
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "creatures.png?v=2"; }),
         fetch(ASSET + "creatures.json").then((r) => r.json())
       ]);
       foeAtlas = cimg; foeNames = cmeta.names; foeCell = cmeta.cell; foeCols = cmeta.cols;

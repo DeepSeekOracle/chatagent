@@ -32,35 +32,61 @@ def is_screen(r: int, g: int, b: int) -> bool:
 def is_card(r: int, g: int, b: int, a: int) -> bool:
     if a < 24:
         return True
-    mx, mn = max(r, g, b), min(r, g, b)
-    if mn > 175 and (mx - mn) < 42:
-        return True
-    if g > 185 and b > 185 and r > 140 and (g + b) > (2 * r + 30) and (mx - mn) < 70:
+    # Cyan/mint plates (Gate). Do not treat white ghosts as a card.
+    if g > 185 and b > 175 and r > 130 and (g - r) > 18 and (b - r) > 12:
         return True
     return False
 
 
-def flood_card(im: Image.Image) -> Image.Image:
-    """Drop leftover pale plates behind some Imagine stills (e.g. Gate)."""
+def plate_rgb(im: Image.Image) -> tuple[int, int, int]:
+    rgb = im.convert("RGB")
+    px = rgb.load()
+    w, h = rgb.size
+    pts = [(2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3), (w // 2, 2), (2, h // 2)]
+    rs = gs = bs = 0
+    for x, y in pts:
+        r, g, b = px[x, y]
+        rs += r; gs += g; bs += b
+    n = len(pts)
+    return rs // n, gs // n, bs // n
+
+
+def flood_card(im: Image.Image, plate: tuple[int, int, int] | None = None) -> Image.Image:
+    """Drop leftover plates (chroma green, cyan cards) from the edges inward."""
     from collections import deque
     im = im.copy()
     px = im.load()
     w, h = im.size
+    pr = pg = pb = 0
+    if plate:
+        pr, pg, pb = plate
     q = deque()
     for x in range(w):
         q.append((x, 0)); q.append((x, h - 1))
     for y in range(h):
         q.append((0, y)); q.append((w - 1, y))
     seen = set()
+
+    def match(r: int, g: int, b: int, a: int) -> bool:
+        if a < 24:
+            return True
+        if is_screen(r, g, b) or is_card(r, g, b, a):
+            return True
+        if plate:
+            dr, dg, db = r - pr, g - pg, b - pb
+            if dr * dr + dg * dg + db * db < 52 * 52:
+                return True
+        return False
+
     while q:
         x, y = q.popleft()
         if (x, y) in seen:
             continue
         seen.add((x, y))
         r, g, b, a = px[x, y]
-        if not is_card(r, g, b, a):
+        if not match(r, g, b, a):
             continue
-        if a >= 24:
+        if a >= 8:
             px[x, y] = (0, 0, 0, 0)
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nx, ny = x + dx, y + dy
@@ -117,17 +143,19 @@ def outline(im: Image.Image) -> Image.Image:
 
 
 def fit(im: Image.Image, size: int = SIZE) -> Image.Image:
+    plate = plate_rgb(im)
     im = key_green(im)
+    im = flood_card(im, plate)
     x0, y0, x1, y1 = bbox(im)
     crop = im.crop((x0, y0, x1, y1))
     cw, ch = crop.size
-    margin = 4
+    margin = 6
     scale = min((size - margin) / cw, (size - margin) / ch)
     nw, nh = max(8, int(cw * scale)), max(8, int(ch * scale))
     small = crop.resize((nw, nh), Image.Resampling.BOX)
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     canvas.paste(small, ((size - nw) // 2, size - nh - 1), small)
-    canvas = flood_card(canvas)
+    canvas = flood_card(canvas, plate)
     return outline(canvas)
 
 
