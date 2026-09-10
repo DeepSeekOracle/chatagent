@@ -101,7 +101,27 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .roster .cast img { height: 72px; object-position: 50% 12%; }
 .cast b { display: block; font-size: .78rem; margin-top: .25rem; font-family: Syne, sans-serif; }
 .cast span { display: block; font-size: .62rem; color: var(--mute); }
+.cast .spec-tag { color: var(--cyan); font-size: .58rem; letter-spacing: .04em; }
 .cast.on { border-color: var(--gold); }
+.dossier {
+  margin: .45rem 0 .2rem; padding: .55rem .65rem;
+  background: #10141c; border: 1px solid var(--line); border-radius: 10px;
+}
+.dossier b { color: var(--gold); }
+.dossier em { color: var(--cyan); font-style: normal; font-weight: 700; }
+.dossier p { margin: .22rem 0; font-size: .78rem; color: var(--mute); line-height: 1.45; }
+.dossier .spec { color: #c5d0dc; }
+.dossier dl {
+  display: grid; grid-template-columns: 4.2rem 1fr auto; gap: .18rem .45rem;
+  align-items: center; margin: .4rem 0 0; font-size: .72rem; color: var(--mute);
+}
+.dossier dt { letter-spacing: .06em; text-transform: uppercase; font-size: .62rem; }
+.dossier dd { display: contents; }
+.stat {
+  display: inline-block; width: 78px; height: 6px; background: #1e2a3a;
+  border-radius: 4px; overflow: hidden; vertical-align: middle;
+}
+.stat i { display: block; height: 100%; background: var(--gold); }
 .auto-lab { display: flex; align-items: center; gap: .45rem; margin: .45rem 0 .55rem; font-size: .82rem; color: var(--mute); cursor: pointer; }
 .auto-lab input { accent-color: var(--gold); }
 .mode-grid { display: grid; gap: .4rem; }

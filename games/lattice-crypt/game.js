@@ -4,18 +4,45 @@
   const SAVE = "lygo_lattice_crypt_v1";
   const ASSET = "./assets/";
   const HEROES = [
-    { id: "kael", name: "Kael", tag: "Gallant Blade", shot: 3, speed: 3.1, magic: 2, armor: 4, melee: 5, color: "#ef4444", file: "p-kael.jpg", lore: "First tooth of the lock. A squire of the Accord who would not drop the door.", unlock: 0, wep: "shard" },
-    { id: "vale", name: "Vale", tag: "Aegis Knight", shot: 3, speed: 3.6, magic: 3, armor: 5, melee: 4, color: "#22d3ee", file: "p-vale.jpg", lore: "Plate of the second circle. She learned to stand still so others could move.", unlock: 0, wep: "shard" },
-    { id: "orin", name: "Orin", tag: "Black Sigil", shot: 5, speed: 3.0, magic: 5, armor: 1, melee: 1, color: "#fbbf24", file: "p-orin.jpg", lore: "A chemist of names. His vials remember what the Drain would unwrite.", unlock: 0, wep: "shard" },
-    { id: "nia", name: "Nia", tag: "Path Archer", shot: 4, speed: 4.4, magic: 3, armor: 2, melee: 2, color: "#4ade80", file: "p-nia.jpg", lore: "She maps the corridors by running them. Speed is how the lattice stays honest.", unlock: 0, wep: "shard" },
-    { id: "lyra", name: "Lyra", tag: "Spiral Bard", shot: 3, speed: 3.4, magic: 4, armor: 2, melee: 2, color: "#67e8f9", file: "p-lyra.jpg", lore: "Seat of spiral memory. Her hymn is a lockpoint — the crypt cannot erase a song it has heard.", unlock: 1, wep: "fan", hymn: true },
-    { id: "arkos", name: "Arkos", tag: "Lattice Lancer", shot: 4, speed: 3.2, magic: 2, armor: 3, melee: 4, color: "#2dd4bf", file: "p-arkos.jpg", lore: "Explorer of ethical cosmos. The spear is a geodesic: shortest true line through a lie.", unlock: 2, wep: "comet" },
-    { id: "d9ra", name: "D9ra", tag: "Wolf Monk", shot: 2, speed: 3.8, magic: 2, armor: 3, melee: 7, color: "#f87171", file: "p-d9ra.jpg", lore: "Wolf-edge of the council. Fists first. The crypt respects what will not flinch.", unlock: 3, wep: "cinder" },
-    { id: "srath", name: "Srath", tag: "Shadow Needle", shot: 4, speed: 4.2, magic: 2, armor: 1, melee: 3, color: "#86efac", file: "p-srath.jpg", lore: "Sentinel of doublespeak. She steals the vial back before the thief knows it left.", unlock: 4, wep: "needle" },
-    { id: "kairos", name: "Kairos", tag: "Hour Mage", shot: 4, speed: 3.3, magic: 5, armor: 1, melee: 1, color: "#c4b5fd", file: "p-kairos.jpg", lore: "Keeper of right-time. A vial in his hand is also a door — he spends seconds like keys.", unlock: 5, wep: "shard", time: true },
-    { id: "justicae", name: "Justicae", tag: "Accord Knight", shot: 3, speed: 3.0, magic: 3, armor: 6, melee: 4, color: "#e2e8f0", file: "p-justicae.jpg", lore: "Fairness as plate. She will not open a seal that would crush the unnamed.", unlock: 6, wep: "fan" },
-    { id: "seidon", name: "Seidon", tag: "Tide Seer", shot: 4, speed: 3.5, magic: 4, armor: 2, melee: 2, color: "#22d3ee", file: "p-seidon.jpg", lore: "Depth and current. Gates listen to him because the lattice learned to drink.", unlock: 7, wep: "halo" },
-    { id: "sancora", name: "Sancora", tag: "Weave Chemist", shot: 3, speed: 3.2, magic: 5, armor: 3, melee: 1, color: "#fde68a", file: "p-sancora.jpg", lore: "Collective healing nexus. Her flask is a chorus: one drink, four pulses.", unlock: 8, wep: "shard", heal: true }
+    { id: "kael", name: "Kael", tag: "Gallant Blade", shot: 3, speed: 3.1, magic: 2, armor: 4, melee: 5, brave: 78, faith: 42, color: "#ef4444", file: "p-kael.jpg", unlock: 0, wep: "shard",
+      special: "Rend", spec: "Vial also rips nexuses in reach.",
+      bio: "First tooth of the lock. A squire of the Accord who would not drop the door when the first circle went dark." },
+    { id: "vale", name: "Vale", tag: "Aegis Knight", shot: 3, speed: 3.6, magic: 3, armor: 5, melee: 4, brave: 70, faith: 55, color: "#22d3ee", file: "p-vale.jpg", unlock: 0, wep: "shard",
+      special: "Cover", spec: "Vial grants nearby wardens a short Aegis.",
+      bio: "Plate of the second circle. She learned to stand still so others could move. The crypt hits her first, by design." },
+    { id: "orin", name: "Orin", tag: "Black Sigil", shot: 5, speed: 3.0, magic: 5, armor: 1, melee: 1, brave: 38, faith: 88, color: "#fbbf24", file: "p-orin.jpg", unlock: 0, wep: "shard",
+      special: "Unwrite", spec: "Vials hit harder. Resonance is the weapon.",
+      bio: "A chemist of names. His vials remember what the Drain would unwrite. Glass is cheaper than a forgotten friend." },
+    { id: "nia", name: "Nia", tag: "Path Archer", shot: 4, speed: 4.4, magic: 3, armor: 2, melee: 2, brave: 62, faith: 50, color: "#4ade80", file: "p-nia.jpg", unlock: 0, wep: "shard",
+      special: "Dash", spec: "Vial grants a burst of Swift.",
+      bio: "She maps the corridors by running them. Speed is how the lattice stays honest — a slow warden is a closed door." },
+    { id: "lyra", name: "Lyra", tag: "Spiral Bard", shot: 3, speed: 3.4, magic: 4, armor: 2, melee: 2, brave: 55, faith: 82, color: "#67e8f9", file: "p-lyra.jpg", unlock: 1, wep: "fan", hymn: true,
+      special: "Hymn", spec: "Shots briefly stun nearby foes. Memory as lockpoint.",
+      bio: "Seat of spiral memory. The crypt cannot erase a song it has heard. She keeps the names the Void would spend." },
+    { id: "arkos", name: "Arkos", tag: "Lattice Lancer", shot: 4, speed: 3.2, magic: 2, armor: 3, melee: 4, brave: 74, faith: 48, color: "#2dd4bf", file: "p-arkos.jpg", unlock: 2, wep: "comet",
+      special: "Geodesic", spec: "Starts with Comet — lobs the shortest true line.",
+      bio: "Explorer of ethical cosmos. The spear is a geodesic: the shortest true line through a lie." },
+    { id: "d9ra", name: "D9ra", tag: "Wolf Monk", shot: 2, speed: 3.8, magic: 2, armor: 3, melee: 7, brave: 90, faith: 30, color: "#f87171", file: "p-d9ra.jpg", unlock: 3, wep: "cinder",
+      special: "Shockwave", spec: "Vial also slams foes in arm's reach.",
+      bio: "Wolf-edge of the council. Fists first. The crypt respects what will not flinch, and nothing else." },
+    { id: "srath", name: "Srath", tag: "Shadow Needle", shot: 4, speed: 4.2, magic: 2, armor: 1, melee: 3, brave: 58, faith: 44, color: "#86efac", file: "p-srath.jpg", unlock: 4, wep: "needle",
+      special: "Doublespeak", spec: "Vial grants Veil. She is already gone.",
+      bio: "Sentinel of doublespeak. She steals the vial back before the thief knows it left." },
+    { id: "kairos", name: "Kairos", tag: "Hour Mage", shot: 4, speed: 3.3, magic: 5, armor: 1, melee: 1, brave: 40, faith: 86, color: "#c4b5fd", file: "p-kairos.jpg", unlock: 5, wep: "shard", time: true,
+      special: "Right-time", spec: "Vial also warps you to another tile.",
+      bio: "Keeper of right-time. A vial in his hand is also a door. He spends seconds like keys." },
+    { id: "justicae", name: "Justicae", tag: "Accord Knight", shot: 3, speed: 3.0, magic: 3, armor: 6, melee: 4, brave: 72, faith: 70, color: "#e2e8f0", file: "p-justicae.jpg", unlock: 6, wep: "fan",
+      special: "Fair Plate", spec: "Starts with Iron. Vial grants Reflect.",
+      bio: "Fairness as plate. She will not open a seal that would crush the unnamed to save the named." },
+    { id: "seidon", name: "Seidon", tag: "Tide Seer", shot: 4, speed: 3.5, magic: 4, armor: 2, melee: 2, brave: 50, faith: 76, color: "#22d3ee", file: "p-seidon.jpg", unlock: 7, wep: "halo",
+      special: "Current", spec: "Gates recycle faster. Starts with Halo.",
+      bio: "Depth and current. Gates listen to him because the lattice learned to drink, and he never argued with water." },
+    { id: "sancora", name: "Sancora", tag: "Weave Chemist", shot: 3, speed: 3.2, magic: 5, armor: 3, melee: 1, brave: 46, faith: 92, color: "#fde68a", file: "p-sancora.jpg", unlock: 8, wep: "shard", heal: true,
+      special: "Chorus Flask", spec: "Vial heals the whole party.",
+      bio: "Collective healing nexus. Her flask is a chorus: one drink, four pulses. The weave does not heal alone." },
+    { id: "lightfather", name: "Lightfather", tag: "Architect", shot: 4, speed: 3.4, magic: 5, armor: 4, melee: 4, brave: 80, faith: 96, color: "#fbbf24", file: "p-lightfather.jpg", unlock: 0, wep: "halo", accord: true,
+      special: "Δ9 Seal", spec: "Vial stuns the room, Aegis on allies, a small heal. Provenance as a weapon.",
+      bio: "Architect of the lock and of LYGO. He does not replace the four teeth — he remembers why the door was cut. Truth first. No auto-publish of a soul." }
   ];
   const REALMS = [
     { id: "stone", name: "Stone", floor: "floor", wall: "wall" },
@@ -88,6 +115,9 @@
   function loadPersist() {
     try { Object.assign(persist, JSON.parse(localStorage.getItem(SAVE) || "{}")); } catch (_) {}
     if (!Array.isArray(persist.unlocked) || persist.unlocked.length < 4) persist.unlocked = ["kael", "vale", "orin", "nia"];
+    HEROES.forEach((h) => {
+      if (h.unlock === 0 && persist.unlocked.indexOf(h.id) < 0) persist.unlocked.push(h.id);
+    });
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -132,7 +162,8 @@
     return { sx: (i % cols) * cell, sy: Math.floor(i / cols) * cell };
   }
   function drawSpr(name, x, y, w) {
-    const s = spr(name);
+    let s = spr(name);
+    if (!s && name.indexOf("hero_") === 0) s = spr(name.replace(/hero_[^_]+/, "hero_kael"));
     if (!s || !atlas) return;
     w = w || TILE;
     ctx.drawImage(atlas, s.sx, s.sy, cell, cell, Math.round(x), Math.round(y), w, w);
@@ -344,11 +375,12 @@
   }
 
   function makeFoe(kind, rank, x, y) {
-    const d = FOE[kind];
+    const d = FOE[kind] || FOE.brute;
+    const k = FOE[kind] ? kind : "brute";
     return {
-      kind, rank, x, y,
-      hp: kind === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
-      max: kind === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
+      kind: k, rank, x, y,
+      hp: k === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
+      max: k === "drain" ? 99 : (d.boss ? d.hp : d.hp * rank),
       boss: !!d.boss,
       vx: 0, vy: 0, t: 0, hurt: 0, flicker: 0, stun: 0
     };
@@ -403,7 +435,7 @@
       shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0,
       weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
       arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
-      cores: 0, iron: h.id === "justicae" ? 1 : 0,
+      cores: 0, iron: (h.id === "justicae" || h.id === "lightfather") ? 1 : 0,
       dead: false, pad: -1, hurtBeep: 0, halo: null
     };
     G.players.push(p);
@@ -586,13 +618,54 @@
     say(WEAPONS[p.weapon].name);
   }
 
+  function faithMul(p) {
+    return 0.7 + (p.hero.faith || 50) / 200;
+  }
+  function braveMul(p) {
+    return 0.7 + (p.hero.brave || 50) / 200;
+  }
+  function jobVial(p, pow) {
+    const id = p.hero.id;
+    if (id === "kael") {
+      G.level.gens.forEach((g) => { g.hp -= 2; });
+    }
+    if (id === "vale") {
+      G.players.forEach((o) => {
+        if (!o.dead && Math.hypot(o.x - p.x, o.y - p.y) < 6.5) o.aegis = Math.max(o.aegis, 4.8);
+      });
+    }
+    if (id === "nia") p.swift = Math.max(p.swift, 3.4);
+    if (id === "d9ra") {
+      const md = Math.max(4, (p.hero.melee || 7) * 1.4 * braveMul(p));
+      G.level.foes.forEach((f) => {
+        if (Math.hypot(f.x - p.x, f.y - p.y) < 2.6) hitFoe(f, md, true);
+      });
+    }
+    if (id === "srath") p.veil = Math.max(p.veil, 2.4);
+    if (p.hero.time) randomFloor(p);
+    if (id === "justicae") p.reflect = Math.max(p.reflect, 5.2);
+    if (p.hero.heal) {
+      G.players.forEach((o) => { if (!o.dead) o.hp = Math.min(o.max, o.hp + Math.round(70 * faithMul(p))); });
+    }
+    if (p.hero.accord) {
+      G.level.foes.forEach((f) => {
+        if (Math.hypot(f.x - p.x, f.y - p.y) < 11) f.stun = Math.max(f.stun || 0, 1.7);
+      });
+      G.players.forEach((o) => {
+        if (o.dead) return;
+        o.aegis = Math.max(o.aegis, 5.2);
+        o.hp = Math.min(o.max, o.hp + Math.round(36 * faithMul(p)));
+      });
+    }
+    return pow;
+  }
   function useVial(p) {
     if (p.vials < 1 || p.magT > 0) return;
     p.vials--;
     p.magT = 0.5;
     beep("vial");
-    const pow = 20 * p.hero.magic;
-    say(p.hero.name + " spends a vial.");
+    const pow = Math.round(20 * p.hero.magic * faithMul(p));
+    say(p.hero.name + " — " + (p.hero.special || "vial") + ".");
     G.level.foes.forEach((f) => {
       if (Math.hypot(f.x - p.x, f.y - p.y) > 11) return;
       if (f.kind === "drain") { f.hp = 0; G.score += 250; say("The Drain is unmade."); }
@@ -600,12 +673,7 @@
     });
     G.level.gens.forEach((g) => { g.hp -= Math.max(1, (pow / 20) | 0); });
     G.fx.push({ x: p.x, y: p.y, life: 0.45, kind: "nova" });
-    if (p.hero.heal) {
-      G.players.forEach((o) => { if (!o.dead) o.hp = Math.min(o.max, o.hp + 80); });
-      say("The weave drinks with you.");
-    }
-    if (p.hero.time) randomFloor(p);
-    if (p.hero.id === "srath") p.veil = Math.max(p.veil, 2.2);
+    jobVial(p, pow);
   }
 
   function randomFloor(p) {
@@ -655,7 +723,7 @@
     if (f.kind === "drain") return;
     f.hp -= dmg;
     f.hurt = 0.12;
-    if (f.hp <= 0) G.score += (FOE[f.kind].pts || 10) * f.rank;
+    if (f.hp <= 0) G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
   }
 
   function stepPad(p) {
@@ -790,6 +858,7 @@
       f.stun = Math.max(0, (f.stun || 0) - dt);
       if (f.stun > 0) return;
       const def = FOE[f.kind];
+      if (!def) return;
       let tgt = null, bd = 1e9;
       liveP.forEach((p) => {
         if (p.veil > 0 && Math.hypot(p.x - f.x, p.y - f.y) > 0.42) return;
@@ -818,7 +887,7 @@
           f._sip = (f._sip || 0) + dmg * dt * 8;
           if (f._sip > 200) { f.hp = 0; say("The Drain leaves, sated."); }
         }
-        if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2;
+        if (def.melee && f.kind !== "wraith") f.hp -= tgt.hero.melee * dt * 2.2 * braveMul(tgt);
       }
       if (def.shoot && f.t > 1.1 && bd < 9) {
         f.t = 0;
@@ -1021,7 +1090,7 @@
       }
       return;
     }
-    down.dead = false; down.hp = 700; G.credits++;
+    down.dead = false; down.hp = down.max; G.credits++;
     say(down.hero.name + " rises.");
   }
 
@@ -1190,9 +1259,9 @@
     if (!G) return;
     $("hudMeta").innerHTML = "<span>Score <b>" + G.score + "</b></span><span>" + (G.mode === "campaign" ? "Campaign" : "Endless") + " <b>" + (G.floor + 1) + (G.mode === "campaign" && window.LatticeCampaign ? "/" + window.LatticeCampaign.LEN : "") + "</b></span><span>Credits <b>" + G.credits + "</b></span>";
     $("pips").innerHTML = G.players.map((p) =>
-      "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.dead ? " · DOWN" : "") + "</div>" +
-      "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, p.hp / 10)) + "%;background:" + p.hero.color + "'></i></div>" +
-      "<div class='st'>HP " + Math.max(0, p.hp | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
+      "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + " · " + (p.hero.special || p.hero.tag) + (p.dead ? " · DOWN" : "") + "</div>" +
+      "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max))) + "%;background:" + p.hero.color + "'></i></div>" +
+      "<div class='st'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
       (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
       " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
     ).join("");
@@ -1212,6 +1281,23 @@
   }
   function hideOverlay() { $("overlay").className = "overlay hidden"; overlayMode = null; }
 
+  function attrBar(n, max) {
+    const v = Math.max(0, Math.min(100, 100 * n / max));
+    return "<span class='stat'><i style='width:" + v + "%'></i></span>";
+  }
+  function heroSheet(h) {
+    return "<div class='dossier' id='heroLore'><b>" + h.name + "</b> · " + h.tag + " · <em>" + h.special + "</em>" +
+      "<p class='spec'>" + h.spec + "</p><p>" + h.bio + "</p>" +
+      "<dl>" +
+      "<dt>Shot</dt><dd>" + attrBar(h.shot, 5) + h.shot + "</dd>" +
+      "<dt>Speed</dt><dd>" + attrBar(h.speed, 5) + h.speed + "</dd>" +
+      "<dt>Magic</dt><dd>" + attrBar(h.magic, 5) + h.magic + "</dd>" +
+      "<dt>Armor</dt><dd>" + attrBar(h.armor, 6) + h.armor + "</dd>" +
+      "<dt>Melee</dt><dd>" + attrBar(h.melee, 7) + h.melee + "</dd>" +
+      "<dt>Brave</dt><dd>" + attrBar(h.brave, 100) + h.brave + "</dd>" +
+      "<dt>Faith</dt><dd>" + attrBar(h.faith, 100) + h.faith + "</dd>" +
+      "</dl></div>";
+  }
   function menu() {
     overlayMode = "menu";
     if (G) G.over = true;
@@ -1219,15 +1305,15 @@
     showSheet(
       "<div class='title-screen'><div class='title-art'><img src='./assets/menu.jpg' alt='Lattice Crypt'><div class='title-art-fade'></div></div>" +
       "<div class='title-panel'><p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LATTICE CRYPT</h1>" +
-      "<p class='lore'>The crypt is a lock. Four wardens are the teeth. Smash nexuses. Don't shoot the flask.</p>" +
+      "<p class='lore'>The crypt is a lock. Four wardens are the teeth. The Architect remembers why it was cut. Smash nexuses. Don't shoot the flask.</p>" +
       "<label>Callsign</label><input class='name' id='nm' maxlength='18' value='" + String(persist.name).replace(/[<>]/g, "") + "'>" +
       "<p class='kicker' style='margin-top:.7rem'>Roster — jobs of the Accord</p><div class='cast-grid roster'>" +
       HEROES.map((x) => {
         const open = (persist.unlocked || []).indexOf(x.id) >= 0 || x.unlock === 0;
         return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
-          "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
+          "<img src='" + ASSET + x.file + "' alt='" + x.name + "'><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +
-      "</div><p class='lore' id='heroLore'>" + (heroOf(persist.hero).lore || "") + "</p>" +
+      "</div>" + heroSheet(heroOf(persist.hero)) +
       "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
@@ -1247,7 +1333,7 @@
         persist.hero = c.getAttribute("data-h"); savePersist();
         document.querySelectorAll(".cast").forEach((el) => el.classList.toggle("on", el.getAttribute("data-h") === persist.hero));
         const lore = $("heroLore");
-        if (lore) lore.textContent = heroOf(persist.hero).lore || "";
+        if (lore) lore.outerHTML = heroSheet(heroOf(persist.hero));
         return;
       }
       const b = e.target.closest("[data-go]");
@@ -1272,6 +1358,7 @@
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops.</li>" +
       "<li>Weapons: Shard, Fan, Needle, Cinder, Comet, Halo. Q cycles. Cores / Hearts / Iron grow the run. Seals gift a relic.</li>" +
+      "<li>Each job has a named special on vial (K). Brave scales bump damage. Faith scales vial power. Lightfather is playable from the first floor.</li>" +
       "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
@@ -1321,7 +1408,7 @@
     loadPersist();
     try {
       const [img, meta] = await Promise.all([
-        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=8"; }),
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "sprites.png?v=9"; }),
         fetch(ASSET + "sprites.json").then((r) => r.json())
       ]);
       atlas = img; names = meta.names; cell = meta.cell; cols = meta.cols;

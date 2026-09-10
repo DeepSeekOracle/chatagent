@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lattice Crypt — Whitepaper v1.1 | chatagent.ca</title>
-<meta name="description" content="Design canon for Lattice Crypt: four wardens, eight realms, vials, nexuses, local co-op, gamepads, live hall.">
+<title>Lattice Crypt — Whitepaper v1.2 | chatagent.ca</title>
+<meta name="description" content="Design canon for Lattice Crypt: thirteen Accord jobs, Lightfather, named specials, eight realms, vials, nexuses, local co-op.">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-crypt/whitepaper.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -28,8 +28,8 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
 <body>
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · design canon</p>
-  <h1>Lattice Crypt v1.1</h1>
-  <p>Four-warden co-op dungeon crawl in this browser. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
+  <h1>Lattice Crypt v1.2</h1>
+  <p>Accord co-op dungeon crawl in this browser. Thirteen jobs with bios, named specials, Brave and Faith. Lightfather the Architect is playable from the hall. Pixel cabinets, eight realms, nexuses that never stop pouring, vials that clear a room, a Drain that only magic can end. Local 1–4 players, keyboards and gamepads. Radio. Live hall. No account. RESOURCE on the public page; dual ledgers / Star Chart stay CANON.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="/games/">Arcade</a>
@@ -43,15 +43,24 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Health ticks down every second. Smash nexuses. Keys open doors. Vials are smart bombs. Insert a credit (Space / Start) when a warden falls. <b>Auto-shoot</b> (menu tick or L in play) fires for you; aim still follows the last move.</p>
 
   <h2>2. Wardens</h2>
+  <p>Click a portrait on the title to read the bio, named special, and attributes. <b>Brave</b> (0–100) scales bump damage. <b>Faith</b> (0–100) scales vial power. Armor reduces incoming hits. Magic scales vial damage. Speed is tiles per second. Shot is projectile damage. Melee is bump damage. One shot on screen per warden unless a Shot Codex is held.</p>
   <table>
-    <tr><th>Warden</th><th>Color</th><th>Shot</th><th>Speed</th><th>Magic</th><th>Armor</th><th>Melee</th></tr>
-    <tr><td><b>Kael</b> Blade</td><td>Red</td><td>3</td><td>3</td><td>2</td><td>4</td><td>5</td></tr>
-    <tr><td><b>Vale</b> Aegis</td><td>Cyan</td><td>3</td><td>4</td><td>3</td><td>5</td><td>4</td></tr>
-    <tr><td><b>Orin</b> Sigil</td><td>Gold</td><td>5</td><td>3</td><td>5</td><td>1</td><td>1</td></tr>
-    <tr><td><b>Nia</b> Path</td><td>Green</td><td>4</td><td>5</td><td>3</td><td>2</td><td>2</td></tr>
+    <tr><th>Warden</th><th>Job</th><th>Special</th><th>Shot</th><th>Spd</th><th>Mag</th><th>Arm</th><th>Mel</th><th>Brave</th><th>Faith</th></tr>
+    <tr><td><b>Kael</b></td><td>Gallant Blade</td><td>Rend — vial also rips nexuses</td><td>3</td><td>3.1</td><td>2</td><td>4</td><td>5</td><td>78</td><td>42</td></tr>
+    <tr><td><b>Vale</b></td><td>Aegis Knight</td><td>Cover — vial Aegis on nearby allies</td><td>3</td><td>3.6</td><td>3</td><td>5</td><td>4</td><td>70</td><td>55</td></tr>
+    <tr><td><b>Orin</b></td><td>Black Sigil</td><td>Unwrite — high Faith vials</td><td>5</td><td>3.0</td><td>5</td><td>1</td><td>1</td><td>38</td><td>88</td></tr>
+    <tr><td><b>Nia</b></td><td>Path Archer</td><td>Dash — vial grants Swift</td><td>4</td><td>4.4</td><td>3</td><td>2</td><td>2</td><td>62</td><td>50</td></tr>
+    <tr><td><b>Lightfather</b></td><td>Architect</td><td>Δ9 Seal — room stun, Aegis, heal. Halo + Iron</td><td>4</td><td>3.4</td><td>5</td><td>4</td><td>4</td><td>80</td><td>96</td></tr>
+    <tr><td><b>Lyra</b></td><td>Spiral Bard</td><td>Hymn — shots stun nearby. Fan</td><td>3</td><td>3.4</td><td>4</td><td>2</td><td>2</td><td>55</td><td>82</td></tr>
+    <tr><td><b>Arkos</b></td><td>Lattice Lancer</td><td>Geodesic — starts with Comet</td><td>4</td><td>3.2</td><td>2</td><td>3</td><td>4</td><td>74</td><td>48</td></tr>
+    <tr><td><b>D9ra</b></td><td>Wolf Monk</td><td>Shockwave — vial slams nearby. Cinder</td><td>2</td><td>3.8</td><td>2</td><td>3</td><td>7</td><td>90</td><td>30</td></tr>
+    <tr><td><b>Srath</b></td><td>Shadow Needle</td><td>Doublespeak — vial Veil. Needle</td><td>4</td><td>4.2</td><td>2</td><td>1</td><td>3</td><td>58</td><td>44</td></tr>
+    <tr><td><b>Kairos</b></td><td>Hour Mage</td><td>Right-time — vial also warps</td><td>4</td><td>3.3</td><td>5</td><td>1</td><td>1</td><td>40</td><td>86</td></tr>
+    <tr><td><b>Justicae</b></td><td>Accord Knight</td><td>Fair Plate — Iron; vial Reflect. Fan</td><td>3</td><td>3.0</td><td>3</td><td>6</td><td>4</td><td>72</td><td>70</td></tr>
+    <tr><td><b>Seidon</b></td><td>Tide Seer</td><td>Current — faster gates. Halo</td><td>4</td><td>3.5</td><td>4</td><td>2</td><td>2</td><td>50</td><td>76</td></tr>
+    <tr><td><b>Sancora</b></td><td>Weave Chemist</td><td>Chorus Flask — vial heals the party</td><td>3</td><td>3.2</td><td>5</td><td>3</td><td>1</td><td>46</td><td>92</td></tr>
   </table>
-  <p>Armor reduces incoming hits. Magic scales vial radius and Drain damage. Speed is tiles per second. Shot is projectile damage. Melee is bump damage. One shot on screen per warden unless a Shot Codex is held.</p>
-  <p><b>Roster</b> (unique jobs, Eternal Haven lore): four start — Gallant Blade, Aegis Knight, Black Sigil, Path Archer. Seals recruit Spiral Bard (Lyra), Lattice Lancer (Arkos), Wolf Monk (D9ra), Shadow Needle (Srath), Hour Mage (Kairos), Accord Knight (Justicae), Tide Seer (Seidon), Weave Chemist (Sancora). Locked portraits stay grey until the matching seal cracks. Each job has a special: hymn-stun, starting arm, extra melee, veil, vial-warp, iron, fast gates, party flask.</p>
+  <p><b>Start</b>: Kael, Vale, Orin, Nia, and Lightfather the Architect (unlocked from the hall). <b>Seals 1–8 recruit</b> Lyra, Arkos, D9ra, Srath, Kairos, Justicae, Seidon, Sancora. Locked portraits stay grey until the matching seal cracks. Cabinet join (Space / Start) pulls the next unlocked job.</p>
   <p>Eight <b>named guardians</b> stand on seals: Gate-Warden, Frost-Crown, Ember-Smith, Root-Heart, Tide-Levi, Gold-Tithe, the Unnamer, Lattice-Lock. Large sprites, health bars, unique motion.</p>
 
   <h2>3. Foes</h2>
@@ -82,7 +91,7 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   </ul>
 
   <h2>5. Spells (vials)</h2>
-  <p>K / Magic / pad B: spend one vial. Damage in view = 20 × magic rank. Clears fodder, wounds elites, deletes the Drain. Orin clears rooms. Kael’s vial is a slap. Floor vials that get shot do half of that.</p>
+  <p>K / Magic / pad B: spend one vial. Damage in view = 20 × magic × Faith scale. Clears fodder, wounds elites, deletes the Drain. Each job fires its named special at the same time (Rend, Cover, Dash, Hymn on shots, Shockwave, Doublespeak, Right-time, Fair Plate, Chorus Flask, Δ9 Seal). Floor vials that get shot do half of that.</p>
   <p>Hidden vials on some floors (banner: “A hidden vial waits”). Treasure rush floors (every 8th) are 30 seconds, extra chests, exit in a random corner. Layouts cycle: rooms, cross, cells, halls, arena, ring, vault, spiral.</p>
 
   <h2>6. Realms and campaign</h2>

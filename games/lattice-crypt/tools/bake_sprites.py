@@ -272,6 +272,7 @@ def hero(hid, dx, frame):
         "kairos": ((90, 50, 140), (220, 180, 255)),
         "justicae": ((200, 210, 230), (240, 200, 80)),
         "seidon": ((30, 120, 140), (80, 220, 180)),
+        "lightfather": ((232, 216, 176), (240, 196, 64)),
     }[hid]
     body, accent = pal[0] + (255,), pal[1] + (255,)
     skin = (240, 208, 176, 255)
@@ -300,6 +301,12 @@ def hero(hid, dx, frame):
         rect(im, 4, 1 + bob, 8, 4, (48, 24, 72, 255))
         rect(im, 11, 6 + bob, 2, 8, accent)
         px(im, 12, 5 + bob, (180, 255, 255, 255))
+    elif hid == "lightfather":
+        rect(im, 4, 2 + bob, 8, 2, accent)
+        rect(im, 6, 6 + bob, 4, 2, (176, 120, 48, 255))
+        px(im, 13, 6 + bob, (80, 220, 255, 255))
+        px(im, 14, 5 + bob, (255, 255, 180, 255))
+        px(im, 14, 7 + bob, (180, 80, 255, 255))
     else:
         rect(im, 4, 3 + bob, 8, 2, (20, 70, 30, 255))
         rect(im, 11, 7 + bob, 4, 1, accent)
@@ -429,7 +436,7 @@ def main():
     for k in ("gate", "smith", "unnamer", "lock", "crown", "heartboss", "levi", "tithe"):
         for f in range(4):
             put(f"foe_{k}_{f}", foe("drain" if k == "unnamer" else "brute", 1, f))
-    for hid in ("kael", "vale", "orin", "nia", "lyra", "sancora", "arkos", "d9ra", "srath", "kairos", "justicae", "seidon"):
+    for hid in ("kael", "vale", "orin", "nia", "lyra", "sancora", "arkos", "d9ra", "srath", "kairos", "justicae", "seidon", "lightfather"):
         for d in range(4):
             for f in range(2):
                 put(f"hero_{hid}_{d}_{f}", hero(hid, d, f))
