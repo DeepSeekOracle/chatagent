@@ -31,7 +31,8 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=33") >= 0, "cache-bust");
+must(html.indexOf("game.js?v=34") >= 0, "cache-bust");
+must(game.indexOf("toggleChar") >= 0 && game.indexOf("INV_BAG") >= 0, "character bag");
 must(game.indexOf("updateFog") >= 0 && game.indexOf("drawFog") >= 0, "fog of war");
 must(html.indexOf("data-radio-vol") >= 0, "radio volume");
 must(game.indexOf("function options") >= 0, "options menu");

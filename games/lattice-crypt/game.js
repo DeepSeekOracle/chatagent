@@ -182,6 +182,22 @@
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
   const KINDS_HOT = ["wraith", "brute", "imp", "hurler", "shade", "burst", "spawnling", "mend"];
+  const INV_BAG = 24;
+  const INV_WEP = 6;
+  const INV_RELIC = 4;
+  function itemCat(kind) {
+    if (WEAPONS[kind]) return "wep";
+    if (["food", "flask", "berry", "bread", "feast", "elixir", "scrap", "nectar", "soul", "vial", "phial", "chalice", "bomb", "warp", "scroll", "dice"].indexOf(kind) >= 0) return "use";
+    if (kind === "coin" || kind === "gem") return "gold";
+    if (kind === "key" || kind === "latch") return "pack";
+    return "relic";
+  }
+  function itemLabel(kind) {
+    if (WEAPONS[kind]) return WEAPONS[kind].name;
+    const s = PICK[kind];
+    if (s && s.say) return s.say.replace(/\.$/, "").replace(/^./, function (c) { return c.toUpperCase(); });
+    return kind;
+  }
 
   const $ = (id) => document.getElementById(id);
   const canvas = $("crypt");
@@ -1493,8 +1509,9 @@
       arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
       wepLv: {}, coolT: {},
       cores: 0, iron: (h.id === "justicae" || h.id === "lightfather") ? 1 : 0,
-      might: 0, haste: 0, stride: 0, pierce: 0, extraCap: 0, vialPow: 0, magnet: 0,
-      dead: false, pad: -1, hurtBeep: 0, halo: null, orbit: null, cleaveT: 0
+      might: 0, haste: 0, stride: 0, pierce: 0, extraCap: 0, vialPow: 0, magnet: 0, lamp: 0,
+      dead: false, pad: -1, hurtBeep: 0, halo: null, orbit: null, cleaveT: 0,
+      inv: { bag: [], relic: [], gold: 0 }
     };
     p.wepLv.shard = 1;
     if (p.weapon !== "shard") p.wepLv[p.weapon] = 1;
@@ -1798,11 +1815,78 @@
       say(WEAPONS[id].name + " stacks to " + p.wepLv[id] + ".");
       return true;
     }
+    if (p.arsenal.length >= INV_WEP) {
+      addInv(p, id, 1);
+      say(WEAPONS[id].name + " → bag. Tab · unequip an arm to wear it.");
+      return true;
+    }
     p.arsenal.push(id);
     p.wepLv[id] = 1;
     p.weapon = id;
     say(p.hero.name + " arms " + WEAPONS[id].name + " — all arms fire.");
     return true;
+  }
+  function ensureInv(p) {
+    if (!p.inv) p.inv = { bag: [], relic: [], gold: 0 };
+    if (!p.inv.bag) p.inv.bag = [];
+    if (!p.inv.relic) p.inv.relic = [];
+    if (p.inv.gold == null) p.inv.gold = 0;
+  }
+  function addInv(p, kind, qty) {
+    ensureInv(p);
+    qty = qty || 1;
+    if (itemCat(kind) === "gold") {
+      p.inv.gold += (kind === "gem" ? 180 : 50) * qty;
+      return true;
+    }
+    const hit = p.inv.bag.find(function (it) { return it.kind === kind; });
+    if (hit) { hit.qty += qty; return true; }
+    if (p.inv.bag.length >= INV_BAG) { say("Bag full."); return false; }
+    p.inv.bag.push({ kind: kind, cat: itemCat(kind), qty: qty });
+    return true;
+  }
+  function noteRelic(p, kind) {
+    ensureInv(p);
+    const hit = p.inv.relic.find(function (it) { return it.kind === kind; });
+    if (hit) { hit.qty++; return; }
+    if (p.inv.relic.length < INV_RELIC) p.inv.relic.push({ kind: kind, qty: 1 });
+    else addInv(p, kind, 1);
+  }
+  function takeInv(p, i, n) {
+    ensureInv(p);
+    const it = p.inv.bag[i];
+    if (!it) return null;
+    n = n || 1;
+    it.qty -= n;
+    const kind = it.kind;
+    if (it.qty <= 0) p.inv.bag.splice(i, 1);
+    return kind;
+  }
+  function unequipWep(p, id) {
+    if (!id || id === "shard") { say("Shard stays in hand."); return; }
+    const ix = p.arsenal.indexOf(id);
+    if (ix < 0) return;
+    if (!addInv(p, id, 1)) return;
+    p.arsenal.splice(ix, 1);
+    if (p.weapon === id) p.weapon = p.arsenal[0] || "shard";
+    if (id === "halo") p.halo = null;
+    if (id === "orbit") p.orbit = null;
+    say(WEAPONS[id].name + " → bag.");
+  }
+  function useBag(p, i) {
+    ensureInv(p);
+    const it = p.inv.bag[i];
+    if (!it) return;
+    if (it.cat === "wep") {
+      const k = takeInv(p, i, 1);
+      if (k) giveWep(p, k);
+      return;
+    }
+    if (it.cat === "use" || it.cat === "pack" || it.cat === "relic") {
+      const k = takeInv(p, i, 1);
+      if (k) applyPickup(p, { kind: k, x: p.x, y: p.y }, true);
+      return;
+    }
   }
 
   function cycleWep(p) {
@@ -1901,13 +1985,23 @@
     G.level.gens.forEach((g) => { if (Math.hypot(g.x + 0.5 - x, g.y + 0.5 - y) < r) g.hp -= 1; });
     G.fx.push({ x, y, life: 0.45, max: 0.45, kind: "nova", col: "#fb923c", job: "bomb" });
   }
-  function applyPickup(p, it) {
+  function applyPickup(p, it, fromBag) {
     const k = it.kind;
     const spec = PICK[k] || {};
+    const cat = itemCat(k);
+    if (!fromBag && cat === "use" && spec.heal && spec.heal < 9999 && p.hp >= p.max * 0.9) {
+      if (addInv(p, k, 1)) {
+        emit("onPickup", { p: p, kind: k });
+        G.score += spec.score || 0;
+        say("Bagged " + itemLabel(k) + " · Tab.");
+        feel("pick", p.x, p.y);
+        return;
+      }
+    }
     emit("onPickup", { p: p, kind: k });
     if (window.CryptStudio) CryptStudio.burst(p.x, p.y, "#fde68a", 6);
     G.fx.push({ x: p.x, y: p.y, life: 0.3, kind: "pick", col: spec.glow || "#fde68a" });
-    if (WEAPONS[k]) { giveWep(p, k); G.score += spec.score || 90; return; }
+    if (WEAPONS[k]) { giveWep(p, k); if (!fromBag) G.score += spec.score || 90; return; }
     if (spec.heal) {
       p.hp = Math.min(9999, (spec.heal >= 9999 ? p.max : p.hp + spec.heal));
       emit("onHeal", { p: p, n: spec.heal });
@@ -1932,7 +2026,7 @@
     if (spec.thorns) p.thorns = Math.max(p.thorns || 0, spec.thorns);
     if (spec.echo) p.echo = Math.max(p.echo || 0, spec.echo);
     if (spec.regen) p.regen = Math.max(p.regen || 0, spec.regen);
-    if (spec.score) G.score += spec.score;
+    if (spec.score && !fromBag) G.score += spec.score;
     const sp = spec.special;
     if (sp === "poison") {
       p.hp -= 100; p.shotBoost = 0; p.swift = 0; p.aegis = 0; p.veil = 0; p.reflect = 0; p.fury = 0; p.echo = 0;
@@ -1965,6 +2059,10 @@
       say("The die turns.");
       applyPickup(p, { x: it.x, y: it.y, kind: pool[(Math.random() * pool.length) | 0] });
       return;
+    }
+    if (!fromBag) {
+      if (cat === "gold") addInv(p, k, 1);
+      else if (cat === "relic") noteRelic(p, k);
     }
     if (spec.say) say(p.hero.name + " — " + spec.say);
   }
@@ -2015,7 +2113,7 @@
   }
 
   function update(dt) {
-    if (!G || G.over || overlayMode === "menu" || overlayMode === "sheet") { keyEdge = {}; return; }
+    if (!G || G.over || overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "char") { keyEdge = {}; return; }
     G._hitSfx = false;
     G._killSfx = false;
     G.t += dt;
@@ -2826,7 +2924,7 @@
         " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
       ).join("");
     }
-    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (autoOn ? "AUTO · survive · stack" : "Fire · vial · survive") : (autoOn ? "AUTO shot · vial · exit" : "Fire · vial · smash nexuses · find the exit"));
+    $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (autoOn ? "AUTO · Tab sheet · survive" : "Fire · vial · Tab · survive") : (autoOn ? "AUTO · Tab character · exit" : "Fire · vial · Tab character · exit"));
     const autoBtn = $("btnAuto");
     if (autoBtn) autoBtn.textContent = autoOn ? "Auto shot ON" : "Auto shot";
     if ($("holeCard")) {
@@ -2914,6 +3012,100 @@
     overlayMode = null;
   }
 
+  function charHtml(p) {
+    ensureInv(p);
+    const h = p.hero;
+    const wepSlots = [];
+    for (let i = 0; i < INV_WEP; i++) {
+      const id = p.arsenal[i];
+      if (!id) wepSlots.push("<button type='button' class='eq-slot empty' disabled>—</button>");
+      else {
+        const lv = wepLv(p, id);
+        wepSlots.push("<button type='button' class='eq-slot" + (p.weapon === id ? " on" : "") + "' data-wep='" + id + "'>" +
+          WEAPONS[id].name + (lv > 1 ? " " + lv : "") + "</button>");
+      }
+    }
+    const relicSlots = [];
+    for (let i = 0; i < INV_RELIC; i++) {
+      const r = p.inv.relic[i];
+      relicSlots.push(r
+        ? "<div class='eq-slot relic'>" + itemLabel(r.kind) + (r.qty > 1 ? " ×" + r.qty : "") + "</div>"
+        : "<div class='eq-slot empty'>—</div>");
+    }
+    const bag = [];
+    for (let i = 0; i < INV_BAG; i++) {
+      const it = p.inv.bag[i];
+      if (!it) bag.push("<button type='button' class='bag-cell empty' disabled></button>");
+      else bag.push("<button type='button' class='bag-cell " + it.cat + "' data-bag='" + i + "'>" +
+        itemLabel(it.kind).slice(0, 9) + (it.qty > 1 ? "<i>×" + it.qty + "</i>" : "") + "</button>");
+    }
+    const party = G.players.map(function (o, i) {
+      return "<button type='button' class='btn ghost" + (o === p ? " on" : "") + "' data-who='" + i + "'" + (o.dead ? " disabled" : "") + ">" + o.hero.name + "</button>";
+    }).join("");
+    const shot = h.shot + (p.cores || 0) + (p.might || 0);
+    return "<div class='char-sheet'>" +
+      "<div class='char-hero'><img src='" + ASSET + h.file + "' alt='" + h.name + "'>" +
+      "<b style='color:" + h.color + "'>" + h.name + "</b><span>" + h.tag + "</span>" +
+      "<em>" + h.special + "</em><p class='lore'>" + h.spec + "</p>" +
+      "<p class='char-meta'>HP " + (p.hp | 0) + "/" + (p.max | 0) + " · keys " + p.keys + " · vials " + p.vials + " · gold " + (p.inv.gold | 0) + "</p></div>" +
+      "<div class='char-stats'><p class='kicker'>Stats</p><dl>" +
+      "<dt>Shot</dt><dd>" + attrBar(shot, 12) + shot + "</dd>" +
+      "<dt>Speed</dt><dd>" + attrBar(h.speed + (p.stride || 0), 8) + (h.speed + (p.stride || 0)) + "</dd>" +
+      "<dt>Magic</dt><dd>" + attrBar(h.magic + (p.vialPow || 0), 8) + (h.magic + (p.vialPow || 0)) + "</dd>" +
+      "<dt>Armor</dt><dd>" + attrBar(h.armor + (p.iron || 0), 10) + (h.armor + (p.iron || 0)) + "</dd>" +
+      "<dt>Melee</dt><dd>" + attrBar(h.melee, 7) + h.melee + "</dd>" +
+      "<dt>Brave</dt><dd>" + attrBar(h.brave, 100) + h.brave + "</dd>" +
+      "<dt>Faith</dt><dd>" + attrBar(h.faith, 100) + h.faith + "</dd>" +
+      "</dl><p class='char-pass'>" + (buffs(p) || " · no timed buffs") + "</p></div>" +
+      "<div class='char-eq'><p class='kicker'>Arms " + p.arsenal.length + "/" + INV_WEP + "</p><div class='eq-grid wep'>" + wepSlots.join("") + "</div>" +
+      "<p class='kicker'>Relics " + p.inv.relic.length + "/" + INV_RELIC + "</p><div class='eq-grid'>" + relicSlots.join("") + "</div>" +
+      "<p class='kicker'>Spell</p><div class='eq-slot spell'><b>" + h.special + "</b><span>Vial (K) · " + h.spec + "</span></div></div>" +
+      "<div class='char-bag'><p class='kicker'>Bag " + p.inv.bag.length + "/" + INV_BAG + "</p>" +
+      "<p class='lore'>Bag: click to use or equip. Armed slot (not Shard): click to unequip into the bag. Extra rations stash when your well is full.</p>" +
+      "<div class='bag-grid'>" + bag.join("") + "</div>" +
+      "<div class='modes char-party'>" + party + "</div>" +
+      "<button type='button' class='btn gold' id='charClose'>Close (Tab)</button></div></div>";
+  }
+  function openChar(slot) {
+    if (!G || G.over) return;
+    if (G._ups) return;
+    G._charSlot = slot != null ? slot : (G._charSlot || 0);
+    if (!G.players[G._charSlot] || G.players[G._charSlot].dead) G._charSlot = G.players.findIndex(function (x) { return !x.dead; });
+    if (G._charSlot < 0) G._charSlot = 0;
+    const p = G.players[G._charSlot];
+    if (!p) return;
+    showSheet(charHtml(p));
+    overlayMode = "char";
+    const wrap = document.querySelector(".overlay .sheet");
+    if (wrap) wrap.classList.add("char-wrap");
+    $("overlay").onclick = function (e) {
+      const who = e.target.closest("[data-who]");
+      if (who) { e.stopPropagation(); openChar(+who.getAttribute("data-who")); return; }
+      const bag = e.target.closest("[data-bag]");
+      if (bag) {
+        e.stopPropagation();
+        useBag(p, +bag.getAttribute("data-bag"));
+        openChar(G._charSlot);
+        return;
+      }
+      const wep = e.target.closest("[data-wep]");
+      if (wep && wep.getAttribute("data-wep")) {
+        e.stopPropagation();
+        const id = wep.getAttribute("data-wep");
+        if (p.weapon === id) unequipWep(p, id);
+        else { p.weapon = id; say("Focus " + WEAPONS[id].name + "."); }
+        openChar(G._charSlot);
+      }
+    };
+    const cl = $("charClose");
+    if (cl) cl.onclick = function (e) { e.stopPropagation(); hideOverlay(); overlayMode = null; };
+  }
+  function toggleChar() {
+    if (overlayMode === "char") { hideOverlay(); overlayMode = null; return; }
+    if (!G || G.over || overlayMode === "menu" || overlayMode === "options" || G._ups) return;
+    if (overlayMode === "pause") return;
+    openChar();
+  }
   function attrBar(n, max) {
     const v = Math.max(0, Math.min(100, 100 * n / max));
     return "<span class='stat'><i style='width:" + v + "%'></i></span>";
@@ -3097,7 +3289,7 @@
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
-      "<li>Auto-shoot (Options or L) keeps firing. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute SFX. <b>F11</b> fullscreen. Audio, color, and keys live in <b>Options</b>.</li></ol>" +
+      "<li><b>Tab</b> character sheet — model, stats, arms, spell, bag. Click bag to use/equip. Auto-shoot (Options or L). <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -3110,7 +3302,7 @@
     last = now;
     if (window.CryptStudio) CryptStudio.fpsTick(raw);
     const paused = overlayMode === "pause";
-    const blocked = overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "options" || paused;
+    const blocked = overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "options" || overlayMode === "char" || paused;
     if (!paused && window.CryptStudio) CryptStudio.juiceTick(raw);
     if (G && G._ups) pollUpgradePick();
     if (!blocked && G && !G.over) {
@@ -3154,7 +3346,12 @@
       }
       return;
     }
-    if (e.code === "KeyP" && G && !G.over && overlayMode !== "menu" && overlayMode !== "options" && !G._ups) {
+    if (e.code === "Tab") {
+      e.preventDefault();
+      if (keyEdge.Tab) toggleChar();
+      return;
+    }
+    if (e.code === "KeyP" && G && !G.over && overlayMode !== "menu" && overlayMode !== "options" && overlayMode !== "char" && !G._ups) {
       if (keyEdge.KeyP) togglePause();
       return;
     }
@@ -3167,10 +3364,11 @@
       if (G && G._ups) return;
       if (!keyEdge.Escape) return;
       if (overlayMode === "options") { closeOptions(); return; }
+      if (overlayMode === "char") { hideOverlay(); overlayMode = null; return; }
       menu();
       return;
     }
-    if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause" || overlayMode === "options") return;
+    if (overlayMode === "menu" || overlayMode === "sheet" || overlayMode === "pause" || overlayMode === "options" || overlayMode === "char") return;
     const b = persist.binds || {};
     if (PLAY_CODES.has(e.code) || b.up === e.code || b.down === e.code || b.left === e.code || b.right === e.code || b.fire === e.code || b.mag === e.code || b.cycle === e.code) e.preventDefault();
     if (e.code === "KeyL" && G && keyEdge.KeyL) {
