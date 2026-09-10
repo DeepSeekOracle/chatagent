@@ -86,12 +86,12 @@
   ]);
   const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "core", "heart", "iron", "phial"];
   const WEAPONS = {
-    shard: { name: "Shard", cap: 1, spd: 11, life: 1.15, cool: 0.28, dmg: 0 },
-    fan: { name: "Fan", cap: 3, spd: 10, life: 0.85, cool: 0.32, dmg: -1, spread: 0.38 },
-    needle: { name: "Needle", cap: 1, spd: 16, life: 1.25, cool: 0.2, dmg: 1, pierce: 2 },
-    cinder: { name: "Cinder", cap: 2, spd: 8, life: 0.5, cool: 0.18, dmg: 1, flame: 1.8 },
-    comet: { name: "Comet", cap: 1, spd: 7.2, life: 1.45, cool: 0.38, dmg: 3, lob: true },
-    halo: { name: "Halo", cap: 1, spd: 11, life: 1.1, cool: 0.3, dmg: 0, halo: true }
+    shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
+    fan: { name: "Fan", cap: 3, spd: 11, life: 0.9, cool: 0.26, dmg: -1, spread: 0.38 },
+    needle: { name: "Needle", cap: 2, spd: 16, life: 1.3, cool: 0.16, dmg: 1, pierce: 2 },
+    cinder: { name: "Cinder", cap: 2, spd: 9, life: 0.55, cool: 0.16, dmg: 1, flame: 1.8 },
+    comet: { name: "Comet", cap: 1, spd: 7.6, life: 1.5, cool: 0.32, dmg: 3, lob: true },
+    halo: { name: "Halo", cap: 2, spd: 12, life: 1.15, cool: 0.22, dmg: 0, halo: true }
   };
   const SEAL_GIFT = ["fan", "comet", "cinder", "needle", "halo", "core", "phial", "iron"];
   const KINDS = ["wraith", "brute", "imp", "hurler", "shade"];
@@ -182,12 +182,16 @@
   }
   function drawTile(name, x, y) {
     const i = tileNames[name];
+    const dw = TILE + 1;
     if (i == null || !tileAtlas) {
-      drawSpr(name, x, y);
+      drawSpr(name, x, y, dw);
       return;
     }
     const sx = (i % tileCols) * tileCell, sy = Math.floor(i / tileCols) * tileCell;
-    ctx.drawImage(tileAtlas, sx, sy, tileCell, tileCell, Math.round(x), Math.round(y), TILE, TILE);
+    ctx.drawImage(tileAtlas, sx, sy, tileCell, tileCell, Math.round(x), Math.round(y), dw, dw);
+  }
+  function floorName(z, x, y) {
+    return z + "_f" + ((x & 3) + ((y & 3) << 2));
   }
   function solidAt(lv, x, y) {
     const t = tileAt(lv, x, y);
@@ -498,7 +502,7 @@
       seed, floor: 0, score: 0, credits: 1, t: 0, log: [],
       level: null, shots: [], fx: [],
       players: [],
-      thiefT: 8,
+      thiefT: 24,
       over: false,
       mode: opts.mode || "campaign"
     };
@@ -523,7 +527,7 @@
     const p = {
       slot: s, hero: h, x: 2, y: 2, hp: 700, max: 700,
       keys: 0, vials: 1, facing: 2, aimX: 1, aimY: 0, walk: 0, fireT: 0, magT: 0,
-      shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0,
+      shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0, hurtT: 0,
       weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
       arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
       cores: 0, iron: (h.id === "justicae" || h.id === "lightfather") ? 1 : 0,
@@ -552,7 +556,7 @@
       it.x = Math.floor(p.x); it.y = Math.floor(p.y);
     });
     G.shots = [];
-    G.thiefT = 10 + (Math.random() * 18);
+    G.thiefT = 24 + (Math.random() * 16);
     if (G.mode === "campaign") {
       $("holePill").textContent = G.level.realm.name.toUpperCase() + " " + (n + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
     } else {
@@ -697,7 +701,7 @@
     if (blocked(G.level, sx, sy)) { sx = p.x; sy = p.y; }
     G.shots.push({
       x: sx, y: sy, vx: ax * w.spd, vy: ay * w.spd,
-      dmg: shotDmg(p, w), owner: p, life: w.life, grace: 0.08,
+      dmg: shotDmg(p, w), owner: p, life: w.life, grace: 0.12,
       hero: p.hero.id, wep: p.weapon, bounced: false,
       pierce: w.pierce || 0, lob: !!w.lob, flame: w.flame || 0
     });
@@ -814,7 +818,7 @@
 
   function pickup(p) {
     G.level.items = G.level.items.filter((it) => {
-      if (Math.hypot(it.x + 0.5 - p.x, it.y + 0.5 - p.y) > 0.55) return true;
+      if (Math.hypot(it.x + 0.5 - p.x, it.y + 0.5 - p.y) > 0.72) return true;
       G.level.quiet = 0;
       beep("pick");
       if (it.kind === "food") { p.hp = Math.min(9999, p.hp + 100); G.score += 100; say(p.hero.name + " takes rations."); }
@@ -874,7 +878,7 @@
       if (lv.treasure <= 0) { say("Rush over."); nextFloor(); return; }
     }
     lv.quiet += dt;
-    if (lv.quiet > 18) {
+    if (lv.quiet > 14) {
       for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
         if (lv.tiles[y][x] === "door") lv.tiles[y][x] = "door_open";
       }
@@ -893,7 +897,7 @@
 
     G.thiefT -= dt;
     if (G.thiefT <= 0) {
-      G.thiefT = 38 + Math.random() * 18;
+      G.thiefT = 52 + Math.random() * 22;
       lv.foes.push(makeFoe("thief", 1, lv.start.x + 0.5, lv.start.y + 0.5));
       say("A thief slips the gate.");
     }
@@ -901,9 +905,9 @@
     lv.gens.forEach((g) => {
       if (g.hp <= 0) return;
       g.t += dt;
-      const cap = 2 + g.rank;
+      const cap = 1 + g.rank;
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
-      if (g.t > (1.4 / g.rank) && live < cap) {
+      if (g.t > (2.1 / Math.max(1, g.rank * 0.7)) && live < cap) {
         g.t = 0;
         const sp = nearestWalk(lv, g.x + 0.5, g.y + 0.5);
         lv.foes.push(makeFoe(g.kind, g.rank, sp.x, sp.y));
@@ -915,8 +919,9 @@
     bindIdlePads();
     G.players.forEach((p) => {
       if (p.dead) return;
-      p.hp -= dt * (G.mode === "endless" ? 1.12 + Math.min(0.6, G.floor * 0.02) : (G.floor >= 18 ? 1.15 : 1.05));
+      p.hp -= dt * (G.mode === "endless" ? 0.72 + Math.min(0.45, G.floor * 0.014) : (0.58 + G.floor * 0.016));
       p.fireT = Math.max(0, p.fireT - dt);
+      p.hurtT = Math.max(0, (p.hurtT || 0) - dt);
       p.magT = Math.max(0, p.magT - dt);
       p.stun = Math.max(0, p.stun - dt);
       p.padT = Math.max(0, p.padT - dt);
@@ -934,7 +939,7 @@
       }
       const inn = inputFor(p);
       if (p.stun <= 0) {
-        const spd = (2.2 + p.hero.speed * 0.55) * (p.swift > 0 ? 1.35 : 1);
+        const spd = (2.55 + p.hero.speed * 0.6) * (p.swift > 0 ? 1.32 : 1);
         tryMove(p, inn.dx, inn.dy, spd, dt, false);
         if (inn.dx || inn.dy) p.walk += dt * 8;
       }
@@ -1005,11 +1010,18 @@
       tryMove(f, mx, my, def.speed * (0.9 + f.rank * 0.15), dt, ghost);
       if (!ghost) unstick(f);
       else if (blocked(lv, f.x, f.y)) unstick(f);
-      const hitR = def.boss ? 0.78 : 0.52;
+      const hitR = def.boss ? 0.72 : 0.48;
       if (bd < hitR) {
         const arm = (tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0);
         const dmg = Math.max(2, def.dmg * f.rank - arm);
-        tgt.hp -= dmg * dt * (f.kind === "drain" ? 8 : 3.2);
+        const iframe = (tgt.hurtT || 0) > 0.12;
+        tgt.hp -= dmg * dt * (f.kind === "drain" ? 6.5 : (iframe ? 1.15 : 2.35));
+        if (!iframe) {
+          tgt.hurtT = 0.38;
+          tgt.x -= Math.cos(ang) * 0.14;
+          tgt.y -= Math.sin(ang) * 0.14;
+          unstick(tgt);
+        }
         lv.quiet = 0;
         if (!tgt.hurtBeep) { beep("hurt"); tgt.hurtBeep = 0.25; }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
@@ -1251,8 +1263,8 @@
     else tx = Math.max(minX, Math.min(maxX, tx));
     if (maxY < minY) ty = ((bb.y0 + bb.y1 + 1) * TILE - h) / 2;
     else ty = Math.max(minY, Math.min(maxY, ty));
-    cam.x += (tx - cam.x) * 0.18;
-    cam.y += (ty - cam.y) * 0.18;
+    cam.x += (tx - cam.x) * 0.28;
+    cam.y += (ty - cam.y) * 0.28;
     const z = lv.realm.id || "stone";
     for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
       const px = x * TILE - cam.x, py = y * TILE - cam.y;
@@ -1267,16 +1279,8 @@
         }
         drawTile(z + "_top", px, py);
         if (S) drawTile(z + "_face", px, py);
-        if (N) drawTile(z + "_n", px, py);
-        if (E) drawTile(z + "_e", px, py);
-        if (W) drawTile(z + "_w", px, py);
       } else {
-        const v = (x * 3 + y * 7) & 1;
-        drawTile(z + "_floor" + v, px, py);
-        if (((x * 13 + y * 5) % 19) === 0) drawTile(z + "_deco", px, py);
-        if (solidAt(lv, x, y - 1)) drawTile(z + "_n", px, py);
-        if (solidAt(lv, x + 1, y)) drawTile(z + "_e", px, py);
-        if (solidAt(lv, x - 1, y)) drawTile(z + "_w", px, py);
+        drawTile(floorName(z, x, y), px, py);
         if (t === "door") drawSpr("door", px, py);
         if (t === "door_open") drawSpr("door_open", px, py);
         if (t === "exit") drawSpr("exit", px, py);
@@ -1575,7 +1579,7 @@
     } catch (_) {}
     try {
       const [timg, tmeta] = await Promise.all([
-        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "tiles.png?v=1"; }),
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "tiles.png?v=2"; }),
         fetch(ASSET + "tiles.json").then((r) => r.json())
       ]);
       tileAtlas = timg; tileNames = tmeta.names; tileCell = tmeta.cell; tileCols = tmeta.cols;
