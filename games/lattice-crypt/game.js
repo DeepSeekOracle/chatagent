@@ -607,24 +607,37 @@
     say((f.kind === "lock" ? "The Lock" : "The guardian") + " yields relics.");
   }
 
+  function surviveKind(w) {
+    if (w > 10 && Math.random() < 0.08) return "thief";
+    if (w > 6 && Math.random() < 0.14) return "shade";
+    return KINDS[(Math.random() * KINDS.length) | 0];
+  }
   function spawnSurviveAround(kind, boss) {
     const live = G.players.find((p) => !p.dead) || G.players[0];
-    if (!live) return;
-    for (let t = 0; t < 12; t++) {
+    if (!live) return false;
+    const vw = Math.max(16, (canvas.clientWidth / TILE) * 0.58);
+    const vh = Math.max(12, (canvas.clientHeight / TILE) * 0.58);
+    const ring = Math.max(vw, vh) + 2;
+    for (let t = 0; t < 16; t++) {
       const ang = Math.random() * 6.28;
-      const dist = 12 + Math.random() * 5;
+      const dist = ring + Math.random() * 12;
       let x = live.x + Math.cos(ang) * dist, y = live.y + Math.sin(ang) * dist;
-      x = Math.max(2, Math.min(G.level.W - 3, x));
-      y = Math.max(2, Math.min(G.level.H - 3, y));
-      const p = nearestWalk(G.level, x, y);
+      x = Math.max(4, Math.min(G.level.W - 5, x));
+      y = Math.max(4, Math.min(G.level.H - 5, y));
+      const tx = Math.floor(x), ty = Math.floor(y);
+      let p;
+      if (G.level.tiles[ty] && G.level.tiles[ty][tx] === "floor") p = { x: tx + 0.5, y: ty + 0.5 };
+      else p = nearestWalk(G.level, x, y);
       if (blocked(G.level, p.x, p.y)) continue;
       const rank = 1 + Math.min(8, (surviveWave() / 4) | 0);
       const f = makeFoe(kind, rank, p.x, p.y);
       if (boss) f.boss = true;
       G.level.foes.push(f);
-      return;
+      return true;
     }
+    return false;
   }
+  function surviveCap(w) { return Math.min(280, 36 + w * 12); }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
     const w = surviveWave();
@@ -633,22 +646,35 @@
       say("Wave " + w + " — the pour thickens.");
       $("holePill").textContent = "SURVIVE · WAVE " + w;
     }
+    const cap = surviveCap(w);
     G.spawnT -= dt;
-    const cap = Math.min(64, 10 + w * 1.85);
-    const gap = Math.max(0.34, 1.42 - w * 0.048);
+    const gap = Math.max(0.05, 0.2 - w * 0.006);
     if (G.spawnT <= 0 && G.level.foes.length < cap) {
       G.spawnT = gap;
-      const n = 1 + (w > 7 ? 1 : 0) + (w > 14 ? 1 : 0);
+      const n = 4 + Math.min(16, (w * 0.9) | 0);
       for (let i = 0; i < n; i++) {
         if (G.level.foes.length >= cap) break;
-        spawnSurviveAround(KINDS[(Math.random() * KINDS.length) | 0], false);
+        spawnSurviveAround(surviveKind(w), false);
+      }
+    }
+    G.hordeT = (G.hordeT == null ? 7 : G.hordeT) - dt;
+    if (G.hordeT <= 0) {
+      G.hordeT = Math.max(5.5, 13 - w * 0.22);
+      const pack = 10 + Math.min(28, w * 2);
+      say("A pour — " + pack + " more.");
+      for (let i = 0; i < pack; i++) {
+        if (G.level.foes.length >= cap) break;
+        spawnSurviveAround(surviveKind(w), false);
       }
     }
     if (w >= 5 && w % 5 === 0 && G.bossAt !== w) {
       G.bossAt = w;
-      const bk = SURVIVE_BOSSES[((w / 5) | 0) % SURVIVE_BOSSES.length];
-      spawnSurviveAround(bk, true);
-      say("A named guardian enters the long crypt.");
+      const nB = 1 + (w >= 15 ? 1 : 0) + (w >= 25 ? 1 : 0);
+      for (let i = 0; i < nB; i++) {
+        const bk = SURVIVE_BOSSES[(((w / 5) | 0) + i) % SURVIVE_BOSSES.length];
+        spawnSurviveAround(bk, true);
+      }
+      say(nB > 1 ? "Named guardians enter the long crypt." : "A named guardian enters the long crypt.");
     }
     if (G.pendingLvl > 0 && overlayMode == null) offerSurviveUp();
   }
@@ -656,7 +682,7 @@
     G.kills = (G.kills || 0) + 1;
     G.score += 6 + surviveWave() * 2;
     G.xp += 1 + ((surviveWave() / 5) | 0);
-    if (Math.random() < 0.14) {
+    if (Math.random() < 0.07 && G.level.items.length < 90) {
       const loot = ["food", "berry", "coin", "scrap", "core", "heart", "moss", "vial", "fury", "magnet"];
       dropItemNear(f.x, f.y, loot[(Math.random() * loot.length) | 0]);
     }
@@ -777,6 +803,7 @@
         "<button type='button' class='mode-card" + (i === 0 ? " on" : "") + "' data-up='" + i + "'><b>" + u.name + "</b><span>" + u.spec + "</span></button>"
       ).join("") + "</div>"
     );
+    $("overlay").classList.add("upgrade-pick");
     $("overlay").onclick = function (e) {
       const b = e.target.closest("[data-up]");
       if (!b || !G._ups) return;
@@ -906,60 +933,69 @@
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
-  function surviveXpNeed(lv) { return 6 + lv * 4; }
+  function surviveXpNeed(lv) { return 10 + lv * 6; }
 
   function genSurvive(seed) {
     const R = rng(seed ^ 0x51A11);
-    const W = 80, H = 68;
-    const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
-    const rooms = [];
-    function addRoom(rx, ry, rw, rh) {
-      fillRect(tiles, W, H, rx, ry, rw, rh, "floor");
-      rooms.push({ x: rx, y: ry, w: rw, h: rh, cx: rx + (rw >> 1), cy: ry + (rh >> 1) });
+    const W = 256, H = 224;
+    const tiles = Array.from({ length: H }, () => Array(W).fill("floor"));
+    for (let x = 0; x < W; x++) {
+      for (let k = 0; k < 3; k++) { tiles[k][x] = "wall"; tiles[H - 1 - k][x] = "wall"; }
     }
-    addRoom((W >> 1) - 6, (H >> 1) - 5, 12, 10);
-    const nR = 20 + ((R() * 10) | 0);
-    for (let n = 0; n < nR; n++) {
-      const rw = 6 + ((R() * 10) | 0), rh = 5 + ((R() * 8) | 0);
-      addRoom(2 + ((R() * (W - rw - 4)) | 0), 2 + ((R() * (H - rh - 4)) | 0), rw, rh);
+    for (let y = 0; y < H; y++) {
+      for (let k = 0; k < 3; k++) { tiles[y][k] = "wall"; tiles[y][W - 1 - k] = "wall"; }
     }
-    for (let i = 1; i < rooms.length; i++) {
-      const a = rooms[i - 1], b = rooms[i];
-      let x = a.cx, y = a.cy;
-      while (x !== b.cx) {
-        tiles[y][x] = "floor";
-        if (tiles[y][x - 1] === "wall") tiles[y][x - 1] = "floor";
-        x += x < b.cx ? 1 : -1;
-      }
-      while (y !== b.cy) {
-        tiles[y][x] = "floor";
-        if (tiles[y - 1] && tiles[y - 1][x] === "wall") tiles[y - 1][x] = "floor";
-        y += y < b.cy ? 1 : -1;
+    const nRuin = 110 + ((R() * 50) | 0);
+    for (let n = 0; n < nRuin; n++) {
+      const rw = 2 + ((R() * 9) | 0), rh = 2 + ((R() * 8) | 0);
+      const rx = 8 + ((R() * (W - rw - 16)) | 0);
+      const ry = 8 + ((R() * (H - rh - 16)) | 0);
+      fillRect(tiles, W, H, rx, ry, rw, rh, "wall");
+      if (R() < 0.75) {
+        const side = (R() * 4) | 0;
+        if (side === 0) tiles[ry][rx + (rw >> 1)] = "floor";
+        else if (side === 1) tiles[ry + rh - 1][rx + (rw >> 1)] = "floor";
+        else if (side === 2) tiles[ry + (rh >> 1)][rx] = "floor";
+        else tiles[ry + (rh >> 1)][rx + rw - 1] = "floor";
       }
     }
-    rooms.forEach((r) => {
-      if (r.w < 10 || r.h < 8) return;
-      [[r.x + 2, r.y + 2], [r.x + r.w - 3, r.y + 2], [r.x + 2, r.y + r.h - 3], [r.x + r.w - 3, r.y + r.h - 3]].forEach((p) => {
-        if (tiles[p[1]] && tiles[p[1]][p[0]] === "floor") tiles[p[1]][p[0]] = "wall";
-      });
-    });
-    for (let x = 0; x < W; x++) { tiles[0][x] = "wall"; tiles[H - 1][x] = "wall"; }
-    for (let y = 0; y < H; y++) { tiles[y][0] = "wall"; tiles[y][W - 1] = "wall"; }
-    const start = { x: rooms[0].cx, y: rooms[0].cy };
+    for (let n = 0; n < 22; n++) {
+      if (R() < 0.5) {
+        const x = 10 + ((R() * (W - 20)) | 0);
+        const y0 = 10 + ((R() * (H - 50)) | 0);
+        const len = 22 + ((R() * 50) | 0);
+        for (let y = y0; y < y0 + len && y < H - 8; y++) {
+          tiles[y][x] = R() < 0.14 ? "floor" : "wall";
+          if (R() < 0.35 && x + 1 < W - 4) tiles[y][x + 1] = tiles[y][x];
+        }
+      } else {
+        const y = 10 + ((R() * (H - 20)) | 0);
+        const x0 = 10 + ((R() * (W - 50)) | 0);
+        const len = 22 + ((R() * 50) | 0);
+        for (let x = x0; x < x0 + len && x < W - 8; x++) {
+          tiles[y][x] = R() < 0.14 ? "floor" : "wall";
+          if (R() < 0.35 && y + 1 < H - 4) tiles[y + 1][x] = tiles[y][x];
+        }
+      }
+    }
+    const start = { x: W >> 1, y: H >> 1 };
+    fillRect(tiles, W, H, start.x - 14, start.y - 11, 28, 22, "floor");
     tiles[start.y][start.x] = "floor";
     const items = [];
-    const spots = floorsOf(tiles, W, H);
-    for (let i = 0; i < 40; i++) {
-      const p = spots[(R() * spots.length) | 0];
-      if (!p || (p.x === start.x && p.y === start.y)) continue;
-      const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
-      items.push({ x: p.x, y: p.y, kind: bag[(R() * bag.length) | 0] });
+    const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
+    for (let i = 0; i < 96; i++) {
+      let p = null;
+      for (let k = 0; k < 40; k++) {
+        const x = 6 + ((R() * (W - 12)) | 0), y = 6 + ((R() * (H - 12)) | 0);
+        if (tiles[y][x] === "floor" && (x !== start.x || y !== start.y)) { p = { x, y }; break; }
+      }
+      if (p) items.push({ x: p.x, y: p.y, kind: bag[(R() * bag.length) | 0] });
     }
     return contentBox({
       W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: [],
       realm: REALMS[seed % 8],
       layout: "The Long Crypt",
-      lore: "No exit. The lattice pours. Grow or be unnamed.",
+      lore: "No exit. A continent of stone. The lattice pours. Grow or be unnamed.",
       treasure: 0, quiet: 0, survive: true
     });
   }
@@ -1137,19 +1173,25 @@
       thiefT: 24,
       over: false,
       mode: opts.mode || "campaign",
-      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 1.2, bossAt: 0, pendingLvl: 0
+      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.15, bossAt: 0, pendingLvl: 0, hordeT: 6
     };
     joinHero(opts.hero || persist.hero, 0);
     if (G.mode === "survive") {
       G.surviveAuto = true;
-      G.players.forEach((p) => { p.vials = 2; p.magnet = 0.2; });
+      G.players.forEach((p) => { p.vials = 2; p.magnet = 0.35; });
     }
     loadFloor(0);
     overlayMode = null;
     hideOverlay();
     $("app").classList.remove("hidden");
+    $("app").classList.toggle("survive-mode", G.mode === "survive");
+    const sh = $("studioHud");
+    if (sh) sh.classList.toggle("hidden", G.mode !== "survive");
     if (G.mode === "campaign") say("Campaign — the First Descent.");
-    else if (G.mode === "survive") say("Survival — the Long Crypt. Grow with the pour.");
+    else if (G.mode === "survive") {
+      say("Survival — the Long Crypt. A continent of stone. Grow or drown.");
+      for (let i = 0; i < 22; i++) spawnSurviveAround(surviveKind(1), false);
+    }
     else say("Endless — the crypt does not end.");
     if (opts.coop) {
       credit();
@@ -2086,9 +2128,12 @@
     cam.x += (tx - cam.x) * 0.42;
     cam.y += (ty - cam.y) * 0.42;
     const z = lv.realm.id || "stone";
-    for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
+    const x0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
+    const y0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
+    const x1 = Math.min(lv.W, Math.ceil((cam.x + w) / TILE) + 2);
+    const y1 = Math.min(lv.H, Math.ceil((cam.y + h) / TILE) + 2);
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
       const px = x * TILE - cam.x, py = y * TILE - cam.y;
-      if (px < -TILE || py < -TILE || px > w || py > h) continue;
       const t = lv.tiles[y][x];
       if (t === "wall") {
         const N = !solidAt(lv, x, y - 1), S = !solidAt(lv, x, y + 1);
@@ -2115,6 +2160,8 @@
       ctx.globalAlpha = 1;
     });
     lv.items.forEach((it) => {
+      const ipx = it.x * TILE - cam.x, ipy = it.y * TILE - cam.y;
+      if (ipx < -48 || ipy < -48 || ipx > w + 48 || ipy > h + 48) return;
       if (it.hidden) {
         const near = live.some((p) => Math.hypot(p.x - (it.x + 0.5), p.y - (it.y + 0.5)) < 0.85);
         if (!near) return;
@@ -2122,6 +2169,8 @@
       drawItem(it);
     });
     lv.foes.forEach((f) => {
+      const fpx = f.x * TILE - cam.x, fpy = f.y * TILE - cam.y;
+      if (fpx < -72 || fpy < -72 || fpx > w + 72 || fpy > h + 72) return;
       const hid = shadeHidden(f);
       const rate = f.kind === "drain" || f.kind === "wraith" || f.kind === "unnamer" ? 5 : 8;
       const fr = ((f.t * rate) | 0) % 4;
@@ -2241,28 +2290,77 @@
 
   function paintHud() {
     if (!G) return;
+    const autoOn = persist.autoShot || G.surviveAuto;
     $("hudMeta").innerHTML = "<span>Score <b>" + G.score + "</b></span><span>" +
       (G.mode === "survive" ? "Survive <b>W" + surviveWave() + "</b> · lv " + G.lvl : ((G.mode === "campaign" ? "Campaign" : "Endless") + " <b>" + (G.floor + 1) + (G.mode === "campaign" && window.LatticeCampaign ? "/" + window.LatticeCampaign.LEN : "") + "</b>")) +
       "</span><span>Credits <b>" + G.credits + "</b></span>";
-    $("pips").innerHTML = G.players.map((p) =>
-      "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + " · " + (p.hero.special || p.hero.tag) + (p.dead ? " · DOWN" : "") + "</div>" +
-      "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max))) + "%;background:" + p.hero.color + "'></i></div>" +
-      "<div class='st'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
-      (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
-      " · " + (p.arsenal || []).map((id) => {
-        const n = (WEAPONS[id] && WEAPONS[id].name) || id;
-        const lv = wepLv(p, id);
-        return n.slice(0, 3) + (lv > 1 ? lv : "");
-      }).join("/") +
-      " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
-    ).join("");
-    const autoOn = persist.autoShot || G.surviveAuto;
+    if (G.mode !== "survive") {
+      $("pips").innerHTML = G.players.map((p) =>
+        "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + " · " + (p.hero.special || p.hero.tag) + (p.dead ? " · DOWN" : "") + "</div>" +
+        "<div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max))) + "%;background:" + p.hero.color + "'></i></div>" +
+        "<div class='st'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) + " · " + (WEAPONS[p.weapon] ? WEAPONS[p.weapon].name : "Shard") +
+        (p.cores ? " · CORE" + p.cores : "") + (p.iron ? " · IRN" + p.iron : "") +
+        " · " + (p.arsenal || []).map((id) => {
+          const n = (WEAPONS[id] && WEAPONS[id].name) || id;
+          const lv = wepLv(p, id);
+          return n.slice(0, 3) + (lv > 1 ? lv : "");
+        }).join("/") +
+        " · keys " + p.keys + " · vials " + p.vials + buffs(p) + "</div></div>"
+      ).join("");
+    }
     $("dockStatus").textContent = G.players.some((p) => p.dead) ? "Space / Start — credit in" : (G.mode === "survive" ? (autoOn ? "AUTO · survive · stack" : "Fire · vial · survive") : (autoOn ? "AUTO shot · vial · exit" : "Fire · vial · smash nexuses · find the exit"));
     const autoBtn = $("btnAuto");
     if (autoBtn) autoBtn.textContent = autoOn ? "Auto shot ON" : "Auto shot";
-    $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b>" + (G.level.layout ? " · " + G.level.layout : " floor " + (G.floor + 1)) + "</p>" +
-      (G.mode === "survive" ? "<p class='lore'>Wave " + surviveWave() + " · " + (G.t | 0) + "s · kills " + (G.kills || 0) + " · XP " + G.xp + "/" + surviveXpNeed(G.lvl) + "</p><div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * G.xp / surviveXpNeed(G.lvl))) + "%;background:#fbbf24'></i></div>" : "") +
-      "<p class='lore'>" + (G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
+    if ($("holeCard")) {
+      $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b>" + (G.level.layout ? " · " + G.level.layout : " floor " + (G.floor + 1)) + "</p>" +
+        (G.mode === "survive" ? "<p class='lore'>Wave " + surviveWave() + " · " + (G.t | 0) + "s · kills " + (G.kills || 0) + " · XP " + G.xp + "/" + surviveXpNeed(G.lvl) + "</p><div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * G.xp / surviveXpNeed(G.lvl))) + "%;background:#fbbf24'></i></div>" : "") +
+        "<p class='lore'>" + (G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
+    }
+    if (G.mode === "survive") paintStudioHud();
+  }
+  function paintStudioHud() {
+    const w = surviveWave();
+    const need = surviveXpNeed(G.lvl);
+    const t = G.t | 0;
+    const mm = (t / 60) | 0, ss = t % 60;
+    const waveLeft = Math.max(0, 28 - (G.t % 28));
+    if ($("hudWave")) $("hudWave").textContent = w;
+    if ($("hudScore")) $("hudScore").textContent = G.score;
+    if ($("hudXpFill")) $("hudXpFill").style.width = Math.max(0, Math.min(100, 100 * G.xp / need)) + "%";
+    if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + G.xp + "/" + need;
+    if ($("hudClock")) $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  next wave " + waveLeft.toFixed(0) + "s";
+    if ($("hudKills")) $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  HORDE " + G.level.foes.length + "/" + surviveCap(w);
+    const p0 = G.players[0];
+    if ($("hudPlayers")) {
+      $("hudPlayers").innerHTML = G.players.map((p) => {
+        const hp = Math.max(0, Math.min(100, 100 * p.hp / Math.max(1, p.max)));
+        return "<div class='hud-ward'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.dead ? " · DOWN" : "") + "</div>" +
+          "<div class='hud-hp'><i style='width:" + hp + "%;background:" + p.hero.color + "'></i></div>" +
+          "<div class='hud-meta-row'>HP " + Math.max(0, p.hp | 0) + "/" + (p.max | 0) +
+          " · vials " + p.vials + " · keys " + p.keys +
+          "<span class='hud-buffs'>" + buffs(p) + "</span></div></div>";
+      }).join("");
+    }
+    if ($("hudArms") && p0) {
+      $("hudArms").innerHTML = (p0.arsenal || []).map((id) => {
+        const n = (WEAPONS[id] && WEAPONS[id].name) || id;
+        const lv = wepLv(p0, id);
+        return "<span class='chip'>" + n + (lv > 1 ? "<i> " + lv + "</i>" : "") + "</span>";
+      }).join("");
+    }
+    if ($("hudStats") && p0) {
+      const pills = [];
+      if (p0.might) pills.push("MIGHT " + p0.might);
+      if (p0.haste) pills.push("HASTE " + p0.haste);
+      if (p0.iron) pills.push("IRON " + p0.iron);
+      if (p0.cores) pills.push("CORE " + p0.cores);
+      if (p0.stride) pills.push("STRIDE " + p0.stride);
+      if (p0.pierce) pills.push("PIERCE " + p0.pierce);
+      if (p0.extraCap) pills.push("VOLLEY " + p0.extraCap);
+      if (p0.magnet) pills.push("PULL");
+      if (p0.vialPow) pills.push("RES " + p0.vialPow);
+      $("hudStats").innerHTML = pills.map((t) => "<span class='pill'>" + t + "</span>").join("");
+    }
   }
   function paintUI() { if (G) paintHud(); }
 
@@ -2299,6 +2397,9 @@
     overlayMode = "menu";
     if (G) G.over = true;
     $("app").classList.add("hidden");
+    $("app").classList.remove("survive-mode");
+    const sh = $("studioHud");
+    if (sh) sh.classList.add("hidden");
     showSheet(
       "<div class='title-screen'><div class='title-art'><img src='./assets/menu.jpg' alt='Lattice Crypt'><div class='title-art-fade'></div></div>" +
       "<div class='title-panel'><p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LATTICE CRYPT</h1>" +
@@ -2315,7 +2416,7 @@
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
-      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>One huge crypt. Waves never stop. Stack might, haste, arms. Bosses every five waves. Hall score.</span></button>" +
+      "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Brotato-scale hordes. Stack arms or drown. Bosses every five waves. Hall score.</span></button>" +
       "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Campaign with a second warden. Pads and keyboards, up to four.</span></button>" +
       "</div><div class='modes' style='margin-top:.6rem'><button class='btn' id='menuRadio'>Play radio</button>" +
       "<a class='btn ghost' href='/games/'>All games</a></div>" +
@@ -2354,7 +2455,7 @@
       "<li>P1 WASD · <b>J fire</b> · K/Shift vial. P2 arrows · ; fire · ' vial. P3 TFGH · R/Y. P4 numpad.</li>" +
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Survival upgrades: D-pad / stick to choose, A to take (1–3 or Enter on keyboard). Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
-      "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is one huge crypt: waves, stacking upgrades, bosses every five waves, hall score.</li>" +
+      "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is a vast crypt (256×224): Brotato-scale hordes, stacking upgrades, bosses every five waves, hall score.</li>" +
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +

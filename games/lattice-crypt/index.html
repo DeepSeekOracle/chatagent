@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=5">
+<link rel="stylesheet" href="./game.css?v=6">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 </head>
 <body>
@@ -43,12 +43,29 @@
       <canvas id="crypt" tabindex="0" aria-label="Lattice Crypt dungeon"></canvas>
       <div class="announce" id="announce"></div>
       <div class="pips" id="pips"></div>
+      <div id="studioHud" class="studio-hud hidden">
+        <div class="hud-top">
+          <div class="hud-wave"><span class="k">WAVE</span><b id="hudWave">1</b></div>
+          <div class="hud-xpwrap">
+            <div class="hud-xp"><i id="hudXpFill"></i></div>
+            <div class="hud-xp-lab" id="hudXpLab">LV 1</div>
+          </div>
+          <div class="hud-score"><span class="k">SCORE</span><b id="hudScore">0</b></div>
+        </div>
+        <div class="hud-clock" id="hudClock">0:00</div>
+        <div class="hud-left" id="hudPlayers"></div>
+        <div class="hud-right">
+          <div class="hud-kills" id="hudKills"></div>
+          <div class="hud-arms" id="hudArms"></div>
+          <div class="hud-pills" id="hudStats"></div>
+        </div>
+      </div>
     </div>
     <aside class="rail">
       <div class="panel" id="holeCard"></div>
       <div class="panel">
         <h3>How</h3>
-        <p class="lore">Campaign, Endless, or Survival. Survival is one huge crypt: waves, stacking upgrades, bosses every five waves. Auto-shot (L). Don't shoot the flask.</p>
+        <p class="lore">Campaign, Endless, or Survival. Survival is a vast crypt: Brotato-scale hordes, stacking arms, bosses every five waves. Auto-shot (L). Don't shoot the flask.</p>
       </div>
       <div class="panel">
         <h3>Log</h3>
@@ -76,6 +93,6 @@
 <script src="./radio.js"></script>
 <script src="/games/arcade-ledger.js?v=2"></script>
 <script src="./campaign.js?v=6"></script>
-<script src="./game.js?v=21"></script>
+<script src="./game.js?v=22"></script>
 </body>
 </html>
