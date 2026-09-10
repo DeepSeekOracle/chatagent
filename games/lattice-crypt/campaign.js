@@ -16,19 +16,19 @@ window.LatticeCampaign = (function () {
     /* 0 Stone approach — teach move, food, one nexus, door+key, exit */
     { name: "Threshold", rank: 1, rooms: [[2, 10, 8, 6], [12, 10, 7, 6], [21, 8, 7, 10]], halls: [[9, 13, 12, 13], [18, 13, 21, 13]],
       start: [4, 13], exit: [25, 12], doors: [[18, 13]],
-      gens: [[14, 12, "brute"]], items: [[6, 12, "food"], [7, 14, "key"], [23, 10, "flask"]], foes: [[15, 14, "brute"]] },
+      gens: [[14, 12, "brute"]], items: [[6, 12, "food"], [7, 14, "key"], [23, 10, "flask"], [5, 14, "berry"]], foes: [[15, 14, "brute"]] },
     /* 1 Stone knot — two gens, key behind the far one */
     { name: "Keywell", rank: 1, rooms: [[2, 2, 8, 7], [12, 2, 6, 6], [20, 2, 8, 8], [4, 16, 10, 8], [18, 16, 10, 8]],
       halls: [[9, 5, 12, 5], [17, 5, 20, 5], [6, 8, 6, 16], [23, 9, 23, 16], [13, 20, 18, 20]],
       start: [4, 4], exit: [24, 20], doors: [[17, 5], [13, 20]],
-      gens: [[14, 4, "brute"], [22, 4, "wraith"]], items: [[5, 6, "food"], [21, 6, "key"], [7, 18, "key"], [20, 18, "vial"], [22, 6, "fan"]],
+      gens: [[14, 4, "brute"], [22, 4, "wraith"]], items: [[5, 6, "food"], [21, 6, "key"], [7, 18, "key"], [20, 18, "vial"], [22, 6, "fan"], [6, 18, "coin"]],
       foes: [[13, 5, "brute"], [22, 18, "wraith"]] },
     /* 2 Stone seal — smash three nexuses to wake the exit */
     { name: "First Seal", rank: 1, seal: true, rooms: [[3, 3, 10, 8], [17, 3, 10, 8], [8, 14, 14, 9]],
       halls: [[12, 6, 17, 6], [10, 10, 10, 14], [20, 10, 20, 14]],
       start: [5, 6], exit: [15, 18],
       gens: [[6, 5, "brute"], [22, 5, "wraith"], [15, 16, "imp"]],
-      items: [[8, 8, "food"], [20, 8, "flask"], [12, 16, "vial"], [18, 20, "chest"]],
+      items: [[8, 8, "food"], [20, 8, "flask"], [12, 16, "vial"], [18, 20, "chest"], [10, 18, "moss"]],
       foes: [[8, 4, "brute"], [24, 7, "wraith"]], boss: [[15, 16, "gate"]], lore: "The exit sleeps until the nexuses die." },
 
     /* 3 Frost approach — long hall, hurlers around corners */
@@ -36,7 +36,7 @@ window.LatticeCampaign = (function () {
       halls: [[5, 8, 5, 11], [24, 8, 24, 11], [5, 15, 5, 18], [24, 15, 24, 18]],
       start: [4, 13], exit: [25, 20], doors: [[20, 13]],
       gens: [[4, 4, "hurler"], [24, 4, "hurler"], [24, 20, "brute"]],
-      items: [[14, 13, "food"], [16, 12, "key"], [3, 20, "flask"], [22, 13, "aegis"]],
+      items: [[14, 13, "food"], [16, 12, "key"], [3, 20, "flask"], [22, 13, "aegis"], [8, 13, "frostorb"]],
       foes: [[10, 13, "hurler"], [22, 4, "hurler"]] },
     /* 4 Frost knot — ring with inner vault */
     { name: "Ice Ring", rank: 1, rooms: [[2, 2, 26, 22]], inner: [[8, 7, 14, 12]],
@@ -59,7 +59,7 @@ window.LatticeCampaign = (function () {
       halls: [[7, 6, 10, 6], [15, 6, 18, 6], [12, 9, 12, 16], [22, 9, 22, 16]],
       start: [4, 20], exit: [24, 18], doors: [[12, 16]],
       gens: [[4, 4, "imp"], [12, 4, "imp"], [22, 4, "brute"]],
-      items: [[5, 18, "food"], [11, 18, "key"], [20, 18, "flask"], [26, 4, "codex"], [12, 6, "cinder"]],
+      items: [[5, 18, "food"], [11, 18, "key"], [20, 18, "flask"], [26, 4, "codex"], [12, 6, "cinder"], [6, 6, "fury"]],
       foes: [[4, 10, "imp"], [20, 6, "imp"]] },
     /* 7 Ember knot — crossfire plus blight */
     { name: "Ash Cross", rank: 2, rooms: [[2, 11, 26, 5], [12, 2, 6, 22]],
@@ -85,7 +85,7 @@ window.LatticeCampaign = (function () {
         [6, 16, 9, 16], [13, 16, 16, 16], [20, 22, 23, 22], [11, 17, 11, 20]],
       start: [4, 3], exit: [25, 22], doors: [[13, 16], [20, 22]],
       gens: [[11, 3, "shade"], [25, 3, "shade"], [4, 16, "wraith"], [18, 16, "brute"]],
-      items: [[4, 10, "key"], [18, 10, "key"], [4, 22, "food"], [11, 22, "vial"], [18, 3, "veil"]],
+      items: [[4, 10, "key"], [18, 10, "key"], [4, 22, "food"], [11, 22, "vial"], [18, 3, "veil"], [25, 22, "seed"]],
       foes: [[11, 10, "shade"], [25, 16, "shade"]], hidden: [[25, 10, "vial"]] },
     /* 10 Root knot */
     { name: "Remembering Hall", rank: 2, rooms: [[2, 2, 26, 4], [2, 20, 26, 4], [2, 2, 4, 22], [24, 2, 4, 22], [10, 8, 10, 10]],
@@ -108,7 +108,7 @@ window.LatticeCampaign = (function () {
       start: [4, 4], exit: [24, 20], doors: [[11, 6]],
       pads: [[6, 8, 22, 8], [6, 20, 22, 4]],
       gens: [[8, 4, "imp"], [22, 14, "hurler"], [8, 18, "wraith"]],
-      items: [[4, 8, "key"], [20, 18, "food"], [24, 6, "vial"], [4, 20, "swift"], [22, 6, "halo"]],
+      items: [[4, 8, "key"], [20, 18, "food"], [24, 6, "vial"], [4, 20, "swift"], [22, 6, "halo"], [22, 20, "nectar"]],
       foes: [[20, 6, "imp"]] },
     /* 13 Tide knot — pad maze */
     { name: "Exchange", rank: 2, rooms: [[2, 2, 8, 8], [11, 2, 8, 8], [20, 2, 8, 8], [2, 16, 8, 8], [11, 16, 8, 8], [20, 16, 8, 8]],
@@ -130,7 +130,7 @@ window.LatticeCampaign = (function () {
     { name: "Tithe", rank: 2, treasure: 40, rooms: [[2, 2, 26, 22]],
       start: [4, 4], exit: [25, 21],
       gens: [[8, 8, "brute"], [22, 8, "brute"], [8, 18, "wraith"], [22, 18, "imp"]],
-      items: [[12, 6, "chest"], [16, 6, "chest"], [12, 12, "chest"], [16, 12, "flask"], [14, 18, "vial"], [20, 12, "poison"], [6, 12, "food"]],
+      items: [[12, 6, "chest"], [16, 6, "chest"], [12, 12, "chest"], [16, 12, "flask"], [14, 18, "vial"], [20, 12, "poison"], [6, 12, "food"], [8, 6, "coin"], [20, 6, "gem"], [10, 18, "dice"]],
       foes: [[14, 10, "thief"]], lore: "Thirty-odd seconds. Take the gold. Leave through the far light." },
     /* 16 Gold knot */
     { name: "Ledger Room", rank: 3, rooms: [[2, 8, 8, 10], [11, 2, 8, 8], [20, 8, 8, 10], [11, 16, 8, 8]],
@@ -153,7 +153,7 @@ window.LatticeCampaign = (function () {
       halls: [[9, 13, 20, 13]],
       start: [4, 20], exit: [24, 4],
       gens: [[4, 4, "shade"], [24, 20, "wraith"], [14, 13, "imp"]],
-      items: [[5, 18, "food"], [22, 18, "vial"], [6, 6, "veil"]],
+      items: [[5, 18, "food"], [22, 18, "vial"], [6, 6, "veil"], [22, 6, "lantern"], [4, 6, "soul"]],
       foes: [[4, 12, "shade"], [24, 12, "wraith"]], traps: [[10, 13], [18, 13]] },
     /* 19 Void knot */
     { name: "Quiet Book", rank: 3, drain: true,
@@ -189,7 +189,7 @@ window.LatticeCampaign = (function () {
       rooms: [[3, 3, 24, 20]],
       start: [5, 18], exit: [15, 6],
       gens: [[6, 6, "imp"], [24, 6, "hurler"], [6, 16, "shade"], [24, 16, "wraith"], [15, 12, "brute"]],
-      items: [[8, 18, "vial"], [10, 18, "vial"], [20, 18, "flask"], [22, 18, "food"], [15, 16, "chest"], [12, 8, "codex"]],
+      items: [[8, 18, "vial"], [10, 18, "vial"], [20, 18, "flask"], [22, 18, "food"], [15, 16, "chest"], [12, 8, "codex"], [6, 18, "elixir"], [24, 18, "crown"]],
       foes: [[15, 10, "thief"], [10, 12, "shade"], [20, 12, "imp"]], boss: [[15, 10, "lock"]],
       lore: "Hold the door. The crypt is a lock. You are the last four teeth." }
   ];

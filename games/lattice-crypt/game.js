@@ -84,7 +84,83 @@
     "Numpad8", "Numpad5", "Numpad4", "Numpad6", "Numpad0", "Numpad1", "Numpad2", "NumpadEnter", "Enter", "KeyL",
     "KeyQ", "Period", "KeyU", "Numpad7"
   ]);
-  const BAG = ["food", "flask", "chest", "key", "vial", "poison", "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura", "core", "heart", "iron", "phial"];
+  const PICK = {
+    food: { heal: 100, score: 100, say: "rations.", glow: "rgba(196,70,50,0.5)" },
+    flask: { heal: 200, score: 100, say: "flask.", glow: "rgba(56,189,248,0.5)", smash: "flask" },
+    poison: { special: "poison", glow: "rgba(74,222,128,0.45)", smash: "poison" },
+    key: { keys: 1, score: 50, glow: "rgba(250,204,21,0.5)", spin: 1 },
+    latch: { keys: 1, score: 70, say: "latch-key.", glow: "rgba(186,230,253,0.5)", spin: 1 },
+    chest: { special: "chest", score: 200, glow: "rgba(251,191,36,0.55)", rare: 1 },
+    vial: { vials: 1, score: 50, say: "Vial.", glow: "rgba(192,132,252,0.5)", smash: "vial" },
+    phial: { vials: 2, score: 90, say: "Phial — two vials.", glow: "rgba(45,212,191,0.5)" },
+    chalice: { vials: 3, score: 110, say: "Chalice — three vials.", glow: "rgba(168,85,247,0.55)", rare: 1 },
+    trap: { special: "trap", glow: "rgba(127,29,29,0.4)" },
+    codex: { shotBoost: 14, score: 80, say: "Shot Codex.", glow: "rgba(250,204,21,0.5)" },
+    tome: { shotBoost: 20, vialPow: 1, score: 100, say: "Accord tome.", glow: "rgba(192,132,252,0.55)", rare: 1 },
+    swift: { swift: 12, score: 80, say: "Swift.", glow: "rgba(74,222,128,0.5)" },
+    boot: { stride: 1, swift: 8, score: 90, say: "Stride boots.", glow: "rgba(74,222,128,0.5)" },
+    aegis: { aegis: 14, score: 80, say: "Aegis.", glow: "rgba(34,211,238,0.5)" },
+    ward: { aegis: 22, score: 90, say: "Ward.", glow: "rgba(34,211,238,0.55)" },
+    grit: { aegis: 10, iron: 1, score: 80, say: "Grit — plate holds.", glow: "rgba(148,163,184,0.45)" },
+    veil: { veil: 8, score: 80, say: "Veil.", glow: "rgba(226,232,240,0.45)" },
+    moon: { veil: 12, swift: 8, score: 100, say: "Moon veil.", glow: "rgba(191,219,254,0.5)", rare: 1 },
+    reflect: { reflect: 10, score: 80, say: "Reflect.", glow: "rgba(147,197,253,0.5)" },
+    ring: { reflect: 10, aegis: 10, score: 110, say: "Accord ring.", glow: "rgba(250,204,21,0.55)", spin: 1, rare: 1 },
+    pulse: { special: "pulse", score: 80, glow: "rgba(250,204,21,0.5)" },
+    frostorb: { special: "frostorb", score: 90, glow: "rgba(125,211,252,0.55)", rare: 1 },
+    hymnstone: { special: "hymn", score: 90, glow: "rgba(103,232,249,0.55)" },
+    sun: { special: "sun", score: 100, glow: "rgba(251,191,36,0.55)", rare: 1 },
+    storm: { special: "storm", score: 100, glow: "rgba(147,197,253,0.55)", rare: 1 },
+    bomb: { special: "bomb", score: 80, glow: "rgba(239,68,68,0.5)", smash: "bomb" },
+    warp: { special: "warp", score: 40, glow: "rgba(147,51,234,0.5)" },
+    scroll: { special: "scroll", score: 70, glow: "rgba(253,230,138,0.5)" },
+    lantern: { special: "lantern", score: 80, glow: "rgba(251,191,36,0.55)" },
+    dice: { special: "dice", score: 40, glow: "rgba(248,250,252,0.45)", spin: 1 },
+    core: { cores: 1, score: 120, say: "Core.", glow: "rgba(255,80,60,0.55)", rare: 1 },
+    crystal: { cores: 1, score: 100, say: "Crystal core.", glow: "rgba(34,211,238,0.55)", spin: 1 },
+    spark: { cores: 1, score: 80, say: "Spark.", glow: "rgba(253,224,71,0.5)", spin: 1 },
+    heart: { max: 80, score: 100, say: "Heart — deeper well.", glow: "rgba(239,68,68,0.55)", rare: 1 },
+    soul: { max: 50, heal: 50, score: 90, say: "Soul-well.", glow: "rgba(191,219,254,0.5)", rare: 1 },
+    iron: { iron: 1, score: 100, say: "Iron.", glow: "rgba(148,163,184,0.45)" },
+    anvil: { iron: 1, score: 110, say: "Anvil-iron.", glow: "rgba(148,163,184,0.5)" },
+    lens: { pierce: 1, score: 90, say: "Lens — bolts pass deeper.", glow: "rgba(186,230,253,0.5)" },
+    quiver: { extraCap: 1, score: 90, say: "Quiver — one more live bolt.", glow: "rgba(251,146,60,0.5)" },
+    magnet: { magnet: 0.5, score: 80, say: "Pull.", glow: "rgba(248,113,113,0.5)" },
+    thorns: { thorns: 14, score: 80, say: "Thorns — bumpers bleed.", glow: "rgba(74,222,128,0.5)" },
+    fury: { fury: 12, score: 90, say: "Fury — shots bite.", glow: "rgba(239,68,68,0.55)" },
+    echo: { echo: 14, score: 90, say: "Echo — bolts linger.", glow: "rgba(147,197,253,0.5)" },
+    moss: { regen: 14, score: 70, say: "Moss — the well seeps back.", glow: "rgba(74,222,128,0.5)" },
+    weave: { regen: 22, score: 90, say: "Weave — slow mend.", glow: "rgba(253,224,71,0.5)", rare: 1 },
+    berry: { heal: 40, score: 40, say: "lattice berry.", glow: "rgba(190,40,70,0.45)" },
+    bread: { heal: 150, score: 80, say: "bread.", glow: "rgba(217,160,70,0.45)" },
+    feast: { heal: 280, max: 20, score: 120, say: "a feast of the Accord.", glow: "rgba(251,191,36,0.55)", rare: 1 },
+    nectar: { heal: 80, vials: 1, score: 90, say: "nectar of the weave.", glow: "rgba(250,204,21,0.5)" },
+    elixir: { heal: 9999, score: 140, say: "elixir — well restored.", glow: "rgba(45,212,191,0.55)", rare: 1 },
+    scrap: { heal: 50, score: 30, say: "scrap rations.", glow: "rgba(148,163,184,0.35)" },
+    seed: { heal: 40, stride: 1, score: 60, say: "seed-stride.", glow: "rgba(74,222,128,0.45)" },
+    coin: { score: 50, say: "coin.", glow: "rgba(250,204,21,0.5)", spin: 2 },
+    gem: { score: 180, say: "gem.", glow: "rgba(56,189,248,0.55)", spin: 2, rare: 1 },
+    crown: { cores: 1, score: 200, say: "Crown of the lock.", glow: "rgba(251,191,36,0.6)", rare: 1 },
+    fan: { glow: "rgba(249,115,22,0.5)", spin: 1 },
+    needle: { glow: "rgba(34,211,238,0.5)" },
+    cinder: { glow: "rgba(249,115,22,0.5)" },
+    comet: { glow: "rgba(96,165,250,0.5)" },
+    halo: { glow: "rgba(253,224,71,0.5)", spin: 1 },
+    cleave: { glow: "rgba(248,113,113,0.5)" },
+    orbit: { glow: "rgba(226,232,240,0.45)", spin: 2 },
+    aura: { glow: "rgba(74,222,128,0.5)" }
+  };
+  const BAG = [
+    "food", "food", "food", "berry", "berry", "bread", "scrap", "flask", "flask", "nectar",
+    "chest", "chest", "key", "key", "latch", "vial", "vial", "poison", "poison",
+    "codex", "swift", "aegis", "veil", "pulse", "warp", "reflect", "ward", "grit",
+    "coin", "coin", "coin", "gem", "boot", "lens", "magnet", "fury", "thorns", "moss", "echo",
+    "core", "heart", "iron", "phial", "crystal", "spark", "seed", "scroll", "lantern", "dice",
+    "bomb", "frostorb", "hymnstone", "quiver",
+    "fan", "needle", "cinder", "comet", "halo", "cleave", "orbit", "aura",
+    "feast", "elixir", "chalice", "tome", "ring", "moon", "sun", "storm", "crown", "soul", "anvil", "weave"
+  ];
+  const CHEST_DROP = ["fan", "needle", "cinder", "core", "heart", "cleave", "orbit", "aura", "comet", "halo", "elixir", "crown", "chalice", "tome", "ring", "crystal", "phial", "iron"];
   const WEAPONS = {
     shard: { name: "Shard", cap: 2, spd: 12, life: 1.2, cool: 0.2, dmg: 0 },
     fan: { name: "Fan", cap: 3, spd: 11, life: 0.55, cool: 0.2, dmg: -1, spread: 0.38 },
@@ -109,6 +185,7 @@
   let heroAtlas = null, heroNames = {}, heroCell = 64, heroCols = 8;
   let tileAtlas = null, tileNames = {}, tileCell = 32, tileCols = 16;
   let fxAtlas = null, fxNames = {}, fxCell = 32, fxCols = 8;
+  let itemAtlas = null, itemNames = {}, itemCell = 32, itemCols = 8;
   const WEP_LOOK = {
     shard: { size: 28, col: "#fbbf24", glow: "rgba(251,191,36,0.38)" },
     fan: { size: 26, col: "#fb923c", glow: "rgba(249,115,22,0.38)" },
@@ -123,14 +200,14 @@
     aura: { size: 24, col: "#4ade80", glow: "rgba(74,222,128,0.35)" }
   };
   const BOSS_LOOT = {
-    gate: ["core", "heart"],
-    crown: ["comet", "swift"],
-    smith: ["cinder", "iron"],
-    heartboss: ["heart", "phial"],
-    levi: ["halo", "aegis"],
-    tithe: ["chest", "core"],
-    unnamer: ["vial", "phial"],
-    lock: ["iron", "codex"]
+    gate: ["core", "heart", "ward"],
+    crown: ["comet", "swift", "frostorb"],
+    smith: ["cinder", "iron", "fury"],
+    heartboss: ["heart", "phial", "moss"],
+    levi: ["halo", "aegis", "echo"],
+    tithe: ["chest", "core", "gem"],
+    unnamer: ["vial", "phial", "soul"],
+    lock: ["iron", "codex", "crown"]
   };
   let keys = {};
   let keyEdge = {};
@@ -220,6 +297,49 @@
     const sx = (i % fxCols) * fxCell, sy = Math.floor(i / fxCols) * fxCell;
     ctx.drawImage(fxAtlas, sx, sy, fxCell, fxCell, Math.round(x), Math.round(y), w, w);
   }
+  function drawItemSpr(name, x, y, w) {
+    const i = itemNames[name];
+    w = w || 32;
+    if (i == null || !itemAtlas) {
+      const base = name.replace(/_[01]$/, "");
+      drawSpr(base, x, y, w);
+      return;
+    }
+    const sx = (i % itemCols) * itemCell, sy = Math.floor(i / itemCols) * itemCell;
+    ctx.drawImage(itemAtlas, sx, sy, itemCell, itemCell, Math.round(x), Math.round(y), w, w);
+  }
+  function drawItem(it) {
+    const spec = PICK[it.kind] || {};
+    const t = (G ? G.t : 0) + it.x * 0.73 + it.y * 0.41;
+    const bob = Math.sin(t * 3.6) * 3.6;
+    const fr = ((t * 5.4) | 0) % 2;
+    const cx = it.x * TILE + TILE / 2 - cam.x;
+    const cy = it.y * TILE + TILE / 2 - cam.y;
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 11, 9, 3.2, 0, 0, 6.28);
+    ctx.fill();
+    ctx.globalAlpha = 0.2 + 0.18 * (0.5 + 0.5 * Math.sin(t * 5.1));
+    ctx.fillStyle = spec.glow || "rgba(251,191,36,0.4)";
+    ctx.beginPath();
+    ctx.arc(cx, cy + bob, spec.rare ? 16 : 13, 0, 6.28);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    if (spec.rare || spec.spin) {
+      for (let n = 0; n < 3; n++) {
+        const a = t * 2.4 + n * 2.09;
+        ctx.fillStyle = "rgba(255,255,230,0.75)";
+        ctx.fillRect(Math.round(cx + Math.cos(a) * 13), Math.round(cy + bob + Math.sin(a) * 10), 2, 2);
+      }
+    }
+    ctx.save();
+    ctx.translate(cx, cy + bob);
+    if (spec.spin) ctx.rotate(t * (spec.spin === 2 ? 3.6 : 1.8));
+    drawItemSpr(it.kind + "_" + fr, -16, -16, 32);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+  }
   function wepKey(s) {
     if (s.foe) return s.hero === "hurler" ? "hurler" : "imp";
     return s.wep && WEP_LOOK[s.wep] ? s.wep : "shard";
@@ -280,6 +400,21 @@
     const px = f.x * TILE - cam.x, py = f.y * TILE - cam.y;
     const max = f.max || f.life;
     const u = 1 - f.life / Math.max(0.05, max);
+    if (f.kind === "pick") {
+      ctx.globalAlpha = Math.max(0, 1 - u);
+      ctx.strokeStyle = f.col || "#fde68a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 6 + u * 18, 0, 6.28);
+      ctx.stroke();
+      for (let n = 0; n < 5; n++) {
+        const a = u * 6 + n * 1.26;
+        ctx.fillStyle = "rgba(255,255,220,0.85)";
+        ctx.fillRect(Math.round(px + Math.cos(a) * (8 + u * 14)), Math.round(py + Math.sin(a) * (8 + u * 14)), 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (f.kind === "puff") {
       const pf = Math.min(3, 3 - ((f.life * 8) | 0));
       ctx.globalAlpha = Math.max(0, f.life * 3);
@@ -521,7 +656,10 @@
     G.kills = (G.kills || 0) + 1;
     G.score += 6 + surviveWave() * 2;
     G.xp += 1 + ((surviveWave() / 5) | 0);
-    if (Math.random() < 0.11) dropItemNear(f.x, f.y, Math.random() < 0.55 ? "food" : (Math.random() < 0.5 ? "core" : "heart"));
+    if (Math.random() < 0.14) {
+      const loot = ["food", "berry", "coin", "scrap", "core", "heart", "moss", "vial", "fury", "magnet"];
+      dropItemNear(f.x, f.y, loot[(Math.random() * loot.length) | 0]);
+    }
     while (G.xp >= surviveXpNeed(G.lvl)) {
       G.xp -= surviveXpNeed(G.lvl);
       G.lvl++;
@@ -751,10 +889,10 @@
     tiles[start.y][start.x] = "floor";
     const items = [];
     const spots = floorsOf(tiles, W, H);
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 40; i++) {
       const p = spots[(R() * spots.length) | 0];
       if (!p || (p.x === start.x && p.y === start.y)) continue;
-      const bag = ["food", "food", "flask", "vial", "chest", "heart", "core"];
+      const bag = ["food", "food", "berry", "bread", "flask", "vial", "chest", "heart", "core", "coin", "moss", "scrap", "nectar", "magnet", "fury", "echo"];
       items.push({ x: p.x, y: p.y, kind: bag[(R() * bag.length) | 0] });
     }
     return contentBox({
@@ -823,7 +961,7 @@
       if (!p) break;
       gens.push({ x: p.x, y: p.y, kind: KINDS[(R() * KINDS.length) | 0], rank, hp: 3 * rank, t: R() * 0.6 });
     }
-    const itemN = treasure ? 14 : Math.max(3, 6 + ((R() * 5) | 0) - (mode === "endless" ? (floor / 10) | 0 : 0));
+    const itemN = treasure ? 18 : Math.max(6, 9 + ((R() * 6) | 0) - (mode === "endless" ? (floor / 10) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
@@ -941,7 +1079,7 @@
     const p = {
       slot: s, hero: h, x: 2, y: 2, hp: 700, max: 700,
       keys: 0, vials: 1, facing: 2, aimX: 1, aimY: 0, walk: 0, fireT: 0, magT: 0,
-      shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, stun: 0, padT: 0, hurtT: 0,
+      shotBoost: 0, swift: 0, aegis: 0, veil: 0, reflect: 0, fury: 0, thorns: 0, echo: 0, regen: 0, stun: 0, padT: 0, hurtT: 0,
       weapon: (h.wep && WEAPONS[h.wep]) ? h.wep : "shard",
       arsenal: ["shard"].concat(h.wep && h.wep !== "shard" && WEAPONS[h.wep] ? [h.wep] : []),
       wepLv: {}, coolT: {},
@@ -1125,7 +1263,7 @@
     return (p.wepLv && p.wepLv[id]) || 1;
   }
   function shotDmg(p, w) {
-    return Math.max(1, p.hero.shot + (p.cores || 0) + (p.might || 0) + (w.dmg || 0));
+    return Math.max(1, p.hero.shot + (p.cores || 0) + (p.might || 0) + (w.dmg || 0) + (p.fury > 0 ? 2 : 0));
   }
   function distSeg(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1, dy = y2 - y1;
@@ -1145,7 +1283,7 @@
       x: sx, y: sy, px: sx, py: sy, vx: ax * w.spd, vy: ay * w.spd,
       dmg: shotDmg(p, w) + Math.max(0, lv - 1), owner: p, life: w.life, maxLife: w.life, grace: 0.12,
       hero: p.hero.id, wep: id, bounced: false,
-      pierce: (w.pierce || 0) + (p.pierce || 0) + Math.max(0, lv - 1), lob: !!w.lob, flame: w.flame || 0,
+      pierce: (w.pierce || 0) + (p.pierce || 0) + Math.max(0, lv - 1) + (p.echo > 0 ? 1 : 0), lob: !!w.lob, flame: w.flame || 0, echo: p.echo > 0,
       trail: [{ x: sx, y: sy }]
     });
   }
@@ -1332,34 +1470,81 @@
     }
   }
 
+  function novaStun(x, y, r, t, col) {
+    G.level.foes.forEach((f) => { if (Math.hypot(f.x - x, f.y - y) < r) f.stun = Math.max(f.stun || 0, t); });
+    G.fx.push({ x, y, life: 0.42, max: 0.42, kind: "nova", col: col || "#93c5fd", job: "pulse" });
+  }
+  function blastFoes(x, y, r, dmg) {
+    G.level.foes.forEach((f) => { if (Math.hypot(f.x - x, f.y - y) < r) hitFoe(f, dmg, false); });
+    G.level.gens.forEach((g) => { if (Math.hypot(g.x + 0.5 - x, g.y + 0.5 - y) < r) g.hp -= 1; });
+    G.fx.push({ x, y, life: 0.45, max: 0.45, kind: "nova", col: "#fb923c", job: "bomb" });
+  }
+  function applyPickup(p, it) {
+    const k = it.kind;
+    const spec = PICK[k] || {};
+    G.fx.push({ x: p.x, y: p.y, life: 0.3, kind: "pick", col: spec.glow || "#fde68a" });
+    if (WEAPONS[k]) { giveWep(p, k); G.score += spec.score || 90; return; }
+    if (spec.heal) p.hp = Math.min(9999, (spec.heal >= 9999 ? p.max : p.hp + spec.heal));
+    if (spec.max) { p.max += spec.max; p.hp = Math.min(p.max, p.hp + spec.max); }
+    if (spec.vials) p.vials += spec.vials;
+    if (spec.keys) p.keys += spec.keys;
+    if (spec.cores) p.cores = (p.cores || 0) + spec.cores;
+    if (spec.iron) p.iron = (p.iron || 0) + spec.iron;
+    if (spec.pierce) p.pierce = (p.pierce || 0) + spec.pierce;
+    if (spec.extraCap) p.extraCap = (p.extraCap || 0) + spec.extraCap;
+    if (spec.magnet) p.magnet = (p.magnet || 0) + spec.magnet;
+    if (spec.stride) p.stride = (p.stride || 0) + spec.stride;
+    if (spec.vialPow) p.vialPow = (p.vialPow || 0) + spec.vialPow;
+    if (spec.shotBoost) p.shotBoost = Math.max(p.shotBoost || 0, spec.shotBoost);
+    if (spec.swift) p.swift = Math.max(p.swift || 0, spec.swift);
+    if (spec.aegis) p.aegis = Math.max(p.aegis || 0, spec.aegis);
+    if (spec.veil) p.veil = Math.max(p.veil || 0, spec.veil);
+    if (spec.reflect) p.reflect = Math.max(p.reflect || 0, spec.reflect);
+    if (spec.fury) p.fury = Math.max(p.fury || 0, spec.fury);
+    if (spec.thorns) p.thorns = Math.max(p.thorns || 0, spec.thorns);
+    if (spec.echo) p.echo = Math.max(p.echo || 0, spec.echo);
+    if (spec.regen) p.regen = Math.max(p.regen || 0, spec.regen);
+    if (spec.score) G.score += spec.score;
+    const sp = spec.special;
+    if (sp === "poison") {
+      p.hp -= 100; p.shotBoost = 0; p.swift = 0; p.aegis = 0; p.veil = 0; p.reflect = 0; p.fury = 0; p.echo = 0;
+      say(p.hero.name + " drank blight.");
+      return;
+    }
+    if (sp === "chest") {
+      if (Math.random() < 0.42) {
+        const drop = CHEST_DROP[(Math.random() * CHEST_DROP.length) | 0];
+        G.level.items.push({ x: it.x, y: it.y, kind: drop });
+      }
+    }
+    if (sp === "pulse") { novaStun(p.x, p.y, 8, 3, "#93c5fd"); say("Pulse — foes freeze."); }
+    if (sp === "frostorb") { novaStun(p.x, p.y, 9, 4.2, "#7dd3fc"); say("Frost — the room stills."); }
+    if (sp === "hymn") { novaStun(p.x, p.y, 7, 2.4, "#67e8f9"); p.hp = Math.min(p.max, p.hp + 40); say("Hymnstone."); }
+    if (sp === "sun") { novaStun(p.x, p.y, 7, 2.2, "#fbbf24"); p.hp = Math.min(p.max, p.hp + 80); say("Sun — light and heat."); }
+    if (sp === "storm") { blastFoes(p.x, p.y, 10, 8); say("Storm walks the floor."); }
+    if (sp === "bomb") { blastFoes(p.x, p.y, 5.5, 12); say("The charge blooms."); }
+    if (sp === "warp") { randomFloor(p); say(p.hero.name + " warps."); }
+    if (sp === "scroll") { randomFloor(p); p.shotBoost = Math.max(p.shotBoost || 0, 10); say("Scroll — elsewhere, armed."); }
+    if (sp === "lantern") {
+      G.level.items.forEach((o) => { o.hidden = false; });
+      p.shotBoost = Math.max(p.shotBoost || 0, 8);
+      say("Lantern — the floor is named.");
+    }
+    if (sp === "trap") { p.stun = 0.8; p.hp -= 15; }
+    if (sp === "dice") {
+      const pool = ["fury", "moss", "coin", "heart", "swift", "bomb", "elixir", "warp", "thorns", "echo"];
+      say("The die turns.");
+      applyPickup(p, { x: it.x, y: it.y, kind: pool[(Math.random() * pool.length) | 0] });
+      return;
+    }
+    if (spec.say) say(p.hero.name + " — " + spec.say);
+  }
   function pickup(p) {
     G.level.items = G.level.items.filter((it) => {
       if (Math.hypot(it.x + 0.5 - p.x, it.y + 0.5 - p.y) > 0.72 + (p.magnet || 0)) return true;
       G.level.quiet = 0;
       beep("pick");
-      if (it.kind === "food") { p.hp = Math.min(9999, p.hp + 100); G.score += 100; say(p.hero.name + " takes rations."); }
-      else if (it.kind === "flask") { p.hp = Math.min(9999, p.hp + 200); G.score += 100; say(p.hero.name + " drinks a flask."); }
-      else if (it.kind === "poison") { p.hp -= 100; p.shotBoost = 0; p.swift = 0; p.aegis = 0; p.veil = 0; p.reflect = 0; say(p.hero.name + " drank blight."); }
-      else if (it.kind === "key") { p.keys++; G.score += 50; }
-      else if (it.kind === "chest") { G.score += 200; if (Math.random() < 0.35) { const drop = ["fan", "needle", "cinder", "core", "heart"][(Math.random() * 5) | 0]; G.level.items.push({ x: it.x, y: it.y, kind: drop }); } }
-      else if (it.kind === "vial") { p.vials++; G.score += 50; say("Vial."); }
-      else if (it.kind === "codex") { p.shotBoost = 14; G.score += 80; say("Shot Codex."); }
-      else if (it.kind === "swift") { p.swift = 12; G.score += 80; say("Swift."); }
-      else if (it.kind === "aegis") { p.aegis = 14; G.score += 80; say("Aegis."); }
-      else if (it.kind === "veil") { p.veil = 8; G.score += 80; say("Veil."); }
-      else if (it.kind === "reflect") { p.reflect = 10; G.score += 80; say("Reflect."); }
-      else if (WEAPONS[it.kind]) { giveWep(p, it.kind); G.score += 90; }
-      else if (it.kind === "core") { p.cores = (p.cores || 0) + 1; G.score += 120; say("Core — shot +" + p.cores); }
-      else if (it.kind === "heart") { p.max += 80; p.hp = Math.min(p.max, p.hp + 80); G.score += 100; say("Heart — deeper well."); }
-      else if (it.kind === "iron") { p.iron = (p.iron || 0) + 1; G.score += 100; say("Iron — armor +" + p.iron); }
-      else if (it.kind === "phial") { p.vials += 2; G.score += 90; say("Phial — two vials."); }
-      else if (it.kind === "pulse") {
-        G.level.foes.forEach((f) => { if (Math.hypot(f.x - p.x, f.y - p.y) < 8) f.stun = 3; });
-        G.score += 80; say("Pulse — foes freeze.");
-        G.fx.push({ x: p.x, y: p.y, life: 0.4, max: 0.4, kind: "nova", col: "#93c5fd", job: "pulse" });
-      }
-      else if (it.kind === "warp") { randomFloor(p); G.score += 40; say(p.hero.name + " warps."); }
-      else if (it.kind === "trap") { p.stun = 0.8; p.hp -= 15; }
+      applyPickup(p, it);
       return false;
     });
   }
@@ -1452,6 +1637,11 @@
       p.aegis = Math.max(0, p.aegis - dt);
       p.veil = Math.max(0, p.veil - dt);
       p.reflect = Math.max(0, p.reflect - dt);
+      p.fury = Math.max(0, (p.fury || 0) - dt);
+      p.thorns = Math.max(0, (p.thorns || 0) - dt);
+      p.echo = Math.max(0, (p.echo || 0) - dt);
+      p.regen = Math.max(0, (p.regen || 0) - dt);
+      if (p.regen > 0) p.hp = Math.min(p.max, p.hp + dt * 18);
       p.hurtBeep = Math.max(0, (p.hurtBeep || 0) - dt);
       if (p.hp <= 0) {
         p.dead = true;
@@ -1548,6 +1738,7 @@
         lv.quiet = 0;
         if (!tgt.hurtBeep) { beep("hurt"); tgt.hurtBeep = 0.25; }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
+        if (tgt.thorns > 0) f.hp -= 22 * dt;
         if (f.kind === "thief" && tgt.vials > 0) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
         if (f.kind === "drain") {
           f._sip = (f._sip || 0) + dmg * dt * 8;
@@ -1583,7 +1774,7 @@
       const inWall = blocked(lv, s.x, s.y) && tileAt(lv, s.x, s.y) !== "door_open";
       if (!inWall) s.air = true;
       if (!s.lob && inWall && (s.air || s.grace <= 0)) {
-        if (!s.foe && s.owner && s.owner.reflect > 0 && !s.bounced) {
+        if (!s.foe && ((s.owner && s.owner.reflect > 0) || s.echo) && !s.bounced) {
           s.vx *= -1; s.vy *= -1; s.bounced = true; s.x += s.vx * dt; s.y += s.vy * dt;
         } else {
           smashItem(s);
@@ -1676,10 +1867,17 @@
   function smashItem(s) {
     G.level.items = G.level.items.filter((it) => {
       if (Math.hypot(it.x + 0.5 - s.x, it.y + 0.5 - s.y) > 0.4) return true;
-      if (it.kind === "flask") { say("Shot the flask."); return false; }
-      if (it.kind === "vial") {
+      const smash = (PICK[it.kind] && PICK[it.kind].smash) || (it.kind === "flask" ? "flask" : (it.kind === "vial" ? "vial" : null));
+      if (smash === "flask") { say("Shot the flask."); return false; }
+      if (smash === "poison") { say("Blight bursts."); return false; }
+      if (smash === "vial") {
         G.level.foes.forEach((f) => { if (Math.hypot(f.x - it.x, f.y - it.y) < 6) f.hp -= 12; });
         say("Floor vial bursts.");
+        return false;
+      }
+      if (smash === "bomb") {
+        blastFoes(it.x + 0.5, it.y + 0.5, 5.5, 10);
+        say("Shot the charge.");
         return false;
       }
       return true;
@@ -1833,7 +2031,7 @@
         const near = live.some((p) => Math.hypot(p.x - (it.x + 0.5), p.y - (it.y + 0.5)) < 0.85);
         if (!near) return;
       }
-      drawSpr(it.kind === "trap" ? "trap" : it.kind, it.x * TILE - cam.x, it.y * TILE - cam.y);
+      drawItem(it);
     });
     lv.foes.forEach((f) => {
       const hid = shadeHidden(f);
@@ -1878,6 +2076,25 @@
         ctx.beginPath();
         ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 20, 0, 6.28);
         ctx.stroke();
+      }
+      if (p.fury > 0) {
+        ctx.strokeStyle = "rgba(239,68,68,0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 17, G.t * 6, G.t * 6 + 4.2);
+        ctx.stroke();
+      }
+      if (p.thorns > 0) {
+        ctx.strokeStyle = "rgba(74,222,128,0.5)";
+        ctx.beginPath();
+        ctx.arc(p.x * TILE - cam.x, p.y * TILE - cam.y, 15, -G.t * 5, -G.t * 5 + 3.5);
+        ctx.stroke();
+      }
+      if (p.regen > 0 && ((G.t * 8) | 0) % 2) {
+        ctx.fillStyle = "rgba(74,222,128,0.45)";
+        ctx.beginPath();
+        ctx.arc(p.x * TILE - cam.x, p.y * TILE - 18 - cam.y, 3, 0, 6.28);
+        ctx.fill();
       }
       const lvA = wepLv(p, "aura");
       if (lvA) {
@@ -1927,6 +2144,10 @@
     if (p.aegis > 0) s += " · AEG";
     if (p.veil > 0) s += " · VEIL";
     if (p.reflect > 0) s += " · REF";
+    if (p.fury > 0) s += " · FURY";
+    if (p.thorns > 0) s += " · THORN";
+    if (p.echo > 0) s += " · ECHO";
+    if (p.regen > 0) s += " · MEND";
     return s;
   }
 
@@ -2046,7 +2267,7 @@
       "<li>Pads: stick, A/RT fire, B/Y/LT vial, Start join. Space / Enter credit a fallen warden.</li>" +
       "<li>Keys open doors. Don't shoot flasks. Vials clear a room — only they stop the Drain.</li>" +
       "<li>Campaign is 24 hand-built floors. Seals hide the exit until nexuses die. Endless never stops. Survival is one huge crypt: waves, stacking upgrades, bosses every five waves, hall score.</li>" +
-      "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Cores / Hearts / Iron grow the run.</li>" +
+      "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Named guardians drop relics. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Auto-shoot (menu or L) keeps firing. Help pauses.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
@@ -2139,6 +2360,13 @@
         fetch(ASSET + "fx.json").then((r) => r.json())
       ]);
       fxAtlas = fximg; fxNames = fxmeta.names; fxCell = fxmeta.cell; fxCols = fxmeta.cols;
+    } catch (_) {}
+    try {
+      const [iimg, imeta] = await Promise.all([
+        new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = ASSET + "items.png?v=1"; }),
+        fetch(ASSET + "items.json").then((r) => r.json())
+      ]);
+      itemAtlas = iimg; itemNames = imeta.names; itemCell = imeta.cell; itemCols = imeta.cols;
     } catch (_) {}
     $("boot").classList.add("hidden");
     if (window.ArcadeLedger) ArcadeLedger.boot();
