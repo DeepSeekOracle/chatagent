@@ -807,22 +807,22 @@
       if (m === "tough") { f.hp = Math.max(f.hp + 1, Math.round(f.hp * 1.4)); f.max = f.hp; }
     }
   }
-  function spawnSurviveAround(kind, boss, n) {
+  function spawnSurviveAround(kind, boss, n, loose) {
     n = Math.max(1, n || 1);
     const live = G.players.find((p) => !p.dead) || G.players[0];
     if (!live) return 0;
     const cap = surviveCap(surviveWave());
     const visR = visionRange(live);
-    const minD = boss ? visR + 1.2 : Math.max(3.4, visR * 0.55);
-    const maxD = boss ? visR + 8 : visR * 1.08;
-    const minSep = boss ? 1.4 : 0.78;
-    const tries = Math.max(48, n * 8);
+    const minD = boss ? visR + 1.1 : (loose ? 3.0 : 3.5);
+    const maxD = boss ? visR + 9 : (loose ? visR + 11 : visR + 3.2);
+    const minSep = boss ? 1.35 : (loose ? 0.48 : 0.7);
+    const tries = Math.max(56, n * 10);
     let made = 0;
     const spin = Math.random() * 6.28;
     for (let t = 0; t < tries && made < n; t++) {
       if (G.level.foes.length >= cap) break;
-      const ang = spin + (made / Math.max(1, n)) * 6.28 + (Math.random() - 0.5) * 0.7;
-      const dist = minD + Math.random() * Math.max(0.4, maxD - minD);
+      const ang = spin + (made / Math.max(1, n)) * 6.28 + (Math.random() - 0.5) * 0.85;
+      const dist = minD + Math.random() * Math.max(0.5, maxD - minD);
       let x = live.x + Math.cos(ang) * dist;
       let y = live.y + Math.sin(ang) * dist;
       x = Math.max(4, Math.min(G.level.W - 5, x));
@@ -833,8 +833,9 @@
       else p = nearestWalk(G.level, x, y);
       if (blocked(G.level, p.x, p.y)) continue;
       const d = Math.hypot(p.x - live.x, p.y - live.y);
-      if (d < minD || d > maxD + 3) continue;
-      if (!boss && d < visR * 0.82 && hasLos(live.x, live.y, p.x, p.y)) continue;
+      if (d < 3.1) continue;
+      if (d > maxD + 4) continue;
+      if (!boss && d < 4.2 && hasLos(live.x, live.y, p.x, p.y)) continue;
       let packed = false;
       const foes = G.level.foes;
       for (let i = 0; i < foes.length; i++) {
@@ -876,8 +877,10 @@
     const gap = Math.max(0.04, 0.11 - w * 0.004);
     if (G.spawnT <= 0 && G.level.foes.length < cap) {
       G.spawnT = gap;
-      const n = 12 + Math.min(52, (w * 3.2) | 0);
-      spawnSurviveAround(surviveKind(w), false, n);
+      const n = 14 + Math.min(48, (w * 2.8) | 0);
+      if (!spawnSurviveAround(surviveKind(w), false, n)) {
+        spawnSurviveAround(surviveKind(w), false, n, true);
+      }
     }
     G.hordeT = (G.hordeT == null ? 4.5 : G.hordeT) - dt;
     if (G.hordeT <= 0) {
@@ -887,10 +890,15 @@
       say("A flood — " + pack + " more.");
     }
     let drain = 0;
-    while ((G._spawnQ || 0) > 0 && G.level.foes.length < cap && drain < 56) {
+    while ((G._spawnQ || 0) > 0 && G.level.foes.length < cap && drain < 64) {
       const k = surviveKind(w);
-      const got = spawnSurviveAround(k, false, Math.min(8, G._spawnQ));
-      if (!got) break;
+      const want = Math.min(10, G._spawnQ);
+      let got = spawnSurviveAround(k, false, want);
+      if (!got) got = spawnSurviveAround(k, false, want, true);
+      if (!got) {
+        G._spawnQ = Math.max(0, G._spawnQ - 8);
+        break;
+      }
       G._spawnQ = Math.max(0, G._spawnQ - got);
       drain += got;
     }
@@ -899,7 +907,7 @@
       const nB = 1 + (w >= 15 ? 1 : 0) + (w >= 25 ? 1 : 0);
       for (let i = 0; i < nB; i++) {
         const bk = SURVIVE_BOSSES[(((w / 5) | 0) + i) % SURVIVE_BOSSES.length];
-        spawnSurviveAround(bk, true);
+        if (!spawnSurviveAround(bk, true)) spawnSurviveAround(bk, true, 1, true);
         emit("onBossSpawn", { w: w });
       }
       say(nB > 1 ? "Named guardians enter the long crypt." : "A named guardian enters the long crypt.");
