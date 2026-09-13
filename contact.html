@@ -7,7 +7,13 @@
 <meta name="description" content="Contact Justin Helmer / Excavationpro about chatagent.ca guides, tools, privacy, or AdSense concerns.">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="https://chatagent.ca/contact.html">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/assets/site.css">
+<link rel="stylesheet" href="/assets/site-kit.css">
+<meta property="og:title" content="Contact — chatagent.ca">
+<meta property="og:description" content="Contact Justin Helmer / Excavationpro.">
+<meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image:alt" content="chatagent.ca">
 </head>
 <body>
 <header class="site">
@@ -34,6 +40,27 @@
       Site: <a href="https://chatagent.ca/">https://chatagent.ca/</a><br>
       About: <a href="/about.html">About page</a>
     </p>
+
+    <h2>On-site form</h2>
+    <p>Use this form, then we still read public channels. No street address is published. Public contact: <strong>@Excavationpro</strong> on X · GitHub <strong>DeepSeekOracle</strong>.</p>
+    <form class="contact-form" id="contactForm" action="/thanks.html" method="get" novalidate>
+      <div class="field">
+        <label for="cname">Name</label>
+        <input id="cname" name="name" required autocomplete="name">
+        <p class="field-err">Please enter your name.</p>
+      </div>
+      <div class="field">
+        <label for="cemail">Email</label>
+        <input id="cemail" name="email" type="email" required autocomplete="email">
+        <p class="field-err">Please enter a valid email.</p>
+      </div>
+      <div class="field">
+        <label for="cmsg">Message</label>
+        <textarea id="cmsg" name="msg" rows="5" required></textarea>
+        <p class="field-err">Please write a short message. Do not paste secrets.</p>
+      </div>
+      <button type="submit">Send</button>
+    </form>
 
     <h2>How to reach us</h2>
     <ul>
@@ -82,6 +109,18 @@
     <p>© <span id="y"></span> Justin Helmer · chatagent.ca</p>
   </div>
 </footer>
+<div class="sticky-cta" aria-label="Mobile actions">
+  <a class="pri" href="/guides/">Guides</a>
+  <a class="sec" href="https://www.paypal.com/paypalme/ExcavationPro">Donate</a>
+</div>
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent">
+  <div>Ads may use cookies after you accept. <a href="/privacy.html">Privacy</a></div>
+  <div>
+    <button type="button" class="ok" id="cookieOk">Accept</button>
+    <button type="button" class="no" id="cookieNo">Decline</button>
+  </div>
+</div>
+<script src="/assets/site-kit.js" defer></script>
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
 </body>
 </html>
