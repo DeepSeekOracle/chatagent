@@ -6,7 +6,7 @@
   setTimeout(hideLoad, 1800);
 
   var banner = document.getElementById("cookieBanner");
-  var key = "chatagent_cookies";
+  var key = document.documentElement.getAttribute("data-cookie-key") || "chatagent_cookies";
   try {
     var v = localStorage.getItem(key);
     if (banner && v !== "accepted" && v !== "declined") banner.classList.add("show");
