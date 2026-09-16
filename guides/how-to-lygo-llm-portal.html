@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to hook an LLM to the LYGO portal | chatagent.ca</title>
+<meta name="description" content="Step-by-step: use the free on-page LYGO steward, or connect Groq, OpenAI, Claude, Grok, Ollama, or a local LYGO console to https://chatagent.ca/portal/.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://chatagent.ca/guides/how-to-lygo-llm-portal.html">
+<meta name="author" content="Justin Helmer">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://chatagent.ca/guides/how-to-lygo-llm-portal.html">
+<meta property="og:title" content="How to hook an LLM to the LYGO portal">
+<meta property="og:description" content="On-page steward works with no key. Groq free tier, OpenAI, Claude, Grok, Ollama, local console.">
+<meta property="og:image" content="https://chatagent.ca/portal/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="How to hook an LLM to the LYGO portal">
+<meta name="twitter:image" content="https://chatagent.ca/portal/og.jpg">
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to hook an LLM to the LYGO portal",
+  "description": "Connect Groq, OpenAI, Claude, local Ollama, or the on-page steward to chatagent.ca/portal.",
+  "url": "https://chatagent.ca/guides/how-to-lygo-llm-portal.html",
+  "datePublished": "2026-09-16",
+  "author": {"@type": "Person", "name": "Justin Helmer"}
+}
+</script>
+</head>
+<body>
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="/">chatagent.ca</a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/guides/">Guides</a>
+      <a href="/portal/">LLM Portal</a>
+      <a href="/about.html">About</a>
+    </nav>
+  </div>
+</header>
+<div class="wrap prose">
+  <p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Hook an LLM</p>
+  <article class="card">
+    <h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">How to hook an LLM to the LYGO portal</h1>
+    <p class="meta">By Justin Helmer · 16 September 2026 · ~8 minute read · Free</p>
+    <div class="toc">
+      <strong>On this page</strong>
+      <a href="#now">It already works</a>
+      <a href="#groq">Fastest real model (Groq)</a>
+      <a href="#providers">Other providers</a>
+      <a href="#local">Local console / Ollama</a>
+      <a href="#cors">If Connect fails</a>
+      <a href="#disclaimer">Disclaimer</a>
+    </div>
+
+    <h2 id="now">It already works (no key)</h2>
+    <p>Open <a href="/portal/">chatagent.ca/portal/</a>. The default provider is the <strong>on-page LYGO steward</strong>. You can chat immediately: Wikipedia, weather, Δ9 champion frames, and this hook-up help. It is not a 7B hosted GPU. GitHub Pages cannot run llama.cpp.</p>
+
+    <h2 id="groq">Fastest real model — Groq free tier</h2>
+    <ol>
+      <li>Create a key at <a href="https://console.groq.com/keys" rel="noopener">console.groq.com/keys</a>.</li>
+      <li>On the portal, choose <strong>Groq (free tier)</strong>.</li>
+      <li>Paste the key (it stays in this browser tab, not on our servers).</li>
+      <li>Click <strong>Connect</strong>, then send a message.</li>
+    </ol>
+    <p>Default model: <code>llama-3.1-8b-instant</code>. You can type another Groq model id.</p>
+
+    <h2 id="providers">Other providers (same three steps)</h2>
+    <p>The portal speaks OpenAI-style <code>/v1/chat/completions</code> plus Anthropic <code>/v1/messages</code> and Ollama <code>/api/chat</code>.</p>
+    <table>
+      <thead><tr><th>Provider</th><th>Where to get a key</th></tr></thead>
+      <tbody>
+        <tr><td>OpenRouter</td><td>openrouter.ai/keys</td></tr>
+        <tr><td>OpenAI</td><td>platform.openai.com/api-keys</td></tr>
+        <tr><td>xAI Grok</td><td>console.x.ai</td></tr>
+        <tr><td>DeepSeek</td><td>platform.deepseek.com</td></tr>
+        <tr><td>Mistral</td><td>console.mistral.ai</td></tr>
+        <tr><td>Together / Fireworks</td><td>their consoles</td></tr>
+        <tr><td>Google Gemini</td><td>aistudio.google.com/apikey (OpenAI-compat URL)</td></tr>
+        <tr><td>Anthropic Claude</td><td>console.anthropic.com</td></tr>
+        <tr><td>Hugging Face</td><td>huggingface.co/settings/tokens</td></tr>
+        <tr><td>Custom</td><td>Paste any HTTPS <code>…/v1/chat/completions</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2 id="local">Local LYGO console or Ollama</h2>
+    <p>Full file/skill limbs are <strong>not</strong> on the public page. Install the <a href="/lygo-llm-console.html">public kit</a>, run <code>LYGO_LLM_CONSOLE.bat</code>, then pick <strong>Local LYGO console :9641</strong>. Ollama: run <code>ollama serve</code> and pick Local Ollama.</p>
+    <p>HTTPS pages often <strong>cannot</strong> call <code>http://127.0.0.1</code> (mixed content). If that happens, use the local console window itself, not the chatagent.ca tab.</p>
+
+    <h2 id="cors">If Connect fails</h2>
+    <p>Most paid APIs block browser CORS. That is their policy. Workarounds: Groq/OpenRouter, a local console, or a small local proxy. We do not currently expose a public GPU on chatagent.ca. A stream-PC gateway (<code>public_gateway.py</code>) is optional for the steward and is not this GitHub Pages site.</p>
+
+    <h2 id="disclaimer">Disclaimer</h2>
+    <ul>
+      <li>RESOURCE, not CANON. Dual ledgers / Star Chart stay canon.</li>
+      <li>Not medical, legal, or financial advice. You remain the publisher.</li>
+      <li>Do not paste secrets into a cloud provider unless you accept that provider’s terms.</li>
+      <li>P0 blocks OS-wipe style prompts. Donate is optional: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>.</li>
+    </ul>
+    <p><a href="/portal/">Back to the portal</a></p>
+  </article>
+</div>
+</body>
+</html>
