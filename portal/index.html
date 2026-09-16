@@ -6,7 +6,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
+<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
 <meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
@@ -102,7 +102,7 @@
     <div>
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
-      <p class="sub">Bring a <strong>free or paid API key</strong> (Groq, OpenAI, Claude, Grok, DeepSeek, Hugging Face, or any OpenAI-compatible URL). This page is a LYGO-aligned <em>agent studio in the browser</em> — wiki, fetch, weather, Δ9 champions. It does <strong>not</strong> host a GPU. Full local GGUF console: <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub FULL</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
+      <p class="sub">Bring a <strong>free or paid API key</strong> (Groq, OpenAI, Claude, Grok, DeepSeek, Hugging Face, or any OpenAI-compatible URL). This page is a LYGO-aligned <em>agent studio in the browser</em> — 50+ tools (wiki, fetch, weather, GitHub, lattice handshake, Δ9 champions). It does <strong>not</strong> host a GPU. Full local GGUF console: <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub FULL</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
         <a href="https://chatagent.ca/">Home</a>
         <a href="https://chatagent.ca/portal/" aria-current="page">Portal</a>
@@ -152,10 +152,17 @@
     <div id="skills-list" class="skills-list"></div>
     <p class="hint" id="skill-pack">Loading pack…</p>
     <h2>Agent limbs</h2>
-    <p class="hint">Run in this browser after Connect. No server disk.</p>
+    <p class="hint">All browser-safe tools are installed on this page. Disk/shell stay on the local console.</p>
     <div class="limbs">
       <button type="button" data-limb="wiki">wiki</button>
       <button type="button" data-limb="weather">weather</button>
+      <button type="button" data-limb="now">now</button>
+      <button type="button" data-limb="hn">HN</button>
+      <button type="button" data-limb="github">GitHub</button>
+      <button type="button" data-limb="handshake">lattice</button>
+      <button type="button" data-limb="whoami">whoami</button>
+      <button type="button" data-limb="iss">ISS</button>
+      <button type="button" data-limb="quake">quakes</button>
       <button type="button" data-limb="howto">How to connect</button>
       <button type="button" data-limb="skillhub">SkillHub FULL</button>
       <button type="button" data-limb="kit">Console docs</button>
@@ -172,7 +179,7 @@ url: https://chatagent.ca/portal/
 channel: PUBLIC RESOURCE — API keys in the visitor browser
 not: hosted GPU; admin disks; vaults
 providers: groq, openrouter, openai, xai, deepseek, mistral, together, fireworks, gemini, anthropic, huggingface, custom OpenAI-compat
-browser_limbs: wiki_search, fetch_page, weather, now, calc, champion, hash_text, notepad(localStorage)
+browser_limbs: 50+ HTTPS + tab tools (wiki, fetch, weather, github, lattice_handshake, champions, …); no disk/shell
 full_local_kit: https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel
 docs: https://chatagent.ca/lygo-llm-console.html
 how_to: https://chatagent.ca/guides/how-to-lygo-llm-portal.html
@@ -284,7 +291,8 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
   </div>
 </div>
-<script src="app.js"></script>
+<script src="tools.js?v=20260916t"></script>
+<script src="app.js?v=20260916t"></script>
 <script src="radio.js"></script>
 <script src="donate.js"></script>
 </body>
