@@ -24,6 +24,7 @@
   "public_agent_principle": "verify dual ledgers → align → dry-run propose → human consent → optional live chart",
   "cyborg_principle": "boot limbs → task with Continuum self-police → can_claim_done only when claims hold → human consent for plant/publish",
   "featured": [
+    "lygo-llm-console-kernel",
     "lygo-cyborg-kernel",
     "lygo-continuum",
     "lygo-continuum-integrator",
@@ -36,6 +37,29 @@
     "lygo-emotional-ram"
   ],
   "skills": [
+    {
+      "slug": "lygo-llm-console-kernel",
+      "name": "LYGO LLM Console — KERNEL agent portal",
+      "package": "lygo-llm-console-kernel-full",
+      "zip": "lygo-llm-console-kernel-full.zip",
+      "zip_rel": "dist/lygo-llm-console-kernel-full.zip",
+      "zip_sha256": "31f1bb65bec9ba948e8f5a9e7600cc10e700a3b30caa50c5d3c3fdc09293356e",
+      "bytes": 69145,
+      "file_count": 64,
+      "role": "Unlocked local GGUF agent portal (scan/boot, 39 limbs, search, world clock, SOUL/MEMORY). Drop Apache-2.0 Qwen2.5-1.5B GGUF in models/ then Scan. Add more GGUFs yourself.",
+      "tier": "kernel",
+      "harm_default": "consent_gated",
+      "source_path": "lygo_llm_console",
+      "tier_label": "Kernel",
+      "channel_label": "FULL engineer zip (not ClawHub)",
+      "generic_model": {
+        "name": "Qwen2.5-1.5B-Instruct Q4_K_M",
+        "license": "Apache-2.0",
+        "file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+      }
+    },
     {
       "slug": "lygo-public-agent-join-kit",
       "name": "Public Agent Join Kit — FULL zip — FULL zip",
