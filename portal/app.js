@@ -18,7 +18,7 @@
   };
   const P0 = /format\s+c:|\bdiskpart\b|\bbcdedit\b|rm\s+-rf\s+\/|invoke-expression/i;
   const PROVIDERS = {
-    groq: { label: "Groq (free, no card)", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b", key: true, help: "console.groq.com/keys · model openai/gpt-oss-20b (llama-3.1-8b-instant is enterprise-only since 2026-08-16)" },
+    groq: { label: "Groq (free, no card)", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b", models: ["openai/gpt-oss-20b", "groq/compound-mini", "groq/compound", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"], key: true, help: "console.groq.com/keys — paste key, Connect. Model is chosen for you." },
     gemini: { label: "Google Gemini (free, no card)", kind: "openai", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: "gemini-2.0-flash", key: true, help: "aistudio.google.com/apikey" },
     openrouter: { label: "OpenRouter (many :free models)", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", model: "openrouter/auto", key: true, help: "openrouter.ai/keys — use model ids ending :free", extra: { "HTTP-Referer": "https://chatagent.ca/portal/", "X-Title": "LYGO API Portal" } },
     cerebras: { label: "Cerebras (fast, free/trial)", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", model: "llama3.1-8b", key: true, help: "cloud.cerebras.ai" },
@@ -100,19 +100,45 @@
     return PROVIDERS[modeEl.value] || PROVIDERS.groq;
   }
 
+  function fillModelOptions(ids, selected) {
+    if (!modelEl) return selected || "";
+    const want = selected || (modelEl.value) || (provider().model) || "";
+    const list = [];
+    (ids || []).forEach(function (id) {
+      if (id && list.indexOf(id) < 0) list.push(id);
+    });
+    if (want && list.indexOf(want) < 0) list.unshift(want);
+    if (!list.length) list.push("openai/gpt-oss-20b");
+    modelEl.innerHTML = "";
+    list.forEach(function (id) {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = id;
+      modelEl.appendChild(o);
+    });
+    modelEl.value = list.indexOf(want) >= 0 ? want : list[0];
+    return modelEl.value;
+  }
+
   function fillProvider() {
     const p = provider();
-    if (modelEl) modelEl.value = p.model || modelEl.value;
-    if (endpointEl) endpointEl.value = p.url || "";
+    fillModelOptions(p.models || (p.model ? [p.model] : []), p.model);
+    remapDeadModel();
+    if (endpointEl) {
+      endpointEl.value = p.url || "";
+      const custom = modeEl && modeEl.value === "custom";
+      endpointEl.hidden = !custom;
+      if (custom) endpointEl.removeAttribute("hidden");
+    }
     if (tokenEl) {
       tokenEl.style.display = p.key ? "" : "none";
-      tokenEl.placeholder = "API key stays in this browser — never sent to chatagent.ca";
+      tokenEl.placeholder = "Paste API key — stays in this browser";
     }
     const help = document.getElementById("mode-help");
     if (help) {
       help.innerHTML =
-        p.help +
-        ' · <a href="/guides/how-to-lygo-llm-portal.html">How to connect</a> · Need a local GPU? <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">Download FULL console</a>';
+        (p.help || "Paste a key → Connect. Model is chosen for you.") +
+        ' · <a href="/guides/how-to-lygo-llm-portal.html">How to connect</a>';
     }
     setHealth("API portal · " + p.label + (connected ? " · connected" : " · paste key → Connect"));
   }
@@ -195,7 +221,7 @@
     const cur = (modelEl.value || "").trim();
     const next = DEAD_MODELS[cur];
     if (next) {
-      modelEl.value = next;
+      fillModelOptions((provider().models || []).concat([next, cur]), next);
       return next;
     }
     return cur;
@@ -217,17 +243,23 @@
   async function pickLiveModel() {
     remapDeadModel();
     const current = (modelEl && modelEl.value) || "";
-    const ids = await listProviderModels();
-    if (!ids.length) return current;
-    if (ids.indexOf(current) >= 0) return current;
-    const prefer = (MODEL_PREFER[modeEl.value] || []).concat(ids);
+    const ids = (await listProviderModels()).filter(isChatModel);
+    if (!ids.length) {
+      const forced = remapDeadModel() || current || "openai/gpt-oss-20b";
+      fillModelOptions((provider().models || []).concat([forced]), forced);
+      return forced;
+    }
+    const prefer = (MODEL_PREFER[modeEl.value] || []).concat([current], ids);
+    let pick = "";
     for (let i = 0; i < prefer.length; i++) {
-      if (ids.indexOf(prefer[i]) >= 0 && isChatModel(prefer[i])) {
-        modelEl.value = prefer[i];
-        return prefer[i];
+      if (ids.indexOf(prefer[i]) >= 0) {
+        pick = prefer[i];
+        break;
       }
     }
-    return current;
+    if (!pick) pick = ids[0];
+    fillModelOptions(prefer.concat(ids), pick);
+    return pick;
   }
 
   async function callApi(messages) {
@@ -548,13 +580,18 @@
     msg.value = "";
     bubble("user", text);
     if (!connected) {
-      bubble(
-        "assistant",
-        "This page is the LYGO API portal — not a hosted GPU.\n\n1) Pick Groq (free) or another provider.\n2) Paste the key (stays in this tab).\n3) Connect, then send again.\n\nWant models on your disk, folders, SkillHub FULL, USB CLAW? Download the local console:\nhttps://chatagent.ca/lygoskillhub.html#lygo-llm-kernel\nhttps://chatagent.ca/lygo-llm-console.html\nGuide: https://chatagent.ca/guides/how-to-lygo-llm-portal.html"
-      );
-      return;
+      if (tokenEl && tokenEl.value) {
+        setHealth("connecting…");
+        const live = await pickLiveModel();
+        connected = true;
+        setHealth("connected · " + provider().label + " · " + live);
+      } else {
+        bubble("assistant", "Paste a Groq key in the key box, then send again. Model is chosen for you.");
+        return;
+      }
     }
     history.push({ role: "user", content: text });
+    await pickLiveModel();
     const invoked = Object.keys(CHAMPS).find(function (n) { return text.toUpperCase().indexOf(n.toUpperCase()) >= 0; });
     let messages = [{ role: "system", content: systemPrompt(invoked) }].concat(history.slice(-10));
     let out = "";
@@ -581,8 +618,15 @@
     } catch (e) {
       const m = String(e && e.message ? e.message : e);
       if (/does not exist|do not have access|model_not_found|invalid_model/i.test(m)) {
-        out =
-          "That model id is not on this key. Groq retired llama-3.1-8b-instant for free keys (2026-08-16).\n\nPut this in the Model box, Connect again, then send:\nopenai/gpt-oss-20b\n\nLive list: console.groq.com/docs/models";
+        const live = await pickLiveModel();
+        try {
+          const j2 = await callApi(messages);
+          const got2 = extractMessage(j2);
+          out = got2.text || "";
+          if (live) setHealth("connected · " + provider().label + " · " + live);
+        } catch (e2) {
+          out = "Could not reach a live model on this key (" + live + "). Try Connect again — the portal picks the model for you.";
+        }
       } else if (/Failed to fetch|CORS|NetworkError/i.test(m)) {
         out = "Provider error: " + m + "\nThis vendor may block browser calls. Try Groq or OpenRouter.";
       } else {
@@ -597,7 +641,7 @@
 
   bubble(
     "assistant",
-    "Paste a Groq key → Connect → chat. Groq model: openai/gpt-oss-20b (free). Llama 3.1 8B Instant is enterprise-only now."
+    "Paste a Groq key → Connect (or just send). The model is chosen for you."
   );
 
   const worldLocal = document.getElementById("world-local");
