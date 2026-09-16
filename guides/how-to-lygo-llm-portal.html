@@ -58,7 +58,10 @@
     </div>
 
     <h2 id="now">It already works (no key)</h2>
-    <p>Open <a href="/portal/">chatagent.ca/portal/</a>. The default provider is the <strong>on-page LYGO steward</strong>. You can chat immediately: Wikipedia, weather, Δ9 champion frames, and this hook-up help. It is not a 7B hosted GPU. GitHub Pages cannot run llama.cpp.</p>
+    <p>Open <a href="/portal/">chatagent.ca/portal/</a>. The default is the <strong>on-page LYGO steward</strong> (Wikipedia, champions, weather). GitHub Pages cannot run llama.cpp.</p>
+    <p>The <strong>real basic model</strong> is <code>qwen2.5:3b</code> on the always-on stream PC (Ollama behind a P0 public gateway). On the home LAN open:</p>
+    <p><a href="http://10.0.0.209:8080/portal/">http://10.0.0.209:8080/portal/</a> — same UI, live model, no API key. Stronger models: pick Groq/OpenAI/etc on the same page.</p>
+    <p>The public internet cannot reach a private 10.x address. A named Cloudflare tunnel (not a quick tunnel) is required to put that same gateway on a stable HTTPS URL for chatagent.ca visitors.</p>
 
     <h2 id="groq">Fastest real model — Groq free tier</h2>
     <ol>
