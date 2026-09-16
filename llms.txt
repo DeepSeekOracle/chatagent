@@ -4,7 +4,7 @@
 > Steward: Justin Helmer (Excavationpro / Lightfather). Dual ledgers / Haven Star Chart = CANON. This site = RESOURCE.
 
 LYGO API Portal: https://chatagent.ca/portal/
-  Bring Groq/OpenAI/Claude/Grok/HF/OpenRouter key. Browser agent tools. No GPU on this domain.
+  Bring any OpenAI-compatible key (Groq, Gemini, OpenRouter, Cerebras, HF, Mistral, NVIDIA, …). Browser agent tools. No GPU on this domain. Free-key list: https://chatagent.ca/portal/#free-keys
 How-to: https://chatagent.ca/guides/how-to-lygo-llm-portal.html
 FULL local LYGO LLM Console (GGUF, folders, USB): https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel
 Docs: https://chatagent.ca/lygo-llm-console.html
