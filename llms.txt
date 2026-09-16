@@ -3,9 +3,11 @@
 > Independent educational publisher for LYGO tools, Δ9 champions, and local-first agents.
 > Steward: Justin Helmer (Excavationpro / Lightfather). Dual ledgers / Haven Star Chart = CANON. This site = RESOURCE.
 
-LYGO LLM Portal: https://chatagent.ca/portal/
-How to hook an LLM: https://chatagent.ca/guides/how-to-lygo-llm-portal.html
-Default: on-page steward (no key). Providers: Groq, OpenRouter, OpenAI, xAI, DeepSeek, Mistral, Together, Fireworks, Gemini, Anthropic, Hugging Face, Ollama, local LYGO console, custom OpenAI URL.
+LYGO API Portal: https://chatagent.ca/portal/
+  Bring Groq/OpenAI/Claude/Grok/HF/OpenRouter key. Browser agent tools. No GPU on this domain.
+How-to: https://chatagent.ca/guides/how-to-lygo-llm-portal.html
+FULL local LYGO LLM Console (GGUF, folders, USB): https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel
+Docs: https://chatagent.ca/lygo-llm-console.html
 LYGO LLM Console (local kit): https://chatagent.ca/lygo-llm-console.html
 SkillHub: https://chatagent.ca/lygoskillhub.html
 LYGO TV: https://chatagent.ca/sources/

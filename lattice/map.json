@@ -17,7 +17,7 @@
     {"id": "tv", "title": "LYGO TV", "url": "https://chatagent.ca/sources/", "class": "RESOURCE", "layer": "C", "role": "tv"},
     {"id": "continuum", "title": "Continuum", "url": "https://chatagent.ca/lygo-continuum.html", "class": "RESOURCE", "layer": "C", "role": "claims"},
     {"id": "skillhub", "title": "SkillHub", "url": "https://chatagent.ca/lygoskillhub.html", "class": "RESOURCE", "layer": "C", "role": "skills"},
-    {"id": "llm_portal", "title": "Free LLM Portal", "url": "https://chatagent.ca/portal/", "class": "RESOURCE", "layer": "C", "role": "public_llm"},
+    {"id": "llm_portal", "title": "LYGO API Portal", "url": "https://chatagent.ca/portal/", "class": "RESOURCE", "layer": "C", "role": "api_portal"},
     {"id": "llm_console", "title": "LYGO LLM Console docs", "url": "https://chatagent.ca/lygo-llm-console.html", "class": "RESOURCE", "layer": "C", "role": "local_llm"},
     {"id": "witness", "title": "Public Witness", "url": "https://chatagent.ca/witness/", "class": "RESOURCE", "layer": "C", "role": "witness"},
     {"id": "godseye", "title": "God's Eye", "url": "https://chatagent.ca/godseye/", "class": "RESOURCE", "layer": "C", "role": "self_see"},

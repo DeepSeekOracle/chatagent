@@ -3,29 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>How to hook an LLM to the LYGO portal | chatagent.ca</title>
-<meta name="description" content="Step-by-step: use the free on-page LYGO steward, or connect Groq, OpenAI, Claude, Grok, Ollama, or a local LYGO console to https://chatagent.ca/portal/.">
+<title>How to use the LYGO API Portal | chatagent.ca</title>
+<meta name="description" content="Connect Groq, OpenAI, Claude, Grok or any OpenAI-compatible key to the LYGO API Portal. Separate download: FULL local LYGO LLM Console from SkillHub.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <link rel="canonical" href="https://chatagent.ca/guides/how-to-lygo-llm-portal.html">
 <meta name="author" content="Justin Helmer">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://chatagent.ca/guides/how-to-lygo-llm-portal.html">
-<meta property="og:title" content="How to hook an LLM to the LYGO portal">
-<meta property="og:description" content="On-page steward works with no key. Groq free tier, OpenAI, Claude, Grok, Ollama, local console.">
+<meta property="og:title" content="How to use the LYGO API Portal">
+<meta property="og:description" content="Bring your API key. Local FULL console is a SkillHub download — not this webpage.">
 <meta property="og:image" content="https://chatagent.ca/portal/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
-<meta name="twitter:title" content="How to hook an LLM to the LYGO portal">
+<meta name="twitter:title" content="How to use the LYGO API Portal">
 <meta name="twitter:image" content="https://chatagent.ca/portal/og.jpg">
 <link rel="stylesheet" href="/assets/site.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  "name": "How to hook an LLM to the LYGO portal",
-  "description": "Connect Groq, OpenAI, Claude, local Ollama, or the on-page steward to chatagent.ca/portal.",
+  "name": "How to use the LYGO API Portal",
+  "description": "Connect a free or paid LLM API key to chatagent.ca/portal. Download the local FULL console from SkillHub if you need GGUF on disk.",
   "url": "https://chatagent.ca/guides/how-to-lygo-llm-portal.html",
   "datePublished": "2026-09-16",
+  "dateModified": "2026-09-16",
   "author": {"@type": "Person", "name": "Justin Helmer"}
 }
 </script>
@@ -37,74 +38,62 @@
     <nav class="navlinks" aria-label="Primary">
       <a href="/">Home</a>
       <a href="/guides/">Guides</a>
-      <a href="/portal/">LLM Portal</a>
+      <a href="/portal/">API Portal</a>
       <a href="/about.html">About</a>
     </nav>
   </div>
 </header>
 <div class="wrap prose">
-  <p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · Hook an LLM</p>
+  <p class="breadcrumb"><a href="/">Home</a> · <a href="/guides/">Guides</a> · API Portal</p>
   <article class="card">
-    <h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">How to hook an LLM to the LYGO portal</h1>
-    <p class="meta">By Justin Helmer · 16 September 2026 · ~8 minute read · Free</p>
+    <h1 style="margin-top:0;font-size:1.7rem;color:var(--accent2)">How to use the LYGO API Portal</h1>
+    <p class="meta">By Justin Helmer · updated 16 September 2026 · Free</p>
     <div class="toc">
       <strong>On this page</strong>
-      <a href="#now">It already works</a>
-      <a href="#groq">Fastest real model (Groq)</a>
-      <a href="#providers">Other providers</a>
-      <a href="#local">Local console / Ollama</a>
+      <a href="#split">Two products</a>
+      <a href="#api">Connect an API (this page)</a>
+      <a href="#tools">Browser agent tools</a>
+      <a href="#local">Download the FULL local console</a>
       <a href="#cors">If Connect fails</a>
       <a href="#disclaimer">Disclaimer</a>
     </div>
 
-    <h2 id="now">It already works (no key)</h2>
-    <p>Open <a href="/portal/">chatagent.ca/portal/</a>. The default is the <strong>on-page LYGO steward</strong> (Wikipedia, champions, weather). GitHub Pages cannot run llama.cpp.</p>
-    <p>The <strong>real basic model</strong> is <code>qwen2.5:3b</code> on the always-on stream PC (Ollama behind a P0 public gateway). On the home LAN open:</p>
-    <p><a href="http://10.0.0.209:8080/portal/">http://10.0.0.209:8080/portal/</a> — same UI, live model, no API key. Stronger models: pick Groq/OpenAI/etc on the same page.</p>
-    <p>The public internet cannot reach a private 10.x address. A named Cloudflare tunnel (not a quick tunnel) is required to put that same gateway on a stable HTTPS URL for chatagent.ca visitors.</p>
+    <h2 id="split">Two products — keep them separate</h2>
+    <p><strong>https://chatagent.ca/portal/</strong> is an <em>API portal</em>. You bring a free or paid key. This domain does not host a GPU.</p>
+    <p><strong>FULL local LYGO LLM Console</strong> is a download. Your GGUF models, folders, SkillHub FULL, USB CLAW. That kit is not this webpage.</p>
 
-    <h2 id="groq">Fastest real model — Groq free tier</h2>
+    <h2 id="api">Connect an API (3 steps)</h2>
     <ol>
-      <li>Create a key at <a href="https://console.groq.com/keys" rel="noopener">console.groq.com/keys</a>.</li>
-      <li>On the portal, choose <strong>Groq (free tier)</strong>.</li>
-      <li>Paste the key (it stays in this browser tab, not on our servers).</li>
-      <li>Click <strong>Connect</strong>, then send a message.</li>
+      <li>Open <a href="/portal/">chatagent.ca/portal/</a>. Default provider is <strong>Groq (free tier)</strong> — get a key at <a href="https://console.groq.com/keys" rel="noopener">console.groq.com/keys</a>.</li>
+      <li>Paste the key. It stays in <em>this browser tab</em>. GitHub Pages never receives it.</li>
+      <li>Click <strong>Connect</strong>, then chat.</li>
     </ol>
-    <p>Default model: <code>llama-3.1-8b-instant</code>. You can type another Groq model id.</p>
+    <p>Also in the list: OpenRouter, OpenAI, xAI Grok, DeepSeek, Mistral, Together, Fireworks, Gemini, Anthropic, Hugging Face, or a custom <code>…/v1/chat/completions</code> URL.</p>
 
-    <h2 id="providers">Other providers (same three steps)</h2>
-    <p>The portal speaks OpenAI-style <code>/v1/chat/completions</code> plus Anthropic <code>/v1/messages</code> and Ollama <code>/api/chat</code>.</p>
-    <table>
-      <thead><tr><th>Provider</th><th>Where to get a key</th></tr></thead>
-      <tbody>
-        <tr><td>OpenRouter</td><td>openrouter.ai/keys</td></tr>
-        <tr><td>OpenAI</td><td>platform.openai.com/api-keys</td></tr>
-        <tr><td>xAI Grok</td><td>console.x.ai</td></tr>
-        <tr><td>DeepSeek</td><td>platform.deepseek.com</td></tr>
-        <tr><td>Mistral</td><td>console.mistral.ai</td></tr>
-        <tr><td>Together / Fireworks</td><td>their consoles</td></tr>
-        <tr><td>Google Gemini</td><td>aistudio.google.com/apikey (OpenAI-compat URL)</td></tr>
-        <tr><td>Anthropic Claude</td><td>console.anthropic.com</td></tr>
-        <tr><td>Hugging Face</td><td>huggingface.co/settings/tokens</td></tr>
-        <tr><td>Custom</td><td>Paste any HTTPS <code>…/v1/chat/completions</code></td></tr>
-      </tbody>
-    </table>
+    <h2 id="tools">Browser agent tools</h2>
+    <p>After Connect, the model can call: Wikipedia, readable page fetch (r.jina.ai), weather, time, calc, Δ9 champion lenses, SHA-256. Trace is on the right. Notepad is localStorage only.</p>
+    <p>No server disks. No GGUF scan. That is the local kit.</p>
 
-    <h2 id="local">Local LYGO console or Ollama</h2>
-    <p>Full file/skill limbs are <strong>not</strong> on the public page. Install the <a href="/lygo-llm-console.html">public kit</a>, run <code>LYGO_LLM_CONSOLE.bat</code>, then pick <strong>Local LYGO console :9641</strong>. Ollama: run <code>ollama serve</code> and pick Local Ollama.</p>
-    <p>HTTPS pages often <strong>cannot</strong> call <code>http://127.0.0.1</code> (mixed content). If that happens, use the local console window itself, not the chatagent.ca tab.</p>
+    <h2 id="local">Download the FULL local console</h2>
+    <p>If you want models on your machine:</p>
+    <ol>
+      <li><a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub — FULL LYGO LLM kernel</a></li>
+      <li>Docs: <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a></li>
+      <li>ClawHub map: <a href="https://clawhub.ai/deepseekoracle/skills/lygo-llm-console">@deepseekoracle/lygo-llm-console</a></li>
+    </ol>
+    <p>Windows: unzip, run the BAT, Scan, Boot a GGUF. Admin USB is a separate steward channel.</p>
 
     <h2 id="cors">If Connect fails</h2>
-    <p>Most paid APIs block browser CORS. That is their policy. Workarounds: Groq/OpenRouter, a local console, or a small local proxy. We do not currently expose a public GPU on chatagent.ca. A stream-PC gateway (<code>public_gateway.py</code>) is optional for the steward and is not this GitHub Pages site.</p>
+    <p>Many vendors block browser CORS. Try Groq or OpenRouter first. Or use the local console, which talks to llama.cpp on 127.0.0.1.</p>
 
     <h2 id="disclaimer">Disclaimer</h2>
     <ul>
       <li>RESOURCE, not CANON. Dual ledgers / Star Chart stay canon.</li>
       <li>Not medical, legal, or financial advice. You remain the publisher.</li>
-      <li>Do not paste secrets into a cloud provider unless you accept that provider’s terms.</li>
-      <li>P0 blocks OS-wipe style prompts. Donate is optional: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>.</li>
+      <li>Do not paste secrets you cannot afford to send to the provider you chose.</li>
+      <li>Donate optional: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>.</li>
     </ul>
-    <p><a href="/portal/">Back to the portal</a></p>
+    <p><a href="/portal/">Open the API portal</a></p>
   </article>
 </div>
 </body>
