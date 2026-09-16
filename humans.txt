@@ -1,0 +1,13 @@
+/* TEAM */
+Publisher: Justin Helmer
+Handle: Excavationpro / Lightfather
+Site: https://chatagent.ca/about.html
+Contact: https://x.com/Excavationpro
+GitHub: https://github.com/DeepSeekOracle
+
+/* SITE */
+Standards: HTML5, Open Graph, Twitter Cards, JSON-LD
+Last update: 2026-09-16
+Language: English
+Doctype: HTML5
+IDE: local LYGO tools

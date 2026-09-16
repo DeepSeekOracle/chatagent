@@ -1,4 +1,20 @@
 User-agent: *
 Allow: /
+Allow: /portal/
+Allow: /llms.txt
+Allow: /humans.txt
+
+User-agent: GPTBot
+Allow: /portal/
+Allow: /llms.txt
+
+User-agent: Google-Extended
+Allow: /portal/
+Allow: /llms.txt
+
+User-agent: ClaudeBot
+Allow: /portal/
+Allow: /llms.txt
 
 Sitemap: https://chatagent.ca/sitemap.xml
+# Dual ledgers / Star Chart remain CANON. This site is RESOURCE.

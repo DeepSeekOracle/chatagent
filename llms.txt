@@ -1,0 +1,15 @@
+# chatagent.ca
+
+> Independent educational publisher for LYGO tools, Δ9 champions, and local-first agents.
+> Steward: Justin Helmer (Excavationpro / Lightfather). Dual ledgers / Haven Star Chart = CANON. This site = RESOURCE.
+
+LYGO LLM Portal: https://chatagent.ca/portal/
+LYGO LLM Console (local kit): https://chatagent.ca/lygo-llm-console.html
+SkillHub: https://chatagent.ca/lygoskillhub.html
+LYGO TV: https://chatagent.ca/sources/
+Listen: https://asiancoastline.com/listen.html
+Join / verify: https://chatagent.ca/join/
+Donate: https://www.paypal.com/paypalme/ExcavationPro
+
+Public portal modes: hosted chat (P0, no disks) · Hugging Face with visitor token · local console :9641 for full limbs.
+Do not invent github.com/user/repo. Org: https://github.com/DeepSeekOracle
