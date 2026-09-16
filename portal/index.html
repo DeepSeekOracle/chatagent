@@ -122,7 +122,7 @@
     </select>
     <input id="endpoint" type="text" placeholder="Endpoint (auto-filled)" autocomplete="off">
     <input id="hf-token" type="password" placeholder="API key stays in this browser" autocomplete="off">
-    <input id="model" type="text" placeholder="model id" value="llama-3.1-8b-instant" autocomplete="off">
+    <input id="model" type="text" placeholder="model id" value="openai/gpt-oss-20b" autocomplete="off">
     <button type="button" id="connect">Connect</button>
     <label class="chk hide-public" id="full-wrap"><input type="checkbox" id="full"> Full LYGO limbs</label>
   </div>
@@ -242,7 +242,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <table class="keys-table">
     <thead><tr><th>Get a key</th><th>Typical free offer</th><th>Use here</th></tr></thead>
     <tbody>
-      <tr><td><a href="https://console.groq.com/keys" rel="noopener">Groq</a></td><td>No card. Fast Llama/Qwen/gpt-oss. ~30 RPM.</td><td><button type="button" data-fill="groq">Fill Groq</button></td></tr>
+      <tr><td><a href="https://console.groq.com/keys" rel="noopener">Groq</a></td><td>No card. Default model <code>openai/gpt-oss-20b</code>. Llama 3.1 8B Instant is enterprise-only now.</td><td><button type="button" data-fill="groq">Fill Groq</button></td></tr>
       <tr><td><a href="https://aistudio.google.com/apikey" rel="noopener">Google AI Studio (Gemini)</a></td><td>No card. Gemini Flash/Pro. Generous daily cap.</td><td><button type="button" data-fill="gemini">Fill Gemini</button></td></tr>
       <tr><td><a href="https://openrouter.ai/keys" rel="noopener">OpenRouter</a></td><td>Email. Many models with <code>:free</code> suffix. ~50 req/day until you add credits.</td><td><button type="button" data-fill="openrouter">Fill OpenRouter</button></td></tr>
       <tr><td><a href="https://cloud.cerebras.ai" rel="noopener">Cerebras</a></td><td>Very fast wafer inference. Free/trial Llama &amp; Qwen.</td><td><button type="button" data-fill="cerebras">Fill Cerebras</button></td></tr>
@@ -291,8 +291,8 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
   </div>
 </div>
-<script src="tools.js?v=20260916t"></script>
-<script src="app.js?v=20260916t"></script>
+<script src="tools.js?v=20260916u"></script>
+<script src="app.js?v=20260916u"></script>
 <script src="radio.js"></script>
 <script src="donate.js"></script>
 </body>
