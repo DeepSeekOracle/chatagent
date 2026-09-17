@@ -4,6 +4,15 @@ Allow: /portal/
 Allow: /llms.txt
 Allow: /humans.txt
 
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
 User-agent: GPTBot
 Allow: /portal/
 Allow: /llms.txt

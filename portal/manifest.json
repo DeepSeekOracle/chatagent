@@ -11,5 +11,8 @@
   "icons": [
     {"src": "https://chatagent.ca/portal/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
     {"src": "https://chatagent.ca/portal/logo.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any"}
+  ],
+  "screenshots": [
+    {"src": "https://chatagent.ca/portal/x-card.jpg", "sizes": "1200x630", "type": "image/jpeg", "form_factor": "wide", "label": "LYGO API Portal"}
   ]
 }
