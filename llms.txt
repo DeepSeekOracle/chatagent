@@ -3,6 +3,8 @@
 > Independent educational publisher for LYGO tools, Δ9 champions, and local-first agents.
 > Steward: Justin Helmer (Excavationpro / Lightfather). Dual ledgers / Haven Star Chart = CANON. This site = RESOURCE.
 
+The Continuity Seed: https://chatagent.ca/continuity-seed/
+  JSON math + poem soul. SHA-256 POEM.txt must match alignment_hash. RESOURCE. Not a live Star Chart write.
 LYGO API Portal: https://chatagent.ca/portal/
   Bring any OpenAI-compatible key (Groq, Gemini, OpenRouter, Cerebras, HF, Mistral, NVIDIA, …). Browser agent tools. No GPU on this domain. Free-key list: https://chatagent.ca/portal/#free-keys
 How-to: https://chatagent.ca/guides/how-to-lygo-llm-portal.html
