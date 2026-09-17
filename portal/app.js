@@ -100,6 +100,31 @@
     return PROVIDERS[modeEl.value] || PROVIDERS.groq;
   }
 
+  function latin1(s) {
+    return String(s == null ? "" : s).replace(/[^\x00-\xFF]/g, "");
+  }
+  function readKey() {
+    let k = (tokenEl && tokenEl.value) || "";
+    k = k.replace(/^\uFEFF/, "");
+    k = k.replace(/[\u200B-\u200D\u2060\uFEFF\u00A0]/g, "");
+    k = k.replace(/[\u2018\u2019\u201C\u201D]/g, "");
+    k = k.replace(/^Bearer\s+/i, "").trim();
+    k = k.replace(/^["'`]+|["'`]+$/g, "");
+    k = k.replace(/\s+/g, "");
+    k = k.replace(/[^\x21-\x7E]/g, "");
+    if (tokenEl && k && tokenEl.value !== k) tokenEl.value = k;
+    return k;
+  }
+  function safeHeaders(obj) {
+    const out = {};
+    Object.keys(obj || {}).forEach(function (k) {
+      const key = String(k).replace(/[^\x21-\x7E]/g, "");
+      if (!key) return;
+      out[key] = latin1(obj[k]);
+    });
+    return out;
+  }
+
   function fillModelOptions(ids, selected) {
     if (!modelEl) return selected || "";
     const want = selected || (modelEl.value) || (provider().model) || "";
@@ -228,10 +253,10 @@
   }
   async function listProviderModels() {
     const u = modelsUrl();
-    const key = (tokenEl && tokenEl.value) || "";
+    const key = readKey();
     if (!u || !key) return [];
     try {
-      const headers = { Authorization: "Bearer " + key };
+      const headers = safeHeaders({ Authorization: "Bearer " + key });
       if (modeEl.value === "github") headers["api-key"] = key;
       const r = await fetch(u, { headers: headers });
       const j = await r.json().catch(function () { return {}; });
@@ -267,7 +292,7 @@
     const url = openaiUrl();
     remapDeadModel();
     const model = modelEl.value || p.model;
-    const key = (tokenEl && tokenEl.value) || "";
+    const key = readKey();
     const headers = { "Content-Type": "application/json" };
     if (key) {
       if (p.kind === "anthropic") {
@@ -279,22 +304,23 @@
       }
     }
     if (p.extra) Object.keys(p.extra).forEach(function (k) { headers[k] = p.extra[k]; });
+    const hdrs = safeHeaders(headers);
     let payload;
     if (p.kind === "anthropic") {
       payload = { model: model, max_tokens: 1024, system: messages[0] && messages[0].content, messages: messages.filter(function (m) { return m.role !== "system"; }) };
     } else {
       payload = { model: model, messages: messages, max_tokens: 1024, stream: false, tools: AGENT_TOOLS };
     }
-    let r = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(payload) });
+    let r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
     let j = await r.json().catch(function () { return {}; });
     if (!r.ok && payload.tools && (r.status === 400 || r.status === 404 || r.status === 422) && AGENT_TOOLS_CORE.length && payload.tools.length > AGENT_TOOLS_CORE.length) {
       payload.tools = AGENT_TOOLS_CORE;
-      r = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(payload) });
+      r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
       j = await r.json().catch(function () { return {}; });
     }
     if (!r.ok && payload.tools && (r.status === 400 || r.status === 404 || r.status === 422)) {
       delete payload.tools;
-      r = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(payload) });
+      r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
       j = await r.json().catch(function () { return {}; });
     }
     if (!r.ok) {
@@ -304,7 +330,7 @@
         const live = await pickLiveModel();
         if (live && live !== model) {
           payload.model = live;
-          r = await fetch(url, { method: "POST", headers: headers, body: JSON.stringify(payload) });
+          r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
           j = await r.json().catch(function () { return {}; });
           if (r.ok) return j;
         }
@@ -323,7 +349,7 @@
   document.getElementById("connect").onclick = async function () {
     fillProvider();
     const p = provider();
-    if (p.key && !(tokenEl && tokenEl.value) && modeEl.value !== "llm7" && modeEl.value !== "custom") {
+    if (p.key && !readKey() && modeEl.value !== "llm7" && modeEl.value !== "custom") {
       setHealth("paste your API key (this tab only) — " + p.help);
       bubble("assistant", "Paste a Groq/OpenAI/Grok/… key, then Connect. Keys stay in this tab.");
       return;
@@ -339,6 +365,11 @@
     setHealth("connected · " + p.label + " · " + (live || p.model));
     bubble("assistant", "Connected to " + p.label + " · model " + (live || p.model) + ". Send a message.");
   };
+  if (tokenEl) {
+    tokenEl.addEventListener("paste", function () { setTimeout(readKey, 0); });
+    tokenEl.addEventListener("blur", readKey);
+    tokenEl.addEventListener("change", readKey);
+  }
 
   if (modeEl) {
     modeEl.innerHTML = "";
@@ -580,7 +611,7 @@
     msg.value = "";
     bubble("user", text);
     if (!connected) {
-      if (tokenEl && tokenEl.value) {
+      if (readKey()) {
         setHealth("connecting…");
         const live = await pickLiveModel();
         connected = true;
@@ -626,6 +657,15 @@
           if (live) setHealth("connected · " + provider().label + " · " + live);
         } catch (e2) {
           out = "Could not reach a live model on this key (" + live + "). Try Connect again — the portal picks the model for you.";
+        }
+      } else if (/ISO-8859-1|non ISO|code point/i.test(m)) {
+        readKey();
+        try {
+          const j2 = await callApi(messages);
+          const got2 = extractMessage(j2);
+          out = got2.text || "Key cleaned. Send Hello again.";
+        } catch (e2) {
+          out = "The key paste had hidden characters. We cleaned it — press Connect and send Hello again.";
         }
       } else if (/Failed to fetch|CORS|NetworkError/i.test(m)) {
         out = "Provider error: " + m + "\nThis vendor may block browser calls. Try Groq or OpenRouter.";
