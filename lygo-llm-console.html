@@ -113,16 +113,25 @@ body.home .hero-llm {
   <p>FULL kernel zip (SkillHub vault): <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">lygoskillhub.html#lygo-llm-kernel</a> · <code>lygo-llm-console-kernel-full.zip</code></p>
   <p>KERNEL (SkillHub FULL): <a href="lygoskillhub.html#lygo-llm-kernel">lygoskillhub.html#lygo-llm-kernel</a> · <a href="data/lygo-full-skills/dist/lygo-llm-console-kernel-full.zip"><code>lygo-llm-console-kernel-full.zip</code></a></p>
   <p>File: <a href="data/lygo-full-skills/dist/lygo-llm-console-public.zip"><code>lygo-llm-console-public.zip</code></a></p>
-  <p>SHA-256: <code id="sha">0df99aeb65593e336d33a8252101364fb7b4e595e888ed79280341aa7195e4ce</code></p>
+  <p>SHA-256: <code id="sha">6040305d35ebf0b23bc6fc5d2e41153b611cb3b04491438134ac824f2cd364e0</code></p>
   <p>Also: <a href="data/lygo-full-skills/dist/lygo-llm-console-public.zip.sha256">lygo-llm-console-public.zip.sha256</a></p>
+  <p><strong>Install:</strong> unzip → double-click <code>INSTALL.bat</code> → then <code>LYGO_LLM_CONSOLE.bat</code>. That seeds <em>your</em> Soul / Identity / Memory. No steward drives or vaults.</p>
+  <p>Git (sparse):</p>
+  <pre class="ai-card">git clone --depth 1 --filter=blob:none --sparse https://github.com/DeepSeekOracle/lygo-protocol-stack.git
+cd lygo-protocol-stack
+git sparse-checkout set lygo_llm_console
+cd lygo_llm_console
+INSTALL.bat
+LYGO_LLM_CONSOLE.bat</pre>
+  <p>Source folder: <a href="https://github.com/DeepSeekOracle/lygo-protocol-stack/tree/main/lygo_llm_console">github.com/DeepSeekOracle/lygo-protocol-stack/lygo_llm_console</a></p>
   <p>ClawHub map (agents): <code>npx clawhub@latest install deepseekoracle/lygo-llm-console</code></p>
   <p>Whitepaper: <a href="https://github.com/DeepSeekOracle/lygo-protocol-stack/blob/main/docs/whitepapers/LYGO_LLM_CONSOLE_v1.md">LYGO_LLM_CONSOLE_v1.md</a></p>
 </div>
 <article id="how">
   <h2>How it works (plain language)</h2>
   <ol>
-    <li>Unzip the public kit. Put official ggml-org <code>llama-server.exe</code> (Windows CPU zip) in the kit’s <code>engine/</code> folder.</li>
-    <li>Double-click <code>LYGO_LLM_CONSOLE.bat</code>. A local page opens at <code>http://127.0.0.1:9641/</code> with a one-time operator token.</li>
+    <li>Unzip the public kit (or sparse-clone the git folder) and run <code>INSTALL.bat</code>. That creates <em>your</em> identity files. Put official ggml-org <code>llama-server.exe</code> (Windows CPU zip) in <code>engine/</code>, or let install fetch it.</li>
+    <li>Double-click <code>LYGO_LLM_CONSOLE.bat</code>. A local page opens at <code>http://127.0.0.1:9641/</code>.</li>
     <li>Click <strong>Scan drives</strong>. The console registers <code>*.gguf</code> files and, if present, a read-only Ollama model tree under <code>%USERPROFILE%\.ollama\models</code>.</li>
     <li>Load a chat model (the public default preference is a small instruct GGUF such as Qwen 2.5 3B if you have it).</li>
     <li>Chat. Optional tools stay inside the kit folder. Optional images need a matching multimodal projector. Other local apps can use <code>/v1/chat/completions</code> — the console still gates prompts; it does not run its tool loop for those clients.</li>
