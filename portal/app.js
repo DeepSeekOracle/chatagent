@@ -18,7 +18,7 @@
   };
   const P0 = /format\s+c:|\bdiskpart\b|\bbcdedit\b|rm\s+-rf\s+\/|invoke-expression/i;
   const PROVIDERS = {
-    groq: { label: "Groq (free, no card)", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b", models: ["openai/gpt-oss-20b", "groq/compound-mini", "groq/compound", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"], key: true, help: "console.groq.com/keys — paste key, Connect. Model is chosen for you." },
+    groq: { label: "Groq (free, no card)", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", model: "openai/gpt-oss-20b", models: ["openai/gpt-oss-20b", "groq/compound-mini", "groq/compound", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"], key: true, help: "Get a key at console.groq.com/keys (one free option). Any provider in the list works." },
     gemini: { label: "Google Gemini (free, no card)", kind: "openai", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", model: "gemini-2.0-flash", key: true, help: "aistudio.google.com/apikey" },
     openrouter: { label: "OpenRouter (many :free models)", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", model: "openrouter/auto", key: true, help: "openrouter.ai/keys — use model ids ending :free", extra: { "HTTP-Referer": "https://chatagent.ca/portal/", "X-Title": "LYGO API Portal" } },
     cerebras: { label: "Cerebras (fast, free/trial)", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", model: "llama3.1-8b", key: true, help: "cloud.cerebras.ai" },
@@ -45,6 +45,24 @@
   };
   const AGENT_TOOLS = window.LYGO_AGENT_TOOLS || [];
   const AGENT_TOOLS_CORE = window.LYGO_AGENT_TOOLS_CORE || AGENT_TOOLS;
+  let howtoShown = false;
+
+  function stewardHowTo(kind) {
+    const p = provider();
+    if (kind === "short" && howtoShown) {
+      return "Still no key in the box. Pick a provider (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …), paste that vendor’s key, click Connect, then send. This page has no GPU of its own.";
+    }
+    howtoShown = true;
+    return (
+      "LYGO API Portal — how to start (this page does not host a model).\n\n" +
+      "1) Provider dropdown (top): Groq is one free option. Gemini, OpenRouter, OpenAI, xAI Grok, DeepSeek, Mistral, Hugging Face, or Any OpenAI-compatible URL also work.\n" +
+      "2) Get a key from that vendor (table below: Free and near-free API keys). Paste it in the key box. It stays in this tab — chatagent.ca never sees it.\n" +
+      "3) Click Connect. The model id is filled for you.\n" +
+      "4) Then type in chat. Champions and browser tools are already on this page (toggle in Skills).\n\n" +
+      "Now selected: " + p.label + ".\n" +
+      "Need GGUF / folders / USB? Local console: https://chatagent.ca/lygo-llm-console.html"
+    );
+  }
 
   const log = document.getElementById("log");
   const healthEl = document.getElementById("health");
@@ -162,10 +180,10 @@
     const help = document.getElementById("mode-help");
     if (help) {
       help.innerHTML =
-        (p.help || "Paste a key → Connect. Model is chosen for you.") +
-        ' · <a href="/guides/how-to-lygo-llm-portal.html">How to connect</a>';
+        (p.help || "Pick a provider, paste its key, Connect.") +
+        ' · Keys table: <a href="#free-keys">free keys</a> · <a href="/guides/how-to-lygo-llm-portal.html">How to connect</a>';
     }
-    setHealth("API portal · " + p.label + (connected ? " · connected" : " · paste key → Connect"));
+    setHealth("API portal · " + p.label + (connected ? " · connected" : " · pick provider → paste key → Connect"));
   }
 
   function systemPrompt(invoked) {
@@ -351,7 +369,7 @@
     const p = provider();
     if (p.key && !readKey() && modeEl.value !== "llm7" && modeEl.value !== "custom") {
       setHealth("paste your API key (this tab only) — " + p.help);
-      bubble("assistant", "Paste a Groq/OpenAI/Grok/… key, then Connect. Keys stay in this tab.");
+      bubble("assistant", stewardHowTo("missing-key"));
       return;
     }
     if (!openaiUrl()) {
@@ -617,7 +635,7 @@
         connected = true;
         setHealth("connected · " + provider().label + " · " + live);
       } else {
-        bubble("assistant", "Paste a Groq key in the key box, then send again. Model is chosen for you.");
+        bubble("assistant", stewardHowTo("short"));
         return;
       }
     }
@@ -679,10 +697,7 @@
     bubble("assistant", out);
   };
 
-  bubble(
-    "assistant",
-    "Paste a Groq key → Connect (or just send). The model is chosen for you."
-  );
+  bubble("assistant", stewardHowTo("welcome"));
 
   const worldLocal = document.getElementById("world-local");
   const worldUtc = document.getElementById("world-utc");

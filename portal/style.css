@@ -248,6 +248,18 @@ h2 {
   .rail { max-height: 16rem; }
   aside { max-height: 32rem; }
 }
+.start-card {
+  margin: 0 0 0.7rem;
+  padding: 0.75rem 0.9rem 0.75rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(18, 14, 10, 0.55);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.start-card li { margin: 0.28rem 0; }
+.start-card a { color: var(--gold); }
 .conn { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin-top:.55rem; }
 .conn input[type=text], .conn input[type=password], .conn select {
   background:#120e0a; color:var(--ink); border:1px solid var(--line); padding:.4rem .55rem; border-radius:8px; min-width:12rem;

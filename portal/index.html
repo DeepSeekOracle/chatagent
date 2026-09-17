@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260916x">
+<link rel="stylesheet" href="style.css?v=20260916y">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
@@ -104,7 +104,7 @@
     <div>
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
-      <p class="sub">Bring a <strong>free or paid API key</strong> (Groq, OpenAI, Claude, Grok, DeepSeek, Hugging Face, or any OpenAI-compatible URL). This page is a LYGO-aligned <em>agent studio in the browser</em> — 50+ tools (wiki, fetch, weather, GitHub, lattice handshake, Δ9 champions). It does <strong>not</strong> host a GPU. Full local GGUF console: <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub FULL</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
+      <p class="sub">This page has <strong>no GPU</strong>. You bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab. Browser tools + 15 champions are already here. Local GGUF kit: <a href="https://chatagent.ca/lygo-llm-console.html">LLM Console</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
         <a href="https://chatagent.ca/">Home</a>
         <a href="https://chatagent.ca/portal/" aria-current="page">Portal</a>
@@ -117,7 +117,7 @@
       </nav>
     </div>
   </div>
-  <div id="health" class="health">API portal · paste key → Connect</div>
+  <div id="health" class="health">API portal · pick a provider → paste its key → Connect</div>
   <div class="conn">
     <select id="mode" title="API provider">
       <option value="groq" selected>Groq (free tier)</option>
@@ -125,12 +125,12 @@
     <select id="model" title="Model is chosen for you" aria-label="Model">
       <option value="openai/gpt-oss-20b" selected>openai/gpt-oss-20b</option>
     </select>
-    <input id="hf-token" type="password" placeholder="Paste API key — stays in this browser" autocomplete="off">
+    <input id="hf-token" type="password" placeholder="Paste that provider’s API key (stays in this tab)" autocomplete="off">
     <input id="endpoint" type="text" placeholder="Endpoint (custom only)" autocomplete="off" hidden>
     <button type="button" id="connect">Connect</button>
     <label class="chk hide-public" id="full-wrap"><input type="checkbox" id="full"> Full LYGO limbs</label>
   </div>
-  <p class="mode-pill" id="mode-help">Paste a Groq key → Connect. The model is selected automatically. Guide: <a href="/guides/how-to-lygo-llm-portal.html">How to connect</a>.</p>
+  <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
 </header>
 <section id="world" class="world" aria-label="World time">
   <div class="world-now">
@@ -192,9 +192,15 @@ steward: Justin Helmer / Excavationpro / Lightfather
 </pre>
   </nav>
   <section class="chat-panel">
+    <ol class="start-card" id="start">
+      <li>Choose a <strong>provider</strong> in the dropdown (Groq is free; Gemini, OpenRouter, OpenAI, Grok, DeepSeek, and others work too).</li>
+      <li>Open that vendor’s key page from <a href="#free-keys">Free and near-free API keys</a>. Copy the key.</li>
+      <li>Paste it in the key box. Click <strong>Connect</strong>. The model is chosen for you.</li>
+      <li>Then chat. Skills and champions are already on this page — toggle them in the left rail.</li>
+    </ol>
     <div id="log" class="log" aria-live="polite"></div>
     <form id="form" class="composer">
-      <input id="msg" type="text" placeholder="Connect an API, then ask…" autocomplete="off" autofocus>
+      <input id="msg" type="text" placeholder="Connect first, then ask…" autocomplete="off" autofocus>
       <button type="button" id="attach-file">Attach file</button>
       <button type="submit">Send</button>
     </form>
@@ -237,7 +243,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
 <section class="legal how" id="disclaimer">
   <h2>Two products — do not mix them</h2>
   <ol>
-    <li><strong>This page (API portal).</strong> You already have a Groq / OpenAI / Claude / Grok / DeepSeek / Hugging Face / OpenRouter key (or any OpenAI-compatible URL). Paste it → Connect → chat. Keys stay in <em>your</em> browser. chatagent.ca is static GitHub Pages and never sees the key.</li>
+    <li><strong>This page (API portal).</strong> Pick a provider, paste <em>that</em> vendor’s key, Connect, then chat. Groq is one free start — not the only one. Keys stay in your browser. chatagent.ca never sees the key.</li>
     <li><strong>FULL local LYGO LLM Console.</strong> Your own GGUF models, folders, SkillHub FULL, USB CLAW. Download: <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub FULL kernel</a> · docs <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a> · ClawHub <a href="https://clawhub.ai/deepseekoracle/skills/lygo-llm-console">lygo-llm-console</a>.</li>
   </ol>
   <p>Step-by-step: <a href="/guides/how-to-lygo-llm-portal.html">How to use the LYGO API portal</a>.</p>
@@ -295,8 +301,8 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
   </div>
 </div>
-<script src="tools.js?v=20260916x"></script>
-<script src="app.js?v=20260916x"></script>
+<script src="tools.js?v=20260916y"></script>
+<script src="app.js?v=20260916y"></script>
 <script src="radio.js"></script>
 <script src="donate.js"></script>
 </body>
