@@ -61,6 +61,7 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
 });
 if (game.indexOf("Math.min(520") < 0) throw new Error("survive cap not 520");
 if (game.indexOf("function pressure()") < 0) throw new Error("no late-game pressure curve");
+if (game.indexOf("function rosterTick") < 0) throw new Error("no random boss roster");
 const foe = S.pool.foe.alloc();
 S.pool.foe.free(foe);
 const bornF = S.counts().foesBorn;

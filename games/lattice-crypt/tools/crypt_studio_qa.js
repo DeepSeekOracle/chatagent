@@ -40,6 +40,10 @@ must(game.indexOf("function levelExit") >= 0, "mode-agnostic exit lookup");
 must(game.indexOf("lv.exit.x") < 0 && game.indexOf("lv.box ? lv.box") < 0, "HUD must not read a raw floor exit");
 must(game.indexOf("function killXpValue") >= 0 && game.indexOf("KILL_XP") >= 0, "kill xp knob");
 must(game.indexOf("const PACING = {") >= 0 && game.indexOf("knee: 180") >= 0 && game.indexOf("function paceRamp") >= 0, "one pacing curve with a 3-minute knee");
+/* The roster is its own layer: random bosses from the 2-minute mark, on top of the crowd, and
+   stacking them has to be punished or the layer is just decoration. */
+must(game.indexOf("rosterAt: 120") >= 0 && game.indexOf("function rosterTick") >= 0 && game.indexOf("f.roster = true") >= 0 && game.indexOf("(f.rage || 1)") >= 0, "random boss roster from the 2-minute mark, with stacking rage");
+must(game.indexOf("if (G.rosCount) pills.push(\"BOSSES \"") >= 0, "a live boss count on the HUD");
 must(game.indexOf("PACING.spawn) / Math.max") < 0, "horde cadence must ride the curve, not a flat dial");
 must(game.indexOf("function paceGap") >= 0 && game.indexOf("paceGap(2.1 /") >= 0, "every spawner rides the curve");
 must(game.indexOf("function heroOpen") >= 0, "roster open from the first run");

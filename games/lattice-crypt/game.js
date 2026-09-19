@@ -928,10 +928,12 @@
   function surviveCap(w) {
     const L = Math.max(1, (G && G.lvl) || 1);
     w = w || surviveWave();
-    const base = 14 + (L - 1) * 7 + (w - 1) * 2.4;
+    /* Enough room for a real crowd from the first wave: a cap of 14 read as an empty hall
+       however hard the cadence pushed. */
+    const base = 26 + (L - 1) * 7 + (w - 1) * 2.4;
     /* Past the knee the ceiling itself climbs, so the horde can actually fill the screen
        instead of queueing behind a level-set cap. */
-    const grow = Math.max(1, paceRamp() / PACING.spawn);
+    const grow = Math.max(1, paceRamp() / PACING.base);
     /* A ceiling that keeps opening: a late wave should be able to bury the arena rather than
        queue behind a number the warden already learned to survive. */
     return Math.min(520, Math.round(base * grow));
@@ -1627,9 +1629,12 @@
      quiet opening and its own flood if the warden dawdles. */
   const PACING = {
     xp: 1.5,      /* level cost multiplier — slower levels, longer run */
-    spawn: 0.7,   /* opening cadence: 70% of the old horde rate at the knee */
-    knee: 180,    /* seconds of quiet before the flood starts climbing */
-    rise: 1.4,    /* how hard it climbs after the knee (× at +1 min, +5.1× at +3 min) */
+    spawn: 1.0,   /* fleet rate at the first breath — a busy hall, not an empty one */
+    gate: 1.45,   /* fleet rate at the knee (the pre-knee climb stays deliberately gentle) */
+    base: 0.7,    /* the old knee rate, kept as the reference the field cap grows from */
+    knee: 180,    /* seconds of the slow climb before the flood starts */
+    rosterAt: 120, /* the random-boss roster opens here, on top of every other spawner */
+    rise: 0.98,   /* absolute climb per minute past the knee (same slope as before) */
     exp: 1.3
   };
   const KILL_XP = 1.12;
@@ -1637,16 +1642,86 @@
     if (!G) return 0;
     return G.mode === "survive" ? (G.t || 0) : (G.floorT != null ? G.floorT : (G.t || 0));
   }
-  /* 0.45× at the first breath, 1.0× at the knee, then up on a power curve. */
+  /* The hall is BUSY from the first breath, then climbs GENTLY to the knee (1.0 → 1.45×), and
+     only past the knee goes up on a power curve. A quiet opening read as empty — a handful of
+     foes with nothing to shoot between them — so the floor now sits near the old full rate
+     instead of under half of it. "Slow climb, then flood" is kept by flattening the pre-knee
+     slope, not by starving the opening. */
   function paceRamp() {
     const t = rampTime(), k = PACING.knee;
-    if (t < k) { const u = t / k; return PACING.spawn * (0.45 + 0.55 * u * u); }
+    if (t < k) { const u = t / k; return PACING.spawn + (PACING.gate - PACING.spawn) * Math.pow(u, 1.6); }
     const over = (t - k) / 60;
-    return PACING.spawn * (1 + PACING.rise * Math.pow(over, PACING.exp));
+    return PACING.gate + PACING.rise * Math.pow(over, PACING.exp);
   }
   function paceXp(n) { return Math.round(n * PACING.xp); }
   function paceGap(sec) { return sec / paceRamp(); }
   function pacePack(n) { return Math.max(1, Math.round(n * paceRamp())); }
+  /* ---- The roster: random bosses on the crypt's own clock -------------------------------
+     From PACING.rosterAt (two minutes) named things start arriving ON TOP of the wave spawns
+     and the fodder: one at first, then two, then three, and closer together the longer the run
+     has gone. They are deliberate bullet sponges — several times a super's health, a heavier
+     hand than the fodder, and not part of the crowd budget, so a saturated floor still spawns
+     them. The answer is never to stand and trade: break off, walk them down, and do NOT let
+     them pile up, because three or more alive at once press together and hit 25% harder. */
+  function rosterOver() { return Math.max(0, rampTime() - PACING.rosterAt) / 60; }
+  function rosterN() { return 1 + Math.floor(rosterOver() / 3.2); }
+  function rosterGap() { return Math.max(9, 32 - rosterOver() * 1.7); }
+  function rosterBuff() { return 2.6 + rosterOver() * 0.22; }
+  /* A walkable spot at least `minD` from the live warden, ignoring the crowd cap. */
+  function rosterSpot(live, minD) {
+    const lv = G.level;
+    if (!lv || !lv.tiles) return null;
+    for (let t = 0; t < 300; t++) {
+      const tx = (4 + Math.random() * Math.max(8, lv.W - 8)) | 0;
+      const ty = (4 + Math.random() * Math.max(8, lv.H - 8)) | 0;
+      if (!lv.tiles[ty] || lv.tiles[ty][tx] !== "floor") continue;
+      if (Math.hypot(tx + 0.5 - live.x, ty + 0.5 - live.y) < minD) continue;
+      return { x: tx + 0.5, y: ty + 0.5 };
+    }
+    return null;
+  }
+  function rosterSpawn() {
+    const lv = G.level;
+    const live = G.players.find(function (p) { return !p.dead; }) || G.players[0];
+    if (!lv || !live) return 0;
+    const minD = G.mode === "survive" ? visionRange(live) + 1.5 : 8;
+    const sp = rosterSpot(live, minD);
+    if (!sp) return 0;
+    const pool = Math.random() < 0.18 ? SUPER_BOSSES : SURVIVE_BOSSES;
+    const kind = pool[(Math.random() * pool.length) | 0];
+    const rank = G.mode === "survive"
+      ? 1 + Math.min(6, ((G.lvl || 1) / 3) | 0)
+      : Math.max(1, Math.round((threatIndex() || 1) * 0.4));
+    lv.foes.push(makeFoe(kind, rank, sp.x, sp.y));
+    const f = lv.foes[lv.foes.length - 1];
+    f.roster = true;
+    f.hp = Math.round(f.hp * rosterBuff());
+    f.max = f.hp;
+    f.rage = 1;
+    return 1;
+  }
+  function rosterTick(dt) {
+    if (rampTime() < PACING.rosterAt) return;
+    const live = (G.rosCount = G.level.foes.filter(function (f) { return f.roster; }).length);
+    /* Stacking is the punishment: three or more on the floor at once press together. */
+    const stacked = live >= 3;
+    if (stacked) {
+      G.level.foes.forEach(function (f) { if (f.roster) f.rage = 1.25; });
+      if (!G.rosSaid) { G.rosSaid = 1; say("The named ones press together. Break the pile."); }
+    } else {
+      G.level.foes.forEach(function (f) { if (f.roster) f.rage = 1; });
+    }
+    G.rosT = (G.rosT == null ? 3 : G.rosT) - dt;
+    if (G.rosT > 0) return;
+    G.rosT = rosterGap();
+    let made = 0;
+    for (let i = 0, n = rosterN(); i < n; i++) made += rosterSpawn();
+    if (made) {
+      const list = G.level.foes.filter(function (f) { return f.roster; });
+      const last = list[list.length - 1];
+      if (last) say((BOSS_NAME[last.kind] || "A named one") + (made > 1 ? " and " + (made - 1) + " more walk the floor." : " walks the floor."));
+    }
+  }
   /* Pressure: what the tide does to a warden who is still standing. The ramp decides how MANY
      arrive; pressure decides how hard each one hits and how much it takes to put down, and it
      has no ceiling on purpose — a build that cannot kill faster than this climbs is eventually
@@ -2779,7 +2854,8 @@
       pets: [], pools: [],
       bond: { dmg: 0, spd: 0, cd: 0, armor: 0, aoe: 0, sleep: 0 },
       mode: opts.mode || "campaign",
-      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.7, bossAt: 0, pendingLvl: 0, hordeT: 14
+      xp: 0, lvl: 1, kills: 0, wave: 1, spawnT: 0.7, bossAt: 0, pendingLvl: 0, hordeT: 14,
+      rosT: 3, rosCount: 0, rosSaid: 0
     };
     joinHero(opts.hero || persist.hero, 0);
     if (persist.comp) {
@@ -2845,6 +2921,7 @@
   function loadFloor(n) {
     G.floor = n;
     G.floorT = 0; /* each floor gets its own quiet opening before its own flood */
+    G.rosT = 3; G.rosCount = 0; G.rosSaid = 0;
     G.level = genLevel(G.seed, n, G.mode);
     const st = G.level.start;
     G.players.forEach((p, i) => {
@@ -3523,6 +3600,7 @@
       lv.foes.push(makeFoe("thief", 1, lv.start.x + 0.5, lv.start.y + 0.5));
       say("A thief slips the gate.");
     }
+    rosterTick(dt);
     if (G.mode === "survive") {
       surviveTick(dt);
       if (overlayMode === "sheet") { paintHud(); keyEdge = {}; return; }
@@ -3535,7 +3613,7 @@
          one or two at the top of a floor while the warden reads the map, a real horde once the
          knee passes. Without this the ramp could only make spawns come *faster* than the cap
          could absorb, which is why campaign pressure used to feel flat after the opening. */
-      const grow = Math.min(4, Math.max(1, paceRamp() / PACING.spawn));
+      const grow = Math.min(4, Math.max(1, paceRamp() / PACING.base));
       const cap = Math.round((1 + g.rank) * grow);
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
       /* Nexus cadence rides the same curve as everything else: quiet at the top of a floor,
@@ -3715,7 +3793,7 @@
         const dmgMul = (G.mode === "survive"
           ? (0.48 + 0.035 * Math.max(0, (G.lvl || 1) - 1) + 0.018 * Math.max(0, surviveWave() - 1))
           : (f.rank * dmgScale())) * pressure();
-        const dmg = Math.max(1, def.dmg * dmgMul - arm);
+        const dmg = Math.max(1, def.dmg * dmgMul * (f.rage || 1) - arm);
         const iframe = (tgt.hurtT || 0) > 0.12;
         if (f.kind === "drain") tgt.hp -= dmg * dt * 6.5;
         else if (G.mode === "survive") {
@@ -4605,6 +4683,7 @@
       if (p0.vialPow) pills.push("RES " + p0.vialPow);
       if (p0.leech) pills.push("LEECH " + p0.leech);
       if (p0.bounty) pills.push("TITHE " + p0.bounty);
+      if (G.rosCount) pills.push("BOSSES " + G.rosCount);
       $("hudStats").innerHTML = pills.map((t) => "<span class='pill'>" + t + "</span>").join("");
     }
   }
