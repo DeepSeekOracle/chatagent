@@ -82,6 +82,13 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .app.survive-mode .announce { top: 128px; }
 .app.survive-mode .coach { bottom: auto; top: 158px; }
 .app.survive-mode .boss-hud { top: 86px; }
+/* Every mode now wears the studio HUD, so the arcade-cabinet offsets apply to all three
+   (Survival also drops the rail; campaign and endless keep it for story + log). */
+.app.hud-all .pips { display: none; }
+.app.hud-all .announce { top: 128px; }
+.app.hud-all .coach { bottom: auto; top: 158px; }
+.app.hud-all .boss-hud { top: 86px; }
+.app.hud-all .map-canvas { top: 96px; }
 .studio-hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .map-canvas {
   position: absolute; top: 104px; left: 12px;

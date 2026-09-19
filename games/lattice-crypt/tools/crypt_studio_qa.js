@@ -26,6 +26,14 @@ must(studio.indexOf("createStereoPanner") >= 0, "spatial SFX");
 must(studio.indexOf("drumOsc") >= 0, "drum stem");
 must(game.indexOf("999999999") >= 0, "score cap");
 must(game.indexOf("Math.min(380") >= 0 && game.indexOf("function surviveCap") >= 0, "survive cap ramp");
+/* All three modes must survive a HUD paint: authored floors carry `exit`, generated ones
+   only paint the tile, so the HUD has to resolve the door through one accessor. */
+must(game.indexOf("function levelExit") >= 0, "mode-agnostic exit lookup");
+must(game.indexOf("lv.exit.x") < 0 && game.indexOf("lv.box ? lv.box") < 0, "HUD must not read a raw floor exit");
+must(game.indexOf("function killXpValue") >= 0 && game.indexOf("KILL_XP") >= 0, "kill xp knob");
+must(game.indexOf("PACING = { xp:") >= 0 && game.indexOf("function pacePack") >= 0, "one pacing dial");
+must(game.indexOf("function modeFloorLabel") >= 0 && game.indexOf("hud-all") >= 0, "HUD in every mode");
+must(game.indexOf("G.players.forEach((p) => {\n      if (p.dead) return;") >= 0 || game.indexOf("if (p.dead) return;") >= 0, "companion takes cards");
 must(game.indexOf("visibilitychange") >= 0, "tab pause");
 must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {

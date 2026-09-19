@@ -917,7 +917,9 @@
   }
   /* Survive ramp: player level L first, wave W second (W = 1+t/28).
      Cap 14+(L-1)*7+(W-1)*2.4 ≤380. Pulse 2+L+(W/5) ≤22, gap 0.62-0.02L ≥0.16s.
-     Horde 5+2L+0.7W ≤72, gap 13.5-0.22L ≥6.2s. Fodder HP 1+0.28(W-1)+0.48(L-1). */
+     Horde 5+2L+0.7W ≤72, gap 13.5-0.22L ≥6.2s. Fodder HP 1+0.28(W-1)+0.48(L-1).
+     Every cadence is then run through PACING (spawn 0.82 / xp 1.22) so the tide arrives
+     slower in exact step with the slower level curve. */
   function surviveCap(w) {
     const L = Math.max(1, (G && G.lvl) || 1);
     w = w || surviveWave();
@@ -926,20 +928,20 @@
   function survivePulseN() {
     const L = Math.max(1, G.lvl || 1);
     const W = surviveWave();
-    return Math.min(22, 2 + L + ((W / 5) | 0));
+    return pacePack(Math.min(22, 2 + L + ((W / 5) | 0)));
   }
   function survivePulseGap() {
     const L = Math.max(1, G.lvl || 1);
-    return Math.max(0.16, 0.62 - L * 0.02);
+    return paceGap(Math.max(0.16, 0.62 - L * 0.02));
   }
   function surviveHordePack() {
     const L = Math.max(1, G.lvl || 1);
     const W = surviveWave();
-    return Math.min(72, 5 + L * 2 + ((W * 0.7) | 0));
+    return pacePack(Math.min(72, 5 + L * 2 + ((W * 0.7) | 0)));
   }
   function surviveHordeGap() {
     const L = Math.max(1, G.lvl || 1);
-    return Math.max(6.2, 13.5 - L * 0.22);
+    return paceGap(Math.max(6.2, 13.5 - L * 0.22));
   }
   function surviveTick(dt) {
     if (!G || G.mode !== "survive" || G.over) return;
@@ -952,7 +954,7 @@
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
       feel("wave");
-      G._spawnQ = (G._spawnQ || 0) + Math.min(90, 8 + G.lvl * 3 + w * 2);
+      G._spawnQ = (G._spawnQ || 0) + pacePack(Math.min(90, 8 + G.lvl * 3 + w * 2));
       G.score += 50 + w * 10;
       if (w % 5 === 0) {
         G.players.forEach(function (p) {
@@ -1010,22 +1012,29 @@
     }
     if (G.pendingLvl > 0 && overlayMode == null) offerSurviveUp();
   }
-  function onSurviveKill(f) {
+  function killXpValue(f) {
+    if (G.mode === "survive") return (1 + ((surviveWave() / 7) | 0)) * KILL_XP;
+    const d = FOE[f.kind] || {};
+    if (d.super) return 20 * KILL_XP;
+    if (d.boss) return 16 * KILL_XP;
+    if (f.kind === "drain") return 14 * KILL_XP;
+    if (f.kind === "thief") return 6 * KILL_XP;
+    return ((d.pts >= 18) ? 3 : 2) * KILL_XP;
+  }
+  /* Every mode feeds the same ladder now: Survival, Endless and Campaign all bank XP per
+     kill and all draft a card on level-up. */
+  function onKillCommon(f) {
     G.kills = (G.kills || 0) + 1;
-    scoreKill(6 + surviveWave() * 2);
-    G.xp += 1 + ((surviveWave() / 7) | 0);
-    if (Math.random() < 0.07 && G.level.items.length < 90) {
+    if (G.mode === "survive") scoreKill(6 + surviveWave() * 2);
+    G.xp += killXpValue(f);
+    if (G.mode === "survive" && Math.random() < 0.07 && G.level.items.length < 90) {
       dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
     }
-    while (G.xp >= surviveXpNeed(G.lvl)) {
-      G.xp -= surviveXpNeed(G.lvl);
+    while (G.xp >= xpNeed(G.lvl)) {
+      G.xp -= xpNeed(G.lvl);
       G.lvl++;
       G.pendingLvl = (G.pendingLvl || 0) + 1;
-      G.players.forEach(function (p) {
-        if (p.dead) return;
-        p.max += 10;
-        p.hp = Math.min(p.max, p.hp + 10);
-      });
+      levelUpParty();
     }
   }
   function rollSurviveUps() {
@@ -1145,8 +1154,10 @@
     }
   }
   function applySurviveUp(u) {
+    /* The companion trains with you: every card that lands on the warden lands on the AI
+       companion (and the pack, through applyBondUp) in the same breath. */
     G.players.forEach((p) => {
-      if (p.dead || p.ai) return;
+      if (p.dead) return;
       if (u.id === "might") p.might = (p.might || 0) + 1;
       else if (u.id === "haste") { p.haste = (p.haste || 0) + 1; p.shotBoost = Math.max(p.shotBoost || 0, 4); }
       else if (u.id === "iron") { p.iron = (p.iron || 0) + 1; p.aegis = Math.max(p.aegis || 0, 4); }
@@ -1300,7 +1311,7 @@
       "<div class='up-cabinet'>" +
       "<p class='up-marquee'>★ THE LATTICE GROWS ★ BONUS STAGE ★</p>" +
       "<h2 class='up-title'>LEVEL " + G.lvl + "</h2>" +
-      "<p class='up-sub'>WAVE " + surviveWave() + " · PICK ONE · STACKS KEEP</p>" +
+      "<p class='up-sub'>" + (G.mode === "survive" ? "WAVE " + surviveWave() : modeFloorLabel()) + " · PICK ONE · STACKS KEEP</p>" +
       "<div class='up-grid'>" + picks.map(function (u, i) {
         const t = u.tier || 0;
         return "<button type='button' class='up-card tier-" + t + (i === 0 ? " on" : "") + "' data-up='" + i + "'>" +
@@ -1509,10 +1520,43 @@
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
 
+  /* Studio pacing pass: the run was ramping to full power before a player had read the map.
+     One dial slows the *whole* ramp. `xp` raises what a level costs, `spawn` scales the
+     horde cadence by the same factor, so power and pressure stay in step and a longer
+     run is not a harder run — it is the same fight, stretched. */
+  const PACING = { xp: 1.22, spawn: 0.82 };
+  /* Kills pay a touch more than they used to. The level curve above rose by more than this
+     (1.22 / 1.12 ≈ 1.09× the clock per level) and the horde cadence fell by 18%, so the net
+     is a longer run with the same fight in it — pressure and payout moved in equal step. */
+  const KILL_XP = 1.12;
+  function paceXp(n) { return Math.round(n * PACING.xp); }
+  function paceGap(sec) { return sec / PACING.spawn; }
+  function pacePack(n) { return Math.max(1, Math.round(n * PACING.spawn)); }
+
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
-  function surviveXpNeed(lv) {
+  /* One curve for every mode: campaign and endless level a touch slower than Survival,
+     because a floor is a fixed amount of stone rather than an endless tide. */
+  function modeXpMul() {
+    if (!G) return 1;
+    if (G.mode === "survive") return 1;
+    return G.mode === "campaign" ? 1.16 : 1.08;
+  }
+  function xpNeed(lv) {
     lv = Math.max(1, lv | 0);
-    return Math.round(14 + lv * 6 + (lv * lv) * 0.28);
+    return paceXp(Math.round((14 + lv * 6 + (lv * lv) * 0.28) * modeXpMul()));
+  }
+  function surviveXpNeed(lv) { return xpNeed(lv); }
+  function levelUpParty() {
+    G.players.forEach(function (p) {
+      if (p.dead) return;
+      p.max += 10;
+      p.hp = Math.min(p.max, p.hp + 10);
+    });
+    /* The pack grows with the wardens — a companion that scales with you is a companion. */
+    (G.pets || []).forEach(function (pet) {
+      pet.max += 8;
+      pet.hp = Math.min(pet.max, pet.hp + 8);
+    });
   }
   function threatIndex() {
     if (!G) return 0;
@@ -1650,10 +1694,11 @@
   function genLevel(seed, floor, mode) {
     if (mode === "survive") return genSurvive(seed);
     if (mode === "campaign" && window.LatticeCampaign && floor < window.LatticeCampaign.LEN) {
-      return window.LatticeCampaign.build(floor, makeFoe);
+      return window.LatticeCampaign.build(floor, makeFoe, rollLoot);
     }
     const R = rng(seed ^ (floor * 7919));
-    const W = 30, H = 26;
+    /* Endless floors are large stone now — a region to cross, not a room to clear. */
+    const W = 60, H = 52;
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
     const layouts = ["rooms", "cross", "cells", "halls", "arena", "ring", "vault", "spiral"];
     const kind = floor % 8 === 0 && floor > 0 ? "vault" : layouts[floor % 8];
@@ -1698,14 +1743,14 @@
       }
       return null;
     }
-    const gN = 3 + ((R() * 4) | 0) + Math.min(mode === "endless" ? 7 : 4, (floor / (mode === "endless" ? 5 : 8)) | 0);
+    const gN = 6 + ((R() * 6) | 0) + Math.min(mode === "endless" ? 14 : 9, (floor / (mode === "endless" ? 3 : 6)) | 0);
     for (let i = 0; i < gN; i++) {
       const p = empty();
       if (!p) break;
       const gk = (floor >= 5 && R() < 0.4) ? KINDS_HOT[(R() * KINDS_HOT.length) | 0] : KINDS[(R() * KINDS.length) | 0];
       gens.push({ x: p.x, y: p.y, kind: gk, rank, hp: 3 * rank, t: R() * 0.6 });
     }
-    const itemN = treasure ? 16 : Math.max(5, 8 + ((R() * 5) | 0) - (mode === "endless" ? (floor / 9) | 0 : 0));
+    const itemN = treasure ? 34 : Math.max(12, 18 + ((R() * 10) | 0) - (mode === "endless" ? (floor / 5) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
@@ -1716,7 +1761,7 @@
       const p = empty();
       if (p) items.push({ x: p.x, y: p.y, kind: "vial", hidden: true });
     }
-    const dN = 1 + ((R() * 3) | 0);
+    const dN = 2 + ((R() * 5) | 0);
     for (let i = 0; i < dN; i++) {
       const p = empty();
       if (!p) break;
@@ -1736,7 +1781,7 @@
       const p = empty();
       if (p) items.push({ x: p.x, y: p.y, kind: "trap" });
     }
-    const idle = 2 + ((R() * 4) | 0);
+    const idle = 5 + ((R() * 8) | 0);
     for (let i = 0; i < idle; i++) {
       const p = empty();
       if (!p) break;
@@ -2572,8 +2617,9 @@
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");
     $("app").classList.remove("hidden");
     $("app").classList.toggle("survive-mode", G.mode === "survive");
+    $("app").classList.add("hud-all");
     const sh = $("studioHud");
-    if (sh) sh.classList.toggle("hidden", G.mode !== "survive");
+    if (sh) sh.classList.remove("hidden");
     showCoach(G.mode);
     if (G.mode === "campaign") say("Campaign — WASD, J fire, smash nexuses, find the cyan exit.");
     else if (G.mode === "survive") {
@@ -3301,7 +3347,7 @@
       g.t += dt;
       const cap = 1 + g.rank;
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
-      if (g.t > (2.1 / Math.max(1, g.rank * 0.7)) && live < cap) {
+      if (g.t > (2.1 / PACING.spawn) / Math.max(1, g.rank * 0.7) && live < cap) {
         g.t = 0;
         const sp = nearestWalk(lv, g.x + 0.5, g.y + 0.5);
         lv.foes.push(makeFoe(g.kind, g.rank, sp.x, sp.y));
@@ -3598,12 +3644,12 @@
         }
       }
       if (f.boss) dropBoss(f);
-      if (G.mode === "survive") onSurviveKill(f);
+      onKillCommon(f);
       G.fx.push({ x: f.x, y: f.y, life: 0.35, kind: "puff" });
       if (window.CryptStudio) CryptStudio.pool.foe.free(f);
       return false;
     });
-    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 64;
+    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 110;
     born.forEach((n) => { if (lv.foes.length < capNow) lv.foes.push(n); });
 
     G.shots.forEach((s) => {
@@ -3722,6 +3768,8 @@
     if (lodOn() && G.fx.length > 48) G.fx = G.fx.slice(-48);
     G._hudT = (G._hudT || 0) + dt;
     if (G._hudT > 0.1) { G._hudT = 0; paintHud(); }
+    /* Campaign and Endless draft cards on level-up too — same cabinet as Survival. */
+    if (G.pendingLvl > 0 && overlayMode == null && !G.over) offerSurviveUp();
     keyEdge = {};
   }
 
@@ -4238,20 +4286,62 @@
     const autoBtn = $("btnAuto");
     if (autoBtn) autoBtn.textContent = autoOn ? "Auto shot ON" : "Auto shot";
     if ($("holeCard")) {
+      const xpLine = "<p class='lore'>" + modeFloorLabel() + " · " + (G.t | 0) + "s · kills " + (G.kills || 0) +
+        " · XP " + (G.xp | 0) + "/" + xpNeed(G.lvl) + "</p><div class='bar'><i style='width:" +
+        Math.max(0, Math.min(100, 100 * G.xp / xpNeed(G.lvl))) + "%;background:#fbbf24'></i></div>";
       $("holeCard").innerHTML = "<p><b>" + G.level.realm.name + "</b>" + (G.level.layout ? " · " + G.level.layout : " floor " + (G.floor + 1)) + "</p>" +
-        (G.mode === "survive" ? "<p class='lore'>Wave " + surviveWave() + " · " + (G.t | 0) + "s · kills " + (G.kills || 0) + " · XP " + G.xp + "/" + surviveXpNeed(G.lvl) + "</p><div class='bar'><i style='width:" + Math.max(0, Math.min(100, 100 * G.xp / surviveXpNeed(G.lvl))) + "%;background:#fbbf24'></i></div>" : "") +
-        "<p class='lore'>" + (G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
+        xpLine +
+        (G.level.chapterTitle ? "<p class='lore'><b>" + G.level.chapterTitle + "</b>" + (G.level.chapterBook ? " · " + G.level.chapterBook : "") + "</p>" : "") +
+        "<p class='lore'>" + (G.level.story || G.level.lore || ("Seed " + G.seed + " · " + (G.level.layout || "rooms"))) + (G.level.treasure > 0 ? " · rush " + G.level.treasure.toFixed(0) + "s" : "") + (G.level.seal ? " · SEAL" : "") + "</p>";
     }
-    if (G.mode === "survive") paintStudioHud();
+    paintStudioHud();
+  }
+  function modeFloorLabel() {
+    if (!G) return "";
+    if (G.mode === "survive") return "SURVIVE · WAVE " + surviveWave();
+    if (G.mode === "campaign") return "CAMPAIGN · " + (G.floor + 1) + "/" + (window.LatticeCampaign ? window.LatticeCampaign.LEN : 24);
+    return "ENDLESS · FLOOR " + (G.floor + 1);
+  }
+  /* Authored floors carry an `exit` point; generated floors only paint the tile. Resolve
+     the door from either, so nothing in the HUD can depend on which builder made the map. */
+  function levelExit(lv) {
+    if (!lv) return null;
+    if (lv.exit) return lv.exit;
+    if (lv._exitTile) return lv._exitTile;
+    for (let y = 0; y < (lv.H || 0); y++) {
+      const row = lv.tiles[y];
+      if (!row) continue;
+      for (let x = 0; x < (lv.W || 0); x++) {
+        const t = row[x];
+        if (t === "exit" || t === "exit_lock") return { x, y };
+      }
+    }
+    return null;
+  }
+  /* One objective line for every mode, read off the live level rather than a slogan. */
+  function objectiveText() {
+    const lv = G.level;
+    if (!lv) return "";
+    const gens = lv.gens ? lv.gens.length : 0;
+    if (G.mode === "survive") return "next wave " + Math.max(0, 28 - (G.t % 28)).toFixed(0) + "s";
+    if (lv.seal) return gens > 0 ? gens + " nexus" + (gens === 1 ? "" : "es") + " hold the seal" : "seal cracked — take the exit";
+    const ex = levelExit(lv);
+    const p0 = G.players[0];
+    if (ex && p0) {
+      const d = Math.abs(p0.x - ex.x) + Math.abs(p0.y - ex.y);
+      return "exit " + Math.round(d) + " tiles" + (gens ? " · " + gens + " nexus" + (gens === 1 ? "" : "es") + " awake" : "");
+    }
+    return "reach the exit";
   }
   function paintStudioHud() {
     const w = surviveWave();
-    const need = surviveXpNeed(G.lvl);
+    const need = xpNeed(G.lvl);
     const t = G.t | 0;
     const mm = (t / 60) | 0, ss = t % 60;
     const waveLeft = Math.max(0, 28 - (G.t % 28));
+    if ($("hudWaveLab")) $("hudWaveLab").textContent = G.mode === "survive" ? "WAVE" : "FLOOR";
     if ($("hudWave")) {
-      $("hudWave").textContent = w;
+      $("hudWave").textContent = G.mode === "survive" ? w : (G.floor + 1);
       $("hudWave").classList.toggle("pulse", !!(G._wavePulse));
     }
     G._scoreShow = G._scoreShow == null ? G.score : G._scoreShow + (G.score - G._scoreShow) * 0.28;
@@ -4267,9 +4357,16 @@
       }
     }
     if ($("hudXpFill")) $("hudXpFill").style.width = Math.max(0, Math.min(100, 100 * G.xp / need)) + "%";
-    if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + G.xp + "/" + need;
-    if ($("hudClock")) $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  next wave " + waveLeft.toFixed(0) + "s";
-    if ($("hudKills")) $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  HORDE " + G.level.foes.length + "/" + surviveCap(w) + (comboStreak() >= 4 ? "  ·  ×" + comboMult() + " STREAK" : "");
+    if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + Math.floor(G.xp) + "/" + need;
+    if ($("hudClock")) {
+      $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  " +
+        (G.mode === "survive" ? "next wave " + waveLeft.toFixed(0) + "s" : objectiveText());
+    }
+    if ($("hudKills")) {
+      $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  " +
+        (G.mode === "survive" ? "HORDE " + G.level.foes.length + "/" + surviveCap(w) : "FOES " + G.level.foes.length) +
+        (comboStreak() >= 4 ? "  ·  ×" + comboMult() + " STREAK" : "");
+    }
     const p0 = G.players[0];
     if ($("hudPlayers")) {
       $("hudPlayers").innerHTML = G.players.map((p) => {
@@ -4587,6 +4684,7 @@
     if (window.LatticeRadio) LatticeRadio.play();
     $("app").classList.add("hidden");
     $("app").classList.remove("survive-mode");
+    $("app").classList.remove("hud-all");
     const sh = $("studioHud");
     if (sh) sh.classList.add("hidden");
     showSheet(
