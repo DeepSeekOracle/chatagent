@@ -31,7 +31,16 @@ must(game.indexOf("onBossPhase") >= 0, "boss phase");
 ["onFire","onPickup","onEnemyHit","onBossHit","onEnemyDeath","onKill","onBossDeath","onBossSpawn","onPlayerHit","onPlayerDeath","onWaveStart","onWaveComplete","onHeal","onDash"].forEach(function (ev) {
   must(game.indexOf(ev) >= 0, "event " + ev);
 });
-must(html.indexOf("game.js?v=52") >= 0, "cache-bust");
+must(/game\.js\?v=\d+/.test(html), "game cache-bust");
+must(/game\.css\?v=\d+/.test(html), "css cache-bust");
+must(html.indexOf("cryptMap") >= 0 && css.indexOf("map-canvas") >= 0, "radar map layer");
+must(game.indexOf("function drawMap") >= 0 && game.indexOf("function mapCacheFor") >= 0 && game.indexOf("_mapNew") >= 0, "map cache + fog sync");
+must(game.indexOf("function compassTargets") >= 0 && game.indexOf("function drawCompass") >= 0 && game.indexOf("PRIZE") >= 0, "objective compass");
+must(game.indexOf("function drawLights") >= 0 && game.indexOf("function glowSprite") >= 0 && game.indexOf("lighter") >= 0, "lantern light pass");
+must(game.indexOf("function drawDangerEdge") >= 0 && game.indexOf("function noteHitDir") >= 0 && game.indexOf("function vignetteSprite") >= 0, "danger edge + hit read");
+must(game.indexOf("function comboMult") >= 0 && game.indexOf("function scoreKill") >= 0 && game.indexOf("comboTier") >= 0, "kill streak multiplier");
+must(game.indexOf("function cycleMapMode") >= 0 && game.indexOf("KeyN") >= 0, "map key");
+must(game.indexOf("CryptStudio.reduced") >= 0 && game.indexOf("flick") >= 0, "reduced-motion honoured");
 must(game.indexOf("hp: 96") >= 0 && game.indexOf("Math.max(12, 20") >= 0, "pet hide+20s sleep");
 must(game.indexOf("autoUpBox") >= 0 && game.indexOf("function autoPickUp") >= 0, "auto-pick upgrades");
 must(game.indexOf("(lv * lv) * 0.28") >= 0, "survive xp curve");

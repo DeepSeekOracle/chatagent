@@ -1012,7 +1012,7 @@
   }
   function onSurviveKill(f) {
     G.kills = (G.kills || 0) + 1;
-    G.score += 6 + surviveWave() * 2;
+    scoreKill(6 + surviveWave() * 2);
     G.xp += 1 + ((surviveWave() / 7) | 0);
     if (Math.random() < 0.07 && G.level.items.length < 90) {
       dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
@@ -1861,7 +1861,10 @@
       lv.vis[ty][tx] = 1;
       lv._visMarks.push(tx, ty);
     }
-    lv.seen[ty][tx] = 1;
+    if (!lv.seen[ty][tx]) {
+      lv.seen[ty][tx] = 1;
+      if (lv._mapNew) lv._mapNew.push(tx, ty);
+    }
   }
   function updateFog() {
     if (!G || !G.level) return;
@@ -1913,6 +1916,383 @@
         }
       }
     }
+  }
+
+  /* ─── Phase 9 — Lantern: radar map, objective compass, dynamic light, danger read ─── */
+
+  const MAP_MODES = ["radar", "full", "off"];
+  const MAP_SPECIAL = {
+    chest: 1, core: 1, phial: 1, chalice: 1, gem: 1, heart: 1, soul: 1, crown: 1,
+    codex: 1, originwell: 1, accordseal: 1, wellcrown: 1, titheband: 1, voidcloak: 1
+  };
+  const glowCache = {};
+  let vigCache = null, vigKey = "";
+
+  function mapMode() {
+    const m = persist.mapMode;
+    return MAP_MODES.indexOf(m) >= 0 ? m : "radar";
+  }
+  function cycleMapMode() {
+    const i = MAP_MODES.indexOf(mapMode());
+    persist.mapMode = MAP_MODES[(i + 1) % MAP_MODES.length];
+    savePersist();
+    if (persist.mapMode === "off") say("Map off.");
+    else say("Map: " + persist.mapMode + ".");
+    paintHud();
+  }
+  function mapTileColor(t) {
+    if (t === "wall") return "#2b3652";
+    if (t === "door") return "#22d3ee";
+    if (t === "door_open") return "#155e75";
+    if (t === "exit") return "#fde047";
+    if (t === "pad") return "#0ea5e9";
+    return "#121b2d";
+  }
+  function mapCacheFor(lv) {
+    if (lv._mapCache) return lv._mapCache;
+    const cv = document.createElement("canvas");
+    cv.width = lv.W; cv.height = lv.H;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#05070e";
+    g.fillRect(0, 0, lv.W, lv.H);
+    if (lv.seen) {
+      for (let y = 0; y < lv.H; y++) {
+        const row = lv.seen[y];
+        if (!row) continue;
+        for (let x = 0; x < lv.W; x++) {
+          if (!row[x]) continue;
+          g.fillStyle = mapTileColor(lv.tiles[y][x]);
+          g.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+    lv._exitTile = null;
+    for (let y = 0; y < lv.H && !lv._exitTile; y++) {
+      const row = lv.tiles[y];
+      for (let x = 0; x < lv.W; x++) {
+        if (row[x] === "exit") { lv._exitTile = { x: x, y: y }; break; }
+      }
+    }
+    lv._mapNew = [];
+    lv._mapCache = cv;
+    return cv;
+  }
+  function mapSync(lv) {
+    const cv = mapCacheFor(lv);
+    const arr = lv._mapNew;
+    if (!arr || !arr.length) return;
+    const g = cv.getContext("2d");
+    for (let i = 0; i < arr.length; i += 2) {
+      const x = arr[i], y = arr[i + 1];
+      g.fillStyle = mapTileColor(lv.tiles[y][x]);
+      g.fillRect(x, y, 1, 1);
+    }
+    arr.length = 0;
+  }
+  function localWarden() {
+    return G ? (G.players.find(function (p) { return !p.dead && !p.ai; }) || G.players[0]) : null;
+  }
+  function drawMap() {
+    const c = $("cryptMap");
+    if (!c) return;
+    const mode = mapMode();
+    if (mode === "off" || !G || !G.level) { c.classList.add("hidden"); return; }
+    const lv = G.level;
+    mapSync(lv);
+    c.classList.remove("hidden");
+    const dpr = lodOn() ? 1 : Math.min(2, window.devicePixelRatio || 1);
+    const size = c.clientWidth || 168;
+    if (c.width !== ((size * dpr) | 0) || c.height !== ((size * dpr) | 0)) {
+      c.width = (size * dpr) | 0; c.height = (size * dpr) | 0;
+    }
+    const g = c.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, size, size);
+    const p0 = localWarden() || { x: lv.W / 2, y: lv.H / 2, aimX: 1, aimY: 0 };
+    const span = mode === "full" ? Math.max(lv.W, lv.H) : Math.min(88, Math.max(lv.W, lv.H));
+    const cx = mode === "full" ? lv.W / 2 : p0.x, cy = mode === "full" ? lv.H / 2 : p0.y;
+    let sx = Math.round(cx - span / 2), sy = Math.round(cy - span / 2);
+    let sw = span, sh = span, dx = 0, dy = 0, dw = size, dh = size;
+    const px = size / span;
+    if (sx < 0) { const cut = -sx; sx = 0; sw -= cut; dx += cut * px; dw -= cut * px; }
+    if (sy < 0) { const cut = -sy; sy = 0; sh -= cut; dy += cut * px; dh -= cut * px; }
+    if (sx + sw > lv.W) { const cut = sx + sw - lv.W; sw -= cut; dw -= cut * px; }
+    if (sy + sh > lv.H) { const cut = sy + sh - lv.H; sh -= cut; dh -= cut * px; }
+    g.fillStyle = "rgba(3,5,10,0.78)";
+    g.fillRect(0, 0, size, size);
+    if (sw > 0 && sh > 0) g.drawImage(lv._mapCache, sx, sy, sw, sh, dx, dy, dw, dh);
+    const mx = (wx) => dx + (wx - sx) * px;
+    const my = (wy) => dy + (wy - sy) * px;
+    function blip(wx, wy, col, r, ring) {
+      const x = mx(wx), y = my(wy);
+      if (x < -4 || y < -4 || x > size + 4 || y > size + 4) return;
+      g.fillStyle = col;
+      if (r <= 2) g.fillRect(x - r, y - r, r * 2, r * 2);
+      else { g.beginPath(); g.arc(x, y, r, 0, 6.28); g.fill(); }
+      if (ring) {
+        g.strokeStyle = col; g.lineWidth = 1;
+        g.beginPath(); g.arc(x, y, r + 2.4, 0, 6.28); g.stroke();
+      }
+    }
+    lv.gens.forEach(function (gn) {
+      if (gn.hp > 0 && tileSeen(gn.x + 0.5, gn.y + 0.5)) blip(gn.x + 0.5, gn.y + 0.5, "#f59e0b", 3.2, true);
+    });
+    if (lv._exitTile && tileSeen(lv._exitTile.x + 0.5, lv._exitTile.y + 0.5)) {
+      blip(lv._exitTile.x + 0.5, lv._exitTile.y + 0.5, "#fde047", 3.4, true);
+    }
+    (lv.doors || []).forEach(function (d) {
+      if (tileSeen(d.x + 0.5, d.y + 0.5)) blip(d.x + 0.5, d.y + 0.5, "#22d3ee", 2.2, false);
+    });
+    (lv.pads || []).forEach(function (d) {
+      if (tileSeen(d.x + 0.5, d.y + 0.5)) blip(d.x + 0.5, d.y + 0.5, "#0ea5e9", 2, false);
+    });
+    lv.items.forEach(function (it) {
+      if (MAP_SPECIAL[it.kind] && tileSeen(it.x + 0.5, it.y + 0.5)) blip(it.x + 0.5, it.y + 0.5, "#fbbf24", 1.4, false);
+    });
+    lv.foes.forEach(function (f) {
+      if (!tileVis(f.x, f.y)) return;
+      if (f.boss) blip(f.x, f.y, "#ef4444", 3.6, true);
+      else blip(f.x, f.y, "#f87171", 1.5, false);
+    });
+    (G.pets || []).forEach(function (pt) {
+      if (tileVis(pt.x, pt.y)) blip(pt.x, pt.y, (PETS[pt.kind] && PETS[pt.kind].col) || "#4ade80", 2, false);
+    });
+    G.players.forEach(function (p) {
+      if (p.dead) return;
+      blip(p.x, p.y, p.ai ? "#93c5fd" : p.hero.color, p.ai ? 1.8 : 2.6, false);
+    });
+    const ang = Math.atan2(p0.aimY || 0, p0.aimX || 1);
+    const px0 = mx(p0.x), py0 = my(p0.y);
+    g.strokeStyle = "rgba(241,245,249,0.9)";
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(px0, py0);
+    g.lineTo(px0 + Math.cos(ang) * 8, py0 + Math.sin(ang) * 8);
+    g.stroke();
+    g.strokeStyle = "rgba(148,163,184,0.35)";
+    g.lineWidth = 1;
+    g.strokeRect(0.5, 0.5, size - 1, size - 1);
+    g.font = "9px 'IBM Plex Mono', monospace";
+    g.fillStyle = "rgba(148,163,184,0.8)";
+    g.fillText((mode === "full" ? "MAP" : "RADAR") + " · N", 5, 11);
+    g.fillText((p0.x | 0) + "," + (p0.y | 0), 5, size - 5);
+  }
+
+  function compassTargets() {
+    const out = [];
+    if (!G || !G.level) return out;
+    const lv = G.level;
+    const p0 = localWarden();
+    if (!p0) return out;
+    const dist = (x, y) => Math.hypot(x - p0.x, y - p0.y);
+    lv.gens.forEach(function (gn) {
+      if (gn.hp <= 0 || !tileSeen(gn.x + 0.5, gn.y + 0.5)) return;
+      out.push({ x: gn.x + 0.5, y: gn.y + 0.5, col: "#f59e0b", label: "NEXUS", rank: 0, d: dist(gn.x + 0.5, gn.y + 0.5) });
+    });
+    if (lv._exitTile && tileSeen(lv._exitTile.x + 0.5, lv._exitTile.y + 0.5)) {
+      const et = lv._exitTile;
+      out.push({ x: et.x + 0.5, y: et.y + 0.5, col: "#fde047", label: "EXIT", rank: 0, d: dist(et.x + 0.5, et.y + 0.5) });
+    }
+    lv.foes.forEach(function (f) {
+      if (!f.boss || f.hp <= 0 || !tileSeen(f.x, f.y)) return;
+      out.push({ x: f.x, y: f.y, col: "#ef4444", label: "BOSS", rank: 0, d: dist(f.x, f.y) });
+    });
+    const loose = [];
+    lv.items.forEach(function (it) {
+      if (!MAP_SPECIAL[it.kind] || !tileSeen(it.x + 0.5, it.y + 0.5)) return;
+      loose.push({ x: it.x + 0.5, y: it.y + 0.5, col: "#fbbf24", label: "PRIZE", rank: 1, d: dist(it.x + 0.5, it.y + 0.5) });
+    });
+    if (G.mode === "survive") {
+      (lv.pads || []).forEach(function (d) {
+        if (!tileSeen(d.x + 0.5, d.y + 0.5)) return;
+        loose.push({ x: d.x + 0.5, y: d.y + 0.5, col: "#22d3ee", label: "GATE", rank: 1, d: dist(d.x + 0.5, d.y + 0.5) });
+      });
+    }
+    loose.sort(function (a, b) { return a.d - b.d; });
+    if (loose.length) out.push(loose[0]);
+    out.sort(function (a, b) { return (a.rank - b.rank) || (a.d - b.d); });
+    return out.slice(0, 3);
+  }
+  function drawCompass(dest, w, h) {
+    if (!G || !G.level || mapMode() === "off") return;
+    const p0 = localWarden();
+    if (!p0) return;
+    const list = compassTargets();
+    if (!list.length) return;
+    const cxs = p0.x * TILE - cam.x, cys = p0.y * TILE - cam.y;
+    const inset = 30;
+    const room = window.CryptStudio && CryptStudio.reduced;
+    dest.save();
+    dest.font = "10px 'IBM Plex Mono', monospace";
+    dest.textAlign = "center";
+    list.forEach(function (t) {
+      const wx = t.x * TILE - cam.x, wy = t.y * TILE - cam.y;
+      if (wx > inset && wx < w - inset && wy > inset && wy < h - inset) return;
+      const ang = Math.atan2(wy - cys, wx - cxs);
+      const hw = w / 2 - inset, hh = h / 2 - inset;
+      const cx = w / 2, cy = h / 2;
+      const ca = Math.abs(Math.cos(ang)) < 1e-4 ? 1e-4 : Math.abs(Math.cos(ang));
+      const sa = Math.abs(Math.sin(ang)) < 1e-4 ? 1e-4 : Math.abs(Math.sin(ang));
+      const k = Math.min(hw / ca, hh / sa);
+      const px = cx + Math.cos(ang) * k, py = cy + Math.sin(ang) * k;
+      dest.save();
+      dest.translate(Math.round(px), Math.round(py));
+      dest.rotate(ang);
+      dest.globalAlpha = room ? 0.85 : 0.72 + 0.22 * Math.sin(G.t * 6);
+      dest.fillStyle = t.col;
+      dest.beginPath();
+      dest.moveTo(10, 0);
+      dest.lineTo(-5, 6);
+      dest.lineTo(-5, -6);
+      dest.closePath();
+      dest.fill();
+      dest.restore();
+      dest.globalAlpha = 0.8;
+      dest.fillStyle = t.col;
+      dest.fillText(t.label + " " + (t.d | 0), Math.round(cx + Math.cos(ang) * (k - 24)), Math.round(cy + Math.sin(ang) * (k - 24)) + 3);
+    });
+    dest.restore();
+  }
+
+  function glowSprite(rgb) {
+    if (glowCache[rgb]) return glowCache[rgb];
+    const s = 128, cv = document.createElement("canvas");
+    cv.width = s; cv.height = s;
+    const g = cv.getContext("2d");
+    const grd = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    grd.addColorStop(0, "rgba(" + rgb + ",0.95)");
+    grd.addColorStop(0.3, "rgba(" + rgb + ",0.4)");
+    grd.addColorStop(0.65, "rgba(" + rgb + ",0.12)");
+    grd.addColorStop(1, "rgba(" + rgb + ",0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, s, s);
+    glowCache[rgb] = cv;
+    return cv;
+  }
+  function lightAt(dest, spr, wx, wy, r, alpha) {
+    if (r <= 0 || alpha <= 0) return;
+    dest.globalAlpha = alpha;
+    dest.drawImage(spr, wx - r, wy - r, r * 2, r * 2);
+  }
+  function drawLights(dest, w, h) {
+    if (!G || !G.level) return;
+    const lv = G.level;
+    const live = G.players.filter(function (p) { return !p.dead && (p.sleepT || 0) <= 0; });
+    if (!live.length && !lv.gens.length) return;
+    const room = window.CryptStudio && CryptStudio.reduced;
+    const flick = room ? 1 : 1 + Math.sin(G.t * 7.1) * 0.03 + Math.sin(G.t * 2.3) * 0.02;
+    dest.save();
+    dest.globalCompositeOperation = "lighter";
+    live.forEach(function (p) {
+      const r = visionRange(p) * TILE * 1.08 * flick;
+      lightAt(dest, glowSprite(p.ai ? "150,190,255" : "255,224,170"),
+        p.x * TILE - cam.x, p.y * TILE - cam.y, r, p.ai ? 0.24 : 0.42);
+    });
+    lv.gens.forEach(function (gn) {
+      if (gn.hp <= 0 || !tileSeen(gn.x + 0.5, gn.y + 0.5)) return;
+      const vis = tileVis(gn.x + 0.5, gn.y + 0.5);
+      const r = TILE * (2.7 + (room ? 0 : 0.22 * Math.sin((G.t + gn.x) * 3.1)));
+      lightAt(dest, glowSprite("196,120,255"),
+        gn.x * TILE + TILE / 2 - cam.x, gn.y * TILE + TILE / 2 - cam.y, r, vis ? 0.3 : 0.12);
+    });
+    lv.items.forEach(function (it) {
+      if (!MAP_SPECIAL[it.kind] || !tileVis(it.x + 0.5, it.y + 0.5)) return;
+      const r = TILE * 1.6;
+      lightAt(dest, glowSprite("255,214,130"),
+        it.x * TILE + TILE / 2 - cam.x, it.y * TILE + TILE / 2 - cam.y, r, 0.15 + (room ? 0 : 0.06 * Math.sin((G.t + it.x) * 4)));
+    });
+    (G.pets || []).forEach(function (pt) {
+      if (!tileVis(pt.x, pt.y) || (pt.sleepT || 0) > 0) return;
+      lightAt(dest, glowSprite("130,255,190"), pt.x * TILE - cam.x, pt.y * TILE - cam.y, TILE * 2.1, 0.15);
+    });
+    lv.foes.forEach(function (f) {
+      if (!f.boss || f.hp <= 0 || !tileVis(f.x, f.y)) return;
+      lightAt(dest, glowSprite("255,110,110"), f.x * TILE - cam.x, f.y * TILE - cam.y, TILE * 3.4, 0.3);
+    });
+    dest.restore();
+  }
+  function vignetteSprite(w, h) {
+    const key = (w | 0) + "x" + (h | 0);
+    if (vigCache && vigKey === key) return vigCache;
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(2, w | 0); cv.height = Math.max(2, h | 0);
+    const g = cv.getContext("2d");
+    const grd = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.26, w / 2, h / 2, Math.max(w, h) * 0.64);
+    grd.addColorStop(0, "rgba(120,0,10,0)");
+    grd.addColorStop(0.55, "rgba(132,8,18,0.5)");
+    grd.addColorStop(1, "rgba(92,0,8,0.92)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, cv.width, cv.height);
+    vigCache = cv; vigKey = key;
+    return cv;
+  }
+  function noteHitDir(p, f) {
+    if (!G || !p || !f || !p.hero || p.ai) return;
+    const list = G.hitDirs || (G.hitDirs = []);
+    list.push({ ang: Math.atan2(f.y - p.y, f.x - p.x), life: 0.9 });
+    if (list.length > 6) list.shift();
+  }
+  function drawDangerEdge(dest, w, h) {
+    if (!G) return;
+    const p0 = G.players.find(function (p) { return !p.dead && !p.ai; }) || G.players[0];
+    if (p0 && !p0.dead) {
+      const frac = p0.hp / Math.max(1, p0.max);
+      if (frac < 0.45) {
+        const a = (0.45 - frac) / 0.45;
+        const room = window.CryptStudio && CryptStudio.reduced;
+        const pulse = room ? 0.7 : 0.58 + 0.42 * Math.sin(G.t * (5.2 + (1 - frac) * 4));
+        dest.save();
+        dest.globalAlpha = Math.min(0.62, a * (1 - frac * 0.3) * (0.55 + 0.45 * pulse));
+        dest.drawImage(vignetteSprite(w, h), 0, 0, w, h);
+        dest.restore();
+      }
+    }
+    const dirs = G.hitDirs;
+    if (dirs && dirs.length) {
+      const cx = w / 2, cy = h / 2, rad = Math.min(w, h) * 0.41;
+      dest.save();
+      dest.lineCap = "round";
+      dest.lineWidth = 4.5;
+      dest.strokeStyle = "#ef4444";
+      dirs.forEach(function (d) {
+        dest.globalAlpha = Math.max(0, Math.min(0.85, d.life / 0.9)) * 0.8;
+        dest.beginPath();
+        dest.arc(cx, cy, rad, d.ang - 0.26, d.ang + 0.26);
+        dest.stroke();
+      });
+      dest.restore();
+    }
+  }
+
+  /* ─── kill streak (score multiplier) ─── */
+
+  function comboMult() { return 1 + Math.min(4, Math.floor((G && G.combo || 0) / 8)); }
+  function comboStreak() { return (G && G.combo) || 0; }
+  function bumpCombo() {
+    if (!G) return 1;
+    G.combo = (G.combo || 0) + 1;
+    G.comboT = 3.2;
+    const m = comboMult();
+    if (m !== G.comboTier) {
+      G.comboTier = m;
+      const p0 = G.players[0];
+      if (m > 1 && p0 && window.CryptStudio) {
+        CryptStudio.floater(p0.x, p0.y - 0.9, "×" + m, m >= 5 ? "#fbbf24" : "#e2e8f0");
+      }
+    }
+    return m;
+  }
+  function scoreKill(base) {
+    const m = bumpCombo();
+    G.score += Math.round(base * m);
+    return m;
+  }
+  function streakHtml() {
+    if (!G || (G.combo || 0) < 4) return "";
+    const m = comboMult();
+    const col = m >= 5 ? "#fbbf24" : (m >= 3 ? "#fb923c" : "#e2e8f0");
+    return "<span>Streak <b style='color:" + col + "'>×" + m + "</b> " + G.combo + " kills</span>";
   }
 
   function rebuildFoeGrid() {
@@ -2132,8 +2512,8 @@
     if (!el) return;
     el.classList.remove("hidden");
     el.innerHTML = mode === "survive"
-      ? "<b>WASD</b> move · auto-fire on · <b>K</b> vial · grab relics · <b>P</b> pause"
-      : "<b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · smash nexuses · cyan exit";
+      ? "<b>WASD</b> move · auto-fire on · <b>K</b> vial · <b>N</b> map · grab relics · <b>P</b> pause"
+            : "<b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · <b>N</b> map · smash nexuses · cyan exit";
     if (G) G._coach = 10;
   }
   function hideCoach() {
@@ -2847,7 +3227,7 @@
       if (f.boss) feel("boss", f.x, f.y);
       else if (!G._hitSfx) { feel("hit", f.x, f.y); G._hitSfx = true; }
     }
-    if (f.hp <= 0 && G.mode !== "survive") G.score += ((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1);
+    if (f.hp <= 0 && G.mode !== "survive") scoreKill(((FOE[f.kind] && FOE[f.kind].pts) || 10) * (f.rank || 1));
   }
 
   function stepPad(p) {
@@ -2866,6 +3246,16 @@
     G._hitSfx = false;
     G._killSfx = false;
     G.t += dt;
+    if (G.combo > 0) {
+      G.comboT -= dt;
+      if (G.comboT <= 0) { G.combo = 0; G.comboTier = 0; }
+    }
+    if (G.hitDirs && G.hitDirs.length) {
+      for (let i = G.hitDirs.length - 1; i >= 0; i--) {
+        G.hitDirs[i].life -= dt;
+        if (G.hitDirs[i].life <= 0) G.hitDirs.splice(i, 1);
+      }
+    }
     announce.life -= dt;
     if (G._coach > 0) {
       G._coach -= dt;
@@ -3114,6 +3504,7 @@
         }
         if (!tgt.hurtBeep) {
           feel("hurt", tgt.x, tgt.y); tgt.hurtBeep = 0.25;
+          noteHitDir(tgt, f);
           if (tgt.hero) emit("onPlayerHit", { p: tgt, f: f });
         }
         if (tgt.reflect > 0) f.hp -= 14 * dt;
@@ -3546,7 +3937,7 @@
       ctx.fillStyle = "#05060a";
       ctx.fillRect(0, 0, w, h);
     }
-    if (!G || !G.level) return;
+    if (!G || !G.level) { drawMap(); return; }
     const lv = G.level;
     const live = G.players.filter((p) => !p.dead && (p.sleepT || 0) <= 0);
     const camSrc = live.filter((p) => !p.ai);
@@ -3777,6 +4168,7 @@
       }
       ctx.globalAlpha = 1;
     });
+    drawCompass(ctx, w, h);
     $("announce").textContent = announce.life > 0 ? announce.t : "";
     if (window.CryptStudio) {
       CryptStudio.fps.draws = (x1 - x0) * (y1 - y0) + lv.foes.length + G.shots.length + lv.items.length;
@@ -3789,13 +4181,18 @@
         const fxCtx = fxC.getContext("2d");
         fxCtx.setTransform(dpr2, 0, 0, dpr2, 0, 0);
         fxCtx.clearRect(0, 0, w, h);
+        drawLights(fxCtx, w, h);
+        drawDangerEdge(fxCtx, w, h);
         CryptStudio.juiceDraw(fxCtx, cam, TILE, w, h);
         CryptStudio.fpsDraw(fxCtx, w);
       } else {
+        drawLights(ctx, w, h);
+        drawDangerEdge(ctx, w, h);
         CryptStudio.juiceDraw(ctx, cam, TILE, w, h);
         CryptStudio.fpsDraw(ctx, w);
       }
     }
+    drawMap();
   }
 
   function buffs(p) {
@@ -3817,7 +4214,7 @@
     const autoOn = persist.autoShot || G.surviveAuto;
     $("hudMeta").innerHTML = "<span>Score <b>" + G.score + "</b></span><span>" +
       (G.mode === "survive" ? "Survive <b>W" + surviveWave() + "</b> · lv " + G.lvl : ((G.mode === "campaign" ? "Campaign" : "Endless") + " <b>" + (G.floor + 1) + (G.mode === "campaign" && window.LatticeCampaign ? "/" + window.LatticeCampaign.LEN : "") + "</b>")) +
-      "</span><span>Credits <b>" + G.credits + "</b></span>";
+      "</span><span>Credits <b>" + G.credits + "</b></span>" + streakHtml();
     if (G.mode !== "survive") {
       $("pips").innerHTML = G.players.map((p) =>
         "<div class='pip'><div class='nm' style='color:" + p.hero.color + "'>" + p.hero.name + (p.ai ? " · AI" : "") + " · " + (p.hero.special || p.hero.tag) + ((p.sleepT || 0) > 0 ? " · SLEEP" : "") + (p.dead ? " · DOWN" : "") + "</div>" +
@@ -3872,7 +4269,7 @@
     if ($("hudXpFill")) $("hudXpFill").style.width = Math.max(0, Math.min(100, 100 * G.xp / need)) + "%";
     if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + G.xp + "/" + need;
     if ($("hudClock")) $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  next wave " + waveLeft.toFixed(0) + "s";
-    if ($("hudKills")) $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  HORDE " + G.level.foes.length + "/" + surviveCap(w);
+    if ($("hudKills")) $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  HORDE " + G.level.foes.length + "/" + surviveCap(w) + (comboStreak() >= 4 ? "  ·  ×" + comboMult() + " STREAK" : "");
     const p0 = G.players[0];
     if ($("hudPlayers")) {
       $("hudPlayers").innerHTML = G.players.map((p) => {
@@ -4300,7 +4697,8 @@
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets draw no agro and sleep 20s if downed. AI helpers sleep if they fall — they do not end the run.</li>" +
-      "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). Options: auto-pick Survival upgrades. <b>P</b> pause. <b>F3</b> FPS. <b>M</b> mute. <b>F11</b> fullscreen.</li></ol>" +
+      "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). Options: auto-pick Survival upgrades. <b>P</b> pause. <b>F3</b> FPS. <b>N</b> map (radar / full / off). <b>M</b> mute. <b>F11</b> fullscreen.</li>" +
+      "<li><b>Streak</b> — chained kills raise a score multiplier up to ×5; it breaks after three seconds with no kill. The map (N) paints only stone you have walked: nexuses, doors, gates, chests, and named bosses. Edge arrows point to the nearest known nexus, the exit, and any boss you have seen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
     $("hk").onclick = () => { hideOverlay(); overlayMode = null; };
   }
@@ -4359,6 +4757,10 @@
     keys[e.code] = true;
     if (e.code === "F3") {
       if (keyEdge.F3 && window.CryptStudio) CryptStudio.fps.show = !CryptStudio.fps.show;
+      return;
+    }
+    if (e.code === "KeyN" && overlayMode !== "menu") {
+      if (keyEdge.KeyN) cycleMapMode();
       return;
     }
     if (e.code === "KeyM" && overlayMode !== "menu") {

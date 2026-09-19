@@ -73,4 +73,14 @@ Copy: Jobs of the Accord. Lightfather playable. PayPal.me/ExcavationPro + Patreo
 
 **Phase close (2026-09-10).** Survival level-first ramp, fog-band spawn, 200 HP +10/level, well cards, new foe jobs + muts, square-frame cleanup. Next work waits for the next update phase.
 
+## Phase 9 — Lantern (nav + read + streak)
+- **Radar map** (`#cryptMap`, key **N**): `radar → full → off`, persisted as `persist.mapMode`. One offscreen canvas per level at 1 px per tile (`lv._mapCache`); `stampVis` pushes newly seen tiles to `lv._mapNew`, so the cache is repainted incrementally — reveal is never cheaper than fog itself, so the map cannot leak unexplored stone. Blips: nexuses, doors, gates, exit, high-tier relics, visible foes, boss ring, allies, pets, plus a facing spur and tile readout.
+- **Objective compass** (`compassTargets` / `drawCompass`): edge chevrons to the nearest *known* nexus, exit, and seen boss, then the nearest seen prize (chest / core / legendary) and — Survival only — the nearest lattice gate. Distance in tiles on the label. Targets already on screen are skipped; the compass obeys the `N` toggle.
+- **Lantern light pass** (`drawLights`): additive `lighter` glow sprites (cached radial gradients) for warden lanterns (warm, AI cooler), violet nexuses, gold relics, green pets, red bosses. Flicker scales with `CryptStudio.reduced`.
+- **Danger read** (`drawDangerEdge`): low-HP red vignette (pulses with missing HP, static under reduced motion) + hit-direction arcs from `noteHitDir`, fed by the melee contact path that already emits `onPlayerHit`.
+- **Kill streak** (`comboMult` / `bumpCombo` / `scoreKill`): chained kills raise a score multiplier to ×5 (one step per 8 kills), breaking after 3.2 s; Survival and Endless/Campaign kills both route through `scoreKill`, tier-ups drop a floater, and the streak reads in the HUD meta bar and the Survival kill line.
+- QA: `tools/crypt_studio_qa.js` now asserts map/compass/light/danger/streak/remap and version-agnostic cache-bust (was pinned to `game.js?v=52`).
+
+**Cache: `game.js?v=53` `game.css?v=20`.**
+
 **Confidence: 94/100.** 60 FPS @ dense Survival is engineered (grid + LOD + 60Hz + tile cache + cap 380).
