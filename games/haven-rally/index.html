@@ -25,7 +25,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=20">
+<link rel="stylesheet" href="./game.css?v=22">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"Haven Rally","url":"https://chatagent.ca/games/haven-rally/","description":"Browser time-trial racer: Apex Mk I, lattice circuits, ghost, local ledger.","image":"https://chatagent.ca/games/haven-rally/assets/apex-hero.jpg","author":{"@type":"Person","name":"Justin Helmer","alternateName":"Excavationpro"},"publisher":{"@type":"Organization","name":"Eternal Haven","url":"https://eternalhaven.ca/"},"genre":["Racing","Sports"],"gamePlatform":"Web browser","offers":{"@type":"Offer","price":"0","priceCurrency":"CAD"}}</script>
 </head>
@@ -49,6 +49,7 @@
   <div class="stage">
     <div class="viewport">
       <canvas id="circuit" tabindex="0" aria-label="Rally circuit"></canvas>
+      <div class="boost-veil" id="boostVeil" aria-hidden="true"></div>
       <div class="count-flash hidden" id="countFlash">3</div>
       <div id="dragTree" class="drag-tree hidden" aria-label="Christmas tree">
         <p class="tree-banner" id="treeBanner">READY</p>
@@ -90,7 +91,7 @@
             <em id="rhPos">P1</em>
           </div>
           <div class="rh-block rh-live">
-            <span>CURRENT LAP</span>
+            <span id="rhBigLabel">CURRENT LAP</span>
             <b id="rhLapT">0:00.000</b>
             <span>SESSION <i id="rhSess">0:00.000</i></span>
           </div>
@@ -184,7 +185,7 @@
         <div class="card" id="secCard">—</div>
       </div>
       <div class="panel">
-        <h3>Ghost</h3>
+        <h3 id="ghostHead">Ghost</h3>
         <div class="card" id="ghostCard">No ghost yet. Finish a heat.</div>
       </div>
       <div class="panel">
@@ -219,8 +220,8 @@
 <script src="./radio.js?v=3"></script>
 <script src="./sfx.js?v=4"></script>
 <script src="./carmodel.js?v=9"></script>
-<script src="./rally3d.js?v=29"></script>
+<script src="./rally3d.js?v=30"></script>
 <script src="/games/arcade-ledger.js?v=1"></script>
-<script src="./game.js?v=58"></script>
+<script src="./game.js?v=60"></script>
 </body>
 </html>

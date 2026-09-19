@@ -9,6 +9,7 @@
   const COMBO_MPH = 5;
   const BOOST_TQ = 0.78;
   const BOOST_VMAX = 0.28;
+  const REV_CAP = 11;
   const DEFAULT_CRAFT = {
     id: "apex", name: "Apex Mk I", tag: "Lattice GT",
     src: "./assets/apex-plate.jpg", hero: "./assets/apex-hero.jpg",
@@ -1096,7 +1097,6 @@
     pendingTrack: null,
     _firstFinish: 0
   };
-
   const $ = function (id) { return document.getElementById(id); };
   const canvas = $("circuit");
   const use3d = !!(window.Rally3D && window.THREE && window.Rally3D.init(canvas));
@@ -1204,16 +1204,27 @@
     if ($("splitHud")) $("splitHud").classList.toggle("hidden", !wantSplit);
     if ($("splitBar")) $("splitBar").classList.toggle("hidden", !wantSplit);
     G.lap = 0;
-    G.lastS = 0;
+    /* Seed the lap origin from where the car actually sits on the grid. lastS = 0 read
+       as "just past the line", so the first frame stamped every sector and the next
+       crossing counted a phantom lap 1 (and wrote a ghost a lap short). */
+    G.lastS = (G.car && G.car.s0 != null) ? G.car.s0
+      : ((G.car && tr.samples) ? project(G.car, tr.samples, null, tr.closed !== false).s : 0);
     G.gates = (tr.sectors || [0, 0, 0]).map(function () { return false; });
     const flashOff = $("countFlash");
     if (flashOff) flashOff.classList.add("hidden");
     G.splits = [];
     G.rec = [];
     G.lastLap = null;
-    G.bestLap = null;
     G.lapStartMs = 0;
     G.lapTimes = [];
+    G.lapSegs = [];
+    G.segAnchor = 0;
+    G.segFracs = segFracsFor(tr);
+    const rec = tr.kind === "ridge" ? null : loadBest();
+    G.bestLap = rec ? rec.ms : null;
+    G.bestSegs = rec && rec.segs && rec.segs.length ? rec.segs.slice() : null;
+    G.recordMs = rec ? rec.ms : null;
+    G.staleGhost = null;
     G.hudSpd = 0;
     G.hudRpm = 800;
     G._ridgeDone = false;
@@ -1232,6 +1243,15 @@
     applyOptions();
     const gk = tr.id + "|" + G.craft.id;
     G.ghost = (!isFieldRace() && G.save.ghosts && G.save.ghosts[gk]) || null;
+    if (G.ghost && !ghostCoversHeat(G.ghost, tr.laps, tr.len)) {
+      /* Pre-fix ghosts are ~one lap short. Drop and forget them so "beat the ghost"
+         stays winnable, and record the old time in the log. */
+      G.staleGhost = G.ghost.ms;
+      delete G.save.ghosts[gk];
+      G.ghost = null;
+      writeSave(G.save);
+      log("Dropped a stale ghost · " + fmt(G.staleGhost) + " · written before the lap fix.");
+    }
     G.bestMs = G.ghost && G.ghost.ms;
     paintPilot();
     showDragUi(false);
@@ -1248,7 +1268,7 @@
           : "P1 WASD · P2 arrows (Ctrl drift, Enter boost) · pad: stick + RT/LT, A gas, B e-brake, RB boost · V P2 cam")
         : (opt("manual")
           ? "W throttle · Space brake · ↑↓ shift · L-Shift drift · R-Shift boost"
-          : "W throttle · Space brake · L-Shift drift · R-Shift boost/guns · F drag tree");
+          : "W throttle · Space brake/reverse · L-Shift drift · R-Shift boost/guns · F drag tree");
     }
     $("app").classList.remove("hidden");
     hideOverlay();
@@ -1927,20 +1947,30 @@
   function blankCar(pose, tank) {
     return {
       x: pose.x, y: pose.y, h: pose.h, vh: pose.h, speed: 0, steer: 0,
+      s0: pose.s == null ? null : pose.s,
       boost: tank || 1, gear: 1, rpm: 900, thr: 0, brk: 0, shiftT: 0, wheelSlip: 0
     };
   }
+  const GRID_BACK = 11;
   function poseOnGrid(laneIdx, stagger) {
     const tr = G.track;
     const a = tr.pts[0], b = tr.pts[1];
     const h = Math.atan2(b.y - a.y, b.x - a.x);
     const tlen = dist(a, b) || 1;
     const lat = (laneIdx - 1.5) * LANE_W;
-    const back = (stagger || 0) * 5.5;
+    const closed = tr.closed !== false;
+    /* Standing start: leave the line behind the grid so the first crossing starts lap 1
+       instead of ending it. Open ribbons have no road behind the first sample. */
+    const back = (closed ? GRID_BACK : 0) + (stagger || 0) * 5.5;
+    const total = tr.len || 0;
+    /* Arc position of the grid, from geometry. Never from a projection: the start/finish
+       seam is equidistant to both ends of the lap and project() flips between s=0 and
+       s=len there, which stamped every sector in the first frame. */
+    const s = (closed && total) ? ((total - back) % total + total) % total : 0;
     return {
       x: a.x + (-(b.y - a.y) / tlen) * lat - Math.cos(h) * back,
       y: a.y + ((b.x - a.x) / tlen) * lat - Math.sin(h) * back,
-      h: h
+      h: h, s: s, back: back
     };
   }
   function makeRacer(spec) {
@@ -1960,6 +1990,9 @@
       lastLap: null,
       bestLap: null,
       lapStartMs: 0,
+      lapSegs: [],
+      bestSegs: null,
+      segAnchor: 0,
       done: false,
       finishMs: null,
       skill: spec.skill || 1,
@@ -1967,7 +2000,8 @@
       rng: mulberry(spec.seed || 7),
       sparks: 0
     };
-    if (G.track && G.track.samples) {
+    if (r.car.s0 != null) r.lastS = r.car.s0;
+    else if (G.track && G.track.samples) {
       r.lastS = project(r.car, G.track.samples, null, G.track.closed !== false).s;
     }
     return r;
@@ -2041,7 +2075,8 @@
       onTrack: on0,
       fx: fx,
       ignoreCombo: !fx,
-      manual: manual
+      manual: manual,
+      human: racer.kind === "human"
     });
     if (car.vh == null) car.vh = car.h;
     const turnAuth = c.turn * 0.62 * (1.08 - 0.58 * spd01);
@@ -2054,6 +2089,7 @@
     if (wslip > 0.28 && c.drive === "fwd") yaw *= (1 - 0.5 * wslip);
     yaw = clamp(yaw, -2.05, 2.05);
     car.h += yaw * dt;
+    car.gLat = clamp(0.9144 * car.speed * yaw / G0, -2, 2);
     let latGrip = (c.mu * 0.74) * (on0 ? 1 : 0.3) * weatherGrip(c);
     if (ebrake && spd > 10) latGrip *= 0.16;
     else latGrip *= 0.82 + 0.18 * (1 - spd01);
@@ -2082,13 +2118,23 @@
       const dir = proj.lat >= 0 ? 1 : -1;
       car.x -= (-proj.hy) * dir * extra;
       car.y -= proj.hx * dir * extra;
-      car.speed *= Math.max(0.22, 1 - 1.7 * dt);
       const trackH = Math.atan2(proj.hy, proj.hx);
-      car.h += wrapDelta(trackH - car.h, Math.PI * 2) * 0.08;
+      /* How square the car is to the barrier: 0 = sliding along it, 1 = nose-first.
+         The old flat x0.972/frame grind balanced engine thrust at ~3 mph, so a clip
+         became a trap. Charge an angle-scaled thump once, then let the car scrape. */
+      const into = Math.abs(Math.sin(wrapDelta(car.vh - trackH, Math.PI * 2)));
+      if ((car.wallCool || 0) <= 0) car.speed *= 1 - 0.34 * into;
+      car.wallCool = 0.16;
+      car.speed *= Math.max(0.62, 1 - (0.09 + 0.8 * into) * dt);
+      car.h += wrapDelta(trackH - car.h, Math.PI * 2) * (0.08 + 0.22 * into);
       car.vh += wrapDelta(trackH - car.vh, Math.PI * 2) * 0.18;
+      car.scrape = 1;
+      if (fx && spd > 10) G.sparks = Math.max(G.sparks || 0, 0.3 + 0.35 * into);
       if (ridge && fx) breakCombo("WALL");
       proj = project(car, G.track.samples, racer.lastS, G.track.closed !== false);
     }
+    if ((car.wallCool || 0) > 0) car.wallCool -= dt;
+    else if (car.scrape) car.scrape *= 0.86;
     racer.boostOn = boostOn;
     racer.ebrake = ebrake;
     car.boostOn = boostOn;
@@ -2122,6 +2168,9 @@
     G.lastLap = r.lastLap;
     G.bestLap = r.bestLap;
     G.lapStartMs = r.lapStartMs;
+    G.lapSegs = r.lapSegs || [];
+    G.bestSegs = r.bestSegs || null;
+    G.segAnchor = r.segAnchor || 0;
   }
 
   function stepPowertrain(c, car, dt, inp) {
@@ -2140,6 +2189,19 @@
         car.gear = 1;
         car.shiftT = 0.1;
       }
+    }
+    /* Brake at a standstill backs a human car up. Without it, being pinned on a barrier
+       at 3 mph was a dead end in auto: the old stop-clamp ate every inch of reverse. */
+    const revOn = !!inp.human && !inp.manual && inp.brake > 0.35 && inp.throttle < 0.2 &&
+      car.speed < 1.4 && car.speed > -REV_CAP;
+    if (revOn) {
+      car.rev = true;
+      car.gear = -1;
+      car.shiftT = 0;
+    } else if (car.rev && (inp.throttle > 0.2 || inp.brake < 0.2)) {
+      car.rev = false;
+      if (car.gear < 0) car.gear = 0;
+      car.shiftT = 0.08;
     }
     let gIdx = car.gear < 1 ? 0 : car.gear - 1;
     if (gIdx > nG - 1) gIdx = nG - 1;
@@ -2168,7 +2230,8 @@
     }
     const bp = c.boostPower || 1;
     const tq = engineTorqueNm(c, rpm) * (inp.boostOn ? 1 + BOOST_TQ * bp : 1);
-    let Fdrive = clutch * inp.throttle * tq * ratio * c.eta / c.wheelRadius;
+    const drvIn = car.rev ? inp.brake : inp.throttle;
+    let Fdrive = clutch * drvIn * tq * ratio * c.eta / c.wheelRadius;
     if (car.gear === 1) Fdrive *= 1.55;
     else if (car.gear === 2) Fdrive *= 3.05;
     else if (car.gear === 3) Fdrive *= 2.72;
@@ -2189,7 +2252,7 @@
     else if (car.gear >= 4) Fmax *= 1.08;
     Fmax *= Math.min(1.35, 0.85 + 0.15 * (c.accelMul || 1));
     const want = Math.abs(Fdrive);
-    if (want > Fmax && clutch && inp.throttle > 0.2) {
+    if (want > Fmax && clutch && drvIn > 0.2) {
       car.wheelSlip = clamp(car.wheelSlip + dt * ((want - Fmax) / (Fmax + 1)) * 2.4, 0, 1);
       Fdrive = Math.sign(Fdrive) * Fmax * (1 - 0.35 * car.wheelSlip);
       if (inp.fx) G.sparks = Math.max(G.sparks || 0, 0.4 + car.wheelSlip * 0.7);
@@ -2210,18 +2273,21 @@
     const vMul = c.vmaxMul || 1;
     if (vMul > 1) Fdrag /= (vMul * vMul);
     const Froll = c.crr * c.massKg * G0 * (vAbs < 0.15 ? 0 : (vMs >= 0 ? 1 : -1));
-    const Fbrk = inp.brake * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
+    const Fbrk = (car.rev ? 0 : inp.brake) * c.brakeMu * c.massKg * G0 * 0.72 * (vAbs < 0.2 && !inp.throttle ? (vMs >= 0 ? 1 : -1) : (vMs >= 0 ? 1 : -1));
     const Feb = inp.ebrake ? c.mu * c.massKg * G0 * 0.28 * (vMs >= 0 ? 1 : -1) : 0;
     let Fnet = Fdrive - Fdrag - Froll;
     if (vAbs > 0.25 || inp.brake || inp.ebrake) Fnet -= Fbrk * (vAbs > 0.25 ? 1 : 0) + Feb;
     if (bonusYd > 0 && inp.throttle && !inp.ignoreCombo) Fnet += (G.combo || 0) * 190;
     const a = Fnet / c.massKg;
+    car.gLon = clamp(a / G0, -1.8, 1.8);
     car.speed += (a / YD) * dt;
     let vmax = topSpeedYd(c);
     if (inp.boostOn) vmax *= 1 + BOOST_VMAX * bp;
     if (car.speed > vmax) car.speed = vmax;
-    if (inp.brake && !inp.throttle && car.speed < 0 && car.speed > -5) car.speed = 0;
-    if (!inp.throttle && Math.abs(car.speed) < 0.35) car.speed = 0;
+    if (car.rev) {
+      if (car.speed < -REV_CAP) car.speed = -REV_CAP;
+    } else if (inp.brake && !inp.throttle && car.speed < 0 && car.speed > -5) car.speed = 0;
+    if (!inp.throttle && !car.rev && Math.abs(car.speed) < 0.35) car.speed = 0;
     car.rpm = rpm;
     car.wheelSlip = car.wheelSlip || 0;
   }
@@ -2258,10 +2324,97 @@
     return "DELTA " + sign + Math.abs(s).toFixed(3);
   }
 
+  let veilEl = null;
+  /* The car crossed `target` this frame iff the target sits inside the stretch covered
+     from prev to now, measured forward around the lap. Comparing the two numbers
+     separately (the old form) stamped every sector at once whenever the car or the
+     projector stepped backwards across the start/finish seam: a single frame then reads
+     as "past" all three gates. */
   function crossed(prev, now, target, total) {
-    if (total < 8) return false;
-    if (prev <= now) return prev <= target && now > target;
-    return prev <= target || now > target;
+    if (!(total > 8)) return false;
+    let step = now - prev;
+    if (step < 0) step += total;
+    if (step > total * 0.5) return false;
+    let ahead = target - prev;
+    if (ahead < 0) ahead += total;
+    return ahead <= step;
+  }
+
+  function fmtSigned(ms) {
+    if (ms == null || !isFinite(ms)) return "—";
+    const s = ms / 1000;
+    return (s >= 0 ? "+" : "\u2212") + Math.abs(s).toFixed(3);
+  }
+
+  /* Lap record book. A heat is only written to the ghost once it is finished, so a
+     recording from an older build that counted a phantom opening lap comes back a lap
+     short and can never be beaten: check its path length before trusting it. */
+  function ghostCoversHeat(g, laps, len) {
+    if (!g || !Array.isArray(g.samples) || g.samples.length < 3 || !laps || !len) return false;
+    let d = 0;
+    for (let i = 1; i < g.samples.length; i++) {
+      const a = g.samples[i - 1], b = g.samples[i];
+      d += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return d >= (laps - 0.3) * len;
+  }
+
+  function bestKey() {
+    return (G.track && G.track.id ? G.track.id : "track") + "|" + ((G.craft && G.craft.id) || "apex");
+  }
+  function loadBest() {
+    const b = G.save && G.save.bests && G.save.bests[bestKey()];
+    return b && b.ms ? b : null;
+  }
+  function saveLapRecord(ms, segs) {
+    if (!G.track || !G.save || !ms) return;
+    if (!G.save.bests) G.save.bests = {};
+    const k = bestKey();
+    const cur = G.save.bests[k];
+    if (!cur || ms < cur.ms) {
+      G.save.bests[k] = { ms: ms, segs: (segs || []).slice(), at: Date.now() };
+      G.recordMs = ms;
+      writeSave(G.save);
+    }
+  }
+  function segFracsFor(tr) {
+    const s = (tr && tr.sectors) || [];
+    return s.length ? s.concat([1]) : [];
+  }
+  /* Expected elapsed time at a fraction of the record lap, read off that lap's own
+     sector splits — replaces extrapolating a whole lap time off the first few percent. */
+  function expectedAt(frac) {
+    const segs = G.bestSegs, fracs = G.segFracs;
+    if (!segs || !segs.length || !fracs || !fracs.length) return null;
+    const f = clamp(frac, 0, 1);
+    let cum = 0, prevF = 0;
+    for (let i = 0; i < Math.min(segs.length, fracs.length); i++) {
+      const f1 = fracs[i];
+      if (f <= f1 && f1 > prevF) return cum + ((f - prevF) / (f1 - prevF)) * (segs[i] || 0);
+      cum += segs[i] || 0;
+      prevF = f1;
+    }
+    return cum;
+  }
+
+  let flashUntil = 0;
+  function flashMsg(text, tone) {
+    const el = $("countFlash");
+    if (!el) return;
+    el.textContent = text;
+    el.classList.remove("hidden");
+    el.classList.add("msg");
+    el.classList.toggle("good", tone === "good");
+    el.classList.toggle("bad", tone === "bad");
+    flashUntil = performance.now() + 1500;
+  }
+  function flashTick(now) {
+    if (!flashUntil || now < flashUntil) return;
+    flashUntil = 0;
+    const el = $("countFlash");
+    if (!el) return;
+    el.classList.add("hidden");
+    el.classList.remove("good", "bad", "msg");
   }
 
   function paintRaceHud(now) {
@@ -2289,9 +2442,11 @@
     const deltaEl = $("rhDelta");
     if (deltaEl) {
       let d = null;
-      if (drag && beat && racing && prog > 0.04) d = elapsed / prog - beat;
-      else if (G.bestLap && racing && prog > 0.06) d = lapMs / prog - G.bestLap;
-      else if (beat && racing && laps) d = elapsed - beat * ((G.lap + prog) / laps);
+      if (drag && beat && racing && prog > 0.15) d = elapsed / prog - beat;
+      else if (!drag && racing && G.bestSegs) {
+        const want = expectedAt(prog);
+        d = want == null ? null : lapMs - want;
+      } else if (beat && racing && laps) d = elapsed - beat * ((G.lap + prog) / laps);
       deltaEl.textContent = d == null ? "DELTA —" : fmtDelta(d);
       deltaEl.classList.toggle("up", d != null && d < -8);
       deltaEl.classList.toggle("down", d != null && d > 12);
@@ -2396,10 +2551,12 @@
           (G.phase === "drag_idle" ? "Roll to the tree · press F" : (G.tree && G.tree.phase === "ready") ? "READY · wait for the tree" : G.phase === "tree" ? "Tree · hold" : G.phase) +
           "</p><p>60' <b>" + fmt(st.ft60) + "</b></p>";
       }
+      if ($("rhBigLabel")) $("rhBigLabel").textContent = "ELAPSED";
       if ($("secCard")) {
         $("secCard").innerHTML = "You " + fmt(st.playerMs) + (st.foul ? " FOUL" : "") +
           "<br>AI " + fmt(st.aiMs) + (st.aiFoul ? " FOUL" : "");
       }
+      if ($("ghostHead")) $("ghostHead").textContent = "Rival";
       if ($("ghostCard")) {
         $("ghostCard").innerHTML = G.ai
           ? "Lane 2 · " + ((G.aiCraft && G.aiCraft.name) || "AI") +
@@ -2423,10 +2580,12 @@
     }
     const elapsed = G.phase === "race" ? now - G.t0 : 0;
     if ($("lapPill")) $("lapPill").textContent = "LAP " + Math.min(G.laps, G.lap + 1) + "/" + G.laps;
+    if ($("rhBigLabel")) $("rhBigLabel").textContent = (G.track && G.track.kind === "ridge") ? "RUN TIME" : "CURRENT LAP";
     if ($("hudMeta")) {
       $("hudMeta").innerHTML =
         "<span>Time <b>" + fmt(elapsed) + "</b></span>" +
-        "<span>Best <b>" + fmt(G.bestMs) + "</b></span>";
+        "<span>Lap <b>" + fmt(elapsed - (G.lapStartMs || 0)) + "</b></span>" +
+        "<span>Best lap <b>" + fmt(G.bestLap) + "</b></span>";
     }
     if ($("speedo")) $("speedo").innerHTML = Math.round(speedVal((G.car && G.car.speed) || 0)) + "<small>" + (opt("metric") ? "km/h" : "MPH") + "</small>";
     if ($("boostFill")) {
@@ -2435,12 +2594,21 @@
     }
     if ($("heatCard")) {
       $("heatCard").innerHTML = "<p><b>" + G.track.name + "</b></p><p>" + G.craft.name + " · " +
-        (G.phase === "count" ? "countdown" : G.phase) + "</p><p>Lap time <b>" + fmt(elapsed) + "</b></p>";
+        (G.phase === "count" ? "countdown" : G.phase) + "</p><p>Lap <b>" + fmt(elapsed - (G.lapStartMs || 0)) + "</b></p>" +
+        (G.recordMs ? "<p>Record lap <b>" + fmt(G.recordMs) + "</b></p>" : "") +
+        (G.staleGhost ? "<p class='lore'>Stale ghost dropped</p>" : "");
     }
     if ($("secCard")) {
+      const bs = G.bestSegs || [];
       $("secCard").innerHTML = (G.gates || []).map(function (g, i) {
-        return "S" + (i + 1) + " " + (g ? "■" : "□");
-      }).join(" · ") || "—";
+        const seg = G.lapSegs && G.lapSegs[i];
+        const d = (g && seg != null && bs[i] != null) ? " " + fmtSigned(seg - bs[i]) : "";
+        return "S" + (i + 1) + " " + (g ? "■" : "□") + d;
+      }).join(" · ") + (G.bestLap ? "<br>Best " + fmt(G.bestLap) : "");
+    }
+    if ($("ghostHead")) {
+      $("ghostHead").textContent = (G.track && G.track.kind === "ridge") ? "Arcade"
+        : ((G.racers && G.racers.length > 1) ? "Standings" : "Ghost");
     }
     if ($("ghostCard")) {
       if (G.track && G.track.kind === "ridge") {
@@ -2668,18 +2836,35 @@
           const target = frac * p.len;
           if (!r.gates[i] && crossed(prevS, p.s, target, p.len)) {
             r.gates[i] = true;
+            r.lapSegs[i] = elapsed - (r.segAnchor || r.lapStartMs || 0);
+            r.segAnchor = elapsed;
             if (r.slot === 0) {
               G.splits.push(elapsed);
-              log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
+              const bs = r.bestSegs && r.bestSegs[i];
+              log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed) +
+                (bs ? " · " + fmtSigned(r.lapSegs[i] - bs) : ""));
+              if (bs) flashMsg("S" + (i + 1) + " " + fmtSigned(r.lapSegs[i] - bs), r.lapSegs[i] - bs < 0 ? "good" : "bad");
             }
           }
         });
         if (!r.done && G.track.kind !== "ridge" && r.gates.every(Boolean) && crossed(prevS, p.s, 0, p.len) && prevS > p.len * 0.7) {
           r.lap += 1;
-          r.gates = [false, false, false];
+          r.gates = (G.track.sectors || [0, 0, 0]).map(function () { return false; });
           const lapMs = elapsed - (r.lapStartMs || 0);
           r.lastLap = lapMs;
-          if (r.bestLap == null || lapMs < r.bestLap) r.bestLap = lapMs;
+          const nSeg = (G.track.sectors || []).length + 1;
+          r.lapSegs[nSeg - 1] = Math.max(0, elapsed - (r.segAnchor || elapsed));
+          r.segAnchor = elapsed;
+          if (r.bestLap == null || lapMs < r.bestLap) {
+            r.bestLap = lapMs;
+            r.bestSegs = r.lapSegs.slice(0, nSeg);
+            if (r.slot === 0) {
+              G.bestSegs = r.bestSegs;
+              G.recordMs = lapMs;
+              log("Best lap · " + fmt(lapMs));
+            }
+          }
+          r.lapSegs = [];
           r.lapStartMs = elapsed;
           log(r.name + " lap " + r.lap + " · " + fmt(elapsed));
           if (r.lap >= G.laps) {
@@ -2718,7 +2903,12 @@
         if (!G.gates[i] && crossed(G.lastS, proj.s, target, proj.len)) {
           G.gates[i] = true;
           G.splits.push(elapsed);
-          log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed));
+          G.lapSegs[i] = elapsed - (G.segAnchor || G.lapStartMs || 0);
+          G.segAnchor = elapsed;
+          const bs = G.bestSegs && G.bestSegs[i];
+          log((G.track.kind === "ridge" ? "Checkpoint " : "Sector ") + (i + 1) + " · " + fmt(elapsed) +
+            (bs ? " · " + fmtSigned(G.lapSegs[i] - bs) : ""));
+          if (bs) flashMsg("S" + (i + 1) + " " + fmtSigned(G.lapSegs[i] - bs), G.lapSegs[i] - bs < 0 ? "good" : "bad");
         }
       });
       if (G.track.kind === "ridge") {
@@ -2732,14 +2922,23 @@
         }
       } else if (G.gates.every(Boolean) && crossed(G.lastS, proj.s, 0, proj.len) && G.lastS > proj.len * 0.7) {
         G.lap += 1;
-        G.gates = [false, false, false];
+        G.gates = (G.track.sectors || [0, 0, 0]).map(function () { return false; });
         const lapMs = elapsed - (G.lapStartMs || 0);
         G.lastLap = lapMs;
         G.lapTimes.unshift(lapMs);
-        if (G.bestLap == null || lapMs < G.bestLap) {
+        const nSeg = (G.track.sectors || []).length + 1;
+        G.lapSegs[nSeg - 1] = Math.max(0, elapsed - (G.segAnchor || elapsed));
+        G.segAnchor = elapsed;
+        const had = G.bestLap;
+        if (had == null || lapMs < had) {
           G.bestLap = lapMs;
-          log("Best lap · " + fmt(lapMs));
+          G.bestSegs = G.lapSegs.slice(0, nSeg);
+          G.segFracs = segFracsFor(G.track);
+          saveLapRecord(lapMs, G.bestSegs);
+          log((had == null ? "Best lap · " : "New best lap · ") + fmt(lapMs));
+          if (had != null) flashMsg("BEST LAP " + fmt(lapMs), "good");
         }
+        G.lapSegs = [];
         G.lapStartMs = elapsed;
         log("Lap " + G.lap + " · " + fmt(elapsed));
         if (G.lap >= G.laps) {
@@ -2749,8 +2948,24 @@
       G.lastS = proj.s;
       if (G.racers && G.racers[0]) G.racers[0].lastS = proj.s;
     }
+    wrongWayTick(dt, now, proj);
+    flashTick(now);
     heatHud(now);
     draw(now);
+  }
+
+  /* Driving the ribbon backwards had no feedback at all. */
+  function wrongWayTick(dt, now, proj) {
+    const car = G.car;
+    if (!car || !proj || !G.track || G.track.kind === "drag") return;
+    const tang = Math.atan2(proj.hy, proj.hx);
+    const along = Math.cos(wrapDelta(car.h - tang, Math.PI * 2)) * (car.speed >= 0 ? 1 : -1);
+    if (along < -0.35 && Math.abs(car.speed) > 4) G.wrongT = (G.wrongT || 0) + dt;
+    else G.wrongT = 0;
+    if (G.wrongT > 1.1 && now - (G.wrongShown || 0) > 2200) {
+      G.wrongShown = now;
+      flashMsg("WRONG WAY", "bad");
+    }
   }
 
   function draw(now) {
@@ -2770,6 +2985,8 @@
       const driftBurn = (G.sparks || 0) > 0.28 || (ebrakeOn && spdAbs > 8);
       const burnout = G.mode === "race" && G.phase !== "done" && G.phase !== "idle" && (launchBurn || driftBurn);
       const boostOn = !!(G.car && G.car.boostOn) || (!!G.keys.ShiftRight && (G.car.boost || 0) > 0.04 && !G.keys.ShiftLeft);
+      if (veilEl === null) veilEl = $("boostVeil");
+      if (veilEl) veilEl.classList.toggle("on", boostOn && !opt("reduceFx"));
       const field = (G.racers || []).slice(1).map(function (r) {
         return {
           car: r.car,
@@ -2911,7 +3128,9 @@
       "<li>Circuits open a grid: Solo ghost, 2P split, vs AI (Reed/Mira/Kai on stacked chassis), or 2P+AI. P2 uses arrows (Ctrl drift, Enter boost) or a pad: stick, RT/LT, A, B, RB.</li>" +
       "<li>Options → Weather: Clear, Dusk, Overcast, Rain, Storm. Wet roads cut grip; Sleet’s AWD keeps more of it.</li>" +
       "<li>Drag: F at the tree stages both lanes. Lane 2 rolls a random live chassis (Apex, Boxcut, Flick, Sleet) with that car’s boost and drive bonuses. It can red-light or miss a shift.</li>" +
-      "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip.</li>" +
+      "<li>Stay on the four-lane ribbon. Off-track dumps speed. Drift when you ask more turn than grip. Clip a barrier and the hit costs speed by how square it lands, then the car scrapes along instead of pinning at walking pace. Held brake walks you back out.</li>" +
+      "<li>Records: your best lap for each circuit + chassis is kept with its sector splits. The rail shows live split deltas, the bar shows your lap against the record, and a new record flashes on the HUD.</li>" +
+      "<li>Driving the ribbon backwards flashes WRONG WAY.</li>" +
       "<li>Endless: wreck traffic to chain combo. Each combo point is +5 mph top speed and stokes the guns. x3 pops vans and trucks. x6 pops a tractor. Apex MG, Boxcut cannons, Flick needles, Sleet rails. Ram a car or leave the asphalt and the chain dumps.</li>" +
       "<li>Hold a slide to charge boost. Right Shift spends it.</li>" +
       "<li>A faster finish writes the ghost for this circuit + craft.</li>" +

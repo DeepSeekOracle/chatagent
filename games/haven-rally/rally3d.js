@@ -18,6 +18,7 @@
   var splitOn = false;
   var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9, t: 0 };
   var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false, front: false };
+  var fpsFrames = 0, fpsT = 0, fpsVal = 0;
   var cam = { x: 0, y: 18, z: 28 };
   var look = { x: 0, y: 1, z: 0 };
   var camTune = { dist: 1, height: 1, view: 0, lag: 0.0004, fov: 52 };
@@ -1360,8 +1361,12 @@
     if (!mesh || !car) return;
     mesh.visible = true;
     mesh.position.set(car.x, 0.02, car.y);
+    if (mesh.rotation.order !== "YXZ") mesh.rotation.order = "YXZ";
     mesh.rotation.y = -car.h - Math.PI / 2;
-    mesh.rotation.z = -(car.steer || 0) * 0.08;
+    /* Body attitude read off the physics: lean on lateral g, squat under power, dive
+       on the brakes. Order YXZ so roll/pitch sit in the car's own frame. */
+    mesh.rotation.z = clamp(-(car.steer || 0) * 0.08 - (car.gLat || 0) * 0.045, -0.15, 0.15);
+    mesh.rotation.x = clamp(-(car.gLon || 0) * 0.012, -0.05, 0.05);
     mesh.traverse(function (ch) {
       if (ch.userData.steer) ch.rotation.y = (car.steer || 0) * 0.42;
     });
@@ -1424,6 +1429,13 @@
     if (!running) return;
     requestAnimationFrame(loop);
     var dt = Math.min(0.05, clock.getDelta());
+    fpsFrames += 1;
+    fpsT += dt;
+    if (fpsT >= 0.5) {
+      fpsVal = Math.round(fpsFrames / fpsT);
+      fpsFrames = 0;
+      fpsT = 0;
+    }
     if (!splitOn && !needSnap) {
       lerpCam(camera, cam, look, camTune, dt);
     }
@@ -1615,6 +1627,24 @@
       set("a3L", st.a3, 3); set("a3R", st.a3, 3);
       set("greenL", st.green, 3.4); set("greenR", st.green, 3.4);
       set("redL", st.redL, 3.6); set("redR", st.redR, 3.6);
+    },
+    stats: function () {
+      var out = {
+        fps: fpsVal,
+        skids: skidIdx,
+        smoke: smokeGroup ? smokeGroup.children.length : 0,
+        split: splitOn,
+        mesh: null
+      };
+      if (carMesh) {
+        out.mesh = {
+          x: Math.round(carMesh.position.x * 100) / 100,
+          z: Math.round(carMesh.position.z * 100) / 100,
+          lean: Math.round(carMesh.rotation.z * 1000) / 1000,
+          pitch: Math.round(carMesh.rotation.x * 1000) / 1000
+        };
+      }
+      return out;
     },
     setState: function (s) {
       if (!ok() || !s || !s.car) return;

@@ -139,14 +139,14 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <p>Score, wrecks, and best chain write to <code>save.arcade</code> and the local ledger hall.</p>
 
   <h2>7. Ghost + ledger</h2>
-  <p>Each heat records <code>{x,y,h,t}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost. Endless also writes <code>save.arcade</code>: <code>bestScore</code>, <code>bestCombo</code>, last 20 wreck-runs. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
+  <p>Each heat records <code>{x,y,h,t}</code> samples. Best finish time per <code>circuit|craft</code> keeps the ghost; best <i>lap</i> keeps its sector splits under <code>save.bests</code> and feeds the live delta. A ghost is only trusted if its recording covers the heat distance. Endless also writes <code>save.arcade</code>: <code>bestScore</code>, <code>bestCombo</code>, last 20 wreck-runs. Ledger key <code>lygo-haven-rally-v1</code> in localStorage. RESOURCE on the public page; this browser is the hall. No fake global board.</p>
 
   <h2>8. Studio + presentation</h2>
   <p>Title screen matches Lattice Golf: full-bleed still of the selected craft, right panel, operator name, garage chip, mode cards, radio, PayPal.me/ExcavationPro + Patreon. Garage is a live 3D studio (drag to orbit) with four bays. 2.5D Three.js follow-cam; 2D top-down fallback if WebGL fails.</p>
   <p><b>Cameras</b> (<kbd>C</kbd> or Options): Chase, Close, Hood, Bumper, Cockpit, TV. Chase distance/height sliders scale Chase and TV.</p>
   <p><b>Weather</b> (Options): Clear, Dusk, Overcast, Rain, Storm. Skydome + fog + sun height change with the pick. Rain/storm wet the asphalt (more metal, darker) and cut μ — AWD (Sleet) keeps more of it. Storm flashes. Reduce-effects hides rain streaks.</p>
   <p><b>World.</b> Gradient skydome, textured land, hill ring on the horizon. Trees are layered crowns + bushes. City tracks get windowed towers and roof caps; coast gets sand + water; parkland gets lodges.</p>
-  <p><b>FX.</b> Headlights and brake lamps. First-gear launch lays black burnout marks and spins the rears. Right Shift with fuel: tailpipe flames. Reduce-effects hides sparks, gun tracers, extra lights, rain, and new skids.</p>
+  <p><b>FX.</b> Headlights and brake lamps. First-gear launch lays black burnout marks and spins the rears. Right Shift with fuel: tailpipe flames. The body leans on lateral g and pitches under power and braking. Reduce-effects hides sparks, gun tracers, extra lights, rain, and new skids.</p>
   <p>HUD: commercial race cluster bottom-right (tach, gear, mph or km/h). Endless adds score, combo, wrecks, browser best.</p>
 
   <h2>9. Options</h2>
@@ -167,7 +167,18 @@ th { color:#94a3b8; font-size:.72rem; letter-spacing:.08em; text-transform:upper
   <h2>10. Audio</h2>
   <p>Procedural Web Audio (no sampled engines): RPM/throttle, gear clunk, tire band on slip, city bed that ducks when radio plays. Endless guns: noise bursts. Announcer: original OGG lines under <code>assets/vo/</code>. Radio is the on-page Excavationpro stream, same as Lattice Golf.</p>
 
-  <h2>11. Out of scope</h2>
+  <h2>11. Phase 10 — Steward</h2>
+  <p><b>Lap origin.</b> A heat seeded its lap counter at s=0 while the car stood on the grid, and the start/finish seam of a closed lap is about equidistant to both of its ends, so the projected arc position flipped between s≈0 and s≈len from one frame to the next. The gate test compared the two numbers separately (<i>prev ≤ target &amp;&amp; now &gt; target</i>, else <i>prev ≤ target || now &gt; target</i>), and a flip in either direction reads as "past" all three gates at once. The log showed three sectors at 0:00.017, a 17 ms "best lap" and a heat that finished a lap short — and that short heat is what got saved as the ghost and posted to the hall. Three things changed: the grid now sits 11 yd behind the line so the first crossing <i>begins</i> lap 1 instead of ending it, the lap origin is derived from the grid geometry instead of a projection, and the crossing test measures the stretch actually covered (the target must lie inside the interval from prev to now, forward around the lap; anything over half a lap is a bad sample). A stationary car can no longer score anything, whatever the projector does.</p>
+  <p><b>Standing start.</b> Lap 1 is timed from the lights, as on a real grid. Open ribbons (Endless) keep the flush start — there is no road behind the first sample to stand on.</p>
+  <p><b>Readouts.</b> The rail renames itself per discipline (Ghost, Standings, Rival, Arcade) instead of calling a drag opponent a ghost, and the big timer is labelled to match (CURRENT LAP / ELAPSED / RUN TIME). The record lap and the split deltas live in the SECTORS card, and each sector pass flashes its delta against the record profile.</p>
+  <p><b>Presentation.</b> A boost veil — a soft radial sweep that a driver notices at speed and can switch off with Reduce effects — sells the boost, the drag tree is smaller and translucent so it stops blocking the strip, and the body leans and pitches on measured lateral and longitudinal g.</p>
+  <p><b>Ghosts.</b> Every ghost saved before this pass covers one lap less than the heat demands, which makes it unbeatable. On load a ghost is dropped unless its recorded path covers the heat distance, and the rail says so.</p>
+  <p><b>Barriers.</b> Contact used to scrub speed by a flat ~82%/s while engine thrust balanced at ~3 mph, so any clip became a trap — and in auto there was no way out, because the stop-clamp ate every inch of reverse. A hit now costs speed in proportion to how square it lands, then the car scrapes along on a light penalty with sparks; holding brake backs you out.</p>
+  <p><b>Record book.</b> Best lap per <code>circuit|craft</code> is kept with its sector splits. The rail shows live split deltas against that lap and the record time, the top bar shows your own best lap rather than the ghost's heat time, a new record flashes on the HUD, and the delta readout interpolates the record's own sectors instead of extrapolating a whole lap off the first 6% (which is where a "+359.072" came from).</p>
+  <p><b>Feedback.</b> Driving the ribbon backwards flashes WRONG WAY.</p>
+  <p><b>Cover.</b> <code>node tools/haven_rally_qa.js</code> lifts the lap/ghost maths out of <code>game.js</code> and runs it for real — record-profile interpolation and monotonicity, the phantom-lap crossing, ghost coverage, delta formatting — then checks the source invariants and that every <code>$()</code> id exists in the markup. <code>Rally3D.stats()</code> exposes fps, skid count and the car's attitude for the next pass.</p>
+
+  <h2>12. Out of scope</h2>
   <p>No multiplayer, no pay-to-win, no Palantir, no invented network scores, no Marines unless asked. No licensed automaker marks — Boxcut is a Haven original in a short-box stance.</p>
 </div>
 </body>
