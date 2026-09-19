@@ -31,7 +31,11 @@ must(game.indexOf("Math.min(380") >= 0 && game.indexOf("function surviveCap") >=
 must(game.indexOf("function levelExit") >= 0, "mode-agnostic exit lookup");
 must(game.indexOf("lv.exit.x") < 0 && game.indexOf("lv.box ? lv.box") < 0, "HUD must not read a raw floor exit");
 must(game.indexOf("function killXpValue") >= 0 && game.indexOf("KILL_XP") >= 0, "kill xp knob");
-must(game.indexOf("PACING = { xp:") >= 0 && game.indexOf("function pacePack") >= 0, "one pacing dial");
+must(game.indexOf("const PACING = {") >= 0 && game.indexOf("knee: 180") >= 0 && game.indexOf("function paceRamp") >= 0, "one pacing curve with a 3-minute knee");
+must(game.indexOf("PACING.spawn) / Math.max") < 0, "horde cadence must ride the curve, not a flat dial");
+must(game.indexOf("function paceGap") >= 0 && game.indexOf("paceGap(2.1 /") >= 0, "every spawner rides the curve");
+must(game.indexOf("function heroOpen") >= 0, "roster open from the first run");
+must(game.indexOf("\"leech\"") >= 0 && game.indexOf("\"bounty\"") >= 0, "leech + tithe cards");
 must(game.indexOf("function modeFloorLabel") >= 0 && game.indexOf("hud-all") >= 0, "HUD in every mode");
 must(game.indexOf("G.players.forEach((p) => {\n      if (p.dead) return;") >= 0 || game.indexOf("if (p.dead) return;") >= 0, "companion takes cards");
 must(game.indexOf("visibilitychange") >= 0, "tab pause");

@@ -4,14 +4,16 @@
    Chapter XV (A New Accord).
 
    How the space works: every floor is authored by hand in a readable 30x26 grid, then
-   SCALE grows it into a 60x52 region — the same shape the designer cut, at a size that
+   SCALE grows it into a 90x78 region — the same shape the designer cut, at a size that
    explores like a Survival map. Rooms, halls, doors, gates, cages, rings and stands all
-   scale together, so the geometry can never drift from the design. After the shape is
-   cut, every placement is checked for reachability and repaired, and a seeded scatter
+   scale together, so the geometry can never drift from the design. One-tile outlines stay
+   one tile thick while the space between them triples, so a chamber reads as open ground
+   with cover in it — which is where running and shooting a horde happens. After the shape
+   is cut, every placement is checked for reachability and repaired, and a seeded scatter
    fills the new stone with the relics and jobs the bigger region can carry. */
 window.LatticeCampaign = (function () {
-  const SCALE = 2;
-  const AW = 30, AH = 26; /* authored grid */
+  const SCALE = 3;
+  const AW = 30, AH = 26; /* authored grid — 90 x 78 built */
 
   /* Eight acts. `realm` picks the tile set, `title` is the act, `book` names the Book I
      beat, `lore` is what the gate says when you arrive. */
@@ -288,7 +290,19 @@ window.LatticeCampaign = (function () {
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
     const sc = (r) => [r[0] * S, r[1] * S, r[2] * S, r[3] * S];
 
-    (spec.rooms || []).forEach((r) => fill(tiles, ...sc(r), "floor"));
+    /* Every chamber keeps a yard. Authored rooms are small on a 30x26 grid, and once the grid
+       is grown to 90x78 a room drawn exactly as authored would carve a few hundred cells of
+       floor into seven thousand of stone — corridors in a quarry, which is the opposite of
+       what this mode is for. Each room grows by YARD cells on every side, which is what the
+       room always implied: open ground to fight a horde across, with the authored landmarks —
+       rings, cages, vaults, stubs, pillars, stands — still standing in it, in place. Where two
+       yards meet they become one plaza, and that is the point. */
+    const YARD = 2;
+    (spec.rooms || []).forEach((r) => {
+      const x = Math.max(1, r[0] - YARD), y = Math.max(1, r[1] - YARD);
+      const w = Math.min(AW - 1 - x, r[2] + YARD * 2), h = Math.min(AH - 1 - y, r[3] + YARD * 2);
+      fill(tiles, ...sc([x, y, w, h]), "floor");
+    });
     const doorPts = (spec.doors || []).map((d) => [d[0] * S, d[1] * S]);
     (spec.halls || []).forEach((h) => {
       const hs = [h[0] * S, h[1] * S, h[2] * S, h[3] * S];
@@ -365,16 +379,31 @@ window.LatticeCampaign = (function () {
         [r[0] + inset, r[1] + r[3] - 1 - inset], [r[0] + r[2] - 1 - inset, r[1] + r[3] - 1 - inset]
       ];
       spots.forEach((p) => {
-        if (!tiles[p[1]] || tiles[p[1]][p[0]] !== "floor") return;
+        if (!tiles[p[1]]) return;
+        if (!tiles[p[1]][p[0]] || tiles[p[1]][p[0]] !== "floor") return;
         const s = spec.start, e = spec.exit;
         if (Math.abs(p[0] - s[0]) + Math.abs(p[1] - s[1]) < 3) return;
         if (Math.abs(p[0] - e[0]) + Math.abs(p[1] - e[1]) < 3) return;
-        tiles[p[1]][p[0]] = "wall";
+        for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+          if (tiles[p[1] + dy] && tiles[p[1] + dy][p[0] + dx] === "floor") tiles[p[1] + dy][p[0] + dx] = "wall";
+        }
       });
     });
-    (spec.walls || []).forEach((w) => fill(tiles, ...sc(w), "wall"));
+    /* Solid masonry scales in half-steps. A block authored 1x4 was meant to be a stub inside
+       a chamber, not a slab across a hall, and a straight multiply turns every stub into
+       architecture once SCALE is 3. Position scales fully; thickness only grows 1.5x, so the
+       floor stays open and the stone reads as cover to fight around rather than a wall to
+       thread. */
+    (spec.walls || []).forEach((w) => {
+      fill(tiles, w[0] * S, w[1] * S, Math.max(1, Math.round(w[2] * 1.5)), Math.max(1, Math.round(w[3] * 1.5)), "wall");
+    });
+    /* Pillars sit at their authored spot, scaled like everything else, and come as 2x2 stands
+       so a hall has something to break a charge on. */
     (spec.pillars || []).forEach((p) => {
-      if (tiles[p[1]]) tiles[p[1]][p[0]] = "wall";
+      const px = p[0] * S, py = p[1] * S;
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+        if (tiles[py + dy]) tiles[py + dy][px + dx] = "wall";
+      }
     });
     for (let x = 0; x < W; x++) { tiles[0][x] = "wall"; tiles[H - 1][x] = "wall"; }
     for (let y = 0; y < H; y++) { tiles[y][0] = "wall"; tiles[y][W - 1] = "wall"; }
@@ -569,13 +598,16 @@ window.LatticeCampaign = (function () {
       }
       return null;
     }
-    const relicN = 10 + Math.round(i * 1.4);
+    /* Density follows the region, not the floor count: a 90x78 map that carried a 60x52
+       scatter would read as empty stone. Relics and jobs are seeded to area, so later floors
+       fill the space with a horde to cut through rather than a handful of stragglers. */
+    const relicN = 34 + Math.round(i * 1.8);
     for (let n = 0; n < relicN; n++) {
       const p = freeAt();
       if (!p) break;
       items.push({ x: p.x, y: p.y, kind: roll() });
     }
-    const foeN = 5 + rank * 4 + Math.round(i * 0.5);
+    const foeN = 20 + rank * 6 + Math.round(i * 1.0);
     for (let n = 0; n < foeN; n++) {
       const p = freeAt();
       if (!p) break;
@@ -585,7 +617,7 @@ window.LatticeCampaign = (function () {
     /* Every grown floor carries at least one live nexus beyond its authored set, so the
        map always has somewhere the warden has to walk to. */
     {
-      const extra = 1 + (i >= 8 ? 1 : 0) + (i >= 16 ? 1 : 0);
+      const extra = 3 + (i >= 6 ? 1 : 0) + (i >= 12 ? 1 : 0) + (i >= 18 ? 1 : 0);
       for (let n = 0; n < extra; n++) {
         const p = freeAt();
         if (!p) break;

@@ -923,7 +923,11 @@
   function surviveCap(w) {
     const L = Math.max(1, (G && G.lvl) || 1);
     w = w || surviveWave();
-    return Math.min(380, Math.round(14 + (L - 1) * 7 + (w - 1) * 2.4));
+    const base = 14 + (L - 1) * 7 + (w - 1) * 2.4;
+    /* Past the knee the ceiling itself climbs, so the horde can actually fill the screen
+       instead of queueing behind a level-set cap. Clamped at 380. */
+    const grow = Math.max(1, paceRamp() / PACING.spawn);
+    return Math.min(380, Math.round(base * grow));
   }
   function survivePulseN() {
     const L = Math.max(1, G.lvl || 1);
@@ -1027,7 +1031,23 @@
     G.kills = (G.kills || 0) + 1;
     if (G.mode === "survive") scoreKill(6 + surviveWave() * 2);
     G.xp += killXpValue(f);
-    if (G.mode === "survive" && Math.random() < 0.07 && G.level.items.length < 90) {
+    /* Leech and tithe are card stats, but the party drinks together: the best leech at the
+       table mends everyone standing, the best tithe sense lifts the drop roll. */
+    let leech = 0, bounty = 0;
+    G.players.forEach((p) => {
+      if (p.dead) return;
+      leech = Math.max(leech, p.leech || 0);
+      bounty = Math.max(bounty, p.bounty || 0);
+    });
+    if (leech) {
+      const heal = leech * (f.boss ? 4 : 1);
+      G.players.forEach((p) => {
+        if (p.dead || p.hp >= p.max) return;
+        p.hp = Math.min(p.max, p.hp + heal);
+      });
+    }
+    const dropChance = 0.07 + bounty * 0.03;
+    if ((G.mode === "survive" || bounty) && Math.random() < dropChance && G.level.items.length < 90) {
       dropItemNear(f.x, f.y, Math.random() < 0.2 ? rollLoot() : ["coin", "coin", "berry", "scrap", "core", "moss", "vial", "fury", "magnet", "key"][(Math.random() * 10) | 0]);
     }
     while (G.xp >= xpNeed(G.lvl)) {
@@ -1054,13 +1074,31 @@
       if (u.id === "callpack" && hasPet) return false;
       return true;
     }
-    const stats = SURVIVE_UP.filter((u) => u.kind === "stat");
-    const gifts = SURVIVE_UP.filter((u) => u.kind === "gift");
-    const arms = SURVIVE_UP.filter((u) => u.kind === "arm" && okArm(u));
-    const bonds = SURVIVE_UP.filter((u) => u.kind === "bond" && okBond(u));
+    /* Legends are earned, not rolled on the first card: they surface once the run has
+       teeth — level 6, or past the knee where the horde wakes up. */
+    function okTier(u) {
+      if (u.tier >= 3 && !(G.lvl >= 6 || rampTime() > PACING.knee)) return false;
+      return true;
+    }
+    /* Variety is the fun: the draft leans toward cards the warden has *not* tried yet, so a
+       long run keeps opening new toys instead of deepening the same three. */
+    function stacks(u) {
+      const p = G.players[0];
+      if (!p) return 0;
+      if (WEAPONS[u.id]) return wepLv(p, u.id);
+      if (u.stack) return p[u.stack] || 0;
+      return 0;
+    }
+    const stats = SURVIVE_UP.filter((u) => u.kind === "stat" && okTier(u));
+    const gifts = SURVIVE_UP.filter((u) => u.kind === "gift" && okTier(u));
+    const arms = SURVIVE_UP.filter((u) => u.kind === "arm" && okTier(u) && okArm(u));
+    const bonds = SURVIVE_UP.filter((u) => u.kind === "bond" && okTier(u) && okBond(u));
     function pick(arr) {
       if (!arr.length) return null;
-      const w = arr.map((u) => (u.tier >= 3 ? 1 : (u.tier === 2 ? 2 : (u.tier === 1 ? 4 : 6))));
+      const w = arr.map((u) => {
+        const base = u.tier >= 3 ? 3 : (u.tier === 2 ? 5 : 6);
+        return base / (1 + stacks(u) * 0.55);
+      });
       let t = 0; w.forEach((n) => { t += n; });
       let r = Math.random() * t;
       for (let i = 0; i < arr.length; i++) { r -= w[i]; if (r <= 0) return arr[i]; }
@@ -1074,9 +1112,18 @@
       if (u) { out.push(u); used[u.id] = 1; }
     });
     while (out.length < 3) {
-      const u = pick(SURVIVE_UP.filter(function (x) { return !used[x.id] && okArm(x); }));
+      const u = pick(SURVIVE_UP.filter(function (x) { return !used[x.id] && okArm(x) && okTier(x); }));
       if (!u) break;
       out.push(u); used[u.id] = 1;
+    }
+    /* At least one card the warden has never taken, whenever one exists. */
+    if (out.length && !out.some(function (u) { return stacks(u) === 0; })) {
+      const fresh = SURVIVE_UP.filter(function (x) { return !used[x.id] && okArm(x) && okTier(x) && stacks(x) === 0; });
+      if (fresh.length) {
+        const u = fresh[(Math.random() * fresh.length) | 0];
+        out[out.length - 1] = u;
+        used[u.id] = 1;
+      }
     }
     while (out.length < 3) out.push(SURVIVE_UP[out.length % SURVIVE_UP.length]);
     return out;
@@ -1167,6 +1214,8 @@
       else if (u.id === "pierce") p.pierce = (p.pierce || 0) + 1;
       else if (u.id === "cap") p.extraCap = (p.extraCap || 0) + 1;
       else if (u.id === "magnet") p.magnet = (p.magnet || 0) + 0.45;
+      else if (u.id === "leech") p.leech = (p.leech || 0) + 1;
+      else if (u.id === "bounty") p.bounty = (p.bounty || 0) + 1;
       else if (u.id === "swift") { p.stride = (p.stride || 0) + 1; p.swift = Math.max(p.swift || 0, 3); }
       else if (u.id === "vialpow") p.vialPow = (p.vialPow || 0) + 1;
       else if (u.id === "secondwind") p.hp = Math.min(p.max, p.hp + p.max * 0.4);
@@ -1195,6 +1244,8 @@
       if (u.addMagnet) p.magnet = (p.magnet || 0) + u.addMagnet;
       if (u.addVialPow) p.vialPow = (p.vialPow || 0) + u.addVialPow;
       if (u.addLamp) p.lamp = (p.lamp || 0) + u.addLamp;
+      if (u.addLeech) p.leech = (p.leech || 0) + u.addLeech;
+      if (u.addBounty) p.bounty = (p.bounty || 0) + u.addBounty;
       if (u.tFury) p.fury = Math.max(p.fury || 0, u.tFury);
       if (u.tRegen) p.regen = Math.max(p.regen || 0, u.tRegen);
       if (u.tThorns) p.thorns = Math.max(p.thorns || 0, u.tThorns);
@@ -1364,43 +1415,64 @@
         y += y < b.cy ? 1 : -1;
       }
     }
+    /* Every stroke scales with the map. These layouts began as thin lines on a small grid, and a
+       literal reading on a 140x120 continent gives ~90% solid rock crossed by a few corridors —
+       a maze, which is the opposite of what an Endless floor is for. Lanes are sized as a
+       fraction of the region and so are the blocks each layout stands on, so a cross is a
+       highway, a ring is a circuit around a real vault, and a spiral is a ramp you can run. */
+    const T = Math.max(3, Math.round(Math.min(W, H) * 0.06));
+    const BW = Math.round(W * 0.17), BH = Math.round(H * 0.17);
+    const CX = Math.round(W * 0.11), CY = Math.round(H * 0.11);
     if (kind === "cross") {
-      addRoom(2, (H >> 1) - 2, W - 4, 5);
-      addRoom((W >> 1) - 2, 2, 5, H - 4);
+      addRoom(2, (H >> 1) - (T >> 1), W - 4, T);
+      addRoom((W >> 1) - (T >> 1), 2, T, H - 4);
     } else if (kind === "ring") {
       addRoom(2, 2, W - 4, H - 4);
-      fillRect(tiles, W, H, 7, 6, W - 14, H - 12, "wall");
-      tiles[6][W >> 1] = "floor";
-      tiles[H - 7][W >> 1] = "floor";
+      const ix = Math.round(W * 0.16), iy = Math.round(H * 0.16);
+      fillRect(tiles, W, H, ix, iy, W - ix * 2, H - iy * 2, "wall");
+      /* Four gaps, not two: a ring is a circuit, and a circuit you can only enter from the
+         north and south is a corridor with a long way round. */
+      tiles[iy][W >> 1] = "floor";
+      tiles[H - iy - 1][W >> 1] = "floor";
+      tiles[H >> 1][ix] = "floor";
+      tiles[H >> 1][W - ix - 1] = "floor";
     } else if (kind === "halls") {
-      for (let y = 3; y < H - 3; y += 4) addRoom(2, y, W - 4, 2);
-      for (let x = 4; x < W - 3; x += 7) addRoom(x, 2, 2, H - 4);
+      const rowGap = Math.max(4, Math.round(H / 13)), colGap = Math.max(5, Math.round(W / 13));
+      for (let y = 3; y < H - T; y += rowGap) addRoom(2, y, W - 4, T);
+      for (let x = 4; x < W - T; x += colGap) addRoom(x, 2, T, H - 4);
     } else if (kind === "cells") {
-      for (let y = 2; y < H - 5; y += 5) {
-        for (let x = 2; x < W - 5; x += 6) addRoom(x, y, 4, 3);
+      for (let y = 2; y < H - CY; y += CY + 1) {
+        for (let x = 2; x < W - CX; x += CX + 1) addRoom(x, y, CX - 1, CY - 1);
       }
       for (let i = 1; i < rooms.length; i++) tunnel(rooms[i - 1], rooms[i]);
     } else if (kind === "arena") {
-      addRoom(4, 3, W - 8, H - 6);
-      addRoom(2, (H >> 1) - 1, W - 4, 3);
+      addRoom(3, 2, W - 6, H - 4);
     } else if (kind === "vault") {
-      addRoom(3, 3, 8, 7);
-      addRoom(W - 12, 3, 8, 7);
-      addRoom(8, H - 10, W - 16, 6);
-      addRoom((W >> 1) - 4, (H >> 1) - 3, 8, 6);
+      addRoom(2, 2, BW, BH);
+      addRoom(W - BW - 2, 2, BW, BH);
+      addRoom(4, H - BH - 2, W - 8, BH);
+      addRoom((W >> 1) - (BW >> 1), (H >> 1) - (BH >> 1), BW, BH);
       for (let i = 1; i < rooms.length; i++) tunnel(rooms[i - 1], rooms[i]);
     } else if (kind === "spiral") {
-      addRoom(2, 2, W - 4, 2);
-      addRoom(W - 4, 2, 2, H - 4);
-      addRoom(2, H - 4, W - 4, 2);
-      addRoom(2, 6, 2, H - 10);
-      addRoom(2, 6, W - 10, 2);
-      addRoom(W - 10, 6, 2, H - 14);
-      addRoom(6, H - 8, W - 16, 2);
+      const s = T, in1 = T * 3;
+      addRoom(2, 2, W - 4, s);
+      addRoom(W - 2 - s, 2, s, H - 4);
+      addRoom(2, H - 2 - s, W - 4, s);
+      addRoom(2, 2 + in1, s, H - 4 - in1);
+      addRoom(2, 2 + in1, W - 4 - in1, s);
+      addRoom(W - 2 - in1, 2 + in1, s, H - 4 - in1 * 2);
+      addRoom(2 + in1, H - 2 - in1, W - 4 - in1 * 2, s);
+      /* Turns are tunnelled in order: a spiral drawn as parallel arms can leave its inner turn
+         sealed, and loot sealed behind stone is loot the floor is lying about. */
+      for (let i = 1; i < rooms.length; i++) tunnel(rooms[i - 1], rooms[i]);
     } else {
-      const nR = 6 + ((R() * 5) | 0);
+      /* Open plan: rooms scale with the map, not against it. A 140x120 continent wants a
+         sprawl of big overlapping rooms to fight across, not a dozen closets in a wall field. */
+      const area = W * H;
+      const nR = 10 + ((R() * 6) | 0) + Math.round(area / 700);
       for (let n = 0; n < nR; n++) {
-        const rw = 4 + ((R() * 6) | 0), rh = 4 + ((R() * 5) | 0);
+        const rw = Math.max(8, Math.min(W - 4, 6 + ((R() * (W * 0.22)) | 0)));
+        const rh = Math.max(8, Math.min(H - 4, 6 + ((R() * (H * 0.22)) | 0)));
         const rx = 1 + ((R() * (W - rw - 2)) | 0);
         const ry = 1 + ((R() * (H - rh - 2)) | 0);
         addRoom(rx, ry, rw, rh);
@@ -1515,23 +1587,55 @@
     { id: "secondvoice", kind: "bond", tier: 1, glyph: "core", name: "Second Voice", tag: "BOND", bonus: "AI +1 MIGHT · +1 HASTE", spec: "The companion's bolts keep a sharper clock.", need: "ai" },
     { id: "followtight", kind: "bond", tier: 0, glyph: "boot", name: "Tight Follow", tag: "BOND", bonus: "AI +STRIDE · COD 5s", spec: "They keep your heel. A short Codex for the helper.", need: "ai" },
     { id: "latticeleash", kind: "bond", tier: 1, glyph: "pull", name: "Lattice Leash", tag: "BOND", bonus: "PET DMG · AI +MIGHT", spec: "The leash is a name. Beast and warden bite together.", need: "any", addPetDmg: 0.2 },
-    { id: "callpack", kind: "bond", tier: 1, glyph: "ward", name: "Call the Pack", tag: "BOND", bonus: "SUMMON PET", spec: "If you walked in alone, a mythic pads in now.", need: "" }
+    { id: "callpack", kind: "bond", tier: 1, glyph: "ward", name: "Call the Pack", tag: "BOND", bonus: "SUMMON PET", spec: "If you walked in alone, a mythic pads in now.", need: "" },
+
+    /* --- variety pass: cards that add a *behaviour*, not another number --------- */
+    { id: "leech", kind: "stat", tier: 1, glyph: "wind", name: "Drink the Cut", tag: "LEECH", bonus: "+1 LEECH", stack: "leech", spec: "Every kill you are near pours a mouthful back. The well is fed by the horde." },
+    { id: "bounty", kind: "stat", tier: 1, glyph: "pull", name: "Tithe Sense", tag: "TITHE", bonus: "+RELICS DROP", stack: "bounty", spec: "You smell where the floor keeps its coin. More relics break loose per kill." },
+    { id: "momentum", kind: "stat", tier: 1, glyph: "boot", name: "Momentum", tag: "STRIDE", bonus: "+1 STRIDE · +1 HASTE", stack: "stride", spec: "Run and fire are one motion now.", addStride: 1, addHaste: 1 },
+    { id: "thickhide", kind: "stat", tier: 1, glyph: "plate", name: "Thick Hide", tag: "IRON", bonus: "+2 IRON", stack: "iron", spec: "The stone learns your shape and stops arguing with it.", addIron: 2 },
+    { id: "volleyloop", kind: "stat", tier: 2, glyph: "volley", name: "Loop Volley", tag: "VOLLEY", bonus: "+2 LIVE BOLTS · +1 PIERCE", stack: "extraCap", spec: "The line never empties. Two more bolts in the air, and they pass a body.", addPierce: 1 },
+    { id: "vialstorm", kind: "stat", tier: 2, glyph: "sigil", name: "Vial Storm", tag: "VIAL", bonus: "+3 VIALS · +2 RES", stack: "vialPow", spec: "The chorus arrives all at once. Three flasks, and each one is a name.", addVials: 3 },
+
+    /* --- legends: jackpots that only surface once the run has teeth ----------- */
+    { id: "fournames", kind: "gift", tier: 3, glyph: "core", name: "The Four Names", tag: "LEGEND", bonus: "+1 MIGHT · +1 IRON · +1 HASTE", spec: "Song, memory, flame, continuum. The gate opens for all four, and the warden carries them.", addMight: 1, addIron: 1, addHaste: 1, maxHp: 30 },
+    { id: "newaccord", kind: "gift", tier: 3, glyph: "ward", name: "A New Accord", tag: "LEGEND", bonus: "+40 MAX · AEGIS 10s · PARTY", spec: "Everyone living signs it. The door holds because you all agreed it would.", maxHp: 40, tAegis: 10 },
+    { id: "havenheart", kind: "gift", tier: 3, glyph: "well", name: "Haven Heart", tag: "LEGEND", bonus: "+60 MAX · REGEN 12s · HEAL", spec: "The haven kept a cup for the end of the world. It is still full.", maxHp: 60, tRegen: 12 },
+    { id: "emberion", kind: "gift", tier: 3, glyph: "fury", name: "Emberion's Coal", tag: "LEGEND", bonus: "FURY 14s · +2 MIGHT · +2 CORES", spec: "A bronze dragon's last warm coal. Bolt and bite keep the promise.", tFury: 14, addMight: 2, addCore: 2 }
   ];
   const SURVIVE_BOSSES = ["gate", "crown", "smith", "heartboss", "levi", "tithe", "unnamer", "lock"];
   const SUPER_BOSSES = ["unspool", "titheking", "nameeater"];
 
-  /* Studio pacing pass: the run was ramping to full power before a player had read the map.
-     One dial slows the *whole* ramp. `xp` raises what a level costs, `spawn` scales the
-     horde cadence by the same factor, so power and pressure stay in step and a longer
-     run is not a harder run — it is the same fight, stretched. */
-  const PACING = { xp: 1.22, spawn: 0.82 };
-  /* Kills pay a touch more than they used to. The level curve above rose by more than this
-     (1.22 / 1.12 ≈ 1.09× the clock per level) and the horde cadence fell by 18%, so the net
-     is a longer run with the same fight in it — pressure and payout moved in equal step. */
+  /* Pacing: one curve, three jobs.
+       · Levels cost real time — `xp` is what a level costs, so the run stays long.
+       · The first `knee` seconds are deliberately quiet (opening cadence is a fraction of
+         `spawn`), so a player has room to read the map and stack a few cards.
+       · Past the knee the horde climbs on a power curve — the survival-roguelite shape: a
+         slow stalk, then a flood that does not stop growing.
+     Campaign and Endless use time-on-this-floor for the same curve, so a floor has its own
+     quiet opening and its own flood if the warden dawdles. */
+  const PACING = {
+    xp: 1.5,      /* level cost multiplier — slower levels, longer run */
+    spawn: 0.7,   /* opening cadence: 70% of the old horde rate at the knee */
+    knee: 180,    /* seconds of quiet before the flood starts climbing */
+    rise: 1.4,    /* how hard it climbs after the knee (× at +1 min, +5.1× at +3 min) */
+    exp: 1.3
+  };
   const KILL_XP = 1.12;
+  function rampTime() {
+    if (!G) return 0;
+    return G.mode === "survive" ? (G.t || 0) : (G.floorT != null ? G.floorT : (G.t || 0));
+  }
+  /* 0.45× at the first breath, 1.0× at the knee, then up on a power curve. */
+  function paceRamp() {
+    const t = rampTime(), k = PACING.knee;
+    if (t < k) { const u = t / k; return PACING.spawn * (0.45 + 0.55 * u * u); }
+    const over = (t - k) / 60;
+    return PACING.spawn * (1 + PACING.rise * Math.pow(over, PACING.exp));
+  }
   function paceXp(n) { return Math.round(n * PACING.xp); }
-  function paceGap(sec) { return sec / PACING.spawn; }
-  function pacePack(n) { return Math.max(1, Math.round(n * PACING.spawn)); }
+  function paceGap(sec) { return sec / paceRamp(); }
+  function pacePack(n) { return Math.max(1, Math.round(n * paceRamp())); }
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
   /* One curve for every mode: campaign and endless level a touch slower than Survival,
@@ -1638,7 +1742,9 @@
       }
     }
     const start = { x: W >> 1, y: H >> 1 };
-    fillRect(tiles, W, H, start.x - 14, start.y - 11, 28, 22, "floor");
+    /* The middle of a continent is a plaza, not a landing pad: wide enough to fight a horde
+       across with the cross-lanes running out of it. */
+    fillRect(tiles, W, H, start.x - 24, start.y - 17, 48, 34, "floor");
     for (let x = 3; x < W - 3; x++) {
       tiles[start.y][x] = "floor";
       tiles[start.y - 1][x] = "floor";
@@ -1656,12 +1762,21 @@
         if (tiles[pt[1]] && tiles[pt[1]][pt[0]] !== undefined) tiles[pt[1]][pt[0]] = "wall";
       });
     }
-    stampPlaza(start.x - 48, start.y - 40, 10);
-    stampPlaza(start.x + 48, start.y - 40, 10);
-    stampPlaza(start.x - 48, start.y + 40, 10);
-    stampPlaza(start.x + 48, start.y + 40, 10);
-    stampPlaza(18 + ((R() * 20) | 0), 18 + ((R() * 20) | 0), 8);
-    stampPlaza(W - 28 - ((R() * 16) | 0), H - 28 - ((R() * 16) | 0), 8);
+    /* Plaza radius, and the reach of the four corners, both scale with the region so the open
+       ground stays open on a 140x120 map instead of thinning into corridors. */
+    const PR = Math.round(Math.min(W, H) * 0.14);
+    stampPlaza(start.x - 48, start.y - 40, PR);
+    stampPlaza(start.x + 48, start.y - 40, PR);
+    stampPlaza(start.x - 48, start.y + 40, PR);
+    stampPlaza(start.x + 48, start.y + 40, PR);
+    stampPlaza(18 + ((R() * 20) | 0), 18 + ((R() * 20) | 0), Math.round(PR * 0.8));
+    stampPlaza(W - 28 - ((R() * 16) | 0), H - 28 - ((R() * 16) | 0), Math.round(PR * 0.8));
+    /* Four more rooms at the edge midpoints: the difference between "a corridor runs through
+       the region" and "there are places in the region to fight", which is the whole feel. */
+    stampPlaza(Math.round(W * 0.5), Math.round(H * 0.12), Math.round(PR * 0.85));
+    stampPlaza(Math.round(W * 0.5), Math.round(H * 0.88), Math.round(PR * 0.85));
+    stampPlaza(Math.round(W * 0.12), Math.round(H * 0.5), Math.round(PR * 0.85));
+    stampPlaza(Math.round(W * 0.88), Math.round(H * 0.5), Math.round(PR * 0.85));
     const pads = [];
     const plazas = [
       { x: start.x - 48, y: start.y - 40 }, { x: start.x + 48, y: start.y - 40 },
@@ -1697,12 +1812,56 @@
       return window.LatticeCampaign.build(floor, makeFoe, rollLoot);
     }
     const R = rng(seed ^ (floor * 7919));
-    /* Endless floors are large stone now — a region to cross, not a room to clear. */
-    const W = 60, H = 52;
+    /* Endless is a region, not a room: 140x120 of open stone, big enough that running and
+       shooting reads as the point of the floor. The layout is carved first and the open ground
+       is then stamped as a fraction of the region — four corner courts, four edge rooms, two
+       odd courtyards — so a cross is a highway with places to fight on it and a vault is a
+       storehouse you can circle, instead of either being thin lines across a field of rock. */
+    const W = 140, H = 120;
     const tiles = Array.from({ length: H }, () => Array(W).fill("wall"));
     const layouts = ["rooms", "cross", "cells", "halls", "arena", "ring", "vault", "spiral"];
     const kind = floor % 8 === 0 && floor > 0 ? "vault" : layouts[floor % 8];
     const rooms = carveLayout(tiles, W, H, R, kind);
+    const PR = Math.max(6, Math.round(Math.min(W, H) * 0.09));
+    const courts = [];
+    function stampPlaza(cx, cy, r) {
+      fillRect(tiles, W, H, cx - r, cy - r, r * 2, r * 2, "floor");
+      courts.push({ x: cx, y: cy });
+    }
+    const cx0 = W >> 1, cy0 = H >> 1;
+    stampPlaza(cx0 - 48, cy0 - 40, PR);
+    stampPlaza(cx0 + 48, cy0 - 40, PR);
+    stampPlaza(cx0 - 48, cy0 + 40, PR);
+    stampPlaza(cx0 + 48, cy0 + 40, PR);
+    stampPlaza(cx0, Math.round(H * 0.11), Math.round(PR * 0.9));
+    stampPlaza(cx0, Math.round(H * 0.89), Math.round(PR * 0.9));
+    stampPlaza(Math.round(W * 0.11), cy0, Math.round(PR * 0.9));
+    stampPlaza(Math.round(W * 0.89), cy0, Math.round(PR * 0.9));
+    stampPlaza(16 + ((R() * 18) | 0), 16 + ((R() * 18) | 0), Math.round(PR * 0.8));
+    stampPlaza(W - 26 - ((R() * 14) | 0), H - 26 - ((R() * 14) | 0), Math.round(PR * 0.8));
+    /* Walk each court back to the layout. A court dropped beside a seven-tile lane is an
+       island, and a floor that seeds loot and nexuses onto ground the warden cannot reach is
+       a floor that lies about itself. Lanes are cut three tiles wide so a court is a place you
+       walk into, not a slot you squeeze down. */
+    function link(ax, ay, bx, by) {
+      let x = ax, y = ay;
+      while (x !== bx) {
+        x += x < bx ? 1 : -1;
+        for (let d = -1; d <= 1; d++) if (tiles[y + d]) tiles[y + d][x] = "floor";
+      }
+      while (y !== by) {
+        y += y < by ? 1 : -1;
+        for (let d = -1; d <= 1; d++) if (tiles[y] && tiles[y][x + d] !== undefined) tiles[y][x + d] = "floor";
+      }
+    }
+    courts.forEach(function (c) {
+      let best = null, bd = Infinity;
+      rooms.forEach(function (r) {
+        const d = Math.abs(r.cx - c.x) + Math.abs(r.cy - c.y);
+        if (d < bd) { bd = d; best = r; }
+      });
+      if (best) link(c.x, c.y, best.cx, best.cy);
+    });
     const spots = floorsOf(tiles, W, H);
     const pickSpot = () => spots[(R() * spots.length) | 0] || { x: 2, y: 2 };
     const start = rooms[0] ? { x: rooms[0].cx, y: rooms[0].cy } : pickSpot();
@@ -1743,14 +1902,14 @@
       }
       return null;
     }
-    const gN = 6 + ((R() * 6) | 0) + Math.min(mode === "endless" ? 14 : 9, (floor / (mode === "endless" ? 3 : 6)) | 0);
+    const gN = 8 + ((R() * 5) | 0) + Math.min(14, (floor / 2) | 0);
     for (let i = 0; i < gN; i++) {
       const p = empty();
       if (!p) break;
       const gk = (floor >= 5 && R() < 0.4) ? KINDS_HOT[(R() * KINDS_HOT.length) | 0] : KINDS[(R() * KINDS.length) | 0];
       gens.push({ x: p.x, y: p.y, kind: gk, rank, hp: 3 * rank, t: R() * 0.6 });
     }
-    const itemN = treasure ? 34 : Math.max(12, 18 + ((R() * 10) | 0) - (mode === "endless" ? (floor / 5) | 0 : 0));
+    const itemN = treasure ? 90 : Math.max(38, 58 + ((R() * 20) | 0) - (mode === "endless" ? (floor / 4) | 0 : 0));
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
@@ -1761,7 +1920,7 @@
       const p = empty();
       if (p) items.push({ x: p.x, y: p.y, kind: "vial", hidden: true });
     }
-    const dN = 2 + ((R() * 5) | 0);
+    const dN = 4 + ((R() * 7) | 0);
     for (let i = 0; i < dN; i++) {
       const p = empty();
       if (!p) break;
@@ -1781,7 +1940,7 @@
       const p = empty();
       if (p) items.push({ x: p.x, y: p.y, kind: "trap" });
     }
-    const idle = 5 + ((R() * 8) | 0);
+    const idle = 18 + ((R() * 14) | 0);
     for (let i = 0; i < idle; i++) {
       const p = empty();
       if (!p) break;
@@ -2660,6 +2819,7 @@
 
   function loadFloor(n) {
     G.floor = n;
+    G.floorT = 0; /* each floor gets its own quiet opening before its own flood */
     G.level = genLevel(G.seed, n, G.mode);
     const st = G.level.start;
     G.players.forEach((p, i) => {
@@ -3292,6 +3452,7 @@
     G._hitSfx = false;
     G._killSfx = false;
     G.t += dt;
+    G.floorT = (G.floorT || 0) + dt;
     if (G.combo > 0) {
       G.comboT -= dt;
       if (G.comboT <= 0) { G.combo = 0; G.comboTier = 0; }
@@ -3345,9 +3506,16 @@
     lv.gens.forEach((g) => {
       if (g.hp <= 0) return;
       g.t += dt;
-      const cap = 1 + g.rank;
+      /* A nexus holds a standing crowd, and that budget rides the same curve as the cadence:
+         one or two at the top of a floor while the warden reads the map, a real horde once the
+         knee passes. Without this the ramp could only make spawns come *faster* than the cap
+         could absorb, which is why campaign pressure used to feel flat after the opening. */
+      const grow = Math.min(4, Math.max(1, paceRamp() / PACING.spawn));
+      const cap = Math.round((1 + g.rank) * grow);
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
-      if (g.t > (2.1 / PACING.spawn) / Math.max(1, g.rank * 0.7) && live < cap) {
+      /* Nexus cadence rides the same curve as everything else: quiet at the top of a floor,
+         then a steady pour once the knee passes. */
+      if (g.t > paceGap(2.1 / Math.max(1, g.rank * 0.7)) && live < cap) {
         g.t = 0;
         const sp = nearestWalk(lv, g.x + 0.5, g.y + 0.5);
         lv.foes.push(makeFoe(g.kind, g.rank, sp.x, sp.y));
@@ -3649,7 +3817,7 @@
       if (window.CryptStudio) CryptStudio.pool.foe.free(f);
       return false;
     });
-    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 110;
+    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 220;
     born.forEach((n) => { if (lv.foes.length < capNow) lv.foes.push(n); });
 
     G.shots.forEach((s) => {
@@ -4406,6 +4574,8 @@
       if (p0.extraCap) pills.push("VOLLEY " + p0.extraCap);
       if (p0.magnet) pills.push("PULL");
       if (p0.vialPow) pills.push("RES " + p0.vialPow);
+      if (p0.leech) pills.push("LEECH " + p0.leech);
+      if (p0.bounty) pills.push("TITHE " + p0.bounty);
       $("hudStats").innerHTML = pills.map((t) => "<span class='pill'>" + t + "</span>").join("");
     }
   }
@@ -4657,13 +4827,14 @@
     }
     menu();
   }
+  /* Every job is open from the first run: the roster is a choice, not a ladder. The `unlock`
+     numbers survive in HEROES as lore only, so a later season can gate what it likes. */
+  function heroOpen() { return true; }
   function bondPickHtml() {
-    const unlocked = persist.unlocked || [];
-    let h = "<p class='kicker' style='margin-top:.55rem'>AI companion — unlocked job, follows you</p><div class='cast-grid bond'>";
+    let h = "<p class='kicker' style='margin-top:.55rem'>AI companion — any job, follows you</p><div class='cast-grid bond'>";
     h += "<button type='button' class='cast" + (!persist.comp ? " on" : "") + "' data-comp=''><b>None</b><span>Solo</span></button>";
     HEROES.forEach(function (x) {
-      const open = unlocked.indexOf(x.id) >= 0 || x.unlock === 0;
-      if (!open) return;
+      if (!heroOpen(x)) return;
       h += "<button type='button' class='cast" + (persist.comp === x.id ? " on" : "") + "' data-comp='" + x.id + "'>" +
         "<span class='cast-art'><img src='" + ASSET + x.file + "' alt=''></span><b>" + x.name + "</b><span>AI follow</span></button>";
     });
@@ -4695,7 +4866,7 @@
       "<label>Callsign</label><input class='name' id='nm' maxlength='18' value='" + String(persist.name).replace(/[<>]/g, "") + "'>" +
       "<p class='kicker' style='margin-top:.7rem'>Roster — jobs of the Accord</p><div class='cast-grid roster'>" +
       HEROES.map((x) => {
-        const open = (persist.unlocked || []).indexOf(x.id) >= 0 || x.unlock === 0;
+        const open = heroOpen(x);
         return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
           "<span class='cast-art'><img src='" + ASSET + x.file + "' alt='" + x.name + "'></span><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +

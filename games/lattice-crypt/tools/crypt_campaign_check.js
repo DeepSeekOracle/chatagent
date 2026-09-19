@@ -19,12 +19,12 @@ const makeFoe = (kind, rank, x, y) => ({ id: ++id, kind, rank, x, y, hp: 1, max:
 const rollLoot = () => "coin";
 
 const OPEN = new Set(["floor", "pad", "exit", "exit_lock", "door_open"]);
-let totalItems = 0, totalFoes = 0, totalGens = 0;
+let totalItems = 0, totalFoes = 0, totalGens = 0, totalOpen = 0;
 
 for (let i = 0; i < C.LEN; i++) {
   const lv = C.build(i, makeFoe, rollLoot);
   const tag = "floor " + (i + 1) + " " + lv.layout;
-  if (lv.W !== 60 || lv.H !== 52) throw new Error(tag + ": region " + lv.W + "x" + lv.H);
+  if (lv.W !== 90 || lv.H !== 78) throw new Error(tag + ": region " + lv.W + "x" + lv.H);
   const open = (x, y) => lv.tiles[y] && OPEN.has(lv.tiles[y][x]);
   if (!open(lv.start.x, lv.start.y)) throw new Error(tag + ": start not open");
   const exitTile = lv.tiles[lv.exit.y][lv.exit.x];
@@ -55,9 +55,16 @@ for (let i = 0; i < C.LEN; i++) {
   const startDist = lv.items.filter((n) => Math.abs(n.x - lv.start.x) + Math.abs(n.y - lv.start.y) < 2).length;
   if (startDist > 2) throw new Error(tag + ": " + startDist + " relics stacked on the start tile");
   if (lv.items.some((n) => lv.tiles[n.y][n.x] === "pad")) throw new Error(tag + ": a relic sits on a gate pad");
-  if (lv.gens.length < 3) throw new Error(tag + ": only " + lv.gens.length + " nexuses on a large floor");
-  if (lv.items.length < 12) throw new Error(tag + ": only " + lv.items.length + " relics on a large floor");
-  if (lv.foes.length < 6) throw new Error(tag + ": only " + lv.foes.length + " jobs posted");
+  if (lv.gens.length < 5) throw new Error(tag + ": only " + lv.gens.length + " nexuses on a large floor");
+  if (lv.items.length < 26) throw new Error(tag + ": only " + lv.items.length + " relics on a large floor");
+  if (lv.foes.length < 15) throw new Error(tag + ": only " + lv.foes.length + " jobs posted");
+  /* Openness is design, not decoration: these floors exist so a horde can be fought in the
+     open, so a floor that has quietly become mostly wall fails the build. */
+  let openN = 0;
+  for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) if (lv.tiles[y][x] !== "wall") openN++;
+  const openPct = openN / (lv.W * lv.H);
+  if (openPct < 0.4) throw new Error(tag + ": only " + Math.round(openPct * 100) + "% of the region is open ground");
+  totalOpen += openPct;
   totalItems += lv.items.length;
   totalFoes += lv.foes.length;
   totalGens += lv.gens.length;
@@ -67,13 +74,15 @@ for (let i = 0; i < C.LEN; i++) {
     "relics " + String(lv.items.length).padStart(3),
     "nexus " + String(lv.gens.length).padStart(2),
     "jobs " + String(lv.foes.length).padStart(2),
+    "open " + String(Math.round(openPct * 100)).padStart(2) + "%",
     (lv.seal ? "SEAL" : "    "),
     lv.chapterBook
   );
 }
 console.log("\ncrypt_campaign_check ok", {
   floors: C.LEN,
-  region: "60x52",
+  region: "90x78",
+  open: Math.round((totalOpen / C.LEN) * 100) + "%",
   relics: totalItems,
   nexuses: totalGens,
   jobs: totalFoes,
