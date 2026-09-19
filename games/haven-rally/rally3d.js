@@ -17,6 +17,7 @@
   var p2Mesh = null;
   var splitOn = false;
   var skidMesh = null, skidDummy = null, skidIdx = 0, skidLast = { x: 1e9, z: 1e9, t: 0 };
+  var sunSprite = null, cloudBand = null, stars = null;
   var lastBurnout = false, smokeGroup = null, smokeEmit = { on: false, x: 0, y: 0, h: 0, truck: false, front: false };
   var fpsFrames = 0, fpsT = 0, fpsVal = 0;
   var cam = { x: 0, y: 18, z: 28 };
@@ -257,6 +258,7 @@
       roadMat.color.setHex(mixHex(th.road, 0x1a1e24, wx.wet * 0.45));
     }
     if (groundMat) groundMat.color.setHex(gnd);
+    applySkyExtras(th);
     if (rainMesh) {
       rainMesh.visible = wx.rain > 0.05 && !lastReduce;
       rainMesh.material.opacity = 0.28 + wx.rain * 0.4;
@@ -348,7 +350,7 @@
     var dummy = new T.Object3D();
     var i, p, q, s, side, x, z, step, th;
     th = themeOf(track.theme);
-    var nPalm = Math.min(closed ? 64 : 160, Math.max(16, (track.pts.length / 3) | 0));
+    var nPalm = th.sea ? Math.min(closed ? 64 : 160, Math.max(16, (track.pts.length / 3) | 0)) : 1;
     var palmT = new T.InstancedMesh(new T.CylinderGeometry(0.12, 0.2, 5.8, 5), new T.MeshStandardMaterial({ color: 0x6b4423 }), nPalm);
     var palmC = new T.InstancedMesh(new T.ConeGeometry(1.9, 1.7, 6), new T.MeshStandardMaterial({ color: 0x1f7a3a, flatShading: true }), nPalm);
     step = Math.max(1, (track.pts.length / nPalm) | 0);
@@ -548,6 +550,323 @@
     );
     m.userData.base = col;
     return m;
+  }
+
+
+  /* ==== studio pass =====================================================
+     Kerbs, a real start zone, corner furniture, layered horizons and a sky
+     that is worth looking at. Everything here is built from the same road
+     path, so it follows whatever the circuit designer produced. */
+  function wrapPi(v) { while (v > Math.PI) v -= Math.PI * 2; while (v < -Math.PI) v += Math.PI * 2; return v; }
+
+  function stripeTex(a, b) {
+    var c = document.createElement("canvas");
+    c.width = 4; c.height = 64;
+    var g = c.getContext("2d");
+    g.fillStyle = a; g.fillRect(0, 0, 4, 32);
+    g.fillStyle = b; g.fillRect(0, 32, 4, 32);
+    var t = new T.CanvasTexture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function checkerTex(a, b, n) {
+    var c = document.createElement("canvas");
+    c.width = c.height = 128;
+    var g = c.getContext("2d"), sz = 128 / n, i, j;
+    for (i = 0; i < n; i++) for (j = 0; j < n; j++) { g.fillStyle = (i + j) % 2 ? a : b; g.fillRect(i * sz, j * sz, sz, sz); }
+    var t = new T.CanvasTexture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function asphaltTex(base) {
+    var t = noiseTex(256, 256, function (x, y) {
+      var n = (((x * 7 + y * 13) % 23) / 23) * 0.55 + (((x * 3 - y * 5 + 900) % 11) / 11) * 0.45;
+      var f = 0.84 + n * 0.3;
+      return [((base >> 16) & 255) * f, ((base >> 8) & 255) * f, (base & 255) * f];
+    });
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    return t;
+  }
+
+  function glowTex(col) {
+    var c = document.createElement("canvas");
+    c.width = c.height = 128;
+    var g = c.getContext("2d");
+    var grd = g.createRadialGradient(64, 64, 2, 64, 64, 62);
+    grd.addColorStop(0, "#" + col.toString(16).padStart(6, "0"));
+    grd.addColorStop(0.28, "#" + col.toString(16).padStart(6, "0"));
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(64, 64, 63, 0, Math.PI * 2); g.fill();
+    var t = new T.CanvasTexture(c);
+    t.needsUpdate = true;
+    return t;
+  }
+
+  function cloudTex() {
+    var c = document.createElement("canvas");
+    c.width = 512; c.height = 128;
+    var g = c.getContext("2d"), i, x, y, r, grd;
+    for (i = 0; i < 74; i++) {
+      x = (i * 97) % 512;
+      y = 34 + ((i * 53) % 58);
+      r = 16 + ((i * 31) % 36);
+      grd = g.createRadialGradient(x, y, 2, x, y, r);
+      grd.addColorStop(0, "rgba(255,255,255,0.55)");
+      grd.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = grd;
+      g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    }
+    var t = new T.CanvasTexture(c);
+    t.wrapS = T.RepeatWrapping;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  /* every stretch of the road that is actually turning, in track order */
+  function courseRuns(track) {
+    var p = track.pts, n = p.length, out = [], i, a, b, cc, ds, dh, rad, run;
+    var lim = Math.max(150, track.width * 9);
+    for (i = 0; i < n; i++) {
+      a = p[(i - 1 + n) % n]; b = p[i]; cc = p[(i + 1) % n];
+      ds = (Math.hypot(b.x - a.x, b.y - a.y) + Math.hypot(cc.x - b.x, cc.y - b.y)) * 0.5 || 1e-6;
+      dh = wrapPi(Math.atan2(cc.y - b.y, cc.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x));
+      rad = Math.abs(dh) > 1e-9 ? ds / Math.abs(dh) : 1e9;
+      if (rad < lim) {
+        if (!run) { run = { i0: i, i1: i, turn: 0, minR: rad, mid: i }; out.push(run); }
+        run.i1 = i;
+        run.turn += dh;
+        if (rad < run.minR) { run.minR = rad; run.mid = i; }
+      } else run = null;
+    }
+    if (out.length > 1 && out[0].i0 === 0 && out[out.length - 1].i1 === n - 1) {
+      var head = out.shift(), tail = out.pop();
+      tail.i1 = head.i1 + n;
+      tail.turn += head.turn;
+      if (head.minR < tail.minR) { tail.minR = head.minR; tail.mid = head.mid; }
+      out.push(tail);
+    }
+    return out.filter(function (r) { return Math.abs(r.turn) > 0.34; });
+  }
+
+  function runPts(p, i0, i1) {
+    var out = [], i;
+    for (i = i0; i <= i1; i++) out.push(p[i % p.length]);
+    return out;
+  }
+
+  /* walk backwards along the road from a corner entry */
+  function backAlong(track, idx, yards) {
+    var p = track.pts, n = p.length, i = ((idx % n) + n) % n, acc = 0, d, lim = 0;
+    while (acc < yards && lim < n) {
+      lim += 1;
+      d = Math.hypot(p[i].x - p[(i - 1 + n) % n].x, p[i].y - p[(i - 1 + n) % n].y);
+      acc += d;
+      i = (i - 1 + n) % n;
+    }
+    return { p: p[i], q: p[(i + 1) % n] };
+  }
+
+  function paintKerbs(track, runs) {
+    if (!runs.length) return;
+    var tex = stripeTex("#eef3f8", "#cf3b2c");
+    tex.repeat.set(1, 9);
+    var mat = new T.MeshStandardMaterial({ map: tex, roughness: 0.74, metalness: 0.02 });
+    var grp = new T.Group(), i, r, pts, lat, m;
+    for (i = 0; i < runs.length; i++) {
+      r = runs[i];
+      pts = runPts(track.pts, r.i0, r.i1);
+      if (pts.length < 3) continue;
+      lat = (r.turn > 0 ? 1 : -1) * (track.width + 0.6);
+      m = new T.Mesh(ribbon(offsetPath(pts, lat, false), 0.6, 0.1, false), mat);
+      grp.add(m);
+    }
+    trackRoot.add(grp);
+  }
+
+  function startZone(track) {
+    var p0 = track.pts[0], p1 = track.pts[1];
+    var ang = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    var px = -Math.sin(ang), pz = Math.cos(ang);
+    var fx = Math.cos(ang), fz = Math.sin(ang);
+    var grp = new T.Group(), li, ri, b, off, back;
+    var chk = checkerTex("#f6f9fc", "#131922", 8);
+    chk.repeat.set(7, 1);
+    var line = new T.Mesh(new T.PlaneGeometry(3.6, track.width * 2), new T.MeshStandardMaterial({ map: chk, roughness: 0.5 }));
+    line.rotation.order = "YXZ";
+    line.rotation.y = -ang;
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(p0.x, 0.116, p0.y);
+    grp.add(line);
+    var boxM = new T.MeshStandardMaterial({ color: 0xeff5fb, roughness: 0.62, emissive: 0x5a6b7d, emissiveIntensity: 0.09 });
+    var nL = track.lanes || 4, lw = track.laneW || (track.width * 2 / nL);
+    for (li = 0; li < nL; li++) {
+      for (ri = 0; ri < 2; ri++) {
+        off = (li - (nL - 1) / 2) * lw;
+        back = 7 + ri * 5.6;
+        b = new T.Mesh(new T.BoxGeometry(lw * 0.66, 0.04, 3.2), boxM);
+        b.position.set(p0.x - fx * back + px * off, 0.122, p0.y - fz * back + pz * off);
+        b.rotation.y = -ang;
+        grp.add(b);
+      }
+    }
+    var postM = new T.MeshStandardMaterial({ color: 0x0e1620, roughness: 0.62 });
+    var pg = new T.BoxGeometry(0.5, 8.8, 0.5);
+    var wd = track.width + 1.2;
+    var pl = new T.Mesh(pg, postM);
+    var pr = new T.Mesh(pg, postM);
+    pl.position.set(p0.x + px * wd, 4.4, p0.y + pz * wd);
+    pr.position.set(p0.x - px * wd, 4.4, p0.y - pz * wd);
+    var beam = new T.Mesh(new T.BoxGeometry(track.width * 2 + 3.2, 1.6, 0.42), new T.MeshStandardMaterial({ color: 0x121a24, emissive: 0x0a1016, roughness: 0.6 }));
+    beam.position.set(p0.x, 8.2, p0.y);
+    beam.rotation.y = -ang;
+    var bar = new T.Mesh(new T.BoxGeometry(track.width * 2 - 1.2, 0.5, 0.3), new T.MeshStandardMaterial({ color: 0xdde7f2, emissive: 0x8fa3b8, emissiveIntensity: 0.3 }));
+    bar.position.set(p0.x, 7.3, p0.y);
+    bar.rotation.y = -ang;
+    grp.add(pl, pr, beam, bar);
+    var bulbM = new T.MeshStandardMaterial({ color: 0x241f22, emissive: 0x2a2118, emissiveIntensity: 0.5 });
+    var cols = [0xd43b2c, 0xd43b2c, 0xe0b020, 0x2f9e44, 0x2f9e44];
+    var bi, bb;
+    for (bi = 0; bi < 5; bi++) {
+      bb = new T.Mesh(new T.SphereGeometry(0.44, 10, 8), bulbM.clone());
+      bb.material.color.setHex(cols[bi]);
+      bb.material.emissive.setHex(cols[bi]);
+      bb.material.emissiveIntensity = 0.75;
+      bb.position.set(p0.x + px * ((bi - 2) * 2.3), 6.62, p0.y + pz * ((bi - 2) * 2.3));
+      grp.add(bb);
+    }
+    trackRoot.add(grp);
+  }
+
+  function cornerKit(track, runs) {
+    if (!runs.length) return;
+    var ranked = runs.slice().sort(function (a, b) { return a.minR - b.minR; });
+    var grp = new T.Group(), i, r, pts, lat, side, at, s, cone, tyre, j, n;
+    var coneM = new T.MeshStandardMaterial({ color: 0xe8621f, roughness: 0.6 });
+    var tyreM = new T.MeshStandardMaterial({ color: 0x14181d, roughness: 0.92 });
+    var tyreW = new T.MeshStandardMaterial({ color: 0xe6ecf2, roughness: 0.7 });
+    var boards = {};
+    function board(label, col) {
+      if (!boards[label]) boards[label] = boardTex(label, col);
+      return boards[label];
+    }
+    for (i = 0; i < Math.min(3, ranked.length); i++) {
+      r = ranked[i];
+      side = r.turn > 0 ? -1 : 1;                       /* furniture sits on the outside */
+      lat = side * (track.width + 3.4);
+      at = backAlong(track, r.i0, 78 + i * 26);
+      s = sideAt(at.p, at.q, lat);
+      var bd = new T.Mesh(new T.PlaneGeometry(5.4, 2.7), new T.MeshStandardMaterial({ map: board("150", "#f97316"), side: T.DoubleSide, roughness: 0.65 }));
+      bd.position.set(s.x, 2.05, s.z);
+      bd.rotation.y = -s.ang;
+      var bl = new T.Mesh(new T.BoxGeometry(0.16, 2.1, 0.16), new T.MeshStandardMaterial({ color: 0x1b2531 }));
+      bl.position.set(s.x, 1.05, s.z);
+      grp.add(bd, bl);
+    }
+    n = 0;
+    for (i = 0; i < Math.min(3, ranked.length); i++) n += 4;
+    cone = new T.InstancedMesh(new T.ConeGeometry(0.36, 0.86, 8), coneM, Math.max(1, n));
+    var dummy = new T.Object3D(), k = 0;
+    for (i = 0; i < Math.min(3, ranked.length); i++) {
+      r = ranked[i];
+      side = r.turn > 0 ? 1 : -1;                       /* apex cones sit on the inside */
+      lat = side * (track.width + 1.9);
+      for (j = 0; j < 4; j++) {
+        var ii = r.i0 + Math.round(((r.i1 - r.i0) * (0.3 + j * 0.14)));
+        at = { p: track.pts[((ii % track.pts.length) + track.pts.length) % track.pts.length], q: track.pts[(((ii + 1) % track.pts.length) + track.pts.length) % track.pts.length] };
+        s = sideAt(at.p, at.q, lat);
+        dummy.position.set(s.x, 0.5, s.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        cone.setMatrixAt(k++, dummy.matrix);
+      }
+    }
+    cone.count = k;
+    cone.instanceMatrix.needsUpdate = true;
+    grp.add(cone);
+    n = 0;
+    for (i = 0; i < Math.min(2, ranked.length); i++) n += 7;
+    tyre = new T.InstancedMesh(new T.CylinderGeometry(0.62, 0.62, 1.0, 10), tyreM, Math.max(1, n));
+    var tyreTop = new T.InstancedMesh(new T.CylinderGeometry(0.63, 0.63, 0.16, 10), tyreW, Math.max(1, n));
+    k = 0;
+    for (i = 0; i < Math.min(2, ranked.length); i++) {
+      r = ranked[i];
+      side = r.turn > 0 ? -1 : 1;
+      lat = side * (track.width + 3.1);
+      for (j = 0; j < 7; j++) {
+        var jj = r.i0 + Math.round((r.i1 - r.i0) * (0.15 + j * 0.12));
+        at = { p: track.pts[((jj % track.pts.length) + track.pts.length) % track.pts.length], q: track.pts[(((jj + 1) % track.pts.length) + track.pts.length) % track.pts.length] };
+        s = sideAt(at.p, at.q, lat);
+        dummy.position.set(s.x, 0.5, s.z);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        tyre.setMatrixAt(k, dummy.matrix);
+        dummy.position.y = 0.94;
+        dummy.updateMatrix();
+        tyreTop.setMatrixAt(k, dummy.matrix);
+        k += 1;
+      }
+    }
+    tyre.count = k;
+    tyreTop.count = k;
+    tyre.instanceMatrix.needsUpdate = true;
+    tyreTop.instanceMatrix.needsUpdate = true;
+    grp.add(tyre, tyreTop);
+    trackRoot.add(grp);
+  }
+
+  /* ---- horizon + sky furniture ---------------------------------------- */
+  function ensureSkyExtras() {
+    if (sunSprite || !T) return;
+    sunSprite = new T.Sprite(new T.SpriteMaterial({
+      map: glowTex(0xfff2cf), transparent: true, opacity: 0.85, depthWrite: false,
+      fog: false, blending: T.AdditiveBlending
+    }));
+    sunSprite.scale.set(2400, 2400, 1);
+    sunSprite.frustumCulled = false;
+    scene.add(sunSprite);
+    cloudBand = new T.Mesh(
+      new T.CylinderGeometry(7600, 7600, 1700, 36, 1, true),
+      new T.MeshBasicMaterial({ map: cloudTex(), transparent: true, opacity: 0.4, side: T.BackSide, depthWrite: false, fog: false })
+    );
+    cloudBand.position.y = 1350;
+    cloudBand.frustumCulled = false;
+    scene.add(cloudBand);
+    var n = 700, i, pos = new Float32Array(n * 3), a, e;
+    for (i = 0; i < n; i++) {
+      a = (i * 2.399963) % (Math.PI * 2);
+      e = 0.08 + ((i * 7919) % 1000) / 1000 * 1.35;
+      pos[i * 3] = Math.cos(a) * Math.cos(e) * 8200;
+      pos[i * 3 + 1] = Math.sin(e) * 8200;
+      pos[i * 3 + 2] = Math.sin(a) * Math.cos(e) * 8200;
+    }
+    var geo = new T.BufferGeometry();
+    geo.setAttribute("position", new T.BufferAttribute(pos, 3));
+    stars = new T.Points(geo, new T.PointsMaterial({ color: 0xe8f0ff, size: 30, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+    stars.frustumCulled = false;
+    stars.visible = false;
+    scene.add(stars);
+  }
+
+  function applySkyExtras(th) {
+    ensureSkyExtras();
+    var wx = wxSpec(wxId);
+    if (sunSprite) {
+      var d = 7000, az = -2.55, el = 0.3;
+      sunSprite.position.set(Math.cos(el) * Math.cos(az) * d, Math.sin(el) * d, Math.cos(el) * Math.sin(az) * d);
+      sunSprite.material.opacity = Math.max(0, 0.95 - wx.gray * 1.25) * (lastReduce ? 0.6 : 1);
+    }
+    if (cloudBand) {
+      cloudBand.material.opacity = 0.14 + (1 - wx.gray) * 0.3;
+      cloudBand.visible = !lastReduce;
+    }
+    if (stars) stars.visible = !!th.dusk && !lastReduce;
   }
 
   function buildDrag(track) {
@@ -762,9 +1081,9 @@
     ground.position.set(cx, -0.42, cz);
     ground.receiveShadow = true;
     trackRoot.add(ground);
-    var nHill = th.park ? 28 : 36;
+    var nHill = th.park ? 30 : 38;
     var hillM = new T.InstancedMesh(
-      new T.ConeGeometry(18, 22, 5),
+      new T.ConeGeometry(18, 24, 5),
       new T.MeshStandardMaterial({ color: mixHex(th.gnd || th.ground, 0x1a2818, 0.2), roughness: 0.95, flatShading: true }),
       nHill
     );
@@ -772,21 +1091,55 @@
     var hd = new T.Object3D(), hi, ha;
     for (hi = 0; hi < nHill; hi++) {
       ha = (hi / nHill) * Math.PI * 2 + (hi % 5) * 0.17;
-      hd.position.set(cx + Math.cos(ha) * (span * 0.38 + (hi % 7) * 12), 4 + (hi % 6) * 2.2, cz + Math.sin(ha) * (span * 0.38 + (hi % 4) * 10));
-      hd.scale.set(1.4 + (hi % 5) * 0.55, 0.8 + (hi % 4) * 0.45, 1.4 + (hi % 3) * 0.4);
+      hd.position.set(cx + Math.cos(ha) * (span * 0.34 + (hi % 7) * 13), 5 + (hi % 6) * 2.6, cz + Math.sin(ha) * (span * 0.34 + (hi % 4) * 11));
+      hd.scale.set(1.4 + (hi % 5) * 0.7, 0.85 + (hi % 4) * 0.5, 1.4 + (hi % 3) * 0.5);
       hd.rotation.y = ha;
       hd.updateMatrix();
       hillM.setMatrixAt(hi, hd.matrix);
     }
     hillM.instanceMatrix.needsUpdate = true;
     trackRoot.add(hillM);
+    /* a second, taller ridge line behind it, then a hazier peak line: three
+       layers of horizon read as distance where one ring of cones never did */
+    var ridgeM = new T.InstancedMesh(
+      new T.ConeGeometry(30, 54, 5),
+      new T.MeshStandardMaterial({ color: mixHex(th.gnd || th.ground, th.fog, 0.42), roughness: 0.98, flatShading: true }),
+      30
+    );
+    for (hi = 0; hi < 30; hi++) {
+      ha = (hi / 30) * Math.PI * 2 + (hi % 3) * 0.31;
+      hd.position.set(cx + Math.cos(ha) * (span * 0.62 + (hi % 5) * 26), 9 + (hi % 7) * 3.4, cz + Math.sin(ha) * (span * 0.62 + (hi % 6) * 22));
+      hd.scale.set(1.6 + (hi % 5) * 0.8, 0.9 + (hi % 4) * 0.6, 1.6 + (hi % 3) * 0.6);
+      hd.rotation.y = ha * 1.3;
+      hd.updateMatrix();
+      ridgeM.setMatrixAt(hi, hd.matrix);
+    }
+    ridgeM.instanceMatrix.needsUpdate = true;
+    trackRoot.add(ridgeM);
+    var peakM = new T.InstancedMesh(
+      new T.ConeGeometry(46, 112, 4),
+      new T.MeshStandardMaterial({ color: mixHex(th.fog, 0x33445a, 0.42), roughness: 1, flatShading: true }),
+      22
+    );
+    for (hi = 0; hi < 22; hi++) {
+      ha = (hi / 22) * Math.PI * 2 + 0.18;
+      hd.position.set(cx + Math.cos(ha) * (span * 1.05 + (hi % 4) * 40), 14 + (hi % 5) * 6, cz + Math.sin(ha) * (span * 1.05 + (hi % 3) * 36));
+      hd.scale.set(1.4 + (hi % 4) * 0.9, 0.8 + (hi % 5) * 0.55, 1.4 + (hi % 3) * 0.7);
+      hd.rotation.y = ha * 0.7;
+      hd.updateMatrix();
+      peakM.setMatrixAt(hi, hd.matrix);
+    }
+    peakM.instanceMatrix.needsUpdate = true;
+    trackRoot.add(peakM);
     var shoulder = new T.Mesh(
       ribbon(track.pts, track.width + 6.2, 0.02, closed),
       new T.MeshStandardMaterial({ color: 0x3a4a32, roughness: 1 })
     );
     shoulder.receiveShadow = true;
     trackRoot.add(shoulder);
-    roadMat = new T.MeshStandardMaterial({ color: th.road, roughness: 0.68, metalness: 0.1 });
+    var asph = asphaltTex(th.road);
+    asph.repeat.set(4, 26);
+    roadMat = new T.MeshStandardMaterial({ color: th.road, roughness: 0.68, metalness: 0.1, map: asph });
     var road = new T.Mesh(
       ribbon(track.pts, track.width, 0.08, closed),
       roadMat
@@ -794,16 +1147,10 @@
     road.receiveShadow = true;
     trackRoot.add(road);
     paintLanes(track, closed);
-    var start = track.pts[0];
-    var n1 = track.pts[1];
-    var ang = Math.atan2(n1.y - start.y, n1.x - start.x);
-    var gate = new T.Mesh(
-      new T.BoxGeometry(track.width * 2.1, 0.12, 0.5),
-      new T.MeshStandardMaterial({ color: 0x5eead4, emissive: 0x134e4a })
-    );
-    gate.position.set(start.x, 0.14, start.y);
-    gate.rotation.y = -ang;
-    trackRoot.add(gate);
+    var runs = courseRuns(track);
+    paintKerbs(track, runs);
+    cornerKit(track, runs);
+    startZone(track);
     if (!closed && track.pts.length > 3) {
       var end = track.pts[track.pts.length - 1];
       var prev = track.pts[track.pts.length - 2];

@@ -184,7 +184,7 @@ must(rally.indexOf("stats: function ()") >= 0 && rally.indexOf("pitch: Math.roun
 
 /* ---- cabinet invariants ---- */
 must(/game\.js\?v=\d+/.test(html) && /game\.css\?v=\d+/.test(html) && /rally3d\.js\?v=\d+/.test(html), "cache-busts present");
-const floors = { "game.js": 60, "rally3d.js": 30, "game.css": 22 };
+const floors = { "game.js": 63, "rally3d.js": 31, "game.css": 24 };
 Object.keys(floors).forEach(function (n) {
   const m = new RegExp(n.replace(".", "\\.") + "\\?v=(\\d+)").exec(html);
   must(!!m, "cache-bust present for " + n);

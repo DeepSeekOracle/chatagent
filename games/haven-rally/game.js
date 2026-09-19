@@ -526,7 +526,9 @@
       closed: true,
       kind: "circuit",
       sectors: [0.28, 0.55, 0.82],
-      seed: spec.seed || null
+      seed: spec.seed || null,
+      style: spec.style || null,
+      design: spec.design || null
     };
   }
 
@@ -572,20 +574,374 @@
     return pts;
   }
 
+  /* ---- course designer -------------------------------------------------
+     A designed racing line instead of a lumpy oval.
+
+     The base is a closed polar loop: an ellipse squashed and shaped with a
+     couple of harmonics, which is closed by definition. Every design move
+     then reshapes one *stretch* of that loop between two anchors that stay
+     put, so the loop is still closed afterwards:
+
+       lineStretch   - straighten a stretch (a real straight)
+       bendStretch   - pull a stretch in, or push it out (sweeper, esse)
+       hairpinStretch- splice in a solved 180: a biarc of two tangent-
+                       continuous arcs that leaves the entry anchor on its
+                       own heading and arrives at the exit anchor on its
+                       own heading, at a radius the circuit can be proud of
+
+     Because the anchors are the loop's own points, the splice is exact and
+     the loop never has to be sheared shut. The finished line is relaxed,
+     checked for self-overlap, and scaled to the circuit's target length. */
+  const COURSE_STYLES = ["flow", "technical", "hairpin", "ring"];
+
+  function courseStyleOf(seed) {
+    return COURSE_STYLES[(seed >>> 0) % COURSE_STYLES.length];
+  }
+
+  function courseProfile(style) {
+    if (style === "technical") return { r0: 260, sx: 0.98, sy: 0.8, spin: -0.5, harm: [[3, 0.1, 1.3], [5, 0.04, 0.3]] };
+    if (style === "hairpin") return { r0: 300, sx: 1.15, sy: 0.6, spin: 0, harm: [[2, 0.05, 0.9]] };
+    if (style === "ring") return { r0: 240, sx: 1.0, sy: 0.92, spin: 0.35, harm: [[4, -0.13, 0.8], [3, 0.03, 2.0]] };
+    return { r0: 285, sx: 1.02, sy: 0.72, spin: 0.05, harm: [[2, 0.08, 0.5], [3, 0.09, 0.2]] };
+  }
+
+  function polarLoop(prof, n) {
+    var out = [], i, a, r, k, h;
+    for (i = 0; i < n; i++) {
+      a = (i / n) * Math.PI * 2 + prof.spin;
+      r = 1;
+      for (k = 0; k < prof.harm.length; k++) {
+        h = prof.harm[k];
+        r += h[1] * Math.cos(h[0] * a + h[2]);
+      }
+      r *= prof.r0;
+      out.push({ x: Math.cos(a) * r * prof.sx, y: Math.sin(a) * r * prof.sy });
+    }
+    return out;
+  }
+
+  function courseHeadingAt(p, i) {
+    var n = p.length, a = p[(i - 1 + n) % n], b = p[(i + 1) % n];
+    return Math.atan2(b.y - a.y, b.x - a.x);
+  }
+
+  /* a straight between two anchors: the anchors do not move, so the loop stays shut.
+     The straight is blended into the curve at both ends, so it has no kink. */
+  function lineStretch(p, f0, f1) {
+    var n = p.length, i0 = Math.round(f0 * n), i1 = Math.round(f1 * n), i, t, w, e = 0.26, u, lin, q;
+    var a = p[i0 % n], b = p[i1 % n];
+    var span = i1 - i0;
+    if (span < 4) return p;
+    for (i = i0 + 1; i < i1; i++) {
+      t = (i - i0) / span;
+      u = t < e ? t / e : (t > 1 - e ? (1 - t) / e : 1);
+      w = u * u * (3 - 2 * u);
+      lin = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      q = p[i % n];
+      p[i % n] = { x: q.x + (lin.x - q.x) * w, y: q.y + (lin.y - q.y) * w };
+    }
+    return p;
+  }
+
+  /* k > 0 pulls a stretch toward its own centroid (tighter), k < 0 pushes it out.
+     The window has zero slope at the anchors, so no kink is left behind. */
+  function bendStretch(p, f0, f1, k) {
+    var n = p.length, i0 = Math.round(f0 * n), i1 = Math.round(f1 * n), i, t, w, cx = 0, cy = 0, m = 0;
+    if (i1 - i0 < 4) return p;
+    for (i = i0; i <= i1; i++) { cx += p[i % n].x; cy += p[i % n].y; m += 1; }
+    cx /= m; cy /= m;
+    for (i = i0 + 1; i < i1; i++) {
+      t = (i - i0) / (i1 - i0);
+      w = Math.sin(Math.PI * t);
+      w = w * w;
+      p[i % n] = { x: p[i].x + (cx - p[i].x) * k * w, y: p[i].y + (cy - p[i].y) * k * w };
+    }
+    return p;
+  }
+
+  /* two tangent-continuous arcs from (p1,h1) to (p2,h2), with the radii held near wantR */
+  function biarcSolve(p1, h1, p2, h2, wantR, slack) {
+    var t1 = { x: Math.cos(h1), y: Math.sin(h1) };
+    var t2 = { x: Math.cos(h2), y: Math.sin(h2) };
+    var n1 = { x: -t1.y, y: t1.x }, n2 = { x: -t2.y, y: t2.x };
+    var spread = slack || [0.75, 1.0, 1.35, 1.8, 2.4];
+    var best = null, i, sg, r1, w, den, r2, c1, c2, jp, d1, d2, s1, s2, minR, turn, k;
+    for (i = 0; i < spread.length; i++) {
+      for (sg = -1; sg <= 1; sg += 2) {
+        r1 = sg * wantR * spread[i];
+        c1 = { x: p1.x + n1.x * r1, y: p1.y + n1.y * r1 };
+        w = { x: c1.x - p2.x, y: c1.y - p2.y };
+        den = 2 * (w.x * n2.x + w.y * n2.y - r1);
+        if (Math.abs(den) < 1e-6) continue;
+        r2 = (w.x * w.x + w.y * w.y - r1 * r1) / den;
+        if (!isFinite(r2) || Math.abs(r2) < wantR * 0.35 || Math.abs(r2) > wantR * 9) continue;
+        if (Math.abs(r1 - r2) < 1e-6) continue;
+        c2 = { x: p2.x + n2.x * r2, y: p2.y + n2.y * r2 };
+        k = r1 / (r1 - r2);
+        jp = { x: c1.x + (c2.x - c1.x) * k, y: c1.y + (c2.y - c1.y) * k };
+        s1 = wrapDelta(Math.atan2(jp.y - c1.y, jp.x - c1.x) - Math.atan2(p1.y - c1.y, p1.x - c1.x), Math.PI * 2);
+        s2 = wrapDelta(Math.atan2(p2.y - c2.y, p2.x - c2.x) - Math.atan2(jp.y - c2.y, jp.x - c2.x), Math.PI * 2);
+        if (s1 * (r1 > 0 ? 1 : -1) <= 0.02 || s2 * (r2 > 0 ? 1 : -1) <= 0.02) continue;
+        d1 = dist(p1, jp);
+        d2 = dist(jp, p2);
+        if (d1 < 3 || d2 < 3) continue;
+        minR = Math.min(Math.abs(r1), Math.abs(r2));
+        turn = Math.abs(s1) + Math.abs(s2);
+        var sc = -Math.abs(turn - Math.PI) * 60 - Math.abs(minR - wantR) * 3;
+        if (!best || sc > best.score) best = { r1: r1, r2: r2, c1: c1, c2: c2, jp: jp, s1: s1, s2: s2, minR: minR, turn: turn, score: sc, p1: p1, p2: p2, h1: h1 };
+      }
+    }
+    return best;
+  }
+
+  function biarcPath(b) {
+    var out = [{ x: b.p1.x, y: b.p1.y }], st;
+    st = arcPts(b.p1.x, b.p1.y, b.h1, b.r1, b.s1, out, 0.16);
+    arcPts(b.jp.x, b.jp.y, st.h, b.r2, b.s2, out, 0.16);
+    return out;
+  }
+
+  function arcPts(x, y, h, r, a, out, step) {
+    var n = Math.max(2, Math.ceil(Math.abs(a) / (step || 0.2)));
+    var s = a / n, d = r * s, mh, i;
+    for (i = 0; i < n; i++) {
+      mh = h + s * 0.5;
+      x += Math.cos(mh) * d;
+      y += Math.sin(mh) * d;
+      h += s;
+      out.push({ x: x, y: y });
+    }
+    return { x: x, y: y, h: h };
+  }
+
+  /* replace the stretch between two anchors with a solved hairpin */
+  function hairpinStretch(p, f0, f1, R) {
+    var n = p.length, i0 = Math.round(f0 * n), i1 = Math.round(f1 * n), i;
+    if (i1 - i0 < 4) return { p: p, ok: false };
+    var A = p[i0 % n], B = p[i1 % n];
+    var hA = courseHeadingAt(p, i0), hB = courseHeadingAt(p, i1);
+    var b = biarcSolve(A, hA, B, hB, R);
+    if (!b) return { p: p, ok: false };
+    var path = biarcPath(b);
+    var out = [];
+    for (i = 0; i < i0; i++) out.push(p[i]);
+    for (i = 1; i < path.length - 1; i++) out.push(path[i]);
+    for (i = i1; i < n; i++) out.push(p[i]);
+    return { p: out, ok: true, minR: b.minR };
+  }
+
+  function courseOps(p, rng, style) {
+    var R = function (a, b) { return a + rng() * (b - a); };
+    var res = { ok: 0, fail: 0 };
+    var hp = function (f0, f1, r) {
+      var o = hairpinStretch(p, f0, f1, r);
+      if (o.ok) { p = o.p; res.ok += 1; } else res.fail += 1;
+    };
+    if (style === "technical") {
+      lineStretch(p, 0.86, 1.1);
+      hp(0.16, 0.3, R(52, 62));
+      bendStretch(p, 0.34, 0.42, R(0.16, 0.24));
+      bendStretch(p, 0.44, 0.5, R(-0.16, -0.1));
+      bendStretch(p, 0.54, 0.62, R(0.2, 0.28));
+      lineStretch(p, 0.66, 0.74);
+      hp(0.76, 0.84, R(58, 70));
+      bendStretch(p, 0.05, 0.12, R(-0.2, -0.12));
+    } else if (style === "hairpin") {
+      lineStretch(p, 0.87, 1.13);
+      hp(0.22, 0.36, R(44, 52));
+      lineStretch(p, 0.4, 0.63);
+      bendStretch(p, 0.66, 0.72, R(-0.14, -0.08));
+      bendStretch(p, 0.74, 0.8, R(0.08, 0.14));
+      hp(0.82, 0.96, R(46, 56));
+    } else if (style === "ring") {
+      lineStretch(p, 0.88, 1.12);
+      lineStretch(p, 0.16, 0.32);
+      hp(0.34, 0.42, R(52, 62));
+      lineStretch(p, 0.44, 0.58);
+      hp(0.6, 0.68, R(50, 60));
+      lineStretch(p, 0.7, 0.82);
+      bendStretch(p, 0.05, 0.12, R(-0.2, -0.12));
+    } else {
+      lineStretch(p, 0.86, 1.14);
+      bendStretch(p, 0.16, 0.3, R(-0.28, -0.18));
+      bendStretch(p, 0.32, 0.4, R(0.2, 0.28));
+      bendStretch(p, 0.42, 0.48, R(-0.24, -0.16));
+      lineStretch(p, 0.52, 0.62);
+      hp(0.64, 0.76, R(56, 68));
+      bendStretch(p, 0.8, 0.86, R(-0.2, -0.12));
+    }
+    return res;
+  }
+
+  function smoothClosed(p, k, iters) {
+    var n = p.length, out = p, it, i, a, b, cc, q;
+    for (it = 0; it < iters; it++) {
+      q = out.slice();
+      for (i = 0; i < n; i++) {
+        a = out[(i - 1 + n) % n]; b = out[i]; cc = out[(i + 1) % n];
+        q[i] = { x: b.x + k * ((a.x + cc.x) * 0.5 - b.x), y: b.y + k * ((a.y + cc.y) * 0.5 - b.y) };
+      }
+      out = q;
+    }
+    return out;
+  }
+
+  function radProfile(p) {
+    var n = p.length, out = [], i, a, b, cc, ds, dh;
+    for (i = 0; i < n; i++) {
+      a = p[(i - 1 + n) % n]; b = p[i]; cc = p[(i + 1) % n];
+      ds = (dist(a, b) + dist(b, cc)) * 0.5 || 1e-6;
+      dh = wrapDelta(Math.atan2(cc.y - b.y, cc.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x), Math.PI * 2);
+      out.push(Math.abs(dh) > 1e-9 ? ds / Math.abs(dh) : 1e9);
+    }
+    return out;
+  }
+
+  /* round off anything sharper than the circuit's own minimum radius */
+  function relaxKinks(p, target, iters) {
+    var n = p.length, it, i, r, k, a, b, cc, q;
+    for (it = 0; it < (iters || 80); it++) {
+      r = radProfile(p);
+      k = 0;
+      for (i = 0; i < n; i++) if (r[i] < target) k += 1;
+      if (!k) break;
+      q = p.slice();
+      for (i = 0; i < n; i++) {
+        if (r[i] >= target) continue;
+        a = p[(i - 1 + n) % n]; b = p[i]; cc = p[(i + 1) % n];
+        q[i] = { x: b.x + 0.5 * ((a.x + cc.x) * 0.5 - b.x), y: b.y + 0.5 * ((a.y + cc.y) * 0.5 - b.y) };
+      }
+      p = q;
+    }
+    return p;
+  }
+
+  function sepClosed(p, minSep, frac, skip) {
+    var n = p.length, i, j, dx, dy, dd, push, hits = 0;
+    for (i = 0; i < n; i++) {
+      for (j = i + skip; j < n; j++) {
+        if (i === 0 && j >= n - skip) continue;
+        dx = p[j].x - p[i].x; dy = p[j].y - p[i].y;
+        dd = Math.hypot(dx, dy);
+        if (dd >= minSep || dd < 1e-6) continue;
+        push = (minSep - dd) * 0.5 * frac;
+        dx /= dd; dy /= dd;
+        p[i].x -= dx * push; p[i].y -= dy * push;
+        p[j].x += dx * push; p[j].y += dy * push;
+        hits += 1;
+      }
+    }
+    p.hits = hits;
+    return p;
+  }
+
+  function decimate(p, step) {
+    var n = p.length, out = [], i, acc = 0, last = p[0];
+    out.push({ x: p[0].x, y: p[0].y });
+    for (i = 1; i <= n; i++) {
+      acc += dist(last, p[i % n]);
+      last = p[i % n];
+      if (acc >= step && i < n) { out.push({ x: p[i].x, y: p[i].y }); acc = 0; }
+    }
+    return out.length >= 8 ? out : p.slice();
+  }
+
+  function courseMeta(path, closed) {
+    var n = path.length, nSeg = closed === false ? n - 1 : n, i, len = 0, ds, dh;
+    var r = radProfile(path), minR = 1e9;
+    var corners = 0, hairpins = 0, inRun = false, runTurn = 0, runMin = 1e9, runLen = 0;
+    for (i = 0; i < nSeg; i++) len += dist(path[i], path[(i + 1) % n]);
+    for (i = 0; i < n; i++) {
+      var a = path[(i - 1 + n) % n], b = path[i], cc = path[(i + 1) % n];
+      ds = (dist(a, b) + dist(b, cc)) * 0.5 || 1e-6;
+      dh = wrapDelta(Math.atan2(cc.y - b.y, cc.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x), Math.PI * 2);
+      if (r[i] < 260) {
+        if (!inRun) { inRun = true; runTurn = 0; runLen = 0; runMin = 1e9; }
+        runTurn += Math.abs(dh);
+        runLen += ds;
+        if (r[i] < runMin) runMin = r[i];
+        if (r[i] < minR) minR = r[i];
+      } else if (inRun) {
+        if (runTurn > 0.24 && runLen > 16) { corners += 1; if (runTurn > 1.9 && runMin < 80) hairpins += 1; }
+        inRun = false;
+      }
+    }
+    if (inRun && runTurn > 0.24 && runLen > 16) { corners += 1; if (runTurn > 1.9 && runMin < 80) hairpins += 1; }
+    if (minR > 1e8) minR = 0;
+    return { yards: len, mi: len / 1760, corners: corners, hairpins: hairpins, minR: minR };
+  }
+
+  function scaleLoop(p, k) {
+    var out = [], i;
+    for (i = 0; i < p.length; i++) out.push({ x: p[i].x * k, y: p[i].y * k });
+    return out;
+  }
+
+  function buildCourse(seed, style, wantYards, minSep) {
+    var rng = mulberry(seed >>> 0);
+    var want = wantYards || 1600;
+    var sep = minSep || (2 * TRACK_HALF + 13);
+    var loop = polarLoop(courseProfile(style), 260);
+    loop = densifyPath(loop, 8, true);
+    var ops = courseOps(loop, rng, style);
+    loop = ops.p || loop;
+    var built = smoothClosed(loop, 0.13, 2);
+    built = relaxKinks(built, 44, 90);
+    var k = want / courseMeta(built, true).yards, g, m, i;
+    for (g = 0; g < 4; g++) {
+      m = courseMeta(scaleLoop(built, k), true);
+      if (Math.abs(m.yards - want) < want * 0.01) break;
+      k *= want / m.yards;
+    }
+    var fitted = scaleLoop(built, k);
+    var overlap = 0;
+    for (i = 0; i < 6; i++) {
+      sepClosed(fitted, sep, 0.7, 10);
+      overlap = fitted.hits || 0;
+      fitted = smoothClosed(fitted, 0.05, 1);
+    }
+    fitted = relaxKinks(fitted, 40, 60);
+    var ctrl = decimate(fitted, 13);
+    return { ctrl: ctrl, dense: fitted, style: style, meta: courseMeta(fitted, true), overlap: overlap, opsOk: ops.ok, opsFail: ops.fail };
+  }
+
+  /* retry the jitter draws until the design lands on something driveable */
+  function designCourse(seed, style, wantYards, minSep) {
+    var st = style || courseStyleOf(seed);
+    var best = null, i, r;
+    for (i = 0; i < 5; i++) {
+      r = buildCourse((seed >>> 0) + i * 7919, st, wantYards, minSep);
+      if (!r || !r.ctrl || r.ctrl.length < 12) continue;
+      r.score = r.meta.minR + r.meta.corners * 6 - r.overlap * 0.2 + r.opsOk * 3;
+      if (!best || r.score > best.score) best = r;
+      if (r.meta.minR >= 44 && r.meta.corners >= 6 && r.overlap < 6) break;
+    }
+    return best;
+  }
+
+  function courseTag(style) {
+    return { flow: "fast sweepers", technical: "technical esses", hairpin: "two hairpins", ring: "city blocks" }[style] || "mixed";
+  }
+
+
+  const C_PINE = designCourse(0x70696e65, "flow", 1574);
+  const C_CORAL = designCourse(0x636f7261, "hairpin", 2009);
+  const C_STAR = designCourse(0x73746172, "ring", 1435);
+
   const PINE = makeTrack({
     id: "pine-coil", name: "Pine Coil", theme: "pine-coil", laps: 24,
     lore: "Golden-hour parkland highway. 24-lap heat. Four lanes, chain the esses, slide to fill boost.",
-    ctrl: loopFromPolar(14, 280, 78, mulberry(19), 0.2, 0.72)
+    ctrl: (C_PINE.ctrl), style: "flow", design: C_PINE.meta
   });
   const CORAL = makeTrack({
     id: "coral-coast", name: "Coral Coast", theme: "coral-coast", laps: 20,
     lore: "Sunset coast highway. 20-lap heat. Four lanes, long straights, then don't overcook the hairpin.",
-    ctrl: loopFromPolar(12, 360, 110, mulberry(41), 0.6, 0.52)
+    ctrl: (C_CORAL.ctrl), style: "hairpin", design: C_CORAL.meta
   });
   const STAR = makeTrack({
     id: "singularity-ring", name: "Singularity Ring", theme: "singularity-ring", laps: 30,
     lore: "Night city ring. 30-lap heat. Four lanes of neon. Boost on the slide, don't miss the apex.",
-    ctrl: loopFromPolar(16, 250, 52, mulberry(73), 1.1, 0.74)
+    ctrl: (C_STAR.ctrl), style: "ring", design: C_STAR.meta
   });
   const DRAG_EIGHTH = makeDragTrack({
     id: "drag-eighth", name: "Drag · 1/8 mile", feet: 660, yards: 220,
@@ -624,22 +980,22 @@
   function makeCustomCircuit(seed, laps) {
     seed = seed >>> 0;
     laps = clampLaps(laps);
-    const rng = mulberry(seed);
-    const n = 10 + ((rng() * 8) | 0);
-    const radius = 220 + rng() * 190;
-    const jitter = Math.min(radius * 0.52, 42 + rng() * 88);
-    const squash = 0.48 + rng() * 0.34;
-    const spin = rng() * Math.PI * 2;
     const theme = CUSTOM_THEMES[seed % CUSTOM_THEMES.length];
     const name = CUSTOM_NAMES[seed % CUSTOM_NAMES.length];
     const hex = seed.toString(16).padStart(8, "0");
+    const style = courseStyleOf(seed);
+    const want = 1450 + (seed % 9) * 85;
+    const course = designCourse(seed, style, want);
     const tr = makeTrack({
       id: "custom-" + hex,
       name: name,
       theme: theme,
       laps: laps,
-      lore: "Custom seed " + hex + ". " + laps + "-lap heat. Four lanes, generated closed highway.",
-      ctrl: loopFromPolar(n, radius, jitter, rng, spin, squash),
+      lore: "Custom seed " + hex + ". " + laps + "-lap heat. Four lanes, " + courseTag(style) + ", " +
+        (want / 1760).toFixed(2) + " mi designed closed highway.",
+      ctrl: course.ctrl,
+      style: style,
+      design: course.meta,
       seed: seed
     });
     tr.custom = true;
@@ -3225,6 +3581,77 @@
     } else if (cv) cv.classList.add("hidden");
   }
 
+  function courseStat(t, short) {
+    const d = t.design || {};
+    const mi = ((t.len || 0) / 1760).toFixed(2);
+    const bits = [mi + " mi", (d.corners || 0) + " corners"];
+    if (d.hairpins) bits.push(d.hairpins + (d.hairpins === 1 ? " hairpin" : " hairpins"));
+    if (!short && t.style) bits.push(courseTag(t.style));
+    return bits.join(" \u00b7 ");
+  }
+
+  function thumbPath(ctx, p, w, h) {
+    let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9, j, q;
+    for (j = 0; j < p.length; j++) {
+      q = p[j];
+      if (q.x < minx) minx = q.x;
+      if (q.x > maxx) maxx = q.x;
+      if (q.y < miny) miny = q.y;
+      if (q.y > maxy) maxy = q.y;
+    }
+    const pad = 9;
+    const sc = Math.min((w - pad * 2) / Math.max(1, maxx - minx), (h - pad * 2) / Math.max(1, maxy - miny));
+    const ox = (w - (maxx - minx) * sc) / 2 - minx * sc;
+    const oy = (h - (maxy - miny) * sc) / 2 - miny * sc;
+    ctx.beginPath();
+    for (j = 0; j <= p.length; j++) {
+      q = p[j % p.length];
+      const X = q.x * sc + ox, Y = q.y * sc + oy;
+      if (j === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.closePath();
+    return { sc: sc, ox: ox, oy: oy };
+  }
+
+  function paintThumbs() {
+    const list = document.querySelectorAll("canvas.track-thumb");
+    for (let i = 0; i < list.length; i++) {
+      const cv = list[i];
+      const key = cv.getAttribute("data-thumb");
+      let t = key === "pine" ? PINE : key === "coral" ? CORAL : key === "star" ? STAR : null;
+      const ctx = cv.getContext("2d");
+      const w = cv.width, h = cv.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#08111a";
+      ctx.fillRect(0, 0, w, h);
+      if (!t) {
+        // custom seed: show the designer's default ribbon as a teaser
+        t = makeCustomCircuit((Date.now() / 997) | 0, 4);
+      }
+      const p = t.ctrl || t.pts;
+      if (!p || p.length < 3) continue;
+      const m = thumbPath(ctx, p, w, h);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#38505f";
+      ctx.lineWidth = 7;
+      ctx.stroke();
+      ctx.strokeStyle = "#cdd9e4";
+      ctx.lineWidth = 4.2;
+      ctx.stroke();
+      ctx.strokeStyle = "#f0b429";
+      ctx.lineWidth = 1.15;
+      ctx.setLineDash([3, 4.2]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const a = p[0];
+      ctx.fillStyle = "#7dd3fc";
+      ctx.beginPath();
+      ctx.arc(a.x * m.sc + m.ox, a.y * m.sc + m.oy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function menu() {
     G.mode = "menu";
     G.phase = "idle";
@@ -3273,16 +3700,39 @@
             "<div><b>" + c.name + "</b><span>" + c.tag + "</span></div>" +
             "<button type='button' class='btn gold' data-go='garage'>Garage</button>" +
           "</div>" +
+          "<p class='menu-sec'>Heats · pick a ribbon</p>" +
           "<div class='mode-grid'>" +
-            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Pick a chassis and a driver. Bonuses stack.</span></button>" +
-            "<button type='button' class='mode-card' data-go='pine'><b>Pine Coil · " + PINE.laps + " laps</b><span>" + PINE.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='coral'><b>Coral Coast · " + CORAL.laps + " laps</b><span>" + CORAL.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='star'><b>Singularity Ring · " + STAR.laps + " laps</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='custom'><b>Custom race</b><span>Choose laps. Roll a seed. A new closed four-lane circuit every time — or the same one if you keep the seed.</span></button>" +
+            "<button type='button' class='mode-card race-card' data-go='pine'>" +
+              "<canvas class='track-thumb' width='104' height='78' data-thumb='pine'></canvas>" +
+              "<span class='rc-body'><b>Pine Coil</b><em>" + PINE.laps + " laps · " + courseStat(PINE, true) + "</em>" +
+              "<span>" + PINE.lore + "</span></span>" +
+            "</button>" +
+            "<button type='button' class='mode-card race-card' data-go='coral'>" +
+              "<canvas class='track-thumb' width='104' height='78' data-thumb='coral'></canvas>" +
+              "<span class='rc-body'><b>Coral Coast</b><em>" + CORAL.laps + " laps · " + courseStat(CORAL, true) + "</em>" +
+              "<span>" + CORAL.lore + "</span></span>" +
+            "</button>" +
+            "<button type='button' class='mode-card race-card' data-go='star'>" +
+              "<canvas class='track-thumb' width='104' height='78' data-thumb='star'></canvas>" +
+              "<span class='rc-body'><b>Singularity Ring</b><em>" + STAR.laps + " laps · " + courseStat(STAR, true) + "</em>" +
+              "<span>" + STAR.lore + "</span></span>" +
+            "</button>" +
+            "<button type='button' class='mode-card race-card' data-go='custom'>" +
+              "<canvas class='track-thumb' width='104' height='78' data-thumb='custom'></canvas>" +
+              "<span class='rc-body'><b>Custom race</b><em>Roll a seed · a fresh ribbon every time</em>" +
+              "<span>Choose laps and a seed number — the designer builds a closed four-lane circuit from it.</span></span>" +
+            "</button>" +
+          "</div>" +
+          "<p class='menu-sec'>Arcade</p>" +
+          "<div class='mode-grid'>" +
             "<button type='button' class='mode-card' data-go='endless'><b>Endless run</b><span>Traffic, boost-guns, combos. Wrecks refill the bar. High score posts to the live hall.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag8'><b>Drag · 1/8 mile</b><span>660 ft. Lane 2 rolls a random live chassis. F runs the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag1k'><b>Drag · 1000 ft</b><span>1000-foot trap vs a random live chassis on the tree.</span></button>" +
             "<button type='button' class='mode-card' data-go='drag14'><b>Drag · 1/4 mile</b><span>1320 ft. Sportsman tree. Beat Lane 2 on the stripe.</span></button>" +
+          "</div>" +
+          "<p class='menu-sec'>Garage &amp; info</p>" +
+          "<div class='mode-grid'>" +
+            "<button type='button' class='mode-card' data-go='garage'><b>Garage</b><span>Pick a chassis and a driver. Bonuses stack.</span></button>" +
             "<button type='button' class='mode-card' data-go='options'><b>Options</b><span>Ghost, camera, HUD. Extra rows as the game grows.</span></button>" +
             "<button type='button' class='mode-card' data-go='controls'><b>Controls</b><span>Keys, pad, manual, cameras.</span></button>" +
             "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public heats and endless scores. Names only.</span></a>" +
@@ -3293,6 +3743,7 @@
         "</div></div>",
       true
     );
+    if (typeof paintThumbs === "function") paintThumbs();
     if (window.HavenRadio) {
       if (HavenRadio.paint) HavenRadio.paint();
       if (HavenRadio.ensurePlay) HavenRadio.ensurePlay();
