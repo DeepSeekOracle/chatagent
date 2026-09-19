@@ -33,6 +33,8 @@ must(game.indexOf("function surviveCap") >= 0 && game.indexOf("normCap: 800") >=
 must(game.indexOf("sec: 60") >= 0 && game.indexOf("function waveOf") >= 0 && game.indexOf("function surviveField") >= 0, "one wave a minute, and the cadence chases the wave target");
 must(game.indexOf("function waveBosses") >= 0 && game.indexOf("bossAt: 9") >= 0 && game.indexOf("boss: 25") >= 0, "named bands from wave 9, 25 a wave");
 must(game.indexOf("waveOf(G.t || 0)") >= 0 && game.indexOf("WAVE.sec - ((G.t") >= 0, "the HUD wave number and its clock run on the same minute");
+must(game.indexOf('G.mode === "endless" && G.t > WAVE.sec') >= 0 && game.indexOf("waveNormals(G.t || 0)") >= 0, "endless nexuses ride the wave band under the frame budget");
+must(game.indexOf('G.mode === "endless" && G.t > WAVE.sec') >= 0 && game.indexOf('" · wave " + surviveWave()') >= 0, "endless shows the wave its ramp rides");
 /* The tide has to be able to win: pressure() is the unbounded late-game multiplier, and both
    halves of every fight — what they take and what they deal — must ride it, along with how
    many of them are mutants. A ceilinged curve lets a good build become immortal. */

@@ -3806,11 +3806,19 @@
          knee passes. Without this the ramp could only make spawns come *faster* than the cap
          could absorb, which is why campaign pressure used to feel flat after the opening. */
       const grow = Math.min(4, Math.max(1, paceRamp() / PACING.base));
-      const cap = Math.round((1 + g.rank) * grow);
+      /* On an ENDLESS floor the standing budget rides the wave too, because endless is one of the
+         modes the wave clock governs: the same target the wave states, split across the floor's
+         live nexuses and held under the mode's own frame budget. A campaign floor is authored and
+         short, so its nexuses keep the pacing curve alone (band stays 1 and nothing changes). */
+      const band = (G.mode === "endless" && G.t > WAVE.sec)
+        ? Math.min(6, waveNormals(G.t) / WAVE.norm)
+        : 1;
+      const want = G.mode === "endless" ? Math.max(1, Math.min(220, waveNormals(G.t || 0))) : Infinity;
+      const cap = Math.round((1 + g.rank) * grow * band);
       const live = lv.foes.filter((f) => f.kind === g.kind && Math.hypot(f.x - g.x, f.y - g.y) < 8).length;
       /* Nexus cadence rides the same curve as everything else: quiet at the top of a floor,
-         then a steady pour once the knee passes. */
-      if (g.t > paceGap(2.1 / Math.max(1, g.rank * 0.7)) && live < cap) {
+         then a steady pour once the knee passes — and on endless, faster as the wave climbs. */
+      if (g.t > paceGap(2.1 / Math.max(1, g.rank * 0.7) / band) && live < cap && lv.foes.length < want) {
         g.t = 0;
         const sp = nearestWalk(lv, g.x + 0.5, g.y + 0.5);
         lv.foes.push(makeFoe(g.kind, g.rank, sp.x, sp.y));
@@ -4116,7 +4124,10 @@
       if (window.CryptStudio) CryptStudio.pool.foe.free(f);
       return false;
     });
-    const capNow = G.mode === "survive" ? surviveCap(surviveWave()) : 220;
+    /* The split-spawn path is still the wave's business: an endless floor may not exceed the
+       budget the minute paid for either, while a campaign floor keeps its flat frame budget. */
+    const capNow = G.mode === "survive" ? surviveCap(surviveWave())
+      : (G.mode === "endless" ? Math.max(1, Math.min(220, waveNormals(G.t || 0))) : 220);
     born.forEach((n) => { if (lv.foes.length < capNow) lv.foes.push(n); });
 
     G.shots.forEach((s) => {
@@ -4827,7 +4838,7 @@
     if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + Math.floor(G.xp) + "/" + need;
     if ($("hudClock")) {
       $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  " +
-        (G.mode === "survive" ? "next wave " + waveLeft.toFixed(0) + "s" + (waveBosses(G.t || 0) ? " · named " + (G.rosCount || 0) + "/" + waveBosses(G.t || 0) : "") : objectiveText());
+        (G.mode === "survive" ? "next wave " + waveLeft.toFixed(0) + "s" + (waveBosses(G.t || 0) ? " · named " + (G.rosCount || 0) + "/" + waveBosses(G.t || 0) : "") : (G.mode === "endless" ? objectiveText() + " · wave " + surviveWave() : objectiveText()));
     }
     if ($("hudKills")) {
       $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  " +
