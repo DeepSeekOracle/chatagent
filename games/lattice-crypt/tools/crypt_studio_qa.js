@@ -44,6 +44,14 @@ must(game.indexOf("const PACING = {") >= 0 && game.indexOf("knee: 180") >= 0 && 
    stacking them has to be punished or the layer is just decoration. */
 must(game.indexOf("rosterAt: 120") >= 0 && game.indexOf("function rosterTick") >= 0 && game.indexOf("f.roster = true") >= 0 && game.indexOf("(f.rage || 1)") >= 0, "random boss roster from the 2-minute mark, with stacking rage");
 must(game.indexOf("if (G.rosCount) pills.push(\"BOSSES \"") >= 0, "a live boss count on the HUD");
+/* The controller layer is a shipped feature and had no coverage: five polling sites feed movement,
+   hot-join, the sheet and the card cabinet, and a reworded line would silently drop one. */
+must((game.match(/navigator\.getGamepads/g) || []).length >= 5, "gamepads polled on every input path (move, hot-join, sheet, cabinet)");
+must(game.indexOf("if (pad.buttons[0] && pad.buttons[0].pressed) fire = true;") >= 0 && game.indexOf("if (pad.buttons[7] && pad.buttons[7].pressed) fire = true;") >= 0, "pad fire on A and the right trigger");
+must(game.indexOf("if (pad.buttons[12] && pad.buttons[12].pressed)") >= 0 && game.indexOf("if (pad.buttons[15] && pad.buttons[15].pressed)") >= 0 && game.indexOf("Math.abs(ax) > 0.35") >= 0, "pad stick and d-pad movement");
+must(game.indexOf("pad.buttons[9]") >= 0 && game.indexOf("pad.buttons[8]") >= 0 && game.indexOf("magBtn") >= 0, "pad Start hot-join, Select sheet, vial button");
+must(game.indexOf("ax < -0.55") >= 0 && game.indexOf("confirmSurviveUp(G._upSel)") >= 0, "the pad drives the card cabinet");
+must(game.indexOf("bindIdlePads") >= 0 && game.indexOf("claimedPads") >= 0, "one pad per warden");
 must(game.indexOf("PACING.spawn) / Math.max") < 0, "horde cadence must ride the curve, not a flat dial");
 must(game.indexOf("function paceGap") >= 0 && game.indexOf("paceGap(2.1 /") >= 0, "every spawner rides the curve");
 must(game.indexOf("function heroOpen") >= 0, "roster open from the first run");
