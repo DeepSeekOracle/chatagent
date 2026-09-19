@@ -34,7 +34,7 @@
   var waterMeshes = [];
   var ghostRoot = null;
   var ghostBalls = {};
-  var BALL_R = 0.16;
+  var BALL_R = 0.24;
 
   var DIST_MIN = 22;
   var DIST_MAX = 720;
@@ -74,34 +74,34 @@
     tex.grass = noiseTex(256, 256, function (x, y) {
       var n = Math.sin(x * 0.37) * 6 + Math.cos(y * 0.29) * 5 + ((x * 13 + y * 7) % 9);
       var clump = Math.sin((x * 0.11 + y * 0.09)) * 8;
-      return [28 + n, 62 + n + clump, 32 + n * 0.4];
+      return [78 + n, 112 + n + clump, 58 + n * 0.4];
     });
     tex.grass.repeat.set(14, 14);
     tex.rough = noiseTex(256, 256, function (x, y) {
       var n = Math.sin(x * 0.21 + y * 0.17) * 10 + ((x * 17) ^ (y * 13)) % 12;
       var clump = Math.cos(x * 0.08) * 7;
-      return [36 + n, 68 + n * 0.55 + clump, 30 + n * 0.3];
+      return [92 + n, 124 + n * 0.55 + clump, 66 + n * 0.3];
     });
     tex.rough.repeat.set(10, 10);
     tex.fair = noiseTex(256, 256, function (x, y, u, v) {
       var n = ((x * 3 + y) % 5);
       var stripe = Math.sin(v * Math.PI * 14) >= 0 ? 10 : -6;
       var edge = Math.round(14 * Math.pow(Math.abs(u - 0.5) * 2, 2.2));
-      return [42 + n + stripe - edge, 118 + n + stripe - edge * 0.7, 52 + n - edge * 0.4];
+      return [96 + n + stripe - edge, 176 + n + stripe - edge * 0.7, 86 + n - edge * 0.4];
     });
     tex.fair.repeat.set(1, 1);
     tex.green = noiseTex(128, 128, function (x, y) {
       var n = (x + y) % 6;
       var stripe = ((y / 10) | 0) % 2 === 0 ? 8 : -4;
-      return [36 + n + stripe, 132 + n + stripe, 64];
+      return [98 + n + stripe, 196 + n + stripe, 96];
     });
     tex.sand = noiseTex(128, 128, function (x, y) {
       var n = ((x * 5) ^ y) % 18;
-      return [196 + n, 168 + n * 0.6, 108];
+      return [212 + n, 188 + n * 0.6, 126];
     });
     tex.water = noiseTex(256, 256, function (x, y, u, v) {
       var w = 90 + Math.sin(u * 18) * 18 + Math.cos(v * 14) * 12;
-      return [20, 70 + w * 0.25, 110 + w * 0.35];
+      return [30, 104 + w * 0.3, 158 + w * 0.4];
     });
     tex.water.repeat.set(4, 4);
     tex.bark = noiseTex(64, 128, function (x, y) {
@@ -559,15 +559,31 @@
 
   function themeOf(id) {
     if (id === "coral-lattice") {
-      return { sky: 0x8ec8e8, fog: 0xc4e0ee, grass: 0x3a6a40, fair: 0x4aaa62, dusk: false, sun: 0xffe6c4, pine: 0x2a8a52, water: 0x1a7aaa };
+      return {
+        sky: 0x8ec8e8, fog: 0xcfe4f0, grass: 0xd6e6c0, fair: 0x4aaa62, dusk: false, sun: 0xffe6c4,
+        pine: 0x2f8c56, water: 0x2a8fbe,
+        turf: 0xcfe3ae, roughT: 0xc4d9a2, cutT: 0xdbe9b8, fairTop: 0x9ade86, greenTop: 0xa8ea90
+      };
     }
     if (id === "singularity-nine") {
-      return { sky: 0x1c1838, fog: 0x2a2458, grass: 0x10241c, fair: 0x2f7a48, dusk: true, sun: 0xc4b0ff, pine: 0x163e2c, water: 0x143a68 };
+      return {
+        sky: 0x1c1838, fog: 0x342c60, grass: 0x8a9cb4, fair: 0x2f7a48, dusk: true, sun: 0xc4b0ff,
+        pine: 0x24503a, water: 0x2a5490,
+        turf: 0x8ba0b6, roughT: 0x7d92aa, cutT: 0x93a8bc, fairTop: 0x78cc8c, greenTop: 0x8ede9e
+      };
     }
     if (id === "endless") {
-      return { sky: 0x4a6a88, fog: 0x7a96a4, grass: 0x1a3a24, fair: 0x3e9a54, dusk: false, sun: 0xffd9a0, pine: 0x1a5530, water: 0x15688a };
+      return {
+        sky: 0x4a6a88, fog: 0x8fa9b4, grass: 0xcddcb8, fair: 0x3e9a54, dusk: false, sun: 0xffd9a0,
+        pine: 0x24663c, water: 0x2a80a8,
+        turf: 0xc6d8ac, roughT: 0xb9cda0, cutT: 0xd2e0b2, fairTop: 0x8ed882, greenTop: 0x9ee28c
+      };
     }
-    return { sky: 0x7ec4ee, fog: 0xc8dcc8, grass: 0x2a4a30, fair: 0x3e9652, dusk: false, sun: 0xfff1c2, pine: 0x1a5c32, water: 0x1878a0 };
+    return {
+      sky: 0x7ec4ee, fog: 0xd6e6d2, grass: 0xd0e0b6, fair: 0x3e9652, dusk: false, sun: 0xfff1c2,
+      pine: 0x2f7a44, water: 0x2a86b4,
+      turf: 0xc8ddae, roughT: 0xbcd4a2, cutT: 0xd6e5b4, fairTop: 0x94dc84, greenTop: 0xa4e890
+    };
   }
 
   function applyOrbit() {
@@ -732,11 +748,11 @@
 
     var fw = hole.fairW || 30;
     var roughMat = mat({
-      map: tex.rough, color: 0x2a4e30, roughness: 1,
+      map: tex.rough, color: th.roughT || 0xbcd4a2, roughness: 1,
       polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: 1
     });
     var cutMat = mat({
-      map: tex.rough, color: 0x3a6a40, roughness: 0.94,
+      map: tex.rough, color: th.cutT || 0xd6e5b4, roughness: 0.94,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: 1
     });
     addBand(hole.path, fw + 14, fw + 28, 0.03, roughMat);
@@ -746,7 +762,7 @@
       ribbonGeo(hole.path, fw, 0.08, { uvScale: 0.016, step: 6 }),
       mat({
         map: tex.fair,
-        color: 0x5ec46a,
+        color: th.fairTop || 0x94dc84,
         roughness: 0.72,
         metalness: 0.02,
         polygonOffset: true,
@@ -800,7 +816,7 @@
 
     var green = new T.Mesh(
       new T.CircleGeometry(gR, 48),
-      mat({ map: tex.green, color: 0x3aaa58, roughness: 0.64 })
+      mat({ map: tex.green, color: th.greenTop || 0xa4e890, roughness: 0.58 })
     );
     green.rotation.x = -Math.PI / 2;
     green.position.set(hole.pin.x, pinH + 0.1, hole.pin.y);
@@ -831,7 +847,7 @@
       var rx = Math.max(6, w.w * 0.52), rz = Math.max(6, w.h * 0.52);
       var basin = new T.Mesh(
         new T.CircleGeometry(1, 36),
-        mat({ color: 0x0a2434, roughness: 1 })
+        mat({ color: 0x14384c, roughness: 0.9 })
       );
       basin.scale.set(rx * 1.08, rz * 1.08, 1);
       basin.rotation.x = -Math.PI / 2;
@@ -842,13 +858,14 @@
       var m = new T.Mesh(
         wgeo,
         mat({
-          color: 0x0c5c78,
-          metalness: 0.04,
-          roughness: 0.48,
+          map: tex.water,
+          color: 0xa8dcec,
+          metalness: 0.12,
+          roughness: 0.2,
           transparent: true,
-          opacity: 0.9,
-          emissive: 0x062838,
-          emissiveIntensity: 0.35
+          opacity: 0.92,
+          emissive: 0x0d3e52,
+          emissiveIntensity: 0.18
         })
       );
       m.scale.set(rx, rz, 1);
@@ -1407,7 +1424,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.toneMapping = T.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 1.14;
     if (T.SRGBColorSpace) renderer.outputColorSpace = T.SRGBColorSpace;
     scene = new T.Scene();
     scene.fog = new T.FogExp2(0xc8dcc8, 0.00055);
@@ -1417,7 +1434,7 @@
     pointer = new T.Vector2();
     makeTextures();
 
-    hemi = new T.HemisphereLight(0xdce8ff, 0x3a4a28, 0.72);
+    hemi = new T.HemisphereLight(0xdce8ff, 0x5a6a44, 0.95);
     scene.add(hemi);
     sun = new T.DirectionalLight(0xffe8c8, 1.35);
     sun.position.set(-80, 140, 40);
@@ -1431,7 +1448,7 @@
     sun.shadow.camera.bottom = -220;
     sun.shadow.bias = -0.00025;
     scene.add(sun);
-    scene.add(new T.AmbientLight(0x6688aa, 0.22));
+    scene.add(new T.AmbientLight(0x7e9ab0, 0.34));
 
     paintSky(themeOf("pine-haven"));
 

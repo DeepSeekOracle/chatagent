@@ -1852,8 +1852,10 @@
 
   function paintClubs() {
     if (!$("clubs") || !G.club) return;
+    const top = CLUBS.reduce(function (m, c) { return Math.max(m, c.putt ? 0 : c.max); }, 1);
     $("clubs").innerHTML = CLUBS.map(function (c) {
-      return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '">' +
+      const bar = c.putt ? 100 : Math.max(8, Math.round((c.max / top) * 100));
+      return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '" style="--bar:' + bar + '%">' +
         c.name + "<small>" + (c.putt ? "to marker" : ("chip–" + c.max + " yd")) + "</small></button>";
     }).join("");
   }
@@ -1929,6 +1931,8 @@
       G.ball = { x: m.dest.x, y: m.dest.y };
       if (m.holed || dist(G.ball, pin) <= CUP || (lieAt(G.hole, G.ball) === "green" && dist(G.ball, pin) <= GIMME)) {
         log("Cup. " + G.strokes + " · par " + G.hole.par);
+        flashResult("great", "CUP · " + G.strokes + (G.strokes === 1 ? " stroke" : " strokes"),
+          "par " + G.hole.par + " · " + (G.strokes - G.hole.par > 0 ? "+" + (G.strokes - G.hole.par) : G.strokes === G.hole.par ? "par" : (G.strokes - G.hole.par) + ""));
         holeDone();
         return;
       }
@@ -1937,17 +1941,32 @@
         G.strokes += 1;
         G.ball = { x: G.undo.ball.x, y: G.undo.ball.y };
         log((now === "water" ? "Water. Drop +1." : "Out of bounds. Stroke and distance.") + " Now " + G.strokes);
+        flashResult("bad", now === "water" ? "WATER" : "OUT OF BOUNDS", "stroke and drop · now " + G.strokes);
       } else if (m.blocked === "trees") {
         log("Into the trees. Ball stops. " + dist(from, m.dest).toFixed(0) + " yd · " + now);
+        flashResult("bad", "TREES · BALL STOPS", dist(from, m.dest).toFixed(0) + " yd · lie " + now);
       } else {
         const rollBit = m.roll > 0.8 ? " + " + m.roll.toFixed(0) + " yd roll" : " · no roll";
         log(G.club.name + " " + Math.round(G.power * 100) + "% → " + m.actual.toFixed(1) + " yd carry" + rollBit + " · " + (m.landLie || now) + " → " + now);
+        flashResult(now === "green" ? "great" : (now === "fairway" ? "good" : "ok"),
+          m.actual.toFixed(0) + " yd · " + (now === "green" ? "ON THE GREEN" : String(now).toUpperCase()),
+          G.club.name + " " + Math.round(G.power * 100) + "%" + (m.roll > 0.8 ? " · roll " + m.roll.toFixed(0) + " yd" : "") +
+          " · " + dist(G.ball, pin).toFixed(0) + " yd to pin");
       }
       G.marker = nextAim(G.hole, G.ball);
       autoClub();
       renderHoleCard();
       draw();
     });
+  }
+
+  function flashResult(tone, main, sub) {
+    const el = $("shotChip");
+    if (!el) return;
+    el.className = "shot-chip on " + (tone || "");
+    el.innerHTML = "<b>" + main + "</b>" + (sub ? "<span>" + sub + "</span>" : "");
+    clearTimeout(flashResult._t);
+    flashResult._t = setTimeout(function () { el.className = "shot-chip"; }, 3800);
   }
 
   function animateShot(from, model, done, club) {
@@ -2652,6 +2671,36 @@
     );
   }
 
+  function bestRoundFor(id) {
+    const rs = (G.save.rounds || []).filter(function (r) { return r.courseId === id; });
+    if (!rs.length) return null;
+    return rs.reduce(function (a, b) { return b.vsPar < a.vsPar ? b : a; });
+  }
+  function roundsFor(id) {
+    return (G.save.rounds || []).filter(function (r) { return r.courseId === id; }).length;
+  }
+  function fmtPar(v) {
+    return (v > 0 ? "+" : v < 0 ? "-" : "even ") + (v === 0 ? "" : Math.abs(v));
+  }
+  function recChip(id) {
+    const b = bestRoundFor(id);
+    if (!b) return "<i class='rec rec-empty'>no card saved yet</i>";
+    const n = roundsFor(id);
+    return "<i class='rec'>best " + fmtPar(b.vsPar).trim() + " · " + b.total + " strokes · " + n + (n === 1 ? " round" : " rounds") + "</i>";
+  }
+  function menuRecords() {
+    const rs = G.save.rounds || [];
+    if (!rs.length) return "<div class='hero-rec'><div class='rr-row'><span class='rr-k'>No cards yet</span><span class='rr-v'>Tee off and your totals post here.</span></div></div>";
+    const last = rs[0];
+    const best = rs.reduce(function (a, b) { return b.vsPar < a.vsPar ? b : a; });
+    const holes = rs.reduce(function (n, r) { return n + (r.holes || 0); }, 0);
+    return "<div class='hero-rec'>" +
+      "<div class='rr-row'><span class='rr-k'>Last card</span><span class='rr-v'>" + last.course + " · " + fmtPar(last.vsPar).trim() + " (" + last.total + " over " + last.holes + ")</span></div>" +
+      "<div class='rr-row'><span class='rr-k'>Best</span><span class='rr-v'>" + best.course + " · " + fmtPar(best.vsPar).trim() + " (" + best.total + ")</span></div>" +
+      "<div class='rr-row'><span class='rr-k'>Lifetime</span><span class='rr-v'>" + (G.save.games || 0) + " rounds · " + holes + " holes walked</span></div>" +
+      "</div>";
+  }
+
   function menu() {
     if (mpOn() && window.GolfNet) GolfNet.send({ type: "leave" });
     G.mp = null;
@@ -2661,43 +2710,72 @@
     $("boot").classList.add("hidden");
     $("app").classList.add("hidden");
     const name = (G.save.name || "").replace(/[<>]/g, "");
+    const recs = menuRecords();
     showSheet(
       "<div class='title-screen'>" +
-        "<div class='title-art'>" +
+        "<section class='title-art'>" +
           "<img src='./assets/menu.jpg?v=19' alt='Lattice Golf — twilight pin and cup'>" +
           "<div class='title-art-fade'></div>" +
-        "</div>" +
-        "<div class='title-panel'>" +
-          "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
-          "<h1>LATTICE GOLF</h1>" +
-          "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
-          "<p class='lore'>Drag the power bar · ← → fine · 1–4 snap · [ ] clubs · Space shoot</p>" +
-          "<div class='modes' style='margin:.55rem 0 0'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
-          "<p class='lore' style='margin:.35rem 0 0'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
-          "<label style='margin-top:.85rem;display:block'>Operator name</label>" +
-          "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
-          "<p class='kicker' style='margin-top:.75rem'>Choose golfer</p>" +
-          "<div class='cast-grid'>" +
-            CAST.map(function (c) {
-              const on = (G.save.golfer || "mira") === c.id ? " on" : "";
-              return "<button type='button' class='cast" + on + "' data-cast='" + c.id + "'>" +
-                "<img src='" + c.src + "' alt='" + c.name + "'>" +
-                "<b>" + c.name + "</b><span>" + c.tag + "</span></button>";
-            }).join("") +
+          "<div class='hero'>" +
+            "<p class='kicker'>Δ9Φ963 · The Haven Circuit · chatagent.ca</p>" +
+            "<p class='title-tag'>Club the next landing, not the flag. Overclub is sand, trees, or water.</p>" +
+            "<div class='hero-cta'>" +
+              "<button type='button' class='btn gold hero-btn' data-go='pine'>Tee off · Pine Haven 9</button>" +
+              "<button type='button' class='btn hero-btn' data-go='18'>Haven Open 18</button>" +
+              "<button type='button' class='btn ghost hero-btn' data-go='endless'>Endless wilds</button>" +
+            "</div>" +
+            "<div class='hero-facts'>" +
+              "<span><b>3</b> parkland nines</span>" +
+              "<span><b>18</b> haven open</span>" +
+              "<span><b>&infin;</b> endless wilds</span>" +
+              "<span><b>2&ndash;4</b> live seats</span>" +
+            "</div>" +
+            recs +
+            "<p class='hero-keys'>drag the power bar · &larr; &rarr; fine · 1&ndash;4 snap · [ ] clubs · Space shoot</p>" +
           "</div>" +
-          "<div class='mode-grid'>" +
-            "<button type='button' class='mode-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='star'><b>Singularity Nine</b><span>" + STAR.lore + "</span></button>" +
-            "<button type='button' class='mode-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind.</span></button>" +
-            "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End walk to post the card.</span></button>" +
-            "<button type='button' class='mode-card' data-go='live'><b>Live match</b><span>Lobby, room code, take turns on the same island. Watch their ball, then hit yours.</span></button>" +
-            "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
-            "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public rounds. Names and totals only.</span></a>" +
+        "</section>" +
+        "<aside class='title-panel'>" +
+          "<div class='tp-sec'>" +
+            "<p class='tp-h'>Operator</p>" +
+            "<input class='name' id='nm' maxlength='24' value='" + name.replace(/'/g, "") + "' placeholder='Operator'>" +
+            "<p class='tp-note'>Saved on this device. Every card you finish also posts to the live hall.</p>" +
           "</div>" +
-          donateHtml() +
-          "<p class='lore' style='margin-top:.8rem'><a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
-        "</div>" +
+          "<div class='tp-sec'>" +
+            "<p class='tp-h'>Choose golfer</p>" +
+            "<div class='cast-grid'>" +
+              CAST.map(function (c) {
+                const on = (G.save.golfer || "mira") === c.id ? " on" : "";
+                return "<button type='button' class='cast" + on + "' data-cast='" + c.id + "'>" +
+                  "<img src='" + c.src + "' alt='" + c.name + "' loading='lazy'>" +
+                  "<b>" + c.name + "</b><span>" + c.tag + "</span></button>";
+              }).join("") +
+            "</div>" +
+          "</div>" +
+          "<div class='tp-sec'>" +
+            "<p class='tp-h'>Courses</p>" +
+            "<div class='mode-grid course-grid'>" +
+              "<button type='button' class='mode-card course-card' data-go='pine'><b>Pine Haven 9</b><span>" + PINE.lore + "</span>" + recChip("pine-haven") + "</button>" +
+              "<button type='button' class='mode-card course-card' data-go='coral'><b>Coral Lattice 9</b><span>" + CORAL.lore + "</span>" + recChip("coral-lattice") + "</button>" +
+              "<button type='button' class='mode-card course-card' data-go='star'><b>Singularity Nine</b><span>" + STAR.lore + "</span>" + recChip("singularity-nine") + "</button>" +
+              "<button type='button' class='mode-card course-card' data-go='18'><b>Haven Open 18</b><span>Front nine parkland, back nine coastal wind. One card, two weathers.</span>" + recChip("haven-open") + "</button>" +
+            "</div>" +
+          "</div>" +
+          "<div class='tp-sec'>" +
+            "<p class='tp-h'>Ways to play</p>" +
+            "<div class='mode-grid'>" +
+              "<button type='button' class='mode-card' data-go='endless'><b>Endless wilds</b><span>Extreme generated holes. Tight, long, mean. End the walk to post the card.</span>" + recChip("endless") + "</button>" +
+              "<button type='button' class='mode-card' data-go='live'><b>Live match</b><span>Lobby, room code, take turns on the same island. Watch their ball, then hit yours.</span></button>" +
+              "<button type='button' class='mode-card' data-go='campaign'><b>Campaign vs AI</b><span>The Haven Circuit. Colder swing. Same pin.</span></button>" +
+              "<a class='mode-card' href='./ledger.html'><b>Live hall</b><span>Public rounds. Names and totals only.</span></a>" +
+            "</div>" +
+          "</div>" +
+          "<div class='tp-foot'>" +
+            "<div class='modes'><button type='button' class='btn' id='menuRadio'>Play radio</button></div>" +
+            "<p class='tp-note tp-links'><a href='https://ffm.to/eovnvo9' target='_blank' rel='noopener noreferrer'>Stream Excavationpro</a> · <a href='https://asiancoastline.com/listen.html' target='_blank' rel='noopener'>Free listen</a></p>" +
+            donateHtml() +
+            "<p class='tp-note'><a href='/games/'>All games</a> · Support keeps the arcade on.</p>" +
+          "</div>" +
+        "</aside>" +
       "</div>",
       true
     );
