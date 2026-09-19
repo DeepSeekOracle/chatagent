@@ -25,7 +25,15 @@ must(game.indexOf("function blit") >= 0, "pre-scale blit");
 must(studio.indexOf("createStereoPanner") >= 0, "spatial SFX");
 must(studio.indexOf("drumOsc") >= 0, "drum stem");
 must(game.indexOf("999999999") >= 0, "score cap");
-must(game.indexOf("Math.min(380") >= 0 && game.indexOf("function surviveCap") >= 0, "survive cap ramp");
+must(game.indexOf("Math.min(520") >= 0 && game.indexOf("function surviveCap") >= 0, "survive cap ramp");
+/* The tide has to be able to win: pressure() is the unbounded late-game multiplier, and both
+   halves of every fight — what they take and what they deal — must ride it, along with how
+   many of them are mutants. A ceilinged curve lets a good build become immortal. */
+must(game.indexOf("function pressure()") >= 0 && game.indexOf(")) * pressure();") >= 0 && game.indexOf("Math.pow(pressure(), 0.75)") >= 0 && game.indexOf("* press))") >= 0 && game.indexOf("0.035 * over") >= 0, "unbounded pressure on their damage, their health and mutant density");
+/* Contact damage has to be able to land. A hurt window is a per-frame hit cap, not immunity:
+   reading it as immunity let a foe in contact re-arm it every frame, so a warden standing in a
+   horde was untouchable and the run could not end. */
+must(game.indexOf("surviveIframe") < 0, "no permanent i-frame in Survival");
 /* All three modes must survive a HUD paint: authored floors carry `exit`, generated ones
    only paint the tile, so the HUD has to resolve the door through one accessor. */
 must(game.indexOf("function levelExit") >= 0, "mode-agnostic exit lookup");

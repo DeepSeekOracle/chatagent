@@ -850,8 +850,11 @@
     const L = Math.max(1, (G && G.lvl) || 1);
     if (G && G.mode === "survive" && L < 3) return;
     const t = G ? threatIndex() : 0;
-    const p1 = G && G.mode === "survive" ? Math.min(0.34, 0.05 * (L - 2)) : (0.18 + Math.min(0.32, t * 0.014));
-    const p2 = G && G.mode === "survive" ? Math.min(0.12, 0.015 * (L - 4)) : (0.05 + Math.min(0.14, t * 0.007));
+    /* Mutant density climbs on the same clock, so a late horde is not just more fodder: it is
+       fodder that shoots, splits, heals and runs. This is where a weak build stops coping. */
+    const over = Math.max(0, (rampTime() - PACING.knee) / 60);
+    const p1 = G && G.mode === "survive" ? Math.min(0.6, 0.05 * (L - 2) + 0.035 * over) : (0.18 + Math.min(0.45, t * 0.014 + 0.03 * over));
+    const p2 = G && G.mode === "survive" ? Math.min(0.3, 0.015 * (L - 4) + 0.025 * over) : (0.05 + Math.min(0.28, t * 0.007 + 0.02 * over));
     const bag = [["shoot", 3], ["lob", 2], ["flicker", 2], ["explode", 2], ["heal", 2], ["haste", 3], ["tough", 3], ["ghost", 1], ["blink", 1], ["pull", 1], ["split", 1], ["hymn", 1], ["slow", 2], ["root", 1]];
     function one() {
       let s = 0; bag.forEach(function (x) { s += x[1]; });
@@ -916,18 +919,22 @@
     return made;
   }
   /* Survive ramp: player level L first, wave W second (W = 1+t/28).
-     Cap 14+(L-1)*7+(W-1)*2.4 ≤380. Pulse 2+L+(W/5) ≤22, gap 0.62-0.02L ≥0.16s.
-     Horde 5+2L+0.7W ≤72, gap 13.5-0.22L ≥6.2s. Fodder HP 1+0.28(W-1)+0.48(L-1).
-     Every cadence is then run through PACING (spawn 0.82 / xp 1.22) so the tide arrives
-     slower in exact step with the slower level curve. */
+     Cap 14+(L-1)*7+(W-1)*2.4, grown by the pacing curve, clamped at 520. Pulse 2+L+(W/5) ≤22,
+     gap 0.62-0.02L ≥0.16s. Horde 5+2L+0.7W ≤72, gap 13.5-0.22L ≥6.2s. Fodder HP
+     1+0.28(W-1)+0.48(L-1), scaled by pressure() past the knee.
+     Cadence rides PACING so the tide arrives in step with the slower level curve; pressure()
+     is what makes a long run end — it lifts their damage, their health and how many of them
+     carry mutations, without a ceiling, so a warden who cannot out-kill it is buried. */
   function surviveCap(w) {
     const L = Math.max(1, (G && G.lvl) || 1);
     w = w || surviveWave();
     const base = 14 + (L - 1) * 7 + (w - 1) * 2.4;
     /* Past the knee the ceiling itself climbs, so the horde can actually fill the screen
-       instead of queueing behind a level-set cap. Clamped at 380. */
+       instead of queueing behind a level-set cap. */
     const grow = Math.max(1, paceRamp() / PACING.spawn);
-    return Math.min(380, Math.round(base * grow));
+    /* A ceiling that keeps opening: a late wave should be able to bury the arena rather than
+       queue behind a number the warden already learned to survive. */
+    return Math.min(520, Math.round(base * grow));
   }
   function survivePulseN() {
     const L = Math.max(1, G.lvl || 1);
@@ -1007,10 +1014,14 @@
       }
       say(nB > 1 ? "Named guardians enter the long crypt." : "A named guardian enters the long crypt.");
     }
-    if ((w === 12 || w === 18 || w === 24 || w === 36) && G.bossAt !== w + 0.5) {
+    const superWave = w === 12 || w === 18 || w === 24 || w === 36 || (w >= 30 && w % 6 === 0);
+    if (superWave && G.bossAt !== w + 0.5) {
       G.bossAt = w + 0.5;
-      const sk = w === 12 || w === 36 ? "unspool" : (w === 18 ? "titheking" : "nameeater");
+      const sk = (w === 12 || w === 36) ? "unspool" : (w === 18 ? "titheking" : (w === 24 ? "nameeater" : SUPER_BOSSES[(((w / 6) | 0) + 1) % 3]));
       spawnSurviveAround(sk, true);
+      /* Two of them once the run has legs: one super is a set piece, two is a problem the
+         warden has to solve while the fodder keeps coming. */
+      if (w >= 30) spawnSurviveAround(SUPER_BOSSES[(((w / 6) | 0) + 2) % 3], true, 1, true);
       emit("onBossSpawn", { w: w, super: true });
       say(BOSS_NAME[sk] + " walks the Long Crypt.");
     }
@@ -1636,6 +1647,15 @@
   function paceXp(n) { return Math.round(n * PACING.xp); }
   function paceGap(sec) { return sec / paceRamp(); }
   function pacePack(n) { return Math.max(1, Math.round(n * paceRamp())); }
+  /* Pressure: what the tide does to a warden who is still standing. The ramp decides how MANY
+     arrive; pressure decides how hard each one hits and how much it takes to put down, and it
+     has no ceiling on purpose — a build that cannot kill faster than this climbs is eventually
+     buried, however good it is. 1x at the knee, ~3x five minutes past it, ~8x at ten, ~15x at
+     fifteen. Good play and a good build buy time; they do not buy forever. */
+  function pressure() {
+    const over = Math.max(0, (rampTime() - PACING.knee) / 60);
+    return 1 + 0.14 * over + 0.055 * over * over;
+  }
 
   function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
   /* One curve for every mode: campaign and endless level a touch slower than Survival,
@@ -1673,14 +1693,15 @@
   }
   function hpScale() {
     const t = threatIndex();
-    return 1 + 0.11 * t + (0.007 * t * t) / (t + 14);
+    /* Depth, then time on the floor: dawdling in a deep hall is punished on both axes. */
+    return (1 + 0.11 * t + (0.007 * t * t) / (t + 14)) * Math.pow(pressure(), 0.75);
   }
   function spdScale() {
     return Math.min(1.38, 1 + 0.012 * threatIndex());
   }
   function dmgScale() {
     const t = threatIndex();
-    return 1 + 0.055 * t + (0.0035 * t * t) / (t + 18);
+    return (1 + 0.055 * t + (0.0035 * t * t) / (t + 18)) * pressure();
   }
   function hallMark(kind) {
     if (!G || !window.ArcadeLedger) return;
@@ -1971,10 +1992,14 @@
       if (G.mode === "survive") {
         const w = surviveWave();
         const L = Math.max(1, G.lvl || 1);
-        if (k === "drain") hp = Math.round(28 + w * 4 + (L - 1) * 3);
-        else if (d.super) hp = Math.round(36 + w * 7 + (L - 1) * 5);
-        else if (d.boss) hp = Math.round(8 + w * 3.2 + (L - 1) * 2.4);
-        else hp = Math.max(1, Math.round(1 + 0.28 * (w - 1) + 0.48 * (L - 1)));
+        /* Fodder take the full pressure, named things a little under it so a strong build can
+           still break them open instead of standing in a wall of sponge. */
+        const press = pressure();
+        const heavy = Math.pow(press, 0.9);
+        if (k === "drain") hp = Math.round((28 + w * 4 + (L - 1) * 3) * heavy);
+        else if (d.super) hp = Math.round((36 + w * 7 + (L - 1) * 5) * heavy);
+        else if (d.boss) hp = Math.round((8 + w * 3.2 + (L - 1) * 2.4) * heavy);
+        else hp = Math.max(1, Math.round((1 + 0.28 * (w - 1) + 0.48 * (L - 1)) * press));
         rank = 1 + Math.min(6, ((L + w) / 6) | 0);
       } else {
         hp = Math.max(1, Math.round(hp * hpScale()));
@@ -3685,15 +3710,19 @@
         const arm = tgt.hero
           ? ((tgt.aegis > 0 ? tgt.hero.armor + 2 : tgt.hero.armor) + (tgt.iron || 0))
           : (tgt.armor || 0);
-        const dmgMul = G.mode === "survive"
+        /* Contact hurts more the longer the run has gone. This is the lever that ends runs: no
+           HP pool outlasts it, because it grows without a ceiling while the pool does not. */
+        const dmgMul = (G.mode === "survive"
           ? (0.48 + 0.035 * Math.max(0, (G.lvl || 1) - 1) + 0.018 * Math.max(0, surviveWave() - 1))
-          : (f.rank * dmgScale());
+          : (f.rank * dmgScale())) * pressure();
         const dmg = Math.max(1, def.dmg * dmgMul - arm);
         const iframe = (tgt.hurtT || 0) > 0.12;
-        const surviveIframe = G.mode === "survive" && (tgt.hurtT || 0) > 0;
         if (f.kind === "drain") tgt.hp -= dmg * dt * 6.5;
-        else if (surviveIframe) { /* horde i-frame — thorns still bite */ }
         else if (G.mode === "survive") {
+          /* The hurt window stops a crowd stacking five hits into a single frame; it is not
+             immunity. Reading hurtT > 0 as immunity made contact damage impossible to land in
+             Survival — a foe in contact re-armed the window every frame — so a warden standing
+             in a horde took no damage at all and a run could not end. */
           tgt._touch = (tgt._touch || 0) + 1;
           if (tgt._touch <= 5) tgt.hp -= dmg * dt * 1.85;
           if (!iframe) {
@@ -3725,7 +3754,7 @@
         if (tgt.thorns > 0) f.hp -= 22 * dt;
         if (foeHas(f, "slow")) tgt.slowT = Math.max(tgt.slowT || 0, 1.55);
         if (foeHas(f, "root")) tgt.rootT = Math.max(tgt.rootT || 0, 0.5);
-        if (f.kind === "thief" && tgt.vials > 0 && !iframe && !surviveIframe) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
+        if (f.kind === "thief" && tgt.vials > 0 && !iframe) { tgt.vials--; f.hp = 0; say("Thief stole a vial!"); }
         if (f.kind === "drain") {
           f._sip = (f._sip || 0) + dmg * dt * 8;
           if (f._sip > 200) { f.hp = 0; say("The Drain leaves, sated."); }

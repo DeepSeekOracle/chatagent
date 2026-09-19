@@ -59,7 +59,8 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
   "paintTileCache", "blit(", "cryptBg", "createStereoPanner"].forEach(function (k) {
   if (game.indexOf(k) < 0 && src.indexOf(k) < 0) throw new Error("missing " + k);
 });
-if (game.indexOf("Math.min(380") < 0) throw new Error("survive cap not 380");
+if (game.indexOf("Math.min(520") < 0) throw new Error("survive cap not 520");
+if (game.indexOf("function pressure()") < 0) throw new Error("no late-game pressure curve");
 const foe = S.pool.foe.alloc();
 S.pool.foe.free(foe);
 const bornF = S.counts().foesBorn;
