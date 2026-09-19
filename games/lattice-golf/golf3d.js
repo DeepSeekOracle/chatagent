@@ -35,6 +35,9 @@
   var ghostRoot = null;
   var ghostBalls = {};
   var BALL_R = 0.24;
+  var WATER_LEVEL = -0.18;
+  var WATER_FLOOR = -0.95;
+  var WATER_SHORE = 7.5;
 
   var DIST_MIN = 22;
   var DIST_MAX = 720;
@@ -256,6 +259,7 @@
       return empty;
     }
     var uvS = opts.uvScale || 0.03;
+    var skipWater = opts.skipWater == null ? -1.5 : opts.skipWater;
     var pts = densify(path, opts.step || 8);
     var n = pts.length;
     var perps = [];
@@ -295,7 +299,11 @@
       uv.push(0, vv, 1, vv);
       if (i > 0) {
         var q = (i - 1) * 2;
-        idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+        var mx = (pos[q * 3] + pos[(q + 2) * 3] + pos[(q + 1) * 3] + pos[(q + 3) * 3]) * 0.25;
+        var mz = (pos[q * 3 + 2] + pos[(q + 2) * 3 + 2] + pos[(q + 1) * 3 + 2] + pos[(q + 3) * 3 + 2]) * 0.25;
+        if (!skipWater || !inAnyWater({ x: mx, y: mz }, null, skipWater)) {
+          idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+        }
       }
     }
     var g = new T.BufferGeometry();
@@ -384,13 +392,80 @@
     return { x: -tz / len, z: tx / len };
   }
 
-  function inAnyWater(p, hole) {
+  function inAnyWater(p, hole, pad) {
+    hole = hole || lastHole;
+    if (!hole) return false;
     var w = hole.water || [];
+    pad = pad || 0;
     for (var i = 0; i < w.length; i++) {
       var r = w[i];
-      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return true;
+      if (p.x >= r.x - pad && p.x <= r.x + r.w + pad && p.y >= r.y - pad && p.y <= r.y + r.h + pad) return true;
     }
     return false;
+  }
+
+  /* Rounded-rectangle outline (in world XZ) so the rendered lake is the same
+     footprint the physics uses: hole.water holds axis-aligned rects. */
+  function roundedOutline(x0, z0, w, h, rx, rz, expand, seg) {
+    var e = expand || 0;
+    var ax = x0 - e, az = z0 - e, bx = x0 + w + e, bz = z0 + h + e;
+    var r1 = Math.max(0.2, Math.min(rx + e, (bx - ax) / 2));
+    var r2 = Math.max(0.2, Math.min(rz + e, (bz - az) / 2));
+    var cx = [bx - r1, ax + r1, ax + r1, bx - r1];
+    var cz = [bz - r2, bz - r2, az + r2, az + r2];
+    var a0 = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+    var out = [];
+    for (var k = 0; k < 4; k++) {
+      for (var i = 0; i <= seg; i++) {
+        var a = a0[k] + (i / seg) * (Math.PI / 2);
+        out.push([cx[k] + Math.cos(a) * r1, cz[k] + Math.sin(a) * r2]);
+      }
+    }
+    return out;
+  }
+
+  function roundedRectGeo(r, seg) {
+    var rx = Math.max(0.5, r.w * 0.34), rz = Math.max(0.5, r.h * 0.34);
+    var pts = roundedOutline(r.x, r.y, r.w, r.h, rx, rz, 0, seg || 7);
+    var pos = [], uv = [], idx = [];
+    for (var j = 0; j < pts.length; j++) {
+      pos.push(pts[j][0], 0, pts[j][1]);
+      uv.push((pts[j][0] - r.x) / 26, (pts[j][1] - r.y) / 26);
+    }
+    // wound so the face normal points +Y (the outline runs CCW in XZ)
+    for (var t = 1; t < pts.length - 1; t++) idx.push(0, t + 1, t);
+    var g = new T.BufferGeometry();
+    g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  /* Shore band that follows the terrain, so the waterline reads as a bank
+     instead of a floating plane. */
+  function shoreBandGeo(r, inner, outer, seg) {
+    var rx = Math.max(0.5, r.w * 0.34), rz = Math.max(0.5, r.h * 0.34);
+    var a = roundedOutline(r.x, r.y, r.w, r.h, rx, rz, inner, seg || 7);
+    var b = roundedOutline(r.x, r.y, r.w, r.h, rx, rz, outer, seg || 7);
+    var pos = [], uv = [], idx = [];
+    for (var i = 0; i < a.length; i++) {
+      pos.push(a[i][0], heightAt(a[i][0], a[i][1]) + 0.05, a[i][1]);
+      pos.push(b[i][0], heightAt(b[i][0], b[i][1]) + 0.05, b[i][1]);
+      uv.push(0, i * 0.6, 1, i * 0.6);
+      if (i > 0) {
+        var q = (i - 1) * 2;
+        idx.push(q, q + 2, q + 1, q + 1, q + 2, q + 3);
+      }
+    }
+    var last = (a.length - 1) * 2;
+    idx.push(last, 0, last + 1, last + 1, 0, 1);
+    var g = new T.BufferGeometry();
+    g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
   }
 
   function distToPath3(p, path) {
@@ -432,11 +507,13 @@
     var waters = hole.water || [];
     for (var i = 0; i < waters.length; i++) {
       var r = waters[i];
-      var cx = r.x + r.w / 2, cz = r.y + r.h / 2;
-      var nx = (x - cx) / Math.max(4, r.w * 0.55);
-      var nz = (z - cz) / Math.max(4, r.h * 0.55);
-      var ell = nx * nx + nz * nz;
-      if (ell < 1.15) h = -0.55 + ell * 0.2;
+      var dx = Math.max(r.x - x, 0, x - (r.x + r.w));
+      var dz = Math.max(r.y - z, 0, z - (r.y + r.h));
+      var off = Math.sqrt(dx * dx + dz * dz);
+      if (off < WATER_SHORE) {
+        var t = 1 - off / WATER_SHORE;
+        h = h * (1 - t) + WATER_FLOOR * t;
+      }
     }
     var bunks = hole.bunkers || [];
     for (i = 0; i < bunks.length; i++) {
@@ -615,6 +692,10 @@
     });
     minx = Math.min(minx, hole.pin.x); maxx = Math.max(maxx, hole.pin.x);
     minz = Math.min(minz, hole.pin.y); maxz = Math.max(maxz, hole.pin.y);
+    (hole.water || []).forEach(function (r) {
+      minx = Math.min(minx, r.x - 6); maxx = Math.max(maxx, r.x + r.w + 6);
+      minz = Math.min(minz, r.y - 6); maxz = Math.max(maxz, r.y + r.h + 6);
+    });
     return {
       cx: (minx + maxx) / 2,
       cz: (minz + maxz) / 2,
@@ -728,12 +809,12 @@
     holeRoot = new T.Group();
     scene.add(holeRoot);
 
-    var span = 1100;
-    var groundGeo = new T.PlaneGeometry(span * 2, span * 2, 72, 72);
+    // far field: cheap, covers the horizon
+    var groundGeo = new T.PlaneGeometry(2200, 2200, 76, 76);
     var gpos = groundGeo.attributes.position;
     for (var gi = 0; gi < gpos.count; gi++) {
       var gx = gpos.getX(gi), gy = gpos.getY(gi);
-      gpos.setZ(gi, heightAt(gx, -gy, hole) - 0.06);
+      gpos.setZ(gi, heightAt(gx, -gy, hole) - 0.12);
     }
     groundGeo.computeVertexNormals();
     var ground = new T.Mesh(
@@ -744,6 +825,26 @@
     ground.position.y = 0;
     ground.receiveShadow = true;
     holeRoot.add(ground);
+
+    // play area: fine mesh so banks, creeks and relief actually resolve
+    var hb = holeBounds(hole);
+    var nearSpan = Math.min(1800, Math.max(420, hb.span * 1.8));
+    var nearSeg = Math.max(110, Math.min(280, Math.round(nearSpan / 4)));
+    var nearGeo = new T.PlaneGeometry(nearSpan, nearSpan, nearSeg, nearSeg);
+    var npos = nearGeo.attributes.position;
+    for (var ni = 0; ni < npos.count; ni++) {
+      var lx = npos.getX(ni), ly = npos.getY(ni);
+      npos.setZ(ni, heightAt(lx + hb.cx, hb.cz - ly, hole) - 0.03);
+    }
+    nearGeo.computeVertexNormals();
+    var near = new T.Mesh(
+      nearGeo,
+      mat({ map: tex.grass, color: th.grass, roughness: 0.97, metalness: 0.0 })
+    );
+    near.rotation.x = -Math.PI / 2;
+    near.position.set(hb.cx, 0, hb.cz);
+    near.receiveShadow = true;
+    holeRoot.add(near);
     addHorizon(hole, th);
 
     var fw = hole.fairW || 30;
@@ -843,20 +944,26 @@
 
     waterMeshes = [];
     (hole.water || []).forEach(function (w) {
-      var cx = w.x + w.w / 2, cz = w.y + w.h / 2;
-      var rx = Math.max(6, w.w * 0.52), rz = Math.max(6, w.h * 0.52);
-      var basin = new T.Mesh(
-        new T.CircleGeometry(1, 36),
-        mat({ color: 0x14384c, roughness: 0.9 })
+      var r = { x: w.x, y: w.y, w: Math.max(8, w.w), h: Math.max(8, w.h) };
+
+      // sandy bank that follows the terrain carve
+      var shore = new T.Mesh(
+        shoreBandGeo(r, 1.5, WATER_SHORE + 2.5, 7),
+        mat({ map: tex.sand, color: 0xdcc79a, roughness: 1, metalness: 0 })
       );
-      basin.scale.set(rx * 1.08, rz * 1.08, 1);
-      basin.rotation.x = -Math.PI / 2;
-      basin.position.set(cx, -0.62, cz);
+      shore.receiveShadow = true;
+      holeRoot.add(shore);
+
+      // dark floor so turf never shows through the surface
+      var basin = new T.Mesh(
+        roundedRectGeo({ x: r.x, y: r.y, w: r.w, h: r.h }, 6),
+        mat({ color: 0x123043, roughness: 0.92 })
+      );
+      basin.position.y = WATER_FLOOR + 0.08;
       holeRoot.add(basin);
-      var segs = 28;
-      var wgeo = new T.CircleGeometry(1, segs);
+
       var m = new T.Mesh(
-        wgeo,
+        roundedRectGeo(r, 9),
         mat({
           map: tex.water,
           color: 0xa8dcec,
@@ -868,9 +975,8 @@
           emissiveIntensity: 0.18
         })
       );
-      m.scale.set(rx, rz, 1);
-      m.rotation.x = -Math.PI / 2;
-      m.position.set(cx, -0.18, cz);
+      m.position.y = WATER_LEVEL;
+      m.userData.baseY = WATER_LEVEL;
       holeRoot.add(m);
       waterMeshes.push(m);
     });
@@ -1043,7 +1149,7 @@
     flagPole.add(finial);
 
     pickPlane = new T.Mesh(
-      new T.PlaneGeometry(span * 2, span * 2),
+      new T.PlaneGeometry(2200, 2200),
       new T.MeshBasicMaterial({ visible: false })
     );
     pickPlane.rotation.x = -Math.PI / 2;
@@ -1283,9 +1389,10 @@
         var geo = waterMeshes[wi].geometry;
         var pos = geo.attributes && geo.attributes.position;
         if (!pos) continue;
+        var baseY = waterMeshes[wi].userData.baseY || WATER_LEVEL;
         for (var pi = 0; pi < pos.count; pi++) {
-          var px = pos.getX(pi), py = pos.getY(pi);
-          pos.setZ(pi, Math.sin(px * 0.18 + tWave * 1.4) * 0.07 + Math.cos(py * 0.16 + tWave * 1.1) * 0.05);
+          var px = pos.getX(pi), pz = pos.getZ(pi);
+          pos.setY(pi, baseY + Math.sin(px * 0.18 + tWave * 1.4) * 0.07 + Math.cos(pz * 0.16 + tWave * 1.1) * 0.05);
         }
         pos.needsUpdate = true;
       }
@@ -1514,6 +1621,6 @@
     pan: panBy,
     resetView: function (hole) {
       fitCamera(hole || lastHole);
-    }
+    },
   };
 })(window);

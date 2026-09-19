@@ -377,6 +377,33 @@
       }
       return !hits(tee, padT) && !hits(pin, padG);
     });
+    /* Tuning sweep: a lake may not dominate the hole it sits in. Shrink about its
+       centre (never move it) until it fits the cap, so the player always has a
+       landing area; the shoreline the physics uses stays the shoreline drawn. */
+    (function tameWater() {
+      let minx = tee.x, maxx = tee.x, minz = tee.y, maxz = tee.y;
+      path.forEach(function (p) {
+        minx = Math.min(minx, p.x); maxx = Math.max(maxx, p.x);
+        minz = Math.min(minz, p.y); maxz = Math.max(maxz, p.y);
+      });
+      const cap = Math.max(60, maxx - minx) * Math.max(60, maxz - minz) * 0.42;
+      for (let i = 0; i < water.length; i++) {
+        const r = water[i];
+        const area = r.w * r.h;
+        if (area <= cap) continue;
+        const k = Math.sqrt(cap / area);
+        /* Never shrink a lake below 26 either way — but take the largest shrink that
+           respects that floor rather than abandoning the lake untouched, or an over-cap
+           creek stayed its full size and still dominated the hole it sits in. */
+        const kk = Math.min(1, Math.max(k, Math.max(26 / r.w, 26 / r.h)));
+        if (kk >= 1) continue;
+        const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+        r.x = cx - (r.w * kk) / 2;
+        r.y = cy - (r.h * kk) / 2;
+        r.w = r.w * kk;
+        r.h = r.h * kk;
+      }
+    })();
     const fairW = h.fairW || 30;
     const greenR = h.greenR || 16;
     const seed = ((pathLen(path) * 97) ^ (h.par * 13) ^ (path.length * 19)) >>> 0;
@@ -2947,6 +2974,7 @@
     renderHoleCard();
     draw();
   }
+
   if (window.ArcadeLedger) ArcadeLedger.boot();
   if ($("btnMulligan")) $("btnMulligan").onclick = useMulligan;
   $("btnHelp").onclick = help;
