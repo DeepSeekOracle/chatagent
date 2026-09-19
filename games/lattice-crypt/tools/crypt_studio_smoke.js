@@ -59,7 +59,8 @@ const game = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
   "paintTileCache", "blit(", "cryptBg", "createStereoPanner"].forEach(function (k) {
   if (game.indexOf(k) < 0 && src.indexOf(k) < 0) throw new Error("missing " + k);
 });
-if (game.indexOf("Math.min(520") < 0) throw new Error("survive cap not 520");
+if (game.indexOf("normCap: 800") < 0) throw new Error("the fodder field must ramp to a hard 800");
+if (game.indexOf("function waveBosses") < 0 || game.indexOf("sec: 60") < 0) throw new Error("wave clock missing: one minute a wave, named bands from wave 9");
 if (game.indexOf("function pressure()") < 0) throw new Error("no late-game pressure curve");
 if (game.indexOf("function rosterTick") < 0) throw new Error("no random boss roster");
 if (game.indexOf("navigator.getGamepads") < 0) throw new Error("no gamepad polling");

@@ -25,7 +25,14 @@ must(game.indexOf("function blit") >= 0, "pre-scale blit");
 must(studio.indexOf("createStereoPanner") >= 0, "spatial SFX");
 must(studio.indexOf("drumOsc") >= 0, "drum stem");
 must(game.indexOf("999999999") >= 0, "score cap");
-must(game.indexOf("Math.min(520") >= 0 && game.indexOf("function surviveCap") >= 0, "survive cap ramp");
+/* The wave clock: one wave a minute, and a wave is a standing target rather than a spawn rate.
+   Fodder ramps 100 a wave ACROSS the wave to a hard 800, then stops rising; from wave 9 the ramp
+   moves to the named band. That is the shape of the difficulty curve — the crowd stops growing
+   and the things standing in it get harder — so it is asserted, not left to drift. */
+must(game.indexOf("function surviveCap") >= 0 && game.indexOf("normCap: 800") >= 0 && game.indexOf("function waveNormals") >= 0, "the fodder field ramps 100 a wave to a hard 800");
+must(game.indexOf("sec: 60") >= 0 && game.indexOf("function waveOf") >= 0 && game.indexOf("function surviveField") >= 0, "one wave a minute, and the cadence chases the wave target");
+must(game.indexOf("function waveBosses") >= 0 && game.indexOf("bossAt: 9") >= 0 && game.indexOf("boss: 25") >= 0, "named bands from wave 9, 25 a wave");
+must(game.indexOf("waveOf(G.t || 0)") >= 0 && game.indexOf("WAVE.sec - ((G.t") >= 0, "the HUD wave number and its clock run on the same minute");
 /* The tide has to be able to win: pressure() is the unbounded late-game multiplier, and both
    halves of every fight — what they take and what they deal — must ride it, along with how
    many of them are mutants. A ceilinged curve lets a good build become immortal. */
@@ -75,7 +82,7 @@ must(game.indexOf("function cycleMapMode") >= 0 && game.indexOf("KeyN") >= 0, "m
 must(game.indexOf("CryptStudio.reduced") >= 0 && game.indexOf("flick") >= 0, "reduced-motion honoured");
 must(game.indexOf("hp: 96") >= 0 && game.indexOf("Math.max(12, 20") >= 0, "pet hide+20s sleep");
 must(game.indexOf("autoUpBox") >= 0 && game.indexOf("function autoPickUp") >= 0, "auto-pick upgrades");
-must(game.indexOf("(lv * lv) * 0.28") >= 0, "survive xp curve");
+must(game.indexOf("Math.pow(lv, 1.55)") >= 0 && game.indexOf("const KILL_XP = 1;") >= 0, "leveling is measured in kills, not minutes");
 must(game.indexOf("kind: \"bond\"") >= 0 && game.indexOf("packhide") >= 0 && game.indexOf("callpack") >= 0, "bond pet cards");
 must(game.indexOf("function pollSelectChar") >= 0 && game.indexOf("buttons[8]") >= 0, "pad select opens sheet");
 must(game.indexOf("function spawnPet") >= 0 && game.indexOf("Ashmane") >= 0 && game.indexOf("Glassbarb") >= 0, "mythic pets");
@@ -95,4 +102,14 @@ must(game.indexOf("toggleChar") >= 0 && game.indexOf("closeChar") >= 0 && game.i
 must(game.indexOf("updateFog") >= 0 && game.indexOf("drawFog") >= 0, "fog of war");
 must(html.indexOf("data-radio-vol") >= 0, "radio volume");
 must(game.indexOf("function options") >= 0, "options menu");
+/* --- level design: a door needs a reason, and a gauntlet is the shape of a floor ---------- */
+const camp = fs.readFileSync(path.join(root, "campaign.js"), "utf8");
+must(game.indexOf("Doors are NOT cut here") >= 0 && game.indexOf("const dN = 4 +") < 0, "no door cuts a procedural floor");
+must(game.indexOf("const gauntlets = [];") >= 0 && game.indexOf("gauntlet: 1") >= 0 && game.indexOf("function gSpot(") >= 0, "an endless floor carries a gauntlet: nexuses and a prize down an open lane");
+must(game.indexOf("if (k === \"key\" || k === \"latch\" || k === \"triadkey\") k = \"coin\";") >= 0, "no keys on floors that cut no doors");
+must(game.indexOf("const gauntlets = plazas.map(") >= 0, "survive lanes declared as gauntlets");
+must(camp.indexOf("--- door triage") >= 0 && camp.indexOf("keysOpen") >= 0, "a campaign door is deleted unless a key opens something worth it");
+must(camp.indexOf("A wing that holds an authored door is a designed vault") >= 0, "the repair pass must not unseal a designed vault");
+must(camp.indexOf("gauntlets.forEach(coverLane)") >= 0 && camp.indexOf("inVaultRect") >= 0, "campaign gauntlets keep a clear channel and leave vaults standing as islands");
+must(camp.indexOf("Doors are the one thing here that is not decoration") >= 0, "the door doctrine is stated where it is enforced");
 console.log("crypt_studio_qa ok", { smoke: "pass", layers: 4, events: 14, remap: true, spatial: true });

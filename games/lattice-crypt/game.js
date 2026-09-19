@@ -926,26 +926,33 @@
      is what makes a long run end — it lifts their damage, their health and how many of them
      carry mutations, without a ceiling, so a warden who cannot out-kill it is buried. */
   function surviveCap(w) {
-    const L = Math.max(1, (G && G.lvl) || 1);
-    w = w || surviveWave();
-    /* Enough room for a real crowd from the first wave: a cap of 14 read as an empty hall
-       however hard the cadence pushed. */
-    const base = 26 + (L - 1) * 7 + (w - 1) * 2.4;
-    /* Past the knee the ceiling itself climbs, so the horde can actually fill the screen
-       instead of queueing behind a level-set cap. */
-    const grow = Math.max(1, paceRamp() / PACING.base);
-    /* A ceiling that keeps opening: a late wave should be able to bury the arena rather than
-       queue behind a number the warden already learned to survive. */
-    return Math.min(520, Math.round(base * grow));
+    /* The ceiling IS the wave's target: the field may hold exactly what the minute has paid for
+       — wave 1 ends at 100 fodder, wave 8 at 800, and from wave 9 the fodder is pinned at 800
+       for the rest of the run. What rises after that is the named band (waveBosses), because
+       more fodder past 800 buys nothing but frame time. */
+    const t = G ? (G.t || 0) : 0;
+    return Math.max(1, Math.min(WAVE.normCap, waveNormals(t)));
   }
+  /* How much fodder is standing. The named ones and the set-piece bosses are not the crowd:
+     they are budgeted by the wave band and have to be able to bypass the crowd ceiling. */
+  function surviveField() {
+    const foes = (G && G.level && G.level.foes) || [];
+    let n = 0;
+    for (let i = 0; i < foes.length; i++) if (!foes[i].roster && !foes[i].boss) n++;
+    return n;
+  }
+  /* The cadence chases the wave's target rather than pushing at a fixed rate: behind by a lot it
+     pours, level with it it tops up. That is what makes a wave LAND on the number the minute
+     paid for instead of drifting under it or flooding past it. */
   function survivePulseN() {
-    const L = Math.max(1, G.lvl || 1);
-    const W = surviveWave();
-    return pacePack(Math.min(22, 2 + L + ((W / 5) | 0)));
+    const gap = surviveCap() - surviveField();
+    return Math.max(3, Math.min(48, 3 + Math.round(gap * 0.18)));
   }
   function survivePulseGap() {
-    const L = Math.max(1, G.lvl || 1);
-    return paceGap(Math.max(0.16, 0.62 - L * 0.02));
+    const gap = surviveCap() - surviveField();
+    if (gap > 80) return 0.12;
+    if (gap > 30) return 0.28;
+    return 0.5;
   }
   function surviveHordePack() {
     const L = Math.max(1, G.lvl || 1);
@@ -963,7 +970,7 @@
       emit("onWaveComplete", { w: G.wave });
       G.wave = w;
       G._wavePulse = 1;
-      say("Wave " + w + " — the lattice floods.");
+      say(w === WAVE.bossAt ? ("Wave " + w + " — the named ones wake.") : ("Wave " + w + " — the lattice floods."));
       $("holePill").textContent = "SURVIVE · WAVE " + w;
       emit("onWaveStart", { w: w });
       feel("wave");
@@ -1006,7 +1013,7 @@
       G._spawnQ = Math.max(0, G._spawnQ - got);
       drain += got;
     }
-    if (w >= 5 && w % 5 === 0 && G.bossAt !== w) {
+    if (w >= 10 && w % 5 === 0 && G.bossAt !== w) {
       G.bossAt = w;
       const nB = 1 + (w >= 15 ? 1 : 0) + (w >= 25 ? 1 : 0);
       for (let i = 0; i < nB; i++) {
@@ -1030,10 +1037,13 @@
     if (G.pendingLvl > 0 && overlayMode == null) offerSurviveUp();
   }
   function killXpValue(f) {
-    if (G.mode === "survive") return (1 + ((surviveWave() / 7) | 0)) * KILL_XP;
+    /* The same body is worth the same points in every mode — leveling is measured in kills, so a
+       survive wave and a campaign floor pay the same rate for the same work. A named one is
+       worth fourteen fodder (it takes about that long to put down), a set-piece thirty. */
     const d = FOE[f.kind] || {};
-    if (d.super) return 20 * KILL_XP;
-    if (d.boss) return 16 * KILL_XP;
+    if (f.roster) return 14 * KILL_XP;
+    if (d.super) return 30 * KILL_XP;
+    if (d.boss) return 12 * KILL_XP;
     if (f.kind === "drain") return 14 * KILL_XP;
     if (f.kind === "thief") return 6 * KILL_XP;
     return ((d.pts >= 18) ? 3 : 2) * KILL_XP;
@@ -1627,6 +1637,46 @@
          slow stalk, then a flood that does not stop growing.
      Campaign and Endless use time-on-this-floor for the same curve, so a floor has its own
      quiet opening and its own flood if the warden dawdles. */
+  /* ---- The wave clock ---------------------------------------------------
+     One wave is one minute, so the wave NUMBER is the minute the warden is in: a run on wave 13
+     has survived thirteen minutes. A wave is not a spawn rate, it is a standing target — what
+     the field is allowed to have on it right now — and the cadence below just chases that number.
+
+       waves 1-8    fodder ramps 100 per wave, ramped ACROSS the wave: wave 1 runs 1 → 100,
+                    wave 2 100 → 200, and on to wave 8 ending at 800.
+       wave 8+      the fodder field is pinned at 800 for the rest of the run.
+       wave 9+      the ramp moves to the named ones: wave 9 runs 1 → 25, wave 10 25 → 50, rising
+                    25 a wave after that. They are the expensive ones — big health pools, their
+                    own abilities — and they are capped for the machine's sake, not the warden's.
+
+     So the difficulty curve is: a bigger crowd for eight minutes, then a crowd that never gets
+     bigger while the things standing in it get harder. */
+  const WAVE = {
+    sec: 60,        /* one wave per minute */
+    norm: 100,      /* fodder added per wave, ramped across the wave */
+    normCap: 800,   /* the fodder field tops out here... */
+    normWaves: 8,   /* ...at the end of wave 8 */
+    bossAt: 9,      /* the named ones are a wave band from here */
+    boss: 25,       /* named added per wave, ramped across the wave */
+    bossCap: 120,   /* hard ceiling on the named ones: frame budget, not fairness */
+    entCap: 1100    /* everything alive at once */
+  };
+  function waveOf(t) { return 1 + Math.floor(Math.max(0, t || 0) / WAVE.sec); }
+  function waveFrac(t) { return (Math.max(0, t || 0) % WAVE.sec) / WAVE.sec; }
+  /* What the fodder field is allowed to hold right now. */
+  function waveNormals(t) {
+    const w = waveOf(t);
+    if (w > WAVE.normWaves) return WAVE.normCap;
+    /* Wave 1 is a floor of one: the hall is never empty, it just opens with a single foe. */
+    return Math.max(1, Math.min(WAVE.normCap, Math.round(WAVE.norm * (w - 1 + waveFrac(t)))));
+  }
+  /* What the named band is allowed to hold right now — nothing at all before wave 9. */
+  function waveBosses(t) {
+    const w = waveOf(t);
+    if (w < WAVE.bossAt) return 0;
+    return Math.min(WAVE.bossCap, Math.round(WAVE.boss * (w - WAVE.bossAt + waveFrac(t))));
+  }
+
   const PACING = {
     xp: 1.5,      /* level cost multiplier — slower levels, longer run */
     spawn: 1.0,   /* fleet rate at the first breath — a busy hall, not an empty one */
@@ -1637,7 +1687,7 @@
     rise: 0.98,   /* absolute climb per minute past the knee (same slope as before) */
     exp: 1.3
   };
-  const KILL_XP = 1.12;
+  const KILL_XP = 1;      /* one body, one point: the level curve below is measured in kills */
   function rampTime() {
     if (!G) return 0;
     return G.mode === "survive" ? (G.t || 0) : (G.floorT != null ? G.floorT : (G.t || 0));
@@ -1701,7 +1751,12 @@
     return 1;
   }
   function rosterTick(dt) {
-    if (rampTime() < PACING.rosterAt) return;
+    /* In the wave modes the named ones ARE the wave band: nothing named walks before wave 9, and
+       after that their number is the wave's business — wave 9 fills from 1 to 25, wave 10 from
+       25 to 50, rising until the frame budget stops it. A campaign floor is short and authored,
+       so it keeps its own clock: the floor gets nastier the longer the warden dawdles on it. */
+    const waves = G.mode === "survive" || G.mode === "endless";
+    if (!waves && rampTime() < PACING.rosterAt) return;
     const live = (G.rosCount = G.level.foes.filter(function (f) { return f.roster; }).length);
     /* Stacking is the punishment: three or more on the floor at once press together. */
     const stacked = live >= 3;
@@ -1711,11 +1766,15 @@
     } else {
       G.level.foes.forEach(function (f) { if (f.roster) f.rage = 1; });
     }
+    /* The band is a standing population, so the clock only decides how fast it fills. */
+    const want = waves ? waveBosses(G.t || 0) : Infinity;
+    if (waves && live >= want) return;
     G.rosT = (G.rosT == null ? 3 : G.rosT) - dt;
     if (G.rosT > 0) return;
-    G.rosT = rosterGap();
+    G.rosT = waves ? 1.1 : rosterGap();
     let made = 0;
-    for (let i = 0, n = rosterN(); i < n; i++) made += rosterSpawn();
+    const bite = waves ? Math.max(1, Math.min(8, want - live)) : rosterN();
+    for (let i = 0; i < bite; i++) made += rosterSpawn();
     if (made) {
       const list = G.level.foes.filter(function (f) { return f.roster; });
       const last = list[list.length - 1];
@@ -1732,7 +1791,7 @@
     return 1 + 0.14 * over + 0.055 * over * over;
   }
 
-  function surviveWave() { return G ? (1 + ((G.t / 28) | 0)) : 1; }
+  function surviveWave() { return G ? waveOf(G.t || 0) : 1; }
   /* One curve for every mode: campaign and endless level a touch slower than Survival,
      because a floor is a fixed amount of stone rather than an endless tide. */
   function modeXpMul() {
@@ -1741,8 +1800,14 @@
     return G.mode === "campaign" ? 1.16 : 1.08;
   }
   function xpNeed(lv) {
+    /* Measured in BODIES, not minutes. The cost of the next level is a kill count, so two
+       wardens playing the same way level at the same rate whatever the tide happens to be
+       doing, and the wave ramp and the level ramp cannot drift apart: a run that reaches wave
+       13 has killed roughly what a wave-13 run kills, and is therefore roughly the level it
+       should be. A named one is worth fourteen fodder and a set-piece thirty, which is what
+       keeps a boss wave from being a level-up desert. */
     lv = Math.max(1, lv | 0);
-    return paceXp(Math.round((14 + lv * 6 + (lv * lv) * 0.28) * modeXpMul()));
+    return Math.max(4, Math.round(paceXp(14 * Math.pow(lv, 1.55)) * modeXpMul()));
   }
   function surviveXpNeed(lv) { return xpNeed(lv); }
   function levelUpParty() {
@@ -1884,7 +1949,7 @@
       pads.push({ x: p.x, y: p.y, tx: n.x + 0.5, ty: n.y + 0.5 });
     });
     const items = [];
-    const bag = ["food", "berry", "coin", "flask", "vial", "chest", "core", "coin", "moss", "scrap", "magnet", "fury", "echo", "fan", "cleave", "seek", "key", "iron"];
+    const bag = ["food", "berry", "coin", "flask", "vial", "chest", "core", "coin", "moss", "scrap", "magnet", "fury", "echo", "fan", "cleave", "seek", "gem", "iron"];
     for (let i = 0; i < 108; i++) {
       let p = null;
       for (let k = 0; k < 40; k++) {
@@ -1893,8 +1958,30 @@
       }
       if (p) items.push({ x: p.x, y: p.y, kind: R() < 0.22 ? rollLoot(R) : bag[(R() * bag.length) | 0] });
     }
+    /* The lanes ARE the gauntlets, and they are data rather than lore: the ring that joins the
+       four corner courts, and the two runs through the middle where the region is thinnest.
+       Declared so the shape of a survive map can be measured — an open lane is the entire
+       reason running and shooting works on a continent this size. */
+    const gauntlets = plazas.map(function (p, i) {
+      const n = plazas[(i + 1) % plazas.length];
+      const wide = 7;
+      return {
+        ax: p.x, ay: p.y, bx: n.x, by: n.y, wide,
+        x: Math.max(1, Math.min(p.x, n.x) - (wide >> 1)),
+        y: Math.max(1, Math.min(p.y, n.y) - (wide >> 1)),
+        w: Math.abs(n.x - p.x) + wide, h: Math.abs(n.y - p.y) + wide
+      };
+    });
+    gauntlets.push({
+      ax: Math.max(6, start.x - 60), ay: start.y, bx: Math.min(W - 7, start.x + 60), by: start.y, wide: 7,
+      x: Math.max(1, start.x - 64), y: start.y - 4, w: 128, h: 8
+    });
+    gauntlets.push({
+      ax: start.x, ay: Math.max(6, start.y - 50), bx: start.x, by: Math.min(H - 7, start.y + 50), wide: 7,
+      x: start.x - 4, y: Math.max(1, start.y - 54), w: 8, h: 108
+    });
     return contentBox({
-      W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: pads,
+      W, H, tiles, start, items, gens: [], foes: [], doors: [], pads: pads, gauntlets,
       realm: REALMS[seed % 8],
       layout: "The Long Crypt",
       lore: "No exit. A continent of stone. The lattice pours. Grow or be unnamed.",
@@ -1977,6 +2064,79 @@
     }
     tiles[exit.y][exit.x] = "exit";
 
+    /* --- the gauntlet -----------------------------------------------------
+       One long lane cut clear between the two rooms furthest apart, so a floor has a main
+       street: open ground with the horde pouring down it and cover on the flanks to break a
+       charge on. Cut after the layout passes so nothing re-seals it, and never over the exit.
+       Doors are NOT cut here — a door on a procedural floor has nothing behind it worth a
+       key, and one dropped in a one-tile corridor seals the way forward. Doors are authored,
+       on campaign floors, where a vault and its key are designed together. */
+    const gauntlets = [];
+    {
+      const horiz = W >= H;
+      const wide = 5;
+      let bestA = rooms[0], bestB = rooms[0], bestD = -1;
+      rooms.forEach((r) => rooms.forEach((q) => {
+        const d = Math.abs(r.cx - q.cx) + Math.abs(r.cy - q.cy);
+        if (d > bestD) { bestD = d; bestA = r; bestB = q; }
+      }));
+      if (bestA && bestB && bestD > wide * 3) {
+        const ax = bestA.cx, ay = bestA.cy, bx = bestB.cx, by = bestB.cy;
+        const open = (x, y) => {
+          if (x <= 0 || y <= 0 || x >= W - 1 || y >= H - 1) return;
+          const t = tiles[y][x];
+          if (t === "exit" || t === "exit_lock" || t === "pad" || t === "door") return;
+          tiles[y][x] = "floor";
+        };
+        if (horiz) {
+          for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) {
+            for (let d = -(wide >> 1); d <= (wide >> 1); d++) open(x, ay + d);
+          }
+        } else {
+          for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) {
+            for (let d = -(wide >> 1); d <= (wide >> 1); d++) open(ax + d, y);
+          }
+        }
+        gauntlets.push({
+          x: Math.min(ax, bx) - (wide >> 1), y: Math.min(ay, by) - (wide >> 1),
+          w: Math.abs(bx - ax) + wide, h: Math.abs(by - ay) + wide, ax, ay, bx, by, wide
+        });
+      }
+    }
+    /* Cover on alternating flanks, never on the centre line, and the centre channel re-cut last
+       so no stub can ever seal the road: a gauntlet you can block is just a corridor. */
+    gauntlets.forEach((gt) => {
+      const horiz = Math.abs(gt.bx - gt.ax) >= Math.abs(gt.by - gt.ay);
+      const len = horiz ? Math.abs(gt.bx - gt.ax) : Math.abs(gt.by - gt.ay);
+      const half = (gt.wide >> 1) + 1;
+      const n = Math.max(3, Math.round(len / 16));
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n;
+        const cx = Math.round(gt.ax + (gt.bx - gt.ax) * t);
+        const cy = Math.round(gt.ay + (gt.by - gt.ay) * t);
+        const off = (k % 2 ? 1 : -1) * half;
+        const bx = horiz ? cx : cx + off;
+        const by = horiz ? cy + off : cy;
+        for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+          const tx = bx + dx, ty = by + dy;
+          if (tx > 0 && ty > 0 && tx < W - 1 && ty < H - 1 && tiles[ty][tx] === "floor") tiles[ty][tx] = "wall";
+        }
+      }
+      const clear = (x, y) => {
+        if (x <= 0 || y <= 0 || x >= W - 1 || y >= H - 1) return;
+        if (tiles[y][x] === "wall") tiles[y][x] = "floor";
+      };
+      if (horiz) {
+        for (let x = Math.min(gt.ax, gt.bx); x <= Math.max(gt.ax, gt.bx); x++) {
+          for (let d = -1; d <= 1; d++) clear(x, gt.ay + d);
+        }
+      } else {
+        for (let y = Math.min(gt.ay, gt.by); y <= Math.max(gt.ay, gt.by); y++) {
+          for (let d = -1; d <= 1; d++) clear(gt.ax + d, y);
+        }
+      }
+    });
+
     const items = [];
     const gens = [];
     const foes = [];
@@ -2009,20 +2169,52 @@
     for (let i = 0; i < itemN; i++) {
       const p = empty();
       if (!p) break;
-      const k = treasure ? (R() < 0.55 ? "chest" : rollLoot(R)) : rollLoot(R);
+      let k = treasure ? (R() < 0.55 ? "chest" : rollLoot(R)) : rollLoot(R);
+      /* No procedural floor cuts a door, so a key here would open nothing: pay a coin instead. */
+      if (k === "key" || k === "latch" || k === "triadkey") k = "coin";
       items.push({ x: p.x, y: p.y, kind: k });
     }
     if (R() < 0.45 || floor % 5 === 4) {
       const p = empty();
       if (p) items.push({ x: p.x, y: p.y, kind: "vial", hidden: true });
     }
-    const dN = 4 + ((R() * 7) | 0);
-    for (let i = 0; i < dN; i++) {
-      const p = empty();
-      if (!p) break;
-      tiles[p.y][p.x] = "door";
-      doors.push(p);
+    /* The lane's teeth: a nexus every stretch of it so it pours from the far side, and a prize
+       at the far end where the run finishes. Placement stays inside the lane — a nexus that
+       wanders off the lane is a nexus on the wrong side of its own cover. */
+    function gSpot(p, r) {
+      const x = Math.max(r.x + 1, Math.min(r.x + r.w - 2, p.x));
+      const y = Math.max(r.y + 1, Math.min(r.y + r.h - 2, p.y));
+      const free = (nx, ny) => tiles[ny][nx] === "floor" && !used[nx + "," + ny];
+      if (free(x, y)) { mark(x, y); return { x, y }; }
+      for (let rad = 1; rad < 10; rad++) {
+        for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx <= r.x || ny <= r.y || nx >= r.x + r.w - 1 || ny >= r.y + r.h - 1) continue;
+          if (free(nx, ny)) { mark(nx, ny); return { x: nx, y: ny }; }
+        }
+      }
+      return null;
     }
+    gauntlets.forEach((gt) => {
+      const horiz = Math.abs(gt.bx - gt.ax) >= Math.abs(gt.by - gt.ay);
+      const len = horiz ? Math.abs(gt.bx - gt.ax) : Math.abs(gt.by - gt.ay);
+      const n = Math.max(3, Math.round(len / 22));
+      const pool = floor >= 4 ? KINDS_HOT : KINDS;
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n;
+        const cx = Math.round(gt.ax + (gt.bx - gt.ax) * t);
+        const cy = Math.round(gt.ay + (gt.by - gt.ay) * t);
+        const p = gSpot({ x: cx, y: cy }, gt);
+        if (!p) continue;
+        gens.push({ x: p.x, y: p.y, kind: pool[(R() * pool.length) | 0], rank, hp: 3 * rank, t: R() * 0.6, gauntlet: 1 });
+      }
+      const far = horiz
+        ? { x: gt.bx >= gt.ax ? gt.bx - 2 : gt.ax - 2, y: gt.by }
+        : { x: gt.bx, y: gt.by >= gt.ay ? gt.by - 2 : gt.ay - 2 };
+      const pz = gSpot(far, gt);
+      if (pz) items.push({ x: pz.x, y: pz.y, kind: R() < 0.5 ? "chest" : rollLoot(R) });
+    });
     if (R() < 0.4) {
       const a = empty(), b = empty();
       if (a && b) {
@@ -2051,7 +2243,7 @@
       foes.push(makeFoe(sk, 1, exit.x + 0.5, exit.y + 0.5));
     }
     return contentBox({
-      W, H, tiles, start, items, gens, foes, doors, pads,
+      W, H, tiles, start, items, gens, foes, doors, pads, gauntlets,
       realm: REALMS[floor % 8],
       layout: kind,
       treasure: treasure ? 30 : 0,
@@ -4613,7 +4805,7 @@
     const need = xpNeed(G.lvl);
     const t = G.t | 0;
     const mm = (t / 60) | 0, ss = t % 60;
-    const waveLeft = Math.max(0, 28 - (G.t % 28));
+    const waveLeft = Math.max(0, WAVE.sec - ((G.t || 0) % WAVE.sec));
     if ($("hudWaveLab")) $("hudWaveLab").textContent = G.mode === "survive" ? "WAVE" : "FLOOR";
     if ($("hudWave")) {
       $("hudWave").textContent = G.mode === "survive" ? w : (G.floor + 1);
@@ -4635,7 +4827,7 @@
     if ($("hudXpLab")) $("hudXpLab").textContent = "LV " + G.lvl + "  ·  " + Math.floor(G.xp) + "/" + need;
     if ($("hudClock")) {
       $("hudClock").textContent = mm + ":" + (ss < 10 ? "0" : "") + ss + "  ·  " +
-        (G.mode === "survive" ? "next wave " + waveLeft.toFixed(0) + "s" : objectiveText());
+        (G.mode === "survive" ? "next wave " + waveLeft.toFixed(0) + "s" + (waveBosses(G.t || 0) ? " · named " + (G.rosCount || 0) + "/" + waveBosses(G.t || 0) : "") : objectiveText());
     }
     if ($("hudKills")) {
       $("hudKills").textContent = "KILLS " + (G.kills || 0) + "  ·  " +
