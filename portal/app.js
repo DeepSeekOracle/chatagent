@@ -410,15 +410,15 @@
   }
 
   async function openrouterKeyInfo(key) {
+    if (!key) return { ok: false, status: 0, text: "" };
     const r = await probeJson("https://openrouter.ai/api/v1/auth/key", { Authorization: "Bearer " + key });
     const d = (r.json && r.json.data) || null;
-    if (!r.ok || !d) return "";
-    OR_FREE = !!d.is_free_tier;
+    if (!r.ok || !d) return { ok: false, status: r.status || 0, text: "" };
     const parts = [];
     if (d.label) parts.push("key " + d.label);
     if (d.is_free_tier) parts.push("free tier — pick a :free model");
     if (typeof d.usage === "number") parts.push("used $" + Number(d.usage).toFixed(3) + (typeof d.limit === "number" ? " of $" + Number(d.limit).toFixed(2) : " · no hard limit"));
-    return parts.join(" · ");
+    return { ok: true, status: 200, free: !!d.is_free_tier, text: parts.join(" · ") };
   }
 
   async function refreshModels(opts) {
@@ -430,9 +430,18 @@
     const chat = (r.ids || []).filter(isChatModel).sort();
     if (r.ok && chat.length) {
       let note = opts.note || "";
+      let line = "";
+      let kind = "ok";
       if (pid === "openrouter") {
+        // Listed from OpenRouter's public catalogue, NOT entitlement-filtered.
         const info = await openrouterKeyInfo(readKey());
-        if (info) note = note ? note + " · " + info : info;
+        OR_FREE = !!info.free;
+        if (info.ok) line = "✓ " + chat.length + " models listed by OpenRouter" + (info.text ? " · " + info.text : "") + " — :free models cost nothing, the rest bill your key";
+        else if (readKey()) {
+          line = "⚠ OpenRouter did not accept that key" + (info.status ? " (" + info.status + ")" : "") + " — these " + chat.length + " models are its public catalogue, not your entitlement";
+          kind = "warn";
+          connected = false;
+        } else line = "✓ " + chat.length + " models in OpenRouter's public catalogue — paste a key to see which are on your plan";
       }
       const mem = modelMem()[pid];
       const cur = (modelEl && modelEl.value) || "";
@@ -443,7 +452,8 @@
       for (let i = 0; i < pref.length && !pick; i++) if (chat.indexOf(pref[i]) >= 0) pick = pref[i];
       fillModelOptions(chat, pick || chat[0]);
       rememberModel(pid, modelEl.value);
-      setModels("✓ " + chat.length + " model" + (chat.length === 1 ? "" : "s") + " from your key" + (note ? " · " + note : "") + " — this is your key's own list, not a hard-coded table", "ok");
+      if (!line) line = "✓ " + chat.length + " model" + (chat.length === 1 ? "" : "s") + " from your key" + (note ? " · " + note : "") + " — this is your key's own list, not a hard-coded table";
+      setModels(line, kind);
       return { ok: true, model: modelEl.value, count: chat.length, note: note };
     }
     const mem = modelMem()[pid];
