@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260916y">
+<link rel="stylesheet" href="style.css?v=20260920a">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
@@ -189,6 +189,10 @@
       <button type="button" data-limb="skillhub">SkillHub FULL</button>
       <button type="button" data-limb="kit">Console docs</button>
     </div>
+    <h2>Modules</h2>
+    <p class="hint" id="modules-status">Looking for an attached console…</p>
+    <div class="skills-list" id="modules-list"></div>
+    <p class="hint">This page has no kernel of its own, so modules come from a console you attach: run <strong>PC LOCAL</strong> or <strong>USB CLAW</strong>, then open this page with <code>?console=http://127.0.0.1:9641</code> (PC) or <code>:9651</code> (USB). Each row says what that module can do <em>here</em> — anything marked <em>needs your machine</em> is running in your local console, not in this tab.</p>
     <h2>Full local console</h2>
     <p class="hint">GGUF scan, folders, SkillHub FULL, USB CLAW — not this webpage.</p>
     <p class="hint">

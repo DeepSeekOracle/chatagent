@@ -961,6 +961,140 @@
 
   bubble("assistant", stewardHowTo("welcome"));
 
+  // ---- LYGO Function Modules ---------------------------------------------------------------
+  // This page grows by module, it never forks. A console you attach (PC LOCAL or USB CLAW)
+  // publishes its module table at /api/modules; this page renders what each module can do
+  // HERE, and names the ones that need your own machine. No console attached = the page
+  // behaves exactly as before, so the public build can never be broken by a module.
+  const MODULES = { ok: false, base: "", list: [], counts: {}, edition: "", status: "no console attached" };
+
+  function consoleBase() {
+    const q = new URLSearchParams(location.search).get("console");
+    if (q) { try { return new URL(q).origin; } catch (_) { return ""; } }
+    if (typeof window.LYGO_CONSOLE_BASE === "string" && window.LYGO_CONSOLE_BASE) return window.LYGO_CONSOLE_BASE;
+    return location.origin;                       // a console serving this page itself
+  }
+
+  function moduleTone(m) {
+    const s = String((m.surfaces || {}).web || "");
+    if (s.indexOf("FULL") === 0) return { cls: "mod-full", label: "web-ready" };
+    if (s.indexOf("DEGRADED") === 0) return { cls: "mod-deg", label: s.replace("DEGRADED", "in the tab") };
+    if (s.indexOf("N/A") === 0 || s.indexOf("N_A") === 0) return { cls: "mod-na", label: "needs your machine" };
+    return { cls: "mod-na", label: "unknown" };
+  }
+
+  function moduleGets(m) {                        // read-only by construction: GET routes only
+    return (m.routes || []).map(function (r) {
+      const t = String(r).trim().split(/\s+/);
+      return t.length > 1 ? { method: t[0], path: t[1] } : { method: "GET", path: t[0] };
+    }).filter(function (r) { return r.method === "GET"; });
+  }
+
+  async function moduleCall(path, query) {
+    const u = new URL(path, MODULES.base || location.origin);
+    if (query) Object.keys(query).forEach(function (k) { u.searchParams.set(k, query[k]); });
+    const r = await fetch(u.toString(), { headers: { Accept: "application/json" } });
+    const body = await r.text();
+    if (!r.ok) throw new Error("HTTP " + r.status + " from " + u.pathname +
+      (r.status === 0 ? " (a console on another origin must allow this page via CORS)" : ""));
+    try { return JSON.parse(body); } catch (_) { throw new Error("the answer from " + u.pathname + " was not JSON"); }
+  }
+
+  function renderModules() {
+    const list = document.getElementById("modules-list");
+    const status = document.getElementById("modules-status");
+    if (!list || !status) return;
+    list.innerHTML = "";
+    if (!MODULES.ok) {
+      status.textContent = MODULES.status + " — attach one by opening this page with ?console=http://127.0.0.1:9641 (PC LOCAL) or :9651 (USB CLAW).";
+      return;
+    }
+    const c = MODULES.counts || {};
+    status.textContent = (MODULES.edition || "console").toUpperCase() + " console · " + MODULES.list.length +
+      " module(s) · wired " + (c.wired != null ? c.wired : "?") +
+      " · refused " + (c.refused != null ? c.refused : "?") +
+      " · degraded " + (c.degraded != null ? c.degraded : "?") +
+      " · routes " + (c.routes != null ? c.routes : "?");
+    MODULES.list.forEach(function (m) {
+      const tone = moduleTone(m);
+      const gets = moduleGets(m);
+      const row = document.createElement("div");
+      row.className = "mod-row";
+      const head = document.createElement("div");
+      head.className = "mod-head";
+      const name = document.createElement("strong");
+      name.textContent = m.title || m.id;
+      const id = document.createElement("code");
+      id.textContent = m.id;
+      const state = document.createElement("span");
+      state.className = "mod-state";
+      state.textContent = m.state || "";
+      const badge = document.createElement("span");
+      badge.className = "mod-badge " + tone.cls;
+      badge.textContent = tone.label;
+      head.appendChild(name); head.appendChild(id); head.appendChild(state); head.appendChild(badge);
+      row.appendChild(head);
+      const foot = document.createElement("div");
+      foot.className = "mod-foot";
+      foot.textContent = gets.length ? gets.map(function (g) { return g.path; }).join(" · ")
+                                     : (m.routes && m.routes.length ? m.routes.join(" · ") : "no HTTP route of its own");
+      foot.title = foot.textContent;
+      row.appendChild(foot);
+      if (m.error) {
+        const err = document.createElement("div");
+        err.className = "mod-err";
+        err.textContent = m.error;
+        row.appendChild(err);
+      }
+      if (gets.length) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "mod-read";
+        btn.textContent = "Read " + gets[0].path;
+        const out = document.createElement("pre");
+        out.className = "mod-out";
+        btn.addEventListener("click", async function () {
+          out.textContent = "reading " + gets[0].path + " …";
+          try {
+            const j = await moduleCall(gets[0].path);
+            out.textContent = JSON.stringify(j, null, 1).slice(0, 1200);
+          } catch (e) {
+            out.textContent = "could not read it: " + String(e && e.message ? e.message : e) +
+              " (a console on another origin must allow this page via CORS)";
+          }
+        });
+        row.appendChild(btn);
+        row.appendChild(out);
+      }
+      list.appendChild(row);
+    });
+  }
+
+  async function loadModules() {
+    MODULES.base = consoleBase();
+    try {
+      const r = await fetch(MODULES.base + "/api/modules", { headers: { Accept: "application/json" } });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (!j || !j.ok) throw new Error(j && j.load_error ? j.load_error : "no module table in the answer");
+      MODULES.ok = true;
+      MODULES.list = j.modules || [];
+      MODULES.counts = j.counts || {};
+      MODULES.edition = j.edition || "";
+      MODULES.status = "attached";
+    } catch (e) {
+      MODULES.ok = false;
+      const msg = String(e && e.message ? e.message : e);
+      const quiet = MODULES.base === location.origin && /HTTP 404/.test(msg);   // public page: no console here, and that is normal
+      MODULES.status = (MODULES.base === location.origin ? "no console attached here" : "no console at " + MODULES.base) +
+        (quiet ? "" : " (" + msg + ")");
+    }
+    renderModules();
+  }
+
+  window.lygoModules = { table: function () { return MODULES; }, call: moduleCall, reload: loadModules };
+  loadModules();
+
   const worldLocal = document.getElementById("world-local");
   const worldUtc = document.getElementById("world-utc");
   function paintWorld() {

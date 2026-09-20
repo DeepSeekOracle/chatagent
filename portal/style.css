@@ -344,3 +344,18 @@ body.public-mode .hide-public { display:none !important; }
 }
 #donateClose { width: 100%; }
 #donateClose:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* LYGO Function Modules — the portal grows by module, it never forks */
+.mod-row { border: 1px solid #3a3324; border-radius: 10px; padding: 0.55rem 0.65rem; margin: 0.4rem 0; background: #1b1811; }
+.mod-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.mod-head code { font-family: "IBM Plex Mono", monospace; font-size: 0.78rem; opacity: 0.75; }
+.mod-state { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.65; }
+.mod-badge { font-size: 0.66rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.mod-full { color: #7ddc9a; }
+.mod-deg { color: #e8c56a; }
+.mod-na { color: #a89880; }
+.mod-foot { font-family: "IBM Plex Mono", monospace; font-size: 0.74rem; opacity: 0.7; margin-top: 0.2rem; }
+.mod-err { font-size: 0.74rem; color: #e08a8a; margin-top: 0.25rem; }
+.mod-read { margin-top: 0.35rem; font-size: 0.72rem; background: #241f16; color: var(--gold); border: 1px solid #5a4630; border-radius: 8px; padding: 0.25rem 0.6rem; cursor: pointer; }
+.mod-read:hover { background: #2f2820; }
+.mod-out { font-family: "IBM Plex Mono", monospace; font-size: 0.7rem; max-height: 11rem; overflow: auto; margin: 0.35rem 0 0; white-space: pre-wrap; }
