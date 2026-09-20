@@ -612,18 +612,18 @@
       return;
     }
     connected = false;
-    const hint = probe.status === 401 ? "the provider rejected this key (401)"
-      : probe.status === 403 ? "this key is not allowed that model (403)"
-      : probe.status === 402 ? "this key has no credit (402)"
-      : probe.status === 404 ? "your key cannot see “" + res.model + "” (404) — use ↻ models and pick another"
-      : probe.status === 429 ? "rate limit or quota reached (429)"
-      : (probe.blocked ? probe.reason : (probe.reason || "the call failed"));
+    const hint = probe.status === 401 ? "The provider rejected this key (401)."
+      : probe.status === 403 ? "This key is not allowed that model (403)."
+      : probe.status === 402 ? "This key has no credit (402)."
+      : probe.status === 404 ? "Your key cannot see “" + res.model + "” (404) — use ↻ models and pick another."
+      : probe.status === 429 ? "Rate limit or quota reached (429)."
+      : (probe.blocked ? probe.reason : (probe.reason || "The call failed."));
     setHealth("⚠ not connected · " + p.label + " — " + hint);
     setModels("⚠ " + hint, "warn");
     bubble("assistant", "Could not connect to " + p.label + ". " + hint +
       (probe.reason && probe.reason !== hint ? " — vendor said: " + probe.reason : "") +
-      "\n\nGet or check the key at " + p.help + ", or pick a different provider. Nothing about this reached chatagent.ca: the call went from your browser straight to " + hostOf(openaiUrl()) + ".");
-  };;
+      " Provider note: " + p.help + " Nothing about this reached chatagent.ca: the call went from your browser straight to " + hostOf(openaiUrl()) + ".");
+  };
   if (tokenEl) {
     tokenEl.addEventListener("paste", function () { setTimeout(readKey, 0); });
     tokenEl.addEventListener("blur", readKey);
