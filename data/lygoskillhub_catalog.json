@@ -2,7 +2,7 @@
   "signature": "Delta9Phi963-LYGOSKILLHUB-CATALOG-v1.5",
   "name": "LYGOSKILLHUB",
   "version": "1.5.0",
-  "updated_utc": "2026-08-24T13:55:56+00:00",
+  "updated_utc": "2026-09-20T16:40:29+00:00",
   "publisher": "deepseekoracle",
   "steward": "Justin Helmer / Excavationpro / Lightfather",
   "clawhub_profile": "https://clawhub.ai/deepseekoracle",
@@ -24,18 +24,18 @@
     "excavationpro_mirror": "https://deepseekoracle.github.io/Excavationpro/LYGOSKILLHUB.html"
   },
   "counts": {
-    "total": 110,
+    "total": 115,
     "skills": 90,
     "plugins": 1,
-    "downloads": 4,
-    "surfaces": 16,
+    "downloads": 8,
+    "surfaces": 17,
     "clawhub_skills_indexed": 90,
     "local_only_skills": 0,
     "clawhub_profile_skills_listed": 90,
     "stack_skills_json": 39
   },
   "skill_count": 90,
-  "item_count": 110,
+  "item_count": 115,
   "categories": [
     "champion",
     "creative",
@@ -50,6 +50,74 @@
     "tools"
   ],
   "skills": [
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-pc-v1",
+      "name": "LYGO LLM Console V1 — PC LOCAL installer (light)",
+      "summary": "The V1 console for a Windows PC as an installer: build 1.1.1, build-line 2026-09-20, sealed to the canon vault and clean-room re-verified (605 tests green, certify + verify_install 26/26). 553,444,248 B. No model inside — it ships the fetcher and a pinned manifest so you pull only what your machine can run, from our own vault, SHA-256 checked. Drop a bigger GGUF in later; no reinstall.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1/LYGO_LLM_CONSOLE_V1_PC_SETUP.exe",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1/README.md",
+      "install": "1) Verify: CertUtil -hashfile LYGO_LLM_CONSOLE_V1_PC_SETUP.exe SHA256 — expect 7dda0e354142eb33b5b86b15aefa3289143f8f7f99cd11d2970280508c2e64db. 2) Run the installer (per-user; defaults to D:\\). 3) Models: python fetch_models.py --profile basic --dest D:\\LYGO_MODELS. 4) LYGO_LLM_CONSOLE.bat → Scan drives → Boot. Read READ_DISCLAIMER_FIRST.md.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download"
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-usb-v1",
+      "name": "LYGO LLM Console V1 — USB LOCAL installer (light)",
+      "summary": "The same V1 console built for a stick (LYGO BUILDER KEY / CLAW): keep its own save/ and models/ on the USB root and run stand-alone. 562,222,511 B, build 1.1.1, 361 files / 49 folders sealed, clean-room re-verified. No model inside — fetch from our vault.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1/LYGO_LLM_CONSOLE_V1_USB_SETUP.exe",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1/INSTALL_NOTES_USB.txt",
+      "install": "1) Verify: CertUtil -hashfile LYGO_LLM_CONSOLE_V1_USB_SETUP.exe SHA256 — expect d21e608f5801a7838d13453ed3c609923458e18b6a3efa536604b9513b6fbe8d. 2) Run the installer and point it at your USB root. 3) Models on the stick: python fetch_models.py --profile basic --dest <stick>\\models. 4) LYGO_LLM_CONSOLE.bat → Scan drives → Boot.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download"
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-pc-v1-full",
+      "name": "LYGO LLM Console V1 — PC LOCAL installer (FULL, gemma4-12b inside)",
+      "summary": "The V1 PC console with gemma4-12b (text · image · audio) and its projector already installed — runs with no network at all. 8,109,962,376 B across three files: …FULL.exe is disc 1, the two .bin files are discs 2-3. Keep all three in one folder. Windows cannot build a single .exe past ~4.2 GB, so the set is split (normal Inno disk spanning). Wants ~32 GB RAM.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/tree/console-v1",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1/INSTALL_NOTES_PC_FULL.txt",
+      "install": "1) Download all three files into one folder: LYGO_LLM_CONSOLE_V1_PC_SETUP_FULL.exe (2,141,953 B, sha256 529f9d05294e60eb7268abd4fc496a5932bc71e01a1ae203c9a6f9e790342c68), …FULL-1.bin (4,292,825,087 B, sha256 2ec98638c2b028eaf272daaa62c81f7165cf6abd69b1b8df6db53f81fdd4b6e3), …FULL-2.bin (3,814,995,336 B, sha256 d9eb3316d4d06d0fc50aa7a9f762c67d2c811e4db7bda95e0b8310c9197cf5f5). 2) Verify each with CertUtil -hashfile FILE SHA256. 3) Run …FULL.exe. 4) LYGO_LLM_CONSOLE.bat → Scan drives → Boot.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download"
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-console-model-vault-v1",
+      "name": "LYGO Console Model Vault (our own host)",
+      "summary": "The weights the console boots, hosted by us and pinned to an immutable revision with a SHA-256 per file: gemma4-12b + vision/audio projector, qwen2.5-coder-7b, nomic-embed-text (all Apache-2.0). The light installers' fetcher reads models.lock.json and pulls only from this vault — nothing from a third-party site, nothing from a moving branch. GitHub mirror included.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-models",
+      "docs": "https://github.com/DeepSeekOracle/lygo-console-models",
+      "install": "python fetch_models.py --list; python fetch_models.py --profile basic --dest D:\\LYGO_MODELS (gemma4-12b + projector, 7.3 GB) or --profile full (all four, 11.7 GB). Every file is digest-checked before it is kept. --check --dest <dir> verifies an existing collection.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download"
+    },
+    {
+      "kind": "surface",
+      "slug": "lygo-api-portal-web",
+      "name": "LYGO API Portal (site) — WEB PORTAL, API only",
+      "summary": "The third system: a stand-alone web portal for people who need a ninja console and have no GPU. Bring your own key from any vendor (Groq, Gemini, OpenRouter, Cerebras, OpenAI, Grok, DeepSeek) — browser tools and 15 champions work in the tab, keys stay in the tab. No install, no local model. Legal summary at /portal/legal.html.",
+      "category": "surface",
+      "url": "https://chatagent.ca/portal/",
+      "docs": "https://chatagent.ca/portal/legal.html",
+      "source": "surface",
+      "channel": "surface",
+      "channel_label": "Lattice surface"
+    },
     {
       "kind": "skill",
       "slug": "eternal-haven-lore-pack",
@@ -1891,5 +1959,5 @@
     }
   ],
   "note": "Immutable LYGO skill ledger for chatagent.ca/lygoskillhub.html. Every clawhub/skills.json entry + mirror is listed. Public tentacles → ClawHub (all green security audits); FULL unlocked engineer packs → #full-lygo vault only.",
-  "catalog_sha256": "71acb71376883e89324632168b8f4cb7d62b4da25f8b438b3236cbee5d034ed1"
+  "catalog_sha256": "e38995d09257b10a0d5c002418c99115a8db664df5f5b274f7e424fd294ff65d"
 }
