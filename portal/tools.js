@@ -96,18 +96,37 @@
     }
   }
 
+  const TO_MS = 12000;
+  // Every limb gets a deadline. Without one, a blocked or slow host hangs the
+  // whole turn (measured: book_search sat 58s before returning an error).
+  async function timedFetch(url, opts) {
+    const ac = new AbortController();
+    const t = setTimeout(function () { ac.abort(); }, TO_MS);
+    try {
+      return await fetch(url, Object.assign({ signal: ac.signal }, opts || {}));
+    } catch (e) {
+      if (ac.signal.aborted) throw new Error("no answer within " + (TO_MS / 1000) + "s (host slow, blocked, or offline)");
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
   async function getText(url) {
     const bad = blockedHost(url);
     if (bad) throw new Error(bad);
     try {
-      const r = await fetch(url);
+      const r = await timedFetch(url);
       if (r.ok) return await r.text();
-    } catch (_) {}
+    } catch (e) {
+      // A hung host must fail fast, not walk through two more proxies.
+      if (/no answer within/.test(String(e && e.message))) throw e;
+    }
     try {
-      const r = await fetch("https://r.jina.ai/" + url);
+      const r = await timedFetch("https://r.jina.ai/" + url);
       if (r.ok) return (await r.text()).slice(0, 20000);
     } catch (_) {}
-    const r = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    const r = await timedFetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
     if (!r.ok) throw new Error("http " + r.status);
     return (await r.text()).slice(0, 20000);
   }
@@ -151,7 +170,7 @@
     if (name === "wiki_search") {
       const q = args.q || args.query || "";
       const u = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=" + encodeURIComponent(q) + "&format=json&origin=*";
-      const j = await (await fetch(u)).json();
+      const j = await (await timedFetch(u)).json();
       const hits = ((j.query && j.query.search) || []).slice(0, 5).map(function (x) {
         return { title: x.title, snippet: (x.snippet || "").replace(/<[^>]+>/g, "") };
       });
@@ -192,9 +211,26 @@
       return { ok: true, json: s.length > 8000 ? s.slice(0, 8000) : j, class: "RESOURCE" };
     }
     if (name === "weather") {
-      const place = args.place || "";
-      const t = await (await fetch("https://wttr.in/" + encodeURIComponent(place) + "?format=3")).text();
-      return { ok: true, text: t, class: "RESOURCE" };
+      const place = args.place || args.location || args.q || "";
+      const t = await (await timedFetch("https://wttr.in/" + encodeURIComponent(place) + "?format=3")).text();
+      const line = String(t == null ? "" : t).trim();
+      if (line && line.charAt(0) !== "<" && line.length < 400) return { ok: true, text: line, class: "RESOURCE" };
+      // wttr.in answered with a web page (busy, blocked, or a proxy rewrite).
+      // open-meteo is keyless and CORS-friendly, so the limb still answers.
+      const g = await (await timedFetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(place) + "&count=1")).json();
+      const c = (g.results || [])[0];
+      if (!c) return { ok: false, error: "no place found for '" + place + "' — pass place, e.g. Calgary" };
+      const w = await (await timedFetch("https://api.open-meteo.com/v1/forecast?latitude=" + c.latitude + "&longitude=" + c.longitude + "&current=temperature_2m,wind_speed_10m,weather_code")).json();
+      const cur = w.current || {};
+      return {
+        ok: true,
+        place: c.name + (c.admin1 ? ", " + c.admin1 : "") + (c.country ? " (" + c.country + ")" : ""),
+        temperature_c: cur.temperature_2m,
+        wind_kmh: cur.wind_speed_10m,
+        weather_code: cur.weather_code,
+        source: "open-meteo",
+        class: "RESOURCE",
+      };
     }
     if (name === "geocode") {
       const place = args.place || args.q || "";
@@ -219,9 +255,16 @@
       return { ok: true, local: d.toString(), utc: d.toISOString(), unix: Math.floor(d.getTime() / 1000) };
     }
     if (name === "calc") {
-      const expr = String(args.expr || "");
-      if (!/^[\d+\-*/().\s]+$/.test(expr)) return { ok: false, error: "unsafe" };
-      return { ok: true, value: Function("return (" + expr + ")")() };
+      const expr = String(args.expr || args.expression || args.text || args.q || "").trim();
+      if (!expr) return { ok: false, error: "missing expr", hint: 'send {"expr":"17*23"}' };
+      if (!/^[\d+\-*/().\s]+$/.test(expr)) return { ok: false, error: "expr must be plain arithmetic — digits and + - * / ( ) . only" };
+      try {
+        const v = Function("return (" + expr + ")")();
+        if (typeof v !== "number" || !isFinite(v)) return { ok: false, error: "not a finite number", expr: expr };
+        return { ok: true, expr: expr, value: v };
+      } catch (e) {
+        return { ok: false, error: "could not evaluate: " + String((e && e.message) || e), expr: expr };
+      }
     }
     if (name === "hash_text") {
       const enc = new TextEncoder().encode(String(args.text || ""));
@@ -273,7 +316,7 @@
     }
     if (name === "hn_search") {
       const u = "https://hn.algolia.com/api/v1/search?query=" + encodeURIComponent(args.q || "") + "&hitsPerPage=5";
-      const j = await (await fetch(u)).json();
+      const j = await (await timedFetch(u)).json();
       return { ok: true, hits: (j.hits || []).map(function (h) { return { title: h.title, url: h.url, points: h.points }; }), class: "RESOURCE" };
     }
     if (name === "arxiv_search") {
