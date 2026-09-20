@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
@@ -98,6 +98,15 @@
      revision is legible even before a fresh style.css is cached. */
   .bench-stamp { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted, #a99a86); margin:0.25rem 0 0.45rem; border-left:2px solid rgba(224,179,106,0.5); padding-left:0.5rem; }
   .bench-stamp strong { color:var(--gold, #e0b36a); font-weight:600; }
+  /* Model-discovery bar: honest status for the key -> model list path. */
+  .models-bar { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin:.5rem 0 0; font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.74rem; line-height:1.4; }
+  .models-status { color:var(--muted,#9aa4b2); letter-spacing:.02em; }
+  .models-status.ok { color:#7fd18a; }
+  .models-status.warn { color:#e0b36a; }
+  .models-status.busy { color:#9aa4b2; font-style:italic; }
+  #models-refresh { font-family:inherit; font-size:.72rem; padding:.2rem .5rem; border:1px solid rgba(224,179,106,.5); background:transparent; color:inherit; border-radius:3px; cursor:pointer; }
+  #models-refresh:hover { background:rgba(224,179,106,.12); }
+  #model-filter { font-family:inherit; font-size:.72rem; padding:.2rem .45rem; background:transparent; border:1px solid rgba(255,255,255,.18); border-radius:3px; color:inherit; min-width:12rem; }
 </style>
 </head>
 <body class="public-mode branded">
@@ -138,6 +147,7 @@
     <button type="button" id="connect">Connect</button>
     <label class="chk hide-public" id="full-wrap"><input type="checkbox" id="full"> Full LYGO limbs</label>
   </div>
+  <p class="models-bar"><span id="models-status" class="models-status">models — the list is read from your key, not a hard-coded table</span><button type="button" id="models-refresh" title="Re-read the model list from this provider">↻ models</button><input id="model-filter" type="search" placeholder="filter models…" autocomplete="off" aria-label="Filter models" hidden></p>
   <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
 </header>
 <section id="world" class="world" aria-label="World time">
@@ -313,7 +323,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
   </div>
 </div>
 <script src="tools.js?v=20260917a"></script>
-<script src="app.js?v=20260917a"></script>
+<script src="app.js?v=20260920b"></script>
 <script src="radio.js"></script>
 <script src="donate.js"></script>
 </body>

@@ -43,6 +43,46 @@
     github: { label: "GitHub Models (PAT)", kind: "openai", url: "https://models.inference.ai.azure.com/chat/completions", model: "gpt-4o-mini", key: true, help: "github.com/settings/tokens — GitHub Models may be limited" },
     custom: { label: "Any OpenAI-compatible URL", kind: "openai", url: "", model: "", key: true, help: "Paste base (we append /v1/chat/completions) or full chat URL" },
   };
+
+  // ── Provider reachability, measured 2026-09-20 from this very origin ──────
+  // A browser page can only call an API that sends CORS headers. A key is not
+  // enough for these, so say so plainly instead of failing silently later.
+  const BROWSER_BLOCKED = {
+    nvidia: "NVIDIA NIM does not allow browser calls (no CORS header)",
+    together: "Together AI does not allow browser calls (no CORS header)",
+    anthropic: "Anthropic does not allow browser calls (no CORS header)",
+    sambanova: "SambaNova does not allow browser calls (no CORS header)",
+    zai: "Z.ai does not allow browser calls (no CORS header)",
+    github: "GitHub Models does not allow browser calls (no CORS header)",
+  };
+  // Providers with no usable /models endpoint: the built-in seed plus a live
+  // one-token probe of the picked model is the only honest answer.
+  const NO_MODEL_LIST = { perplexity: 1, llm7: 1 };
+  const MODEL_MEM_KEY = "lygo_portal_model_by_provider";
+  let OR_FREE = false;
+  function modelMem() {
+    try { return JSON.parse(localStorage.getItem(MODEL_MEM_KEY) || "{}") || {}; } catch (_) { return {}; }
+  }
+  function rememberModel(pid, id) {
+    if (!pid || !id) return;
+    try { const m = modelMem(); m[pid] = id; localStorage.setItem(MODEL_MEM_KEY, JSON.stringify(m)); } catch (_) {}
+  }
+  function setModels(text, kind) {
+    const el = document.getElementById("models-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "models-status" + (kind ? " " + kind : "");
+  }
+  function errText(j, status) {
+    const e = j && j.error;
+    const m = (e && (e.message || e)) || (j && (j.message || j.detail || j.reason)) || "";
+    let s = typeof m === "string" ? m : JSON.stringify(m || "");
+    s = String(s || "").replace(/\s+/g, " ").trim();
+    return s ? s.slice(0, 240) : "http " + status;
+  }
+  function hostOf(url) {
+    try { return new URL(url).host; } catch (_) { return String(url || ""); }
+  }
   const AGENT_TOOLS = window.LYGO_AGENT_TOOLS || [];
   const AGENT_TOOLS_CORE = window.LYGO_AGENT_TOOLS_CORE || AGENT_TOOLS;
   let howtoShown = false;
@@ -143,6 +183,7 @@
     return out;
   }
 
+  let ALL_MODELS = [];
   function fillModelOptions(ids, selected) {
     if (!modelEl) return selected || "";
     const want = selected || (modelEl.value) || (provider().model) || "";
@@ -152,6 +193,13 @@
     });
     if (want && list.indexOf(want) < 0) list.unshift(want);
     if (!list.length) list.push("openai/gpt-oss-20b");
+    ALL_MODELS = list.slice();
+    return paintModelOptions(list, want);
+  }
+
+  function paintModelOptions(list, want) {
+    if (!modelEl) return "";
+    const keep = want || modelEl.value || "";
     modelEl.innerHTML = "";
     list.forEach(function (id) {
       const o = document.createElement("option");
@@ -159,19 +207,68 @@
       o.textContent = id;
       modelEl.appendChild(o);
     });
-    modelEl.value = list.indexOf(want) >= 0 ? want : list[0];
+    modelEl.value = list.indexOf(keep) >= 0 ? keep : (list[0] || "");
+    const f = document.getElementById("model-filter");
+    if (f) {
+      const long = list.length >= 12;
+      f.hidden = !long;
+      if (long) f.placeholder = "filter " + list.length + " models…";
+      else f.value = "";
+    }
     return modelEl.value;
+  }
+
+  function wireModelFilter() {
+    const f = document.getElementById("model-filter");
+    if (!f) return;
+    f.addEventListener("input", function () {
+      const q = String(f.value || "").trim().toLowerCase();
+      const cur = modelEl.value;
+      const sub = q ? ALL_MODELS.filter(function (id) { return id.toLowerCase().indexOf(q) >= 0; }) : ALL_MODELS;
+      paintModelOptions(sub.length ? sub : ALL_MODELS, cur);
+    });
+  }
+
+  function wireModelControls() {
+    wireModelFilter();
+    const b = document.getElementById("models-refresh");
+    if (b) b.addEventListener("click", function () { refreshModels({ note: "manual refresh" }); });
+    if (tokenEl) {
+      let t = 0;
+      tokenEl.addEventListener("input", function () {
+        clearTimeout(t);
+        t = setTimeout(function () {
+          const k = readKey();
+          if (k.length >= 8 && modeEl && !BROWSER_BLOCKED[modeEl.value]) refreshModels({ note: "key detected" });
+        }, 800);
+      });
+    }
   }
 
   function fillProvider() {
     const p = provider();
-    fillModelOptions(p.models || (p.model ? [p.model] : []), p.model);
+    const pid = modeEl ? modeEl.value : "";
+    const mem = modelMem()[pid];
+    fillModelOptions((p.models || (p.model ? [p.model] : [])).concat([mem]), mem || p.model);
     remapDeadModel();
+    if (BROWSER_BLOCKED[pid]) setModels("⚠ " + p.label + " — " + BROWSER_BLOCKED[pid] + " (this provider works only in the desktop console)", "warn");
+    else if (readKey().length >= 8) setTimeout(function () { refreshModels({}); }, 0);
+    else setModels("models — the list is read from your key, not a hard-coded table");
     if (endpointEl) {
-      endpointEl.value = p.url || "";
       const custom = modeEl && modeEl.value === "custom";
+      // Custom URLs are the visitor's own — never blank what they typed
+      // (this used to erase the endpoint on Connect) and remember it locally.
+      let kept = "";
+      try { kept = localStorage.getItem("lygo_portal_endpoint") || ""; } catch (_) {}
+      endpointEl.value = custom ? (endpointEl.value || kept) : (p.url || "");
       endpointEl.hidden = !custom;
-      if (custom) endpointEl.removeAttribute("hidden");
+      if (custom) {
+        endpointEl.removeAttribute("hidden");
+        endpointEl.placeholder = "https://your-host/v1 — base or full chat URL";
+        endpointEl.oninput = function () {
+          try { localStorage.setItem("lygo_portal_endpoint", endpointEl.value || ""); } catch (_) {}
+        };
+      }
     }
     if (tokenEl) {
       tokenEl.style.display = p.key ? "" : "none";
@@ -269,42 +366,142 @@
     }
     return cur;
   }
+  function modelHeaders(key) {
+    const pid = modeEl ? modeEl.value : "";
+    const h = { Authorization: "Bearer " + key };
+    if (pid === "github") h["api-key"] = key;
+    if (pid === "anthropic") {
+      h["x-api-key"] = key;
+      h["anthropic-version"] = "2023-06-01";
+      h["anthropic-dangerous-direct-browser-access"] = "true";
+    }
+    return h;
+  }
+
+  async function probeJson(url, headers) {
+    try {
+      const r = await fetch(url, { headers: safeHeaders(headers) });
+      const text = await r.text();
+      let j = {};
+      try { j = JSON.parse(text); } catch (_) {}
+      return { ok: r.ok, status: r.status, json: j };
+    } catch (e) {
+      return { ok: false, status: 0, blocked: true, json: {}, thrown: String((e && e.message) || e) };
+    }
+  }
+
   async function listProviderModels() {
     const u = modelsUrl();
     const key = readKey();
-    if (!u || !key) return [];
-    try {
-      const headers = safeHeaders({ Authorization: "Bearer " + key });
-      if (modeEl.value === "github") headers["api-key"] = key;
-      const r = await fetch(u, { headers: headers });
-      const j = await r.json().catch(function () { return {}; });
-      return (j.data || j.models || []).map(function (m) { return m.id || m.name; }).filter(Boolean);
-    } catch (_) {
-      return [];
+    const pid = modeEl ? modeEl.value : "";
+    if (BROWSER_BLOCKED[pid]) return { ok: false, blocked: true, reason: BROWSER_BLOCKED[pid] };
+    if (!u) return { ids: [], ok: false, status: 0, reason: "no endpoint yet", source: "none" };
+    if (!key && pid !== "openrouter" && pid !== "llm7") return { ids: [], ok: false, status: 0, reason: "no key yet", source: "none" };
+    const res = await probeJson(u, modelHeaders(key));
+    if (res.blocked) {
+      return { ids: [], ok: false, status: 0, blocked: true, source: "live",
+               reason: (BROWSER_BLOCKED[pid] || ("the browser refused the call to " + hostOf(u) + " (CORS or page policy)")) };
     }
-  }
-  async function pickLiveModel() {
-    remapDeadModel();
-    const current = (modelEl && modelEl.value) || "";
-    const ids = (await listProviderModels()).filter(isChatModel);
-    if (!ids.length) {
-      const forced = remapDeadModel() || current || "openai/gpt-oss-20b";
-      fillModelOptions((provider().models || []).concat([forced]), forced);
-      return forced;
-    }
-    const prefer = (MODEL_PREFER[modeEl.value] || []).concat([current], ids);
-    let pick = "";
-    for (let i = 0; i < prefer.length; i++) {
-      if (ids.indexOf(prefer[i]) >= 0) {
-        pick = prefer[i];
-        break;
-      }
-    }
-    if (!pick) pick = ids[0];
-    fillModelOptions(prefer.concat(ids), pick);
-    return pick;
+    const raw = (res.json.data || res.json.models || []);
+    const ids = raw.map(function (m) { return m.id || m.name; }).filter(Boolean)
+      .map(function (id) { return String(id).indexOf("models/") === 0 ? String(id).slice(7) : String(id); });
+    return { ids: ids, ok: res.ok, status: res.status, source: "live", raw: raw,
+             reason: res.ok ? "" : errText(res.json, res.status) };
   }
 
+  async function openrouterKeyInfo(key) {
+    const r = await probeJson("https://openrouter.ai/api/v1/auth/key", { Authorization: "Bearer " + key });
+    const d = (r.json && r.json.data) || null;
+    if (!r.ok || !d) return "";
+    OR_FREE = !!d.is_free_tier;
+    const parts = [];
+    if (d.label) parts.push("key " + d.label);
+    if (d.is_free_tier) parts.push("free tier — pick a :free model");
+    if (typeof d.usage === "number") parts.push("used $" + Number(d.usage).toFixed(3) + (typeof d.limit === "number" ? " of $" + Number(d.limit).toFixed(2) : " · no hard limit"));
+    return parts.join(" · ");
+  }
+
+  async function refreshModels(opts) {
+    opts = opts || {};
+    const p = provider();
+    const pid = modeEl ? modeEl.value : "";
+    setModels("reading the model list from " + p.label + " …", "busy");
+    const r = await listProviderModels();
+    const chat = (r.ids || []).filter(isChatModel).sort();
+    if (r.ok && chat.length) {
+      let note = opts.note || "";
+      if (pid === "openrouter") {
+        const info = await openrouterKeyInfo(readKey());
+        if (info) note = note ? note + " · " + info : info;
+      }
+      const mem = modelMem()[pid];
+      const cur = (modelEl && modelEl.value) || "";
+      let pref = (MODEL_PREFER[pid] || []).slice();
+      if (pid === "openrouter" && OR_FREE) pref = chat.filter(function (id) { return /:free$/.test(id); }).concat(pref);
+      pref = pref.concat([cur, mem, p.model]).filter(Boolean);
+      let pick = "";
+      for (let i = 0; i < pref.length && !pick; i++) if (chat.indexOf(pref[i]) >= 0) pick = pref[i];
+      fillModelOptions(chat, pick || chat[0]);
+      rememberModel(pid, modelEl.value);
+      setModels("✓ " + chat.length + " model" + (chat.length === 1 ? "" : "s") + " from your key" + (note ? " · " + note : "") + " — this is your key's own list, not a hard-coded table", "ok");
+      return { ok: true, model: modelEl.value, count: chat.length, note: note };
+    }
+    const mem = modelMem()[pid];
+    const seed = (p.models || []).concat([mem, p.model]).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    fillModelOptions(seed, mem || p.model);
+    const n = seed.filter(isChatModel).length;
+    const tail = (n === 1 && mem) ? " — keeping your last pick (" + mem + "); the provider did not confirm it" : (n ? " — showing " + n + " built-in default" + (n === 1 ? "" : "s") + " (not your key's list)" : " — no model list yet");
+    if (r.reason) setModels("⚠ " + p.label + ": " + r.reason + tail, "warn");
+    else setModels("⚠ no model list from " + p.label + tail, "warn");
+    if (r.blocked || r.status === 401 || r.status === 402 || r.status === 403) {
+      connected = false;
+      setHealth("⚠ not connected · " + p.label + " — " + (r.reason || "the provider refused the call"));
+    }
+    return { ok: false, model: modelEl.value, reason: r.reason || "no list", blocked: !!r.blocked, status: r.status };
+  }
+
+  let modelsStamp = "";
+  function keyStamp() {
+    const k = readKey();
+    let h = 0;
+    for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0;
+    return (modeEl ? modeEl.value : "") + "|" + k.length + "|" + h;
+  }
+  async function maybeRefreshModels() {
+    const stamp = keyStamp();
+    if (stamp === modelsStamp) return { ok: true, model: modelEl.value, cached: true };
+    const r = await refreshModels({});
+    if (r.ok) modelsStamp = stamp;
+    return r;
+  }
+
+  async function probeModel(model) {
+    const p = provider();
+    const url = openaiUrl();
+    const key = readKey();
+    if (!url || !key) return { ok: false, reason: "no key yet" };
+    if (BROWSER_BLOCKED[modeEl.value]) return { ok: false, blocked: true, reason: BROWSER_BLOCKED[modeEl.value] };
+    const headers = { "Content-Type": "application/json" };
+    if (p.kind === "anthropic") {
+      headers["x-api-key"] = key;
+      headers["anthropic-version"] = "2023-06-01";
+      headers["anthropic-dangerous-direct-browser-access"] = "true";
+    } else {
+      headers.Authorization = "Bearer " + key;
+      if (modeEl.value === "github") headers["api-key"] = key;
+    }
+    if (p.extra) Object.keys(p.extra).forEach(function (k) { headers[k] = p.extra[k]; });
+    const payload = { model: model, max_tokens: 1, messages: [{ role: "user", content: "ping" }] };
+    try {
+      const r = await fetch(url, { method: "POST", headers: safeHeaders(headers), body: JSON.stringify(payload) });
+      const text = await r.text();
+      let j = {};
+      try { j = JSON.parse(text); } catch (_) {}
+      return { ok: r.ok, status: r.status, reason: r.ok ? "" : errText(j, r.status) };
+    } catch (e) {
+      return { ok: false, status: 0, blocked: true, reason: "the browser refused the call to " + hostOf(url) + " (CORS or page policy)" };
+    }
+  }
   async function callApi(messages) {
     const p = provider();
     const url = openaiUrl();
@@ -344,17 +541,27 @@
     if (!r.ok) {
       const err = (j.error && (j.error.message || JSON.stringify(j.error))) || j.detail || ("http " + r.status);
       const msg = typeof err === "string" ? err : JSON.stringify(err);
-      if (/does not exist|do not have access|model_not_found|invalid_model/i.test(msg)) {
-        const live = await pickLiveModel();
-        if (live && live !== model) {
-          payload.model = live;
+      if (/does not exist|do not have access|model_not_found|invalid_model|not a valid model|unknown model|no such model/i.test(msg)) {
+        const live = await refreshModels({ note: "model not on this key — list reloaded" });
+        if (live.model && live.model !== model) {
+          payload.model = live.model;
           r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
           j = await r.json().catch(function () { return {}; });
-          if (r.ok) return j;
+          if (r.ok) { rememberModel(modeEl.value, payload.model); setModels("✓ switched to " + payload.model + " — this key's own list", "ok"); return j; }
         }
+        throw new Error("Your key cannot use “" + model + "”: " + msg + (live.ok && live.model && live.model !== model ? " Reloaded your list — picked " + live.model + "." : " The model box now lists your key's own models — pick one of those."));
       }
-      throw new Error(msg);
+      const byStatus = {
+        401: "key rejected (401) — check it at " + p.help,
+        402: "no credit left on this key (402)",
+        403: "this key is not allowed “" + model + "” (403)",
+        404: "“" + model + "” is not available to this key (404) — use ↻ models",
+        429: "rate limit or quota reached (429) — wait, or pick another model",
+      };
+      if (byStatus[r.status]) throw new Error(p.label + " — " + byStatus[r.status] + " · vendor said: " + msg);
+      throw new Error(p.label + " (http " + r.status + "): " + msg);
     }
+    rememberModel(modeEl && modeEl.value, model);
     return j;
   }
 
@@ -367,8 +574,10 @@
   document.getElementById("connect").onclick = async function () {
     fillProvider();
     const p = provider();
-    if (p.key && !readKey() && modeEl.value !== "llm7" && modeEl.value !== "custom") {
+    const pid = modeEl.value;
+    if (p.key && !readKey() && pid !== "llm7" && pid !== "custom" && pid !== "openrouter") {
       setHealth("paste your API key (this tab only) — " + p.help);
+      setModels("waiting for your key — the model list comes from the key, not from us", "warn");
       bubble("assistant", stewardHowTo("missing-key"));
       return;
     }
@@ -376,25 +585,59 @@
       setHealth("paste an endpoint URL");
       return;
     }
-    setHealth("checking models…");
-    const live = await pickLiveModel();
-    connected = true;
-    try { sessionStorage.setItem("lygo_portal_provider", modeEl.value); } catch (_) {}
-    setHealth("connected · " + p.label + " · " + (live || p.model));
-    bubble("assistant", "Connected to " + p.label + " · model " + (live || p.model) + ". Send a message.");
-  };
+    if (BROWSER_BLOCKED[pid]) {
+      connected = false;
+      setHealth("⚠ " + p.label + " — " + BROWSER_BLOCKED[pid]);
+      setModels("⚠ " + BROWSER_BLOCKED[pid], "warn");
+      bubble("assistant", p.label + " cannot be called from a web page. " + BROWSER_BLOCKED[pid] +
+        " — that is the vendor's browser policy, not your key. Pick another provider above (Groq, Gemini, OpenRouter, Cerebras, Mistral, DeepSeek, OpenAI and ~15 more work here), or run a model on your own disk with the local console.");
+      return;
+    }
+    const res = await refreshModels({});
+    if (res.ok) {
+      connected = true;
+      try { sessionStorage.setItem("lygo_portal_provider", pid); } catch (_) {}
+      setHealth("connected · " + p.label + " · " + res.model);
+      bubble("assistant", "Connected to " + p.label + " · model " + res.model + " — read from your key (" + res.count + " models available)." + (res.note ? " " + res.note + "." : "") + " Send a message.");
+      return;
+    }
+    setHealth("checking your key against " + p.label + " · " + res.model + " …");
+    const probe = await probeModel(res.model);
+    if (probe.ok) {
+      connected = true;
+      try { sessionStorage.setItem("lygo_portal_provider", pid); } catch (_) {}
+      rememberModel(pid, res.model);
+      setHealth("connected · " + p.label + " · " + res.model + " (verified with a 1-token ping)");
+      bubble("assistant", "Connected to " + p.label + " · model " + res.model + "." + (res.reason ? " (" + res.reason + ")" : "") + " Send a message.");
+      return;
+    }
+    connected = false;
+    const hint = probe.status === 401 ? "the provider rejected this key (401)"
+      : probe.status === 403 ? "this key is not allowed that model (403)"
+      : probe.status === 402 ? "this key has no credit (402)"
+      : probe.status === 404 ? "your key cannot see “" + res.model + "” (404) — use ↻ models and pick another"
+      : probe.status === 429 ? "rate limit or quota reached (429)"
+      : (probe.blocked ? probe.reason : (probe.reason || "the call failed"));
+    setHealth("⚠ not connected · " + p.label + " — " + hint);
+    setModels("⚠ " + hint, "warn");
+    bubble("assistant", "Could not connect to " + p.label + ". " + hint +
+      (probe.reason && probe.reason !== hint ? " — vendor said: " + probe.reason : "") +
+      "\n\nGet or check the key at " + p.help + ", or pick a different provider. Nothing about this reached chatagent.ca: the call went from your browser straight to " + hostOf(openaiUrl()) + ".");
+  };;
   if (tokenEl) {
     tokenEl.addEventListener("paste", function () { setTimeout(readKey, 0); });
     tokenEl.addEventListener("blur", readKey);
     tokenEl.addEventListener("change", readKey);
   }
 
+  wireModelControls();
+
   if (modeEl) {
     modeEl.innerHTML = "";
     Object.keys(PROVIDERS).forEach(function (id) {
       const o = document.createElement("option");
       o.value = id;
-      o.textContent = PROVIDERS[id].label;
+      o.textContent = PROVIDERS[id].label + (BROWSER_BLOCKED[id] ? " — browser-blocked" : "");
       modeEl.appendChild(o);
     });
     try {
@@ -403,7 +646,7 @@
     } catch (_) {
       modeEl.value = "groq";
     }
-    modeEl.onchange = fillProvider;
+    modeEl.onchange = function () { fillProvider(); const pid = modeEl.value; if (!BROWSER_BLOCKED[pid] && readKey().length >= 8) refreshModels({}); };
     fillProvider();
   }
   document.querySelectorAll("[data-fill]").forEach(function (a) {
@@ -631,7 +874,16 @@
     if (!connected) {
       if (readKey()) {
         setHealth("connecting…");
-        const live = await pickLiveModel();
+        const r0 = await refreshModels({});
+        const live = r0.model;
+        if (!r0.ok) {
+          const pr = await probeModel(live);
+          if (!pr.ok) {
+            setHealth("⚠ not connected · " + provider().label);
+            bubble("assistant", "Could not reach " + provider().label + ": " + (pr.reason || r0.reason || "the call failed") + " — press Connect for the details.");
+            return;
+          }
+        }
         connected = true;
         setHealth("connected · " + provider().label + " · " + live);
       } else {
@@ -640,7 +892,7 @@
       }
     }
     history.push({ role: "user", content: text });
-    await pickLiveModel();
+    await maybeRefreshModels();
     const invoked = Object.keys(CHAMPS).find(function (n) { return text.toUpperCase().indexOf(n.toUpperCase()) >= 0; });
     let messages = [{ role: "system", content: systemPrompt(invoked) }].concat(history.slice(-10));
     let out = "";
@@ -666,15 +918,15 @@
       }
     } catch (e) {
       const m = String(e && e.message ? e.message : e);
-      if (/does not exist|do not have access|model_not_found|invalid_model/i.test(m)) {
-        const live = await pickLiveModel();
+      if (/does not exist|do not have access|model_not_found|invalid_model|not a valid model|unknown model|no such model/i.test(m)) {
+        const live = await refreshModels({ note: "your key rejected that model — list reloaded" });
         try {
           const j2 = await callApi(messages);
           const got2 = extractMessage(j2);
           out = got2.text || "";
-          if (live) setHealth("connected · " + provider().label + " · " + live);
+          if (live.model) setHealth("connected · " + provider().label + " · " + live.model);
         } catch (e2) {
-          out = "Could not reach a live model on this key (" + live + "). Try Connect again — the portal picks the model for you.";
+          out = String((e2 && e2.message) || e2 || m);
         }
       } else if (/ISO-8859-1|non ISO|code point/i.test(m)) {
         readKey();
@@ -686,7 +938,7 @@
           out = "The key paste had hidden characters. We cleaned it — press Connect and send Hello again.";
         }
       } else if (/Failed to fetch|CORS|NetworkError/i.test(m)) {
-        out = "Provider error: " + m + "\nThis vendor may block browser calls. Try Groq or OpenRouter.";
+        out = "That call never left your browser: " + m + ".\n" + (BROWSER_BLOCKED[modeEl.value] ? BROWSER_BLOCKED[modeEl.value] + "." : "This vendor (or your network) refuses browser callers — Groq, Gemini, OpenRouter, Cerebras and Mistral do work here.");
       } else {
         out = "Provider error: " + m;
       }
