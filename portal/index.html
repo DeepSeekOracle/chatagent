@@ -88,11 +88,17 @@
       "name": "LYGO LLM Portal",
       "isPartOf": {"@id": "https://chatagent.ca/portal/#app"},
       "inLanguage": "en-US",
-      "dateModified": "2026-09-16"
+      "dateModified": "2026-09-20"
     }
   ]
 }
 </script>
+<style>
+  /* V1 bench stamp — same token family as style.css, kept inline so the page
+     revision is legible even before a fresh style.css is cached. */
+  .bench-stamp { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted, #a99a86); margin:0.25rem 0 0.45rem; border-left:2px solid rgba(224,179,106,0.5); padding-left:0.5rem; }
+  .bench-stamp strong { color:var(--gold, #e0b36a); font-weight:600; }
+</style>
 </head>
 <body class="public-mode branded">
 <a class="skip" href="#msg">Skip to chat</a>
@@ -104,7 +110,9 @@
     <div>
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
-      <p class="sub">This page has <strong>no GPU</strong>. You bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab. Browser tools + 15 champions are already here. Local GGUF kit: <a href="https://chatagent.ca/lygo-llm-console.html">LLM Console</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
+      <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · build 1.1.1 · assets 2026-09-20</p>
+      <p class="sub syslabel">One console, three systems — <strong>WEB PORTAL (API ONLY, online — you are here)</strong> · <strong>PC LOCAL</strong> (full admin console on your PC, GPU when present) · <strong>USB LOCAL</strong> (stand-alone stick agent, plug and play, mobile). Same limbs, same P0 gate, same labels; only the brain differs.</p>
+      <p class="sub">A <strong>ninja console with no GPU</strong>: bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab — chatagent.ca never sees them. Browser tools + 15 champions are already installed on the page. Want it all offline on your own machine? <a href="https://chatagent.ca/lygo-llm-console.html">Local GGUF console</a> — same V1 bench, no API key at all. Legal: <a href="https://chatagent.ca/portal/legal.html">legal &amp; disclaimers</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
         <a href="https://chatagent.ca/">Home</a>
         <a href="https://chatagent.ca/portal/" aria-current="page">Portal</a>
@@ -276,15 +284,18 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <p>Unknown vendor? Choose <strong>Any OpenAI-compatible URL</strong>, paste their <code>base</code> (we append <code>/v1/chat/completions</code> if needed), key, and model id. Directories: <a href="https://freellm.net" rel="noopener">freellm.net</a> · <a href="https://github.com/open-free-llm-api/awesome-freellm-apis" rel="noopener">awesome-freellm-apis</a>.</p>
   <h2>Disclaimers</h2>
   <ul>
-    <li>RESOURCE, not CANON. Dual ledgers / Haven Star Chart remain canon.</li>
-    <li>No account. API keys never go to chatagent.ca servers.</li>
-    <li>Not medical, legal, or financial advice. P0 blocks OS-wipe style prompts. You remain the publisher.</li>
-    <li>This domain does <strong>not</strong> host a public GPU. CORS failures are the vendor blocking browsers — try Groq/OpenRouter or the local kit.</li>
+    <li>RESOURCE, not CANON. Dual ledgers / Haven Star Chart remain canon — nothing here writes to them.</li>
+    <li>No account. <strong>Your API key stays in this browser</strong> and goes only to the vendor you chose; chatagent.ca servers never see it.</li>
+    <li><strong>Not medical, legal, or financial advice.</strong> Models can be confidently wrong — check anything that matters. You remain the publisher of what you send and what you do with the answer.</li>
+    <li><strong>Your key, your vendor, their terms:</strong> pricing, quotas, retention and acceptable use are between you and that vendor. Vendor names are their owners' marks; no affiliation or endorsement is claimed. Key can spend real money.</li>
+    <li><strong>No warranty.</strong> Provided “as is”, no uptime promise. This domain does <strong>not</strong> host a public GPU — CORS failures are the vendor blocking browsers; try Groq/OpenRouter or the local kit.</li>
+    <li>Models keep their authors' licences (Gemma and Qwen are Apache-2.0; llama.cpp is MIT). The console code is <strong>LYGO Sovereign License v3.0</strong> — source-available, not MIT: use it, build on it, do not sell, rebrand or strip attribution.</li>
     <li>Donate is optional: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>.</li>
   </ul>
+  <p><strong><a href="https://chatagent.ca/portal/legal.html">Read the full legal &amp; disclaimers page →</a></strong> — licence, model attribution, warranty, AI caveats, acceptable use and privacy in plain language. Terms: <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/privacy.html">Privacy</a>.</p>
 </section>
 <footer class="legal">
-  <p>© <span class="y">2026</span> Justin Helmer · LYGO™ · Dual ledgers / Star Chart remain CANON. This page is RESOURCE. <a href="https://chatagent.ca/privacy.html">Privacy</a> · <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/security.txt">security.txt</a> · <a href="/guides/how-to-lygo-llm-portal.html">How to</a></p>
+  <p>© <span class="y">2026</span> Justin Helmer · LYGO™ · Dual ledgers / Star Chart remain CANON. This page is RESOURCE · <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> · <a href="https://chatagent.ca/privacy.html">Privacy</a> · <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/security.txt">security.txt</a> · <a href="/guides/how-to-lygo-llm-portal.html">How to</a></p>
 </footer>
 <noscript>
   <p>LYGO LLM Portal requires JavaScript. Docs: <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a>. Free. No account.</p>
