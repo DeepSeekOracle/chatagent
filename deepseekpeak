@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PEAK Alarm · Off-Peak Surge Tracker</title>
+<meta name="description" content="Live PEAK / NOT PEAK alarm with countdown, visuals, and every time zone on Earth." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  html, body { -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-image:
+      radial-gradient(900px 500px at 15% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(900px 500px at 85% -10%, rgba(244,63,94,.10), transparent 60%);
+    background-attachment: fixed;
+  }
+  .glow-red   { box-shadow: 0 0 0 1px rgba(244,63,94,.35), 0 0 70px -12px rgba(244,63,94,.75), inset 0 0 90px -50px rgba(244,63,94,.95); }
+  .glow-green { box-shadow: 0 0 0 1px rgba(16,185,129,.32), 0 0 70px -12px rgba(16,185,129,.55), inset 0 0 90px -50px rgba(16,185,129,.9); }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.012); } }
+  .breathe { animation: breathe 3.8s ease-in-out infinite; }
+  @keyframes flashbg { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
+  .flashing { animation: flashbg 1.7s ease-out 1; }
+  @keyframes shakeit {
+    10%,90% { transform: translateX(-2px); }
+    20%,80% { transform: translateX(4px); }
+    30%,50%,70% { transform: translateX(-6px); }
+    40%,60% { transform: translateX(6px); }
+  }
+  .shake { animation: shakeit .7s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes blip { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+  .blip { animation: blip 1.4s ease-in-out infinite; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input[type=range] { accent-color: #22d3ee; }
+  select option, select optgroup { background: #020617; color: #e2e8f0; }
+  #nowMarker { transition: left .35s linear; }
+</style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-cyan-400 selection:text-slate-950">
+
+<!-- full screen state flash -->
+<div id="flash" class="pointer-events-none fixed inset-0 z-40 opacity-0"></div>
+
+<!-- alarm banner -->
+<div id="alarmBar" class="fixed inset-x-0 top-0 z-50 hidden -translate-y-full items-center justify-center gap-3 bg-gradient-to-r from-rose-700 via-rose-600 to-rose-700 px-4 py-3 text-sm font-bold text-white shadow-2xl transition-transform duration-300">
+  <i data-lucide="siren" class="h-5 w-5 blip"></i>
+  <span class="truncate">PEAK WINDOW ACTIVE — surge pricing in effect</span>
+  <button id="btnSilence" class="shrink-0 rounded-lg bg-black/30 px-3 py-1 text-[11px] font-black uppercase tracking-wider transition hover:bg-black/50">Silence</button>
+</div>
+
+<div class="mx-auto max-w-5xl px-4 py-6 sm:py-10">
+
+  <!-- ================= HEADER ================= -->
+  <header class="mb-6 flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3">
+      <div class="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-cyan-500/10 ring-1 ring-cyan-400/30">
+        <i data-lucide="radar" class="h-6 w-6 text-cyan-400"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-black tracking-tight sm:text-2xl">PEAK&nbsp;ALARM</h1>
+        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400">Off-peak surge tracker · every time zone</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button id="btnTest" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10">
+        <i data-lucide="play" class="h-4 w-4"></i> Test
+      </button>
+      <button id="btnSound" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10">
+        <i data-lucide="bell-off" class="h-4 w-4"></i><span>Alarm Off</span>
+      </button>
+      <button id="btnSettings" class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10">
+        <i data-lucide="settings-2" class="h-4 w-4"></i> Setup
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= ZONE PICKER ================= -->
+  <section class="mb-5 grid gap-3 lg:grid-cols-[1fr_minmax(0,22rem)_auto]">
+    <div class="relative">
+      <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i>
+      <input id="tzSearch" type="text" autocomplete="off" placeholder="Filter zones — try “Tokyo”, “Europe/”, “Edmonton”…"
+        class="w-full rounded-xl border border-white/10 bg-slate-900/70 py-2.5 pl-10 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/60 focus:outline-none" />
+    </div>
+    <div class="relative">
+      <i data-lucide="globe-2" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400"></i>
+      <select id="tzSelect" class="w-full appearance-none rounded-xl border border-white/10 bg-slate-900/70 py-2.5 pl-10 pr-9 text-sm font-medium text-slate-200 focus:border-cyan-400/60 focus:outline-none"></select>
+      <i data-lucide="chevron-down" class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i>
+    </div>
+    <button id="btnDetect" class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10">
+      <i data-lucide="locate-fixed" class="h-4 w-4"></i> Auto-detect
+    </button>
+  </section>
+
+  <!-- ================= STATUS CARD ================= -->
+  <section id="card" class="relative mb-5 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/40 p-6 text-center transition-all duration-500 sm:p-10">
+    <div id="cardGlow" class="pointer-events-none absolute inset-0"></div>
+    <div class="relative">
+      <div id="badge" class="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-300">Initialising…</div>
+      <div id="bigText" class="text-5xl font-black leading-none tracking-tighter sm:text-8xl">…</div>
+      <p id="subText" class="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-slate-400">Calculating window state…</p>
+
+      <div class="mx-auto mt-7 w-full max-w-md">
+        <div class="mb-2 flex items-end justify-between gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+          <span id="cdLabel">Next change in</span>
+          <span id="cdAt" class="font-mono text-[11px] normal-case tracking-normal text-slate-500">—</span>
+        </div>
+        <div id="cdTimer" class="font-mono text-4xl font-black tabular-nums tracking-tight sm:text-5xl">--:--:--</div>
+        <div class="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/5">
+          <div id="progress" class="h-full w-0 rounded-full transition-[width] duration-500 ease-linear"></div>
+        </div>
+        <div class="mt-2 flex justify-between text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <span id="progLeft">—</span><span id="progRight">—</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STATS ================= -->
+  <section class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+      <div class="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><i data-lucide="clock" class="h-3.5 w-3.5"></i> Local time</div>
+      <div id="statLocal" class="font-mono text-2xl font-bold tabular-nums">--:--:--</div>
+      <div id="statLocalDate" class="mt-0.5 truncate text-[11px] text-slate-500">—</div>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+      <div class="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><i data-lucide="globe" class="h-3.5 w-3.5"></i> UTC reference</div>
+      <div id="statUTC" class="font-mono text-2xl font-bold tabular-nums">--:--:--</div>
+      <div class="mt-0.5 text-[11px] text-slate-500">All windows defined in UTC</div>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+      <div class="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-400"><i data-lucide="flame" class="h-3.5 w-3.5"></i> Next peak</div>
+      <div id="statNextPeak" class="font-mono text-2xl font-bold tabular-nums text-rose-300">--</div>
+      <div id="statNextPeakRel" class="mt-0.5 text-[11px] text-slate-500">—</div>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+      <div class="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400"><i data-lucide="leaf" class="h-3.5 w-3.5"></i> Next off-peak</div>
+      <div id="statNextOff" class="font-mono text-2xl font-bold tabular-nums text-emerald-300">--</div>
+      <div id="statNextOffRel" class="mt-0.5 text-[11px] text-slate-500">—</div>
+    </div>
+  </section>
+
+  <!-- ================= TIMELINE ================= -->
+  <section class="mb-5 rounded-2xl border border-white/10 bg-slate-900/40 p-5">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+        24-hour timeline · <span id="tlZone" class="text-cyan-300">—</span>
+      </h2>
+      <div class="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
+        <span class="inline-flex items-center gap-1.5 text-slate-300"><span class="h-2.5 w-2.5 rounded-sm bg-rose-500"></span>Peak</span>
+        <span class="inline-flex items-center gap-1.5 text-slate-300"><span class="h-2.5 w-2.5 rounded-sm bg-emerald-500"></span>Off-peak</span>
+      </div>
+    </div>
+    <div class="relative">
+      <div id="timeline" class="flex h-11 w-full gap-px overflow-hidden rounded-lg bg-slate-950/70 ring-1 ring-white/5"></div>
+      <div id="nowMarker" class="pointer-events-none absolute -top-1.5 bottom-1.5 z-10 w-[2px] bg-white shadow-[0_0_12px_2px_rgba(255,255,255,.65)]" style="left:-10px">
+        <div class="absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 rounded-sm bg-white"></div>
+      </div>
+    </div>
+    <div id="ticks" class="mt-1.5 flex justify-between font-mono text-[10px] text-slate-500"></div>
+  </section>
+
+  <!-- ================= WINDOW LISTS ================= -->
+  <section class="mb-5 grid gap-3 md:grid-cols-2">
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-5">
+      <h2 class="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-rose-400">
+        <i data-lucide="flame" class="h-4 w-4"></i> Peak windows · today in your zone
+      </h2>
+      <ul id="peakList" class="space-y-1.5 text-sm"></ul>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-slate-900/40 p-5">
+      <h2 class="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400">
+        <i data-lucide="leaf" class="h-4 w-4"></i> Off-peak windows · today in your zone
+      </h2>
+      <ul id="offList" class="space-y-1.5 text-sm"></ul>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="settings" class="mb-5 hidden rounded-2xl border border-cyan-400/20 bg-cyan-500/[0.04] p-5">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-300">
+        <i data-lucide="sliders-horizontal" class="h-4 w-4"></i> Configuration
+      </h2>
+      <button id="btnReset" class="text-[11px] font-bold uppercase tracking-wider text-slate-400 transition hover:text-rose-400">Reset all</button>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="block">
+        <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Schedule preset</span>
+        <select id="preset" class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 text-sm focus:border-cyan-400/60 focus:outline-none"></select>
+      </label>
+
+      <label class="block">
+        <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Alarm lead time</span>
+        <select id="lead" class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 text-sm focus:border-cyan-400/60 focus:outline-none">
+          <option value="0">Exactly at the change</option>
+          <option value="1">1 minute before</option>
+          <option value="5">5 minutes before</option>
+          <option value="10">10 minutes before</option>
+          <option value="30">30 minutes before</option>
+        </select>
+      </label>
+
+      <label id="customWrap" class="hidden sm:col-span-2">
+        <span class="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Custom PEAK windows (UTC, 24-hour)</span>
+        <input id="customWindows" type="text" spellcheck="false" placeholder="01:00-04:00, 06:00-10:00"
+          class="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 font-mono text-sm focus:border-cyan-400/60 focus:outline-none" />
+        <span id="customMsg" class="mt-1 block text-[11px] text-slate-500">Comma-separated HH:MM-HH:MM ranges. Overnight ranges like 23:00-02:00 work too.</span>
+      </label>
+
+      <div class="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
+        <span class="text-sm font-medium">Weekends always off-peak</span>
+        <input id="weekend" type="checkbox" class="h-5 w-5 accent-cyan-400" />
+      </div>
+
+      <div class="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
+        <span class="text-sm font-medium">Persistent alarm (repeats)</span>
+        <input id="persistent" type="checkbox" class="h-5 w-5 accent-cyan-400" />
+      </div>
+
+      <div class="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
+        <span class="text-sm font-medium">Use 12-hour clock</span>
+        <input id="hour12" type="checkbox" class="h-5 w-5 accent-cyan-400" />
+      </div>
+
+      <div class="rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3">
+        <div class="mb-2 flex items-center justify-between text-sm font-medium">
+          <span>Alarm volume</span><span id="volLabel" class="font-mono text-xs text-slate-400">35%</span>
+        </div>
+        <input id="volume" type="range" min="0" max="100" step="1" class="w-full" />
+      </div>
+
+      <button id="btnNotify" class="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm font-medium transition hover:bg-white/5 sm:col-span-2">
+        <i data-lucide="bell-ring" class="h-4 w-4"></i> Enable desktop notifications
+      </button>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/10 pt-5 text-center text-[11px] leading-relaxed text-slate-500">
+    <p>Alarms use the browser <span class="text-slate-400">Web Audio API</span> — no external sound files. Your zone and settings are saved locally in your browser.</p>
+    <p class="mt-1">Default preset: <span class="text-slate-400">Weekday split</span>. Switch to <span class="text-slate-400">DeepSeek official</span> in Setup for the real 16:30–00:30 UTC discount window.</p>
+  </footer>
+</div>
+
+<noscript>
+  <div class="mx-auto max-w-lg p-6 text-center text-rose-400">This dashboard needs JavaScript enabled.</div>
+</noscript>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     CONSTANTS
+     ============================================================ */
+  var DAY = 86400000, MIN = 60000, HALF = 1800000;
+
+  var PRESETS = {
+    split: {
+      label: "Weekday split — peak 01:00–04:00 & 06:00–10:00 UTC",
+      windows: [[60, 240], [360, 600]],
+      weekendsOffPeak: true
+    },
+    deepseek: {
+      label: "DeepSeek official — off-peak 16:30–00:30 UTC (daily)",
+      windows: [[30, 990]],
+      weekendsOffPeak: false
+    },
+    business: {
+      label: "Business hours — peak 08:00–18:00 UTC (weekdays)",
+      windows: [[480, 1080]],
+      weekendsOffPeak: true
+    },
+    custom: {
+      label: "Custom windows…",
+      windows: [[60, 240], [360, 600]],
+      weekendsOffPeak: true
+    }
+  };
+
+  var FALLBACK_ZONES = [
+    "UTC","Africa/Cairo","Africa/Johannesburg","Africa/Lagos","Africa/Nairobi",
+    "America/Anchorage","America/Argentina/Buenos_Aires","America/Bogota","America/Chicago",
+    "America/Denver","America/Edmonton","America/Halifax","America/Lima","America/Los_Angeles",
+    "America/Mexico_City","America/New_York","America/Phoenix","America/Santiago","America/Sao_Paulo",
+    "America/St_Johns","America/Toronto","America/Vancouver","America/Winnipeg",
+    "Asia/Bangkok","Asia/Dhaka","Asia/Dubai","Asia/Hong_Kong","Asia/Jakarta","Asia/Jerusalem",
+    "Asia/Karachi","Asia/Kathmandu","Asia/Kolkata","Asia/Kuala_Lumpur","Asia/Manila","Asia/Riyadh",
+    "Asia/Seoul","Asia/Shanghai","Asia/Singapore","Asia/Taipei","Asia/Tehran","Asia/Tokyo",
+    "Atlantic/Azores","Atlantic/Reykjavik",
+    "Australia/Adelaide","Australia/Brisbane","Australia/Darwin","Australia/Hobart",
+    "Australia/Melbourne","Australia/Perth","Australia/Sydney",
+    "Europe/Amsterdam","Europe/Athens","Europe/Berlin","Europe/Brussels","Europe/Bucharest",
+    "Europe/Dublin","Europe/Helsinki","Europe/Istanbul","Europe/Kyiv","Europe/Lisbon",
+    "Europe/London","Europe/Madrid","Europe/Moscow","Europe/Oslo","Europe/Paris","Europe/Prague",
+    "Europe/Rome","Europe/Stockholm","Europe/Vienna","Europe/Warsaw","Europe/Zurich",
+    "Pacific/Auckland","Pacific/Fiji","Pacific/Honolulu","Pacific/Midway"
+  ];
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  var LS_KEY = "peakAlarm.v1";
+
+  var state = {
+    tz: "",
+    preset: "split",
+    customWindows: [[60, 240], [360, 600]],
+    weekendsOffPeak: true,
+    sound: false,
+    persistent: true,
+    lead: 0,
+    hour12: false,
+    volume: 0.35,
+    windows: [],
+    lastPeak: null,
+    silenced: false,
+    bannerShown: false,
+    repeatTimer: null,
+    repeatCount: 0,
+    leadKey: null
+  };
+
+  var AC = null;
+
+  /* ============================================================
+     ELEMENT REFS
+     ============================================================ */
+  var $ = function (id) { return document.getElementById(id); };
+
+  var el = {
+    flash: $("flash"),
+    alarmBar: $("alarmBar"),
+    btnSilence: $("btnSilence"),
+    btnTest: $("btnTest"),
+    btnSound: $("btnSound"),
+    btnSettings: $("btnSettings"),
+    tzSearch: $("tzSearch"),
+    tzSelect: $("tzSelect"),
+    btnDetect: $("btnDetect"),
+    card: $("card"),
+    cardGlow: $("cardGlow"),
+    badge: $("badge"),
+    bigText: $("bigText"),
+    subText: $("subText"),
+    cdLabel: $("cdLabel"),
+    cdAt: $("cdAt"),
+    cdTimer: $("cdTimer"),
+    progress: $("progress"),
+    progLeft: $("progLeft"),
+    progRight: $("progRight"),
+    statLocal: $("statLocal"),
+    statLocalDate: $("statLocalDate"),
+    statUTC: $("statUTC"),
+    statNextPeak: $("statNextPeak"),
+    statNextPeakRel: $("statNextPeakRel"),
+    statNextOff: $("statNextOff"),
+    statNextOffRel: $("statNextOffRel"),
+    tlZone: $("tlZone"),
+    timeline: $("timeline"),
+    ticks: $("ticks"),
+    nowMarker: $("nowMarker"),
+    peakList: $("peakList"),
+    offList: $("offList"),
+    settings: $("settings"),
+    preset: $("preset"),
+    lead: $("lead"),
+    customWrap: $("customWrap"),
+    customWindows: $("customWindows"),
+    customMsg: $("customMsg"),
+    weekend: $("weekend"),
+    persistent: $("persistent"),
+    hour12: $("hour12"),
+    volume: $("volume"),
+    volLabel: $("volLabel"),
+    btnNotify: $("btnNotify"),
+    btnReset: $("btnReset")
+  };
+
+  /* ============================================================
+     UTILITIES
+     ============================================================ */
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function fmtTime(ms, tz, hour12) {
+    try {
+      return new Intl.DateTimeFormat(hour12 ? "en-US" : "en-GB", {
+        timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: !!hour12
+      }).format(new Date(ms));
+    } catch (e) { return "--:--"; }
+  }
+
+  function fmtClock(ms, tz, hour12) {
+    try {
+      return new Intl.DateTimeFormat(hour12 ? "en-US" : "en-GB", {
+        timeZone: tz, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: !!hour12
+      }).format(new Date(ms));
+    } catch (e) { return "--:--:--"; }
+  }
+
+  function fmtDate(ms, tz) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        timeZone: tz, weekday: "short", month: "short", day: "numeric"
+      }).format(new Date(ms));
+    } catch (e) { return ""; }
+  }
+
+  function fmtDayTime(ms, tz, hour12) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hour12: !!hour12
+      }).format(new Date(ms));
+    } catch (e) { return "--"; }
+  }
+
+  function countdownText(ms) {
+    if (!isFinite(ms) || ms < 0) ms = 0;
+    var total = Math.floor(ms / 1000);
+    var d = Math.floor(total / 86400);
+    var h = Math.floor((total % 86400) / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return (d > 0 ? d + "d " : "") + pad(h) + ":" + pad(m) + ":" + pad(s);
+  }
+
+  function relText(ms) {
+    if (ms == null || !isFinite(ms)) return "—";
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return "in " + d + "d " + h + "h";
+    if (h > 0) return "in " + h + "h " + m + "m";
+    if (m > 0) return "in " + m + "m";
+    return "in " + s + "s";
+  }
+
+  function durationText(ms) {
+    var s = Math.max(0, Math.round(ms / 60000));
+    var h = Math.floor(s / 60), m = s % 60;
+    if (h && m) return h + "h " + m + "m";
+    if (h) return h + "h";
+    return m + "m";
+  }
+
+  function tzOffsetMs(tz, ms) {
+    try {
+      var d = new Date(ms);
+      var parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, hour12: false,
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit"
+      }).formatToParts(d);
+      var p = {};
+      for (var i = 0; i < parts.length; i++) p[parts[i].type] = parts[i].value;
+      var hour = parseInt(p.hour, 10);
+      if (hour === 24) hour = 0;
+      var asUTC = Date.UTC(
+        parseInt(p.year, 10), parseInt(p.month, 10) - 1, parseInt(p.day, 10),
+        hour, parseInt(p.minute, 10), parseInt(p.second, 10)
+      );
+      return asUTC - Math.floor(d.getTime() / 1000) * 1000;
+    } catch (e) { return 0; }
+  }
+
+  function startOfLocalDay(tz, ms) {
+    var off = tzOffsetMs(tz, ms);
+    var local = new Date(ms + off);
+    var midnightUTC = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+    var guess = midnightUTC - off;
+    var off2 = tzOffsetMs(tz, guess);
+    return midnightUTC - off2;
+  }
+
+  /* ============================================================
+     SCHEDULE ENGINE
+     ============================================================ */
+  function isPeakAt(date) {
+    var wins = state.windows;
+    if (!wins || !wins.length) return false;
+
+    if (state.weekendsOffPeak) {
+      var dow = date.getUTCDay();
+      if (dow === 0 || dow === 6) return false;
+    }
+
+    var m = date.getUTCHours() * 60 + date.getUTCMinutes();
+    for (var i = 0; i < wins.length; i++) {
+      var s = wins[i][0], e = wins[i][1];
+      if (s === e) continue;
+      if (s < e) {
+        if (m >= s && m < e) return true;
+      } else {
+        if (m >= s || m < e) return true;
+      }
+    }
+    return false;
+  }
+
+  function getBoundaries(nowMs) {
+    var d = new Date(nowMs);
+    var dayStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    var set = new Set();
+    var wins = state.windows || [];
+
+    for (var i = -2; i <= 9; i++) {
+      var ds = dayStart + i * DAY;
+      set.add(ds);
+      for (var j = 0; j < wins.length; j++) {
+        var s = wins[j][0], e = wins[j][1];
+        if (s === e) continue;
+        set.add(ds + s * MIN);
+        set.add(ds + (e > s ? e : e + 1440) * MIN);
+      }
+    }
+    return Array.from(set).sort(function (a, b) { return a - b; });
+  }
+
+  function computeTransitions(nowMs) {
+    var arr = getBoundaries(nowMs);
+    var curPeak = isPeakAt(new Date(nowMs));
+    var prev = null, next = null, nextPeak = null, nextOff = null;
+
+    for (var i = 0; i < arr.length; i++) {
+      var t = arr[i];
+      if (t <= nowMs) { prev = t; continue; }
+      var p = isPeakAt(new Date(t));
+      if (next === null && p !== curPeak) next = t;
+      if (nextPeak === null && p) nextPeak = t;
+      if (nextOff === null && !p) nextOff = t;
+      if (next !== null && nextPeak !== null && nextOff !== null) break;
+    }
+    return { prev: prev, next: next, nextPeak: nextPeak, nextOff: nextOff, curPeak: curPeak };
+  }
+
+  /* ============================================================
+     AUDIO
+     ============================================================ */
+  function getAudio() {
+    if (!state.sound) return null;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!AC) AC = new Ctx();
+      if (AC.state === "suspended") AC.resume();
+      return AC;
+    } catch (e) { return null; }
+  }
+
+  function tone(ctx, freq, at, dur, type, vol) {
+    try {
+      var o = ctx.createOscillator();
+      var g = ctx.createGain();
+      var v = clamp((vol || 0.2) * state.volume * 3, 0.0002, 0.9);
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, at);
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(v, at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      o.connect(g).connect(ctx.destination);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    } catch (e) { /* ignore */ }
+  }
+
+  function playSiren() {
+    var ctx = getAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + 0.02;
+    for (var i = 0; i < 3; i++) {
+      var b = t0 + i * 0.42;
+      tone(ctx, 980, b, 0.15, "square", 0.16);
+      tone(ctx, 660, b + 0.19, 0.17, "square", 0.16);
+    }
+    tone(ctx, 1320, t0 + 1.32, 0.42, "sawtooth", 0.13);
+  }
+
+  function playChime() {
+    var ctx = getAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + 0.02;
+    tone(ctx, 523.25, t0, 0.22, "sine", 0.18);
+    tone(ctx, 659.25, t0 + 0.14, 0.24, "sine", 0.18);
+    tone(ctx, 783.99, t0 + 0.29, 0.42, "sine", 0.18);
+  }
+
+  function playLeadWarning() {
+    var ctx = getAudio();
+    if (!ctx) return;
+    var t0 = ctx.currentTime + 0.02;
+    tone(ctx, 880, t0, 0.12, "triangle", 0.18);
+    tone(ctx, 880, t0 + 0.2, 0.12, "triangle", 0.18);
+  }
+
+  function startAlarm() {
+    stopAlarm();
+    playSiren();
+    state.repeatCount = 1;
+    if (state.persistent) {
+      state.repeatTimer = setInterval(function () {
+        if (state.silenced || state.repeatCount >= 8) { stopAlarm(); return; }
+        state.repeatCount++;
+        playSiren();
+      }, 30000);
+    }
+  }
+
+  function stopAlarm() {
+    if (state.repeatTimer) { clearInterval(state.repeatTimer); state.repeatTimer = null; }
+  }
+
+  /* ============================================================
+     VISUAL FX
+     ============================================================ */
+  function flashScreen(peak) {
+    var f = el.flash;
+    f.style.background = peak
+      ? "radial-gradient(120% 85% at 50% 0%, rgba(244,63,94,.60), rgba(244,63,94,.10) 55%, transparent 75%)"
+      : "radial-gradient(120% 85% at 50% 0%, rgba(16,185,129,.50), rgba(16,185,129,.08) 55%, transparent 75%)";
+    f.classList.remove("flashing");
+    void f.offsetWidth;
+    f.classList.add("flashing");
+  }
+
+  function shakeCard() {
+    el.card.classList.remove("shake");
+    void el.card.offsetWidth;
+    el.card.classList.add("shake");
+    setTimeout(function () { el.card.classList.remove("shake"); }, 800);
+  }
+
+  function showBanner(show) {
+    if (show === state.bannerShown) return;
+    state.bannerShown = show;
+    if (show) {
+      el.alarmBar.classList.remove("hidden");
+      el.alarmBar.classList.add("flex");
+      requestAnimationFrame(function () {
+        el.alarmBar.classList.remove("-translate-y-full");
+      });
+    } else {
+      el.alarmBar.classList.add("-translate-y-full");
+      setTimeout(function () {
+        if (!state.bannerShown) {
+          el.alarmBar.classList.add("hidden");
+          el.alarmBar.classList.remove("flex");
+        }
+      }, 340);
+    }
+  }
+
+  function notify(isPeak) {
+    try {
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      new Notification(isPeak ? "🔴 PEAK window started" : "🟢 Off-peak window started", {
+        body: isPeak
+          ? "Surge pricing is now active. Consider delaying non-urgent jobs."
+          : "Prices dropped — off-peak discount is live.",
+        tag: "peak-alarm",
+        renotify: true
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ============================================================
+     TIME ZONE LIST
+     ============================================================ */
+  var ALL_ZONES = [];
+  var ZONE_LABELS = {};
+
+  function buildZoneList() {
+    var zones = [];
+    try {
+      if (typeof Intl.supportedValuesOf === "function") {
+        zones = Intl.supportedValuesOf("timeZone") || [];
+      }
+    } catch (e) { zones = []; }
+    if (!zones.length) zones = FALLBACK_ZONES.slice();
+    if (zones.indexOf("UTC") === -1) zones.unshift("UTC");
+    if (state.tz && zones.indexOf(state.tz) === -1) zones.unshift(state.tz);
+    ALL_ZONES = zones;
+
+    var now = Date.now();
+    for (var i = 0; i < zones.length; i++) {
+      ZONE_LABELS[zones[i]] = offsetLabel(zones[i], now);
+    }
+  }
+
+  function offsetLabel(tz, ms) {
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, timeZoneName: "shortOffset", hour: "2-digit"
+      }).formatToParts(new Date(ms));
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === "timeZoneName") {
+          return parts[i].value.replace("GMT", "UTC").replace("UTC+0", "UTC±0");
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return "";
+  }
+
+  function zoneDisplayName(z) {
+    var name = z.replace(/_/g, " ");
+    var off = ZONE_LABELS[z];
+    return off ? name + "  ·  " + off : name;
+  }
+
+  function renderZones(filter) {
+    var q = (filter || "").trim().toLowerCase();
+    var list = ALL_ZONES.filter(function (z) {
+      if (!q) return true;
+      return z.toLowerCase().indexOf(q) !== -1 || zoneDisplayName(z).toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (!list.length) list = [state.tz];
+
+    el.tzSelect.innerHTML = "";
+    var groups = new Map();
+    for (var i = 0; i < list.length; i++) {
+      var z = list[i];
+      var g = z.indexOf("/") !== -1 ? z.split("/")[0] : "Other";
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(z);
+    }
+
+    var keys = Array.from(groups.keys()).sort();
+    for (var k = 0; k < keys.length; k++) {
+      var og = document.createElement("optgroup");
+      og.label = keys[k];
+      var arr = groups.get(keys[k]);
+      for (var j = 0; j < arr.length; j++) {
+        var zz = arr[j];
+        var opt = document.createElement("option");
+        opt.value = zz;
+        opt.textContent = zoneDisplayName(zz);
+        if (zz === state.tz) opt.selected = true;
+        og.appendChild(opt);
+      }
+      el.tzSelect.appendChild(og);
+    }
+    el.tzSelect.value = state.tz;
+  }
+
+  /* ============================================================
+     RENDER: MAIN CARD
+     ============================================================ */
+  var BASE_CARD = "relative mb-5 overflow-hidden rounded-3xl border p-6 text-center transition-all duration-500 sm:p-10 breathe";
+
+  function renderCard(peak, weekend, T, nowMs) {
+    var red = peak;
+
+    el.card.className = BASE_CARD + " " + (red ? "glow-red border-rose-500/40 bg-rose-950/20" : "glow-green border-emerald-500/40 bg-emerald-950/20");
+    el.cardGlow.style.background = red
+      ? "radial-gradient(80% 110% at 50% 0%, rgba(244,63,94,.30), transparent 68%)"
+      : "radial-gradient(80% 110% at 50% 0%, rgba(16,185,129,.26), transparent 68%)";
+
+    var accent = red ? "#fb7185" : "#34d399";
+    var accentDim = red ? "rgba(244,63,94,.14)" : "rgba(16,185,129,.14)";
+    var accentBorder = red ? "rgba(244,63,94,.45)" : "rgba(16,185,129,.45)";
+
+    if (peak) {
+      el.badge.textContent = "● Surge window active";
+      el.badge.style.color = accent;
+      el.badge.style.background = accentDim;
+      el.badge.style.borderColor = accentBorder;
+      el.bigText.textContent = "PEAK";
+      el.bigText.style.color = accent;
+      el.bigText.style.textShadow = "0 0 60px rgba(244,63,94,.65)";
+      el.subText.textContent = "Surge pricing is in effect. Token costs are at the standard (higher) rate — delay non-urgent work if you can.";
+      el.cdLabel.textContent = "Off-peak returns in";
+    } else {
+      el.badge.textContent = weekend ? "● Weekend rule active" : "● Standard window";
+      el.badge.style.color = accent;
+      el.badge.style.background = accentDim;
+      el.badge.style.borderColor = accentBorder;
+      el.bigText.textContent = "NOT PEAK";
+      el.bigText.style.color = accent;
+      el.bigText.style.textShadow = "0 0 60px rgba(16,185,129,.55)";
+      el.subText.textContent = weekend
+        ? "Weekends are always off-peak. Enjoy the discount for the entire weekend."
+        : "Off-peak discount is live — pricing is at the reduced rate. Good time to run big jobs.";
+      el.cdLabel.textContent = "Next peak starts in";
+    }
+
+    /* countdown */
+    var nextT = T.next;
+    if (nextT != null) {
+      var remain = nextT - nowMs;
+      el.cdTimer.textContent = countdownText(remain);
+      el.cdAt.textContent = fmtDayTime(nextT, state.tz, state.hour12);
+      el.cdTimer.style.color = red ? "#fda4af" : "#6ee7b7";
+
+      var span = nextT - (T.prev != null ? T.prev : nextT - 3600000);
+      var pct = span > 0 ? clamp(((nowMs - (T.prev != null ? T.prev : nowMs)) / span) * 100, 0, 100) : 0;
+      el.progress.style.width = pct.toFixed(2) + "%";
+      el.progress.style.background = red
+        ? "linear-gradient(90deg,#fb7185,#e11d48)"
+        : "linear-gradient(90deg,#34d399,#059669)";
+      el.progLeft.textContent = T.prev != null ? fmtTime(T.prev, state.tz, state.hour12) : "—";
+      el.progRight.textContent = fmtTime(nextT, state.tz, state.hour12);
+    } else {
+      el.cdTimer.textContent = "--:--:--";
+      el.cdAt.textContent = "no transitions configured";
+      el.progress.style.width = "0%";
+      el.progLeft.textContent = "—";
+      el.progRight.textContent = "—";
+    }
+  }
+
+  /* ============================================================
+     RENDER: TIMELINE
+     ============================================================ */
+  function renderTimeline(nowMs) {
+    var tz = state.tz;
+    var start = startOfLocalDay(tz, nowMs);
+
+    el.tlZone.textContent = tz.replace(/_/g, " ");
+
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 48; i++) {
+      var t = start + i * HALF;
+      var pk = isPeakAt(new Date(t));
+      var d = document.createElement("div");
+      d.className = "h-full flex-1";
+      d.style.background = pk
+        ? "linear-gradient(180deg,#fb7185,#9f1239)"
+        : "linear-gradient(180deg,#34d399,#065f46)";
+      d.style.opacity = pk ? "0.92" : "0.72";
+      d.title = fmtTime(t, tz, state.hour12) + " — " + (pk ? "PEAK" : "OFF-PEAK");
+      frag.appendChild(d);
+    }
+    el.timeline.innerHTML = "";
+    el.timeline.appendChild(frag);
+
+    var pos = ((nowMs - start) / DAY) * 100;
+    if (pos >= 0 && pos <= 100) {
+      el.nowMarker.style.display = "block";
+      el.nowMarker.style.left = pos + "%";
+    } else {
+      el.nowMarker.style.display = "none";
+    }
+
+    var ticksHtml = "";
+    for (var k = 0; k <= 8; k++) {
+      ticksHtml += "<span>" + fmtTime(start + k * 3 * 3600000, tz, state.hour12) + "</span>";
+    }
+    el.ticks.innerHTML = ticksHtml;
+  }
+
+  /* ============================================================
+     RENDER: WINDOW LISTS
+     ============================================================ */
+  function runsFor(start, wantPeak) {
+    var runs = [];
+    var cur = null;
+    for (var i = 0; i < 48; i++) {
+      var t = start + i * HALF;
+      var pk = isPeakAt(new Date(t));
+      if (pk === wantPeak) {
+        if (!cur) cur = { start: t, end: t + HALF };
+        else cur.end = t + HALF;
+      } else if (cur) {
+        runs.push(cur);
+        cur = null;
+      }
+    }
+    if (cur) runs.push(cur);
+    return runs;
+  }
+
+  function renderList(node, runs, isPeak) {
+    if (!runs.length) {
+      node.innerHTML = '<li class="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-xs text-slate-500">No ' +
+        (isPeak ? "peak" : "off-peak") + " windows today.</li>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < runs.length; i++) {
+      var r = runs[i];
+      var color = isPeak ? "text-rose-300" : "text-emerald-300";
+      var dot = isPeak ? "bg-rose-500" : "bg-emerald-500";
+      html += '<li class="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">' +
+        '<span class="flex items-center gap-2 font-mono text-[13px] ' + color + '">' +
+        '<span class="h-2 w-2 shrink-0 rounded-full ' + dot + '"></span>' +
+        fmtTime(r.start, state.tz, state.hour12) + " – " + fmtTime(r.end, state.tz, state.hour12) +
+        "</span>" +
+        '<span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">' +
+        durationText(r.end - r.start) + "</span></li>";
+    }
+    node.innerHTML = html;
+  }
+
+  /* ============================================================
+     MAIN RENDER LOOP
+     ============================================================ */
+  function render() {
+    var nowMs = Date.now();
+    var nowDate = new Date(nowMs);
+    var peak = isPeakAt(nowDate);
+    var T = computeTransitions(nowMs);
+    var weekend = state.weekendsOffPeak && (nowDate.getUTCDay() === 0 || nowDate.getUTCDay() === 6);
+
+    /* ---- state change ---- */
+    if (state.lastPeak !== null && state.lastPeak !== peak) {
+      state.silenced = false;
+      state.leadKey = null;
+      if (state.sound) {
+        if (peak) { startAlarm(); } else { stopAlarm(); playChime(); }
+      }
+      flashScreen(peak);
+      if (peak) shakeCard();
+      notify(peak);
+    }
+    state.lastPeak = peak;
+
+    /* ---- lead-time warning ---- */
+    if (state.sound && state.lead > 0 && T.next != null) {
+      var key = T.next + "|" + state.lead;
+      if (state.leadKey !== key) {
+        var remainMs = T.next - nowMs;
+        var leadMs = state.lead * 60000;
+        if (remainMs <= leadMs && remainMs > leadMs - 65000) {
+          state.leadKey = key;
+          playLeadWarning();
+        }
+      }
+    }
+
+    /* ---- banner ---- */
+    showBanner(peak && !state.silenced);
+
+    /* ---- card ---- */
+    renderCard(peak, weekend, T, nowMs);
+
+    /* ---- stats ---- */
+    el.statLocal.textContent = fmtClock(nowMs, state.tz, state.hour12);
+    el.statLocalDate.textContent = fmtDate(nowMs, state.tz);
+    el.statUTC.textContent = fmtClock(nowMs, "UTC", state.hour12);
+
+    if (T.nextPeak != null) {
+      el.statNextPeak.textContent = fmtTime(T.nextPeak, state.tz, state.hour12);
+      el.statNextPeakRel.textContent = relText(T.nextPeak - nowMs);
+    } else {
+      el.statNextPeak.textContent = "—";
+      el.statNextPeakRel.textContent = "none scheduled";
+    }
+
+    if (T.nextOff != null) {
+      el.statNextOff.textContent = fmtTime(T.nextOff, state.tz, state.hour12);
+      el.statNextOffRel.textContent = relText(T.nextOff - nowMs);
+    } else {
+      el.statNextOff.textContent = "—";
+      el.statNextOffRel.textContent = "none scheduled";
+    }
+
+    /* ---- timeline + lists ---- */
+    renderTimeline(nowMs);
+    var dayStart = startOfLocalDay(state.tz, nowMs);
+    renderList(el.peakList, runsFor(dayStart, true), true);
+    renderList(el.offList, runsFor(dayStart, false), false);
+
+    /* ---- title ---- */
+    var title = (peak ? "🔴 PEAK" : "🟢 OFF-PEAK") + " · Peak Alarm";
+    if (document.title !== title) document.title = title;
+  }
+
+  /* ============================================================
+     CONFIG APPLY / PERSIST
+     ============================================================ */
+  function applyPreset() {
+    if (state.preset === "custom") {
+      state.windows = state.customWindows.map(function (w) { return w.slice(); });
+    } else {
+      var p = PRESETS[state.preset] || PRESETS.split;
+      state.windows = p.windows.map(function (w) { return w.slice(); });
+      state.weekendsOffPeak = p.weekendsOffPeak;
+    }
+    state.lastPeak = null;
+    state.leadKey = null;
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        tz: state.tz,
+        preset: state.preset,
+        customWindows: state.customWindows,
+        weekendsOffPeak: state.weekendsOffPeak,
+        sound: state.sound,
+        persistent: state.persistent,
+        lead: state.lead,
+        hour12: state.hour12,
+        volume: state.volume
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(LS_KEY);
+      if (!raw) return false;
+      var o = JSON.parse(raw);
+      if (o && typeof o === "object") {
+        if (typeof o.tz === "string" && o.tz) state.tz = o.tz;
+        if (typeof o.preset === "string" && PRESETS[o.preset]) state.preset = o.preset;
+        if (Array.isArray(o.customWindows) && o.customWindows.length) state.customWindows = o.customWindows;
+        if (typeof o.weekendsOffPeak === "boolean") state.weekendsOffPeak = o.weekendsOffPeak;
+        if (typeof o.sound === "boolean") state.sound = o.sound;
+        if (typeof o.persistent === "boolean") state.persistent = o.persistent;
+        if (typeof o.lead === "number") state.lead = o.lead;
+        if (typeof o.hour12 === "boolean") state.hour12 = o.hour12;
+        if (typeof o.volume === "number") state.volume = o.volume;
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function parseWindows(str) {
+    var out = [];
+    var parts = String(str).split(/[,;\n]+/);
+    var re = /^\s*(\d{1,2}):(\d{2})\s*(?:-|–|—|to)\s*(\d{1,2}):(\d{2})\s*$/i;
+    for (var i = 0; i < parts.length; i++) {
+      var chunk = parts[i].trim();
+      if (!chunk) continue;
+      var m = chunk.match(re);
+      if (!m) return null;
+      var sh = parseInt(m[1], 10), sm = parseInt(m[2], 10);
+      var eh = parseInt(m[3], 10), em = parseInt(m[4], 10);
+      if (sh > 23 || eh > 23 || sm > 59 || em > 59) return null;
+      var s = sh * 60 + sm, e = eh * 60 + em;
+      if (s === e) continue;
+      out.push([s, e]);
+    }
+    return out.length ? out : null;
+  }
+
+  function windowsToText(wins) {
+    return wins.map(function (w) {
+      return pad(Math.floor(w[0] / 60)) + ":" + pad(w[0] % 60) + "-" +
+             pad(Math.floor(w[1] / 60)) + ":" + pad(w[1] % 60);
+    }).join(", ");
+  }
+
+  /* ============================================================
+     UI SYNC
+     ============================================================ */
+  function syncSoundButton() {
+    el.btnSound.innerHTML =
+      '<i data-lucide="' + (state.sound ? "bell-ring" : "bell-off") + '" class="h-4 w-4"></i>' +
+      "<span>" + (state.sound ? "Alarm On" : "Alarm Off") + "</span>";
+    if (state.sound) {
+      el.btnSound.style.borderColor = "rgba(34,211,238,.5)";
+      el.btnSound.style.background = "rgba(34,211,238,.12)";
+      el.btnSound.style.color = "#67e8f9";
+    } else {
+      el.btnSound.style.borderColor = "";
+      el.btnSound.style.background = "";
+      el.btnSound.style.color = "";
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function syncSettings() {
+    el.preset.value = state.preset;
+    el.lead.value = String(state.lead);
+    el.customWindows.value = windowsToText(state.customWindows);
+    el.weekend.checked = !!state.weekendsOffPeak;
+    el.weekend.disabled = state.preset !== "custom";
+    el.weekend.parentElement.style.opacity = state.preset !== "custom" ? "0.55" : "1";
+    el.persistent.checked = !!state.persistent;
+    el.hour12.checked = !!state.hour12;
+    el.volume.value = String(Math.round(state.volume * 100));
+    el.volLabel.textContent = Math.round(state.volume * 100) + "%";
+    el.customWrap.classList.toggle("hidden", state.preset !== "custom");
+  }
+
+  /* ============================================================
+     EVENTS
+     ============================================================ */
+  function bindEvents() {
+    /* --- timezone --- */
+    el.tzSelect.addEventListener("change", function () {
+      state.tz = el.tzSelect.value;
+      state.lastPeak = null;
+      state.leadKey = null;
+      save();
+      render();
+    });
+
+    var searchTimer = null;
+    el.tzSearch.addEventListener("input", function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        renderZones(el.tzSearch.value);
+      }, 120);
+    });
+
+    el.btnDetect.addEventListener("click", function () {
+      try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+          if (ALL_ZONES.indexOf(tz) === -1) {
+            ALL_ZONES.unshift(tz);
+            ZONE_LABELS[tz] = offsetLabel(tz, Date.now());
+          }
+          state.tz = tz;
+          el.tzSearch.value = "";
+          renderZones("");
+          state.lastPeak = null;
+          save();
+          render();
+        }
+      } catch (e) { /* ignore */ }
+    });
+
+    /* --- sound --- */
+    el.btnSound.addEventListener("click", function () {
+      state.sound = !state.sound;
+      if (state.sound) {
+        getAudio();
+        if (state.lastPeak) startAlarm();
+      } else {
+        stopAlarm();
+      }
+      save();
+      syncSoundButton();
+    });
+
+    el.btnTest.addEventListener("click", function () {
+      var wasOff = !state.sound;
+      if (wasOff) { state.sound = true; getAudio(); }
+      playSiren();
+      setTimeout(playChime, 1500);
+      if (wasOff) {
+        setTimeout(function () {
+          state.sound = false;
+          syncSoundButton();
+          save();
+        }, 2400);
+      }
+    });
+
+    el.btnSilence.addEventListener("click", function () {
+      state.silenced = true;
+      stopAlarm();
+      showBanner(false);
+    });
+
+    /* --- settings panel --- */
+    el.btnSettings.addEventListener("click", function () {
+      el.settings.classList.toggle("hidden");
+    });
+
+    el.preset.addEventListener("change", function () {
+      state.preset = el.preset.value;
+      applyPreset();
+      syncSettings();
+      save();
+      render();
+    });
+
+    el.lead.addEventListener("change", function () {
+      state.lead = parseInt(el.lead.value, 10) || 0;
+      state.leadKey = null;
+      save();
+    });
+
+    el.customWindows.addEventListener("input", function () {
+      var parsed = parseWindows(el.customWindows.value);
+      if (!parsed) {
+        el.customMsg.textContent = "⚠ Invalid format. Use HH:MM-HH:MM ranges separated by commas.";
+        el.customMsg.style.color = "#fb7185";
+        return;
+      }
+      el.customMsg.textContent = "Valid — " + parsed.length + " peak window(s) saved.";
+      el.customMsg.style.color = "#34d399";
+      state.customWindows = parsed;
+      if (state.preset === "custom") {
+        applyPreset();
+        render();
+      }
+      save();
+    });
+
+    el.weekend.addEventListener("change", function () {
+      state.weekendsOffPeak = el.weekend.checked;
+      state.lastPeak = null;
+      state.leadKey = null;
+      save();
+      render();
+    });
+
+    el.persistent.addEventListener("change", function () {
+      state.persistent = el.persistent.checked;
+      if (!state.persistent) stopAlarm();
+      save();
+    });
+
+    el.hour12.addEventListener("change", function () {
+      state.hour12 = el.hour12.checked;
+      save();
+      render();
+    });
+
+    el.volume.addEventListener("input", function () {
+      state.volume = clamp(parseInt(el.volume.value, 10) / 100, 0, 1);
+      el.volLabel.textContent = Math.round(state.volume * 100) + "%";
+      save();
+    });
+
+    el.btnNotify.addEventListener("click", function () {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        el.btnNotify.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i> Notifications enabled';
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+      Notification.requestPermission().then(function (perm) {
+        el.btnNotify.innerHTML = perm === "granted"
+          ? '<i data-lucide="check" class="h-4 w-4"></i> Notifications enabled'
+          : '<i data-lucide="bell-off" class="h-4 w-4"></i> Notifications blocked';
+        if (window.lucide) lucide.createIcons();
+      }).catch(function () { /* ignore */ });
+    });
+
+    el.btnReset.addEventListener("click", function () {
+      try { localStorage.removeItem(LS_KEY); } catch (e) { /* ignore */ }
+      location.reload();
+    });
+
+    /* --- audio unlock on first gesture --- */
+    var unlock = function () { if (state.sound && !AC) getAudio(); };
+    window.addEventListener("click", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("touchstart", unlock, { passive: true });
+
+    /* --- re-render when tab becomes visible again --- */
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) { state.lastPeak = isPeakAt(new Date()); render(); }
+    });
+  }
+
+  /* ============================================================
+     BOOT
+     ============================================================ */
+  function boot() {
+    var loaded = load();
+
+    if (!state.tz) {
+      try { state.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
+      catch (e) { state.tz = "UTC"; }
+    }
+
+    buildZoneList();
+    applyPreset();
+    renderZones("");
+    syncSettings();
+    syncSoundButton();
+
+    /* preset dropdown options */
+    Object.keys(PRESETS).forEach(function (key) {
+      var o = document.createElement("option");
+      o.value = key;
+      o.textContent = PRESETS[key].label;
+      el.preset.appendChild(o);
+    });
+    el.preset.value = state.preset;
+    syncSettings();
+
+    if (window.lucide) lucide.createIcons();
+
+    bindEvents();
+
+    /* first paint */
+    state.lastPeak = isPeakAt(new Date());
+    render();
+    setInterval(render, 250);
+
+    /* persist auto-detected zone on first visit */
+    if (!loaded) save();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
