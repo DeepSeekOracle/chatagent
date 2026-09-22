@@ -97,6 +97,8 @@
     tab: "watch",
     bouquet: "",
     channels: [],
+    pool: [],
+    poolBusy: false,
     i: -1,
     filter: "",
     group: "",
@@ -136,7 +138,8 @@
     paintTerms();
     paintTabs();
     paintChips();
-    setStatus("Terms accepted for this session. Public lists unlocked.", "ok");
+    setStatus("Terms accepted for this session. Public lists unlocked. Loading all channels…", "ok");
+    fillPool();
   }
 
   function needTerms() {
@@ -377,11 +380,75 @@
   }
 
   function walkable() {
-    return st.channels.filter(function (c) {
+    const src = st.pool.length ? st.pool : st.channels;
+    return src.filter(function (c) {
       if (!c.https && !EMBED_KINDS[c.kind]) return false;
       if (ratingOf(c) === "adult" && !adultAllowed()) return false;
       return true;
     });
+  }
+
+  function mergePool(chs) {
+    if (!chs || !chs.length) return;
+    const seen = {};
+    let i;
+    for (i = 0; i < st.pool.length; i++) {
+      if (st.pool[i].url) seen[st.pool[i].url] = 1;
+    }
+    const POOL_MAX = 12000;
+    for (i = 0; i < chs.length; i++) {
+      const c = chs[i];
+      if (!c || !c.url || seen[c.url]) continue;
+      if (!c.https && !EMBED_KINDS[c.kind]) continue;
+      seen[c.url] = 1;
+      st.pool.push(c);
+      if (st.pool.length >= POOL_MAX) break;
+    }
+    paintZap();
+  }
+
+  function fillPool() {
+    if (st.poolBusy || !st.catalog) return;
+    mergePool(st.channels);
+    if (!termsOk()) return;
+    const bouquets = st.catalog.bouquets || [];
+    if (!bouquets.length) return;
+    st.poolBusy = true;
+    const q = bouquets.slice();
+    const savedSkip = st.httpSkipped;
+    function one() {
+      const b = q.shift();
+      if (!b) {
+        st.httpSkipped = savedSkip;
+        st.poolBusy = false;
+        paintZap();
+        return;
+      }
+      if (!b.url || (G && !G.allowFetch(b.url))) {
+        one();
+        return;
+      }
+      const ctrl = new AbortController();
+      const t = window.setTimeout(function () { ctrl.abort(); }, 14000);
+      fetch(b.url, { signal: ctrl.signal, credentials: "omit", cache: "no-store", redirect: "follow" })
+        .then(function (res) {
+          if (!res.ok) return null;
+          return res.arrayBuffer();
+        })
+        .then(function (buf) {
+          if (!buf || buf.byteLength > MAX_BYTES) return;
+          const text = new TextDecoder("utf-8").decode(buf);
+          mergePool(parseM3U(text, b.url, b.id));
+        })
+        .catch(function () {})
+        .then(function () {
+          window.clearTimeout(t);
+          one();
+        });
+    }
+    one();
+    one();
+    one();
   }
 
   function groupsInList() {
@@ -804,6 +871,8 @@
       if (found >= 0) start = found;
     }
     if (st.channels.length) playAt(start, false);
+    mergePool(st.channels);
+    fillPool();
     fetch("/data/rumble-live.json?t=" + Date.now(), { cache: "no-store", credentials: "omit" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
@@ -857,8 +926,10 @@
         setSpin(false);
         return;
       }
+      mergePool(st.channels);
       const skip = st.httpSkipped ? (" " + st.httpSkipped + " HTTP skipped.") : "";
       setStatus(b.title + " — " + vis.length + " HTTPS channels." + skip + " Click a channel.");
+      fillPool();
       setIdle(true);
       setSpin(false);
       if (autoplay) playAt(0, false);
@@ -917,7 +988,8 @@
       meta.textContent = "No channels in this list";
       return;
     }
-    meta.textContent = (idx >= 0 ? (idx + 1) : "—") + " / " + n + " · " + title;
+    meta.textContent = (idx >= 0 ? (idx + 1) : "—") + " / " + n + " · " + title
+      + (st.poolBusy ? " (loading more…)" : "");
   }
   $("prev").addEventListener("click", function () { next(-1, false); });
   $("next").addEventListener("click", function () { next(1, false); });
