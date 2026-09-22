@@ -1,82 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" data-cookie-key="chatagent_cookies">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-
-<!-- ═══════════════════════════════════════════════════════════
-     SEO & CORE META
-     ═══════════════════════════════════════════════════════════ -->
-<title>Peak Alarm — Live DeepSeek Peak / Off-Peak Status &amp; Surge Pricing Tracker</title>
-<meta name="description" content="Live DeepSeek peak &amp; off-peak pricing status with countdown, audio alarm, red/green indicators, and every world time zone. Know instantly when surge pricing starts or stops.">
-<meta name="keywords" content="DeepSeek peak pricing, DeepSeek off-peak, surge pricing tracker, DeepSeek API cost, peak hours UTC, off-peak discount, AI API pricing, DeepSeek alarm">
-<meta name="author" content="Chatagent.ca">
-<meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="theme-color" content="#080c17">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeek Peak Alarm — live peak / off-peak API windows | chatagent.ca</title>
+<meta name="description" content="Live DeepSeek API peak and off-peak windows with countdown, alarm, and every time zone. Free LYGO tool by Justin Helmer (Excavationpro / Lightfather). Use with the LYGO API Portal.">
+<meta name="keywords" content="DeepSeek peak pricing, DeepSeek off-peak, surge pricing tracker, DeepSeek API cost, peak hours UTC, off-peak discount, LYGO, chatagent.ca, Excavationpro">
+<meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="theme-color" content="#120e0a">
 <link rel="canonical" href="https://chatagent.ca/deepseekpeak.html">
-
-<!-- ═══════════════════════════════════════════════════════════
-     OPEN GRAPH (Facebook, LinkedIn, Discord, WhatsApp, iMessage…)
-     ═══════════════════════════════════════════════════════════ -->
-<meta property="og:type"        content="website">
-<meta property="og:site_name"   content="LYGO TV · Chatagent.ca">
-<meta property="og:url"         content="https://chatagent.ca/deepseekpeak.html">
-<meta property="og:title"       content="Peak Alarm — Live DeepSeek Peak / Off-Peak Status Tracker">
-<meta property="og:description" content="Real-time PEAK / NOT PEAK status for DeepSeek API pricing. Live countdown, audio alarm, visual indicators, and every world time zone. Never miss the surge.">
-<meta property="og:image"       content="https://chatagent.ca/deepseekpeak-og.png">
-<meta property="og:image:width"  content="1200">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/site-kit.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&amp;family=IBM+Plex+Mono:wght@400&amp;family=Syne:wght@500;700;800&amp;display=swap" rel="stylesheet">
+<link rel="image_src" href="https://chatagent.ca/deepseekpeak-og.jpg">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="chatagent.ca">
+<meta property="og:locale" content="en_CA">
+<meta property="og:url" content="https://chatagent.ca/deepseekpeak.html">
+<meta property="og:title" content="DeepSeek Peak Alarm — live peak / off-peak API windows">
+<meta property="og:description" content="Know when DeepSeek surge pricing is live. Countdown, alarm, every time zone. Free LYGO tool. Steward: Justin Helmer / Excavationpro.">
+<meta property="og:image" content="https://chatagent.ca/deepseekpeak-og.jpg">
+<meta property="og:image:secure_url" content="https://chatagent.ca/deepseekpeak-og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt"   content="PEAK ALARM — red and green status dashboard for DeepSeek pricing windows">
-<meta property="og:locale"      content="en_CA">
-
-<!-- ═══════════════════════════════════════════════════════════
-     X / TWITTER CARD  (summary_large_image for full-width preview)
-     ═══════════════════════════════════════════════════════════ -->
-<meta name="twitter:card"        content="summary_large_image">
-<meta name="twitter:site"        content="@LYGOTV">
-<meta name="twitter:creator"     content="@LYGOTV">
-<meta name="twitter:url"         content="https://chatagent.ca/deepseekpeak.html">
-<meta name="twitter:title"       content="Peak Alarm — Live DeepSeek Peak / Off-Peak Tracker">
-<meta name="twitter:description" content="Real-time PEAK / NOT PEAK status for DeepSeek API pricing. Live countdown, audio alarm, red/green visuals, every time zone. #LYGOTV">
-<meta name="twitter:image"       content="https://chatagent.ca/deepseekpeak-og.png">
-<meta name="twitter:image:alt"   content="PEAK ALARM dashboard — red PEAK indicator with countdown timer">
-
-<!-- ═══════════════════════════════════════════════════════════
-     JSON-LD STRUCTURED DATA (rich results)
-     ═══════════════════════════════════════════════════════════ -->
+<meta property="og:image:alt" content="DeepSeek Peak Alarm — LYGO gold Δ9 seal, chatagent.ca/deepseekpeak.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:creator" content="@Excavationpro">
+<meta name="twitter:url" content="https://chatagent.ca/deepseekpeak.html">
+<meta name="twitter:title" content="DeepSeek Peak Alarm — live API windows">
+<meta name="twitter:description" content="PEAK / NOT PEAK for DeepSeek API pricing. Countdown + alarm. Free on chatagent.ca.">
+<meta name="twitter:image" content="https://chatagent.ca/deepseekpeak-og.jpg">
+<meta name="twitter:image:src" content="https://chatagent.ca/deepseekpeak-og.jpg">
+<meta name="twitter:image:alt" content="DeepSeek Peak Alarm — LYGO branded peak tracker">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "Peak Alarm — DeepSeek Peak / Off-Peak Tracker",
+  "name": "DeepSeek Peak Alarm",
   "url": "https://chatagent.ca/deepseekpeak.html",
-  "description": "Live DeepSeek peak and off-peak pricing status with countdown, audio alarm, red/green visual indicators, and every world time zone.",
+  "description": "Live DeepSeek peak and off-peak API pricing windows with countdown, audio alarm, and world time zones.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "Any",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "CAD"
-  },
+  "isAccessibleForFree": true,
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "CAD"},
+  "image": "https://chatagent.ca/deepseekpeak-og.jpg",
   "author": {
-    "@type": "Organization",
-    "name": "Chatagent.ca",
-    "url": "https://chatagent.ca"
+    "@type": "Person",
+    "name": "Justin Helmer",
+    "alternateName": ["Excavationpro", "Lightfather"],
+    "url": "https://chatagent.ca/about.html"
   },
   "publisher": {
     "@type": "Organization",
-    "name": "LYGO TV",
-    "url": "https://chatagent.ca/sources/"
+    "name": "chatagent.ca",
+    "url": "https://chatagent.ca/",
+    "sameAs": [
+      "https://x.com/Excavationpro",
+      "https://github.com/DeepSeekOracle",
+      "https://huggingface.co/DeepSeekOracle"
+    ]
   },
-  "keywords": "DeepSeek peak pricing, off-peak discount, surge pricing tracker, API cost alarm, peak hours UTC"
+  "isPartOf": {"@type": "WebSite", "name": "chatagent.ca", "url": "https://chatagent.ca/"},
+  "keywords": "DeepSeek peak pricing, off-peak discount, LYGO, API cost alarm"
 }
 </script>
-
-<!-- ═══════════════════════════════════════════════════════════
-     FAVICON (inline SVG — no external request)
-     ═══════════════════════════════════════════════════════════ -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128680;</text></svg>">
-
 <!-- ═══════════════════════════════════════════════════════════
      STYLES (all inline — zero external dependencies)
      ═══════════════════════════════════════════════════════════ -->
@@ -344,10 +340,43 @@
   @keyframes fadeout{0%{opacity:1}100%{opacity:0}}
 
   /* screen-reader only */
+
+  .lygo-top { position:relative; z-index:40; display:flex; justify-content:space-between; align-items:center; padding:0.85rem 4vw; font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; border-bottom:1px solid rgba(224,179,106,.28); background:rgba(12,10,8,.92); }
+  .lygo-top a.brand { color:#f3ece3; text-decoration:none; font-weight:800; font-family:Syne,system-ui,sans-serif; }
+  .lygo-top nav { display:flex; flex-wrap:wrap; gap:.35rem .75rem; }
+  .lygo-top nav a { color:#e0b36a; text-decoration:none; opacity:.9; }
+  .lygo-top nav a:hover { opacity:1; }
+  .lygo-top .nav-donate { color:#1a140c !important; background:#e0b36a; padding:.2rem .6rem; border-radius:999px; }
+  .peak-kicker { font-family:"IBM Plex Mono",ui-monospace,monospace; letter-spacing:.2em; font-size:10px; color:#e0b36a; text-transform:uppercase; margin:0 0 8px; }
+  .logo img { width:46px; height:46px; border-radius:12px; border:1px solid rgba(224,179,106,.35); display:block; }
+  .lattice-links { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin:18px 0 8px; }
+  .lattice-links a { display:block; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(18,14,10,.45); color:#e0b36a; text-decoration:none; font-size:12px; font-weight:700; }
+  .lattice-links a:hover { border-color:rgba(224,179,106,.45); }
+  .legal-note { font-size:11px; color:var(--dim); max-width:640px; margin:12px auto 0; }
+  @media (max-width: 820px) { .lygo-top nav { display:none; } }
+
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 </style>
 </head>
 <body>
+
+
+<div id="lygoLoad" class="lygo-load">Loading</div>
+<header class="lygo-top">
+  <a class="brand" href="/">chatagent.ca</a>
+  <nav aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/portal/">API Portal</a>
+    <a href="/lygo-llm-console.html">LLM Console</a>
+    <a href="/lygoskillhub.html">SkillHub</a>
+    <a href="/join/">Join</a>
+    <a href="/lattice/">Lattice</a>
+    <a href="/sources/">TV</a>
+    <a href="https://asiancoastline.com/listen.html" rel="noopener">Listen</a>
+    <a href="/about.html">About</a>
+    <a class="nav-donate" href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">Donate</a>
+  </nav>
+</header>
 
 <div id="flash"></div>
 
@@ -365,10 +394,11 @@
   <!-- ═══════════ HEADER ═══════════ -->
   <header>
     <div class="brand">
-      <div class="logo">🚨</div>
+      <div class="logo"><img src="/portal/logo.jpg" width="46" height="46" alt="LYGO"></div>
       <div>
-        <h1>Peak Alarm</h1>
-        <p>Live peak status · every time zone</p>
+        <p class="peak-kicker">Δ9Φ963 · LYGO · RESOURCE</p>
+        <h1>DeepSeek Peak Alarm</h1>
+        <p>Live API windows · chatagent.ca</p>
       </div>
     </div>
     <div class="actions">
@@ -456,18 +486,34 @@
   </section>
 
   <!-- ═══════════ FOOTER — LINKS & CREDITS ═══════════ -->
+  <section class="lattice-links" aria-label="LYGO links">
+    <a href="/portal/">LYGO API Portal</a>
+    <a href="/lygo-llm-console.html">Local LLM Console</a>
+    <a href="/lygoskillhub.html">SkillHub FULL</a>
+    <a href="/join/">Join / verify</a>
+    <a href="/lattice/">Lattice kernel</a>
+    <a href="/continuity-seed/">Continuity Seed</a>
+    <a href="/sources/">LYGO TV</a>
+    <a href="https://asiancoastline.com/listen.html">Listen free</a>
+    <a href="https://github.com/DeepSeekOracle">GitHub org</a>
+    <a href="https://www.paypal.com/paypalme/ExcavationPro">Donate</a>
+  </section>
   <footer>
     <div class="footer-links">
-      <a href="https://chatagent.ca" target="_blank" rel="noopener">🌐 Chatagent.ca</a>
-      <a href="https://bpmfinder.ca" target="_blank" rel="noopener">🎵 BPMfinder.ca</a>
-      <a href="https://chatagent.ca/sources/" target="_blank" rel="noopener">📺 LYGO TV</a>
-      <a href="https://chatagent.ca/sources/" target="_blank" rel="noopener">📚 Sources</a>
+      <a href="/">chatagent.ca</a>
+      <a href="/about.html">Justin Helmer / Lightfather</a>
+      <a href="https://excavationpro.ca/">excavationpro.ca</a>
+      <a href="https://eternalhaven.ca/">eternalhaven.ca</a>
+      <a href="https://bpmfinder.ca/">bpmfinder.ca</a>
+      <a href="https://www.patreon.com/Excavationpro">Patreon</a>
     </div>
     <p>
-      <b>Schedule:</b> weekday peak 01:00–04:00 &amp; 06:00–10:00 UTC · weekends off-peak<br>
-      <b>Alarm:</b> Web Audio API (no downloads) · <b>Privacy:</b> settings saved only in your browser
+      <b>Schedule:</b> weekday peak 01:00–04:00 &amp; 06:00–10:00 UTC · weekends off-peak.<br>
+      Unofficial tracker of DeepSeek public windows. RESOURCE, not CANON. Dual ledgers / Haven Star Chart stay CANON.<br>
+      Alarm uses the Web Audio API. Time zone saved only in this browser.
     </p>
-    <span class="footer-tag">#LYGOTV</span>
+    <p class="legal-note">© <span class="y"></span> Justin Helmer (Excavationpro / Lightfather). Free educational tool on chatagent.ca. DeepSeek is a third-party API; windows can change.</p>
+    <span class="footer-tag">Δ9Φ963</span>
   </footer>
 
 </div>
@@ -1008,7 +1054,7 @@
 
     showBanner(cur && !silenced, cur);
 
-    var wantTitle = (cur ? "🔴 PEAK" : "🟢 OFF-PEAK") + " · Peak Alarm";
+    var wantTitle = (cur ? "🔴 PEAK" : "🟢 OFF-PEAK") + " · DeepSeek Peak · LYGO";
     if (document.title !== wantTitle) document.title = wantTitle;
   }
 
@@ -1146,5 +1192,15 @@
   }
 })();
 </script>
+
+<div class="cookie-banner" id="cookieBanner">
+  <span>Cookies for ads/analytics if you accept. <a href="/privacy.html">Privacy</a></span>
+  <span><button type="button" class="ok" id="cookieOk">Accept</button> <button type="button" class="no" id="cookieNo">Decline</button></span>
+</div>
+<div class="sticky-cta" aria-label="Mobile actions">
+  <a class="pri" href="/portal/">API Portal</a>
+  <a class="sec" href="https://www.paypal.com/paypalme/ExcavationPro">Donate</a>
+</div>
+<script src="/assets/site-kit.js" defer></script>
 </body>
 </html>
