@@ -376,6 +376,14 @@
     return list;
   }
 
+  function walkable() {
+    return st.channels.filter(function (c) {
+      if (!c.https && !EMBED_KINDS[c.kind]) return false;
+      if (ratingOf(c) === "adult" && !adultAllowed()) return false;
+      return true;
+    });
+  }
+
   function groupsInList() {
     const seen = {};
     const out = [];
@@ -497,9 +505,9 @@
     });
   }
 
-  function playAt(i, fromSkip) {
+  function playAt(i, fromSkip, list) {
     if (!fromSkip) st.skip = 0;
-    const list = visible();
+    list = list || visible();
     if (!list.length) {
       setStatus("No playable channels in this list. Try another list.");
       setIdle(true);
@@ -555,13 +563,13 @@
   }
 
   function next(dir, fromSkip) {
-    const list = visible();
+    const list = walkable();
     if (!list.length) return;
     const cur = st.channels[st.i];
     let idx = list.indexOf(cur);
     if (idx < 0) idx = 0;
     else idx = idx + dir;
-    playAt(idx, fromSkip);
+    playAt(idx, fromSkip, list);
   }
 
   function retry() {
@@ -900,7 +908,7 @@
   function paintZap() {
     const meta = $("zap-meta");
     if (!meta) return;
-    const list = visible();
+    const list = walkable();
     const cur = st.channels[st.i];
     const idx = list.indexOf(cur);
     const n = list.length;
