@@ -58,6 +58,7 @@ a:hover { color: #bae6fd; }
 }
 .top nav a { color: var(--muted); text-decoration: none; }
 .top nav a[aria-current="page"], .top nav a:hover { color: var(--ink); }
+.zap { display: none; }
 .stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 352px;
@@ -77,6 +78,43 @@ a:hover { color: #bae6fd; }
     aspect-ratio: 16 / 9;
     max-height: min(38vh, 42dvh);
     min-height: 9.5rem;
+  }
+  .zap {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 1fr) minmax(0, 1.6fr) minmax(5.5rem, 1fr);
+    gap: .4rem;
+    align-items: center;
+    padding: .4rem .65rem .35rem;
+    background: #0b1220;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+  }
+  .zap-btn {
+    min-height: 3rem;
+    font-size: 1rem;
+    font-weight: 800;
+    border: 1px solid var(--gold);
+    background: var(--gold);
+    color: #1a140c;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: var(--font);
+  }
+  .zap-btn:active { filter: brightness(.92); }
+  .zap-meta {
+    margin: 0;
+    text-align: center;
+    font-size: .78rem;
+    line-height: 1.25;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hud .row #prev, .hud .row #next { display: none; }
+  #q {
+    min-height: 2.75rem;
+    font-size: 1rem;
   }
   .hud { padding: .3rem .7rem .4rem; }
   .now { font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -522,6 +522,7 @@
     }
     st.i = st.channels.indexOf(ch);
     $("now").textContent = ch.title;
+    paintZap();
     paintList();
     paintFavBtn();
     paintChips();
@@ -670,6 +671,7 @@
     const extra = st.httpSkipped ? (" · " + st.httpSkipped + " HTTP skipped") : "";
     const shelf = st.audience === "kids" ? "Kids shelf" : (st.audience === "adult" ? "Adult shelf" : "All ages");
     $("count").textContent = list.length + " on " + shelf + " · " + nAll + " all ages · " + nKids + " Kids · " + nAdult + " Adult held" + extra;
+    paintZap();
     list.forEach(function (ch, n) {
       const li = document.createElement("li");
       const rowClass = [];
@@ -895,8 +897,24 @@
     });
   }
 
+  function paintZap() {
+    const meta = $("zap-meta");
+    if (!meta) return;
+    const list = visible();
+    const cur = st.channels[st.i];
+    const idx = list.indexOf(cur);
+    const n = list.length;
+    const title = cur && cur.title ? cur.title : "—";
+    if (!n) {
+      meta.textContent = "No channels in this list";
+      return;
+    }
+    meta.textContent = (idx >= 0 ? (idx + 1) : "—") + " / " + n + " · " + title;
+  }
   $("prev").addEventListener("click", function () { next(-1, false); });
   $("next").addEventListener("click", function () { next(1, false); });
+  if ($("zap-prev")) $("zap-prev").addEventListener("click", function () { next(-1, false); });
+  if ($("zap-next")) $("zap-next").addEventListener("click", function () { next(1, false); });
   $("fs").addEventListener("click", function () { toggleFs(); });
   $("stop").addEventListener("click", function () {
     stopMedia();
