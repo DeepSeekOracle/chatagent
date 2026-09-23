@@ -99,22 +99,27 @@
       ty: 0
     };
   }
-  function fresh() {
-    const now = Date.now();
+  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan" };
+  let playing = false;
+  let hasSave = false;
+  let menuMode = "standard";
+  let menuPicks = ["glimmer", "dart", "puff"];
+  let heldOpts = null;
+  function fresh(picks, mode, ownerName) {
+    const ids = (picks && picks.length ? picks : ["glimmer", "dart", "puff"]).slice(0, 3);
     state = {
       points: 0,
-      fish: [
-        makeFish("glimmer", "Sunny"),
-        makeFish("dart", "Stripe"),
-        makeFish("puff", "Coral")
-      ],
+      mode: mode || "standard",
+      fish: ids.map(function (id) { return makeFish(id, STARTER_NAMES[id] || specOf(id).name); }),
       cemetery: [],
-      log: ["Three fish settle into the glass."],
-      lastTick: now,
-      owner: "Keeper"
+      log: ["Three fish settle into the glass. Mode: " + (mode || "standard") + "."],
+      lastTick: Date.now(),
+      owner: String(ownerName || "Keeper").slice(0, 18)
     };
     ensureState();
+    if (heldOpts) state.opts = Object.assign(state.opts, heldOpts);
     save();
+    hasSave = true;
   }
   function ensureState() {
     state.crew = state.crew || [];
@@ -138,10 +143,13 @@
         state.points = state.points || 0;
         state.owner = state.owner || "Keeper";
         ensureState();
-        return;
+        if (!state.mode) state.mode = "standard";
+        hasSave = true;
+        return true;
       }
     } catch (_) {}
-    fresh();
+    hasSave = false;
+    return false;
   }
   function makeCrew(role) {
     const spec = crewOf(role);
@@ -437,7 +445,8 @@
     const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
     const day = phase() === "night" ? 0.35 : 1;
-    state.algae = clamp(state.algae + span * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
+    const pace = state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1;
+    state.algae = clamp(state.algae + span * pace * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
     state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 - state.algae * 0.03), 0, 100);
   }
   function draw() {
@@ -547,6 +556,7 @@
   }
 
   function loop(t) {
+    if (!playing || !state) { requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     const now = Date.now();
@@ -681,9 +691,86 @@
     o.clock = document.getElementById("optClock").value || "real";
     o.temp = Number(document.getElementById("optTemp").value) || 25;
     document.getElementById("optTempVal").textContent = o.temp + "°";
-    save();
+    heldOpts = Object.assign({}, o);
+    if (hasSave) save();
+    if (playing) renderRail();
+  }
+  function showMenu() {
+    playing = false;
+    const cont = document.getElementById("menuContinue");
+    if (cont) cont.disabled = !hasSave;
+    document.getElementById("menu").classList.remove("hidden");
+    document.getElementById("app").classList.add("hidden");
+    paintCast();
+  }
+  function enterTank() {
+    playing = true;
+    last = performance.now();
+    document.getElementById("menu").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    const ownerEl = document.getElementById("owner");
+    if (ownerEl) ownerEl.value = state.owner || "Keeper";
+    resize();
     renderRail();
   }
+  function paintCast() {
+    const box = document.getElementById("menuCast");
+    if (!box) return;
+    box.innerHTML = SPECIES.map(function (s) {
+      const on = menuPicks.indexOf(s.id) >= 0;
+      return "<button type='button' data-pick='" + s.id + "' class='" + (on ? "on" : "") + "'>" + esc(s.name) + "</button>";
+    }).join("");
+  }
+  function showPanel(which) {
+    ["panelHome", "panelNew", "panelHow"].forEach(function (id) {
+      document.getElementById(id).classList.toggle("hidden", id !== which);
+    });
+  }
+  document.getElementById("menuContinue").onclick = function () {
+    if (!hasSave || !state) return;
+    enterTank();
+  };
+  document.getElementById("menuNew").onclick = function () { showPanel("panelNew"); paintCast(); };
+  document.getElementById("menuHow").onclick = function () { showPanel("panelHow"); };
+  document.getElementById("menuBack").onclick = function () { showPanel("panelHome"); };
+  document.getElementById("howBack").onclick = function () { showPanel("panelHome"); };
+  document.getElementById("menuOpt").onclick = function () {
+    if (!state) {
+      state = { fish: [], crew: [], cemetery: [], log: [], points: 0, owner: "Keeper", opts: heldOpts || {} };
+      ensureState();
+    }
+    syncOpt();
+    document.getElementById("optLayer").classList.remove("hidden");
+  };
+  document.getElementById("menuCast").onclick = function (e) {
+    const b = e.target.closest("[data-pick]");
+    if (!b) return;
+    const id = b.getAttribute("data-pick");
+    const ix = menuPicks.indexOf(id);
+    if (ix >= 0) menuPicks.splice(ix, 1);
+    else if (menuPicks.length < 3) menuPicks.push(id);
+    paintCast();
+    document.getElementById("menuNote").textContent = menuPicks.length === 3 ? "Three chosen." : ("Choose " + (3 - menuPicks.length) + " more.");
+  };
+  document.querySelectorAll("[data-mode]").forEach(function (btn) {
+    btn.onclick = function () {
+      menuMode = btn.getAttribute("data-mode");
+      document.querySelectorAll("[data-mode]").forEach(function (el) { el.classList.toggle("on", el === btn); });
+    };
+  });
+  document.getElementById("menuOpen").onclick = function () {
+    if (menuPicks.length !== 3) {
+      document.getElementById("menuNote").textContent = "Pick exactly three fish.";
+      return;
+    }
+    const ownerName = document.getElementById("menuOwner").value;
+    fresh(menuPicks.slice(), menuMode, ownerName);
+    enterTank();
+  };
+  document.getElementById("btnMenu").onclick = function () {
+    if (state) save();
+    showMenu();
+  };
   document.getElementById("btnOpt").onclick = function () {
     syncOpt();
     document.getElementById("optLayer").classList.remove("hidden");
@@ -706,9 +793,7 @@
   };
 
   load();
-  const owner = document.getElementById("owner");
-  if (owner) owner.value = state.owner || "Keeper";
+  showMenu();
   window.addEventListener("resize", resize);
-  resize();
   requestAnimationFrame(loop);
 })();

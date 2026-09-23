@@ -3,29 +3,126 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fish Tank — chatagent.ca</title>
-<meta name="description" content="An autonomous aquarium. Ten species, six ages each, real day and night. Name them, feed them, and see who lasts. Local save. Cemetery hall.">
+<title>Fish Tank — real-time aquarium | chatagent.ca</title>
+<meta name="description" content="Free real-time aquarium. Ten species grow through six ages. Adult in a day, a week unless you use pellets. Snails, algae eaters, and a turtle keep the water. Local save. Cemetery hall. No account.">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="theme-color" content="#071018">
 <link rel="canonical" href="https://chatagent.ca/games/fish-tank/">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<meta property="og:title" content="Fish Tank">
-<meta property="og:description" content="Watch a real-time aquarium. Fish grow up in a day and, unless you use pellets, rest within a week.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="chatagent.ca">
+<meta property="og:locale" content="en_CA">
+<meta property="og:url" content="https://chatagent.ca/games/fish-tank/">
+<meta property="og:title" content="Fish Tank — real-time aquarium">
+<meta property="og:description" content="Name your fish, keep the water, and see who lasts. Ten species, six ages, day and night on the real clock. Cemetery hall ranks the longest lives.">
 <meta property="og:image" content="https://chatagent.ca/games/fish-tank/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Golden-hour aquarium with a goldfish, a blue stripe fish, plants, and a stone arch">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fish Tank — real-time aquarium">
+<meta name="twitter:description" content="Ten species, six ages, real day and night. Local save. Cemetery hall. No account.">
 <meta name="twitter:image" content="https://chatagent.ca/games/fish-tank/assets/og.jpg">
+<meta name="twitter:image:alt" content="Golden-hour aquarium with a goldfish, a blue stripe fish, plants, and a stone arch">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "Fish Tank",
+  "url": "https://chatagent.ca/games/fish-tank/",
+  "image": "https://chatagent.ca/games/fish-tank/assets/og.jpg",
+  "description": "Free real-time aquarium. Ten species grow through six ages. Cleaners keep algae and water quality in check. Local save. Cemetery hall ranks hours lived.",
+  "genre": ["Simulation", "Casual"],
+  "playMode": "SinglePlayer",
+  "applicationCategory": "Game",
+  "operatingSystem": "Web",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD" },
+  "author": {
+    "@type": "Person",
+    "name": "Justin Helmer",
+    "alternateName": ["Excavationpro", "Lightfather"],
+    "url": "https://chatagent.ca/"
+  }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=2">
+<link rel="stylesheet" href="./tank.css?v=3">
 </head>
 <body>
-<div class="app">
+<div id="menu" class="menu">
+  <div class="title-screen">
+    <div class="title-art">
+      <img src="./assets/menu.jpg" alt="Golden-hour aquarium: goldfish and a blue-striped fish among plants, a stone arch, and driftwood" width="1280" height="720">
+    </div>
+    <div class="title-panel">
+      <p class="kicker">Δ9Φ963 · chatagent.ca</p>
+      <h1>Fish Tank</h1>
+      <p class="lore">A real-time aquarium. You name them. They grow, play, and keep the water. The longest lives go on the cemetery hall.</p>
+      <div id="panelHome">
+        <div class="modes">
+          <button type="button" class="mode-card" id="menuContinue"><b>Continue</b><span>Open the tank already in this browser.</span></button>
+          <button type="button" class="mode-card" id="menuNew"><b>New tank</b><span>Pick a mode and three starting fish.</span></button>
+          <button type="button" class="mode-card" id="menuHow"><b>How to keep them</b><span>Ages, food, water, cleaners, points.</span></button>
+          <button type="button" class="mode-card" id="menuOpt"><b>Options</b><span>Names, light, heater, motion.</span></button>
+        </div>
+        <div class="row">
+          <a class="btn" href="./ledger.html">Cemetery hall</a>
+          <a class="btn" href="/games/">All games</a>
+        </div>
+      </div>
+      <div id="panelNew" class="hidden">
+        <p class="kicker">New tank</p>
+        <label>Keeper</label>
+        <input class="name" id="menuOwner" maxlength="18" value="Keeper" aria-label="Keeper name">
+        <p class="kicker">Mode</p>
+        <div class="modes">
+          <button type="button" class="mode-card" data-mode="calm"><b>Calm</b><span>Algae grows slowly. A quiet glass.</span></button>
+          <button type="button" class="mode-card on" data-mode="standard"><b>Standard</b><span>The usual day. Adult in a day, a week of life.</span></button>
+          <button type="button" class="mode-card" data-mode="busy"><b>Busy</b><span>More play, more food waste, greener glass.</span></button>
+        </div>
+        <p class="kicker">Three starters</p>
+        <div class="cast" id="menuCast"></div>
+        <p class="lore" id="menuNote">Choose three.</p>
+        <div class="row">
+          <button type="button" class="btn gold" id="menuOpen">Open the glass</button>
+          <button type="button" class="btn" id="menuBack">Back</button>
+        </div>
+      </div>
+      <div id="panelHow" class="hidden">
+        <p class="kicker">Instructions</p>
+        <ol class="how">
+          <li>Pick Calm, Standard, or Busy, then three babies. They start young.</li>
+          <li>Adult takes about a day of real time. Without pellets, a fish rests after about a week. Flakes lift mood. A pellet adds a day.</li>
+          <li>While this page is open they swim, jump, race, and play-bump. That earns points. Points buy more fish and cleaners.</li>
+          <li>Watch temperature, algae, and quality on the scoreboard. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
+          <li>The save stays in this browser. The cemetery hall ranks hours lived. They do not hurt each other.</li>
+        </ol>
+        <button type="button" class="btn" id="howBack">Back</button>
+      </div>
+      <div class="donate-row">
+        <a class="donate-paypal" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal.me/ExcavationPro</a>
+        <a class="donate-patreon" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener">Patreon</a>
+      </div>
+      <p class="lore">Optional. The tank stays free. A tip never buys a fish or a longer life.</p>
+    </div>
+  </div>
+</div>
+<div class="app hidden" id="app">
   <header class="top">
     <a class="brand" href="/games/">GAMES</a>
     <h1>Fish Tank</h1>
     <span class="clock" id="clock">day</span>
     <span class="points" id="points">0 pts</span>
     <span class="grow"></span>
+    <button type="button" class="btn" id="btnMenu">Menu</button>
     <button type="button" class="btn" id="btnOpt">Options</button>
+    <a class="mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal</a>
+    <a class="mini" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener">Patreon</a>
     <a class="mini" href="./ledger.html">Cemetery hall</a>
     <a class="mini" href="/games/">Hub</a>
   </header>
@@ -76,7 +173,8 @@
       <span class="radio-title-inline" id="radioTitle">Idle</span>
     </div>
     <span class="lore">Jump, race, and play-bump. Cleaners keep the water. Longest lives lead the hall.</span>
-    <a class="mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">Donate</a>
+    <a class="mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal</a>
+    <a class="mini" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener">Patreon</a>
   </footer>
 </div>
 <div id="optLayer" class="opt hidden" role="dialog" aria-modal="true" aria-label="Options">
@@ -103,6 +201,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=2"></script>
+<script src="./tank.js?v=3"></script>
 </body>
 </html>
