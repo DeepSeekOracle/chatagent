@@ -70,6 +70,13 @@
       SPRITES["azure_" + pair[0] + "_" + dir] = img;
     });
   });
+  ["baby", "child", "adult"].forEach(function (stage) {
+    ["l", "r"].forEach(function (dir) {
+      const img = new Image();
+      img.src = "./assets/fish/sunscale_" + stage + "_" + dir + ".png";
+      SPRITES["sunscale_" + stage + "_" + dir] = img;
+    });
+  });
 
   const canvas = document.getElementById("tank");
   const ctx = canvas.getContext("2d");
@@ -629,8 +636,11 @@
     const goingRight = f.face !== -1;
     let img = SPRITES[f.species + "_" + stage];
     let useTurn = false;
-    if (f.species === "azure") {
-      const turned = SPRITES["azure_" + stage + "_" + (goingRight ? "r" : "l")];
+    if (f.species === "azure" || f.species === "sunscale") {
+      const turnStage = f.species === "sunscale"
+        ? (stage === "baby" || stage === "infant" ? "baby" : (stage === "child" || stage === "teen" ? "child" : "adult"))
+        : stage;
+      const turned = SPRITES[f.species + "_" + turnStage + "_" + (goingRight ? "r" : "l")];
       if (turned) { img = turned; useTurn = true; }
     }
     const sc = STAGE_DRAW[stage] * specOf(f.species).bulk;
