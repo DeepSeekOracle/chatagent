@@ -232,7 +232,10 @@
   const LOOP = {
     full: 0.72,          // a fish will not take a flake while this much of its meal is left
     flakeRot: 60,        // seconds an uneaten flake floats before it turns to garbage
-    rotWaste: 2.2,       // waste one rotted flake leaves behind
+    rotAlgae: 1.2,       // algae one uneaten flake turns into where it settled
+    algaeBits: 26,       // patches of green on the sand at 100% algae: the number, made visible
+    bitEat: 0.6,         // algae an algae eater takes with each patch it clears
+    bitSpawnMs: 700,     // how fast the green fills back in behind a grazer
     digest: 0.85,        // share of a meal that comes back as waste
     digestHours: 3,      // how long a meal takes to work through
     cleanPerHour: 1.1,   // waste one cleaner lifts each hour
@@ -3272,6 +3275,23 @@
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, 0, bw, bh);
     ctx.restore();
   }
+  /* the green sits on the sand, behind the fish, and grows in as it ages */
+  function drawAlgaeBits(w, h) {
+    if (!algaeBits.length) return;
+    ctx.save();
+    for (let i = 0; i < algaeBits.length; i += 1) {
+      const b = algaeBits[i];
+      const grow = Math.min(1, (b.age || 0) / 1.2);
+      if (grow <= 0) continue;
+      ctx.globalAlpha = 0.3 + grow * 0.3;
+      ctx.fillStyle = i % 3 === 0 ? "#4f8f3a" : i % 3 === 1 ? "#3d752c" : "#5fa344";
+      ctx.beginPath();
+      ctx.ellipse(b.x * w, b.y * h, b.r * grow, b.r * 0.6 * grow, b.wob || 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+  let algaeBits = [];
   function drawFlakes(w, h) {
     flakes.forEach(function (fl) {
       ctx.fillStyle = fl.pellet ? "#fbbf24" : "#d97706";
@@ -3602,8 +3622,7 @@
       + span * pace * bloom * LOOP.bloomPerHour * (0.35 + load)
       + lifted * LOOP.algaePerLift
       - span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae), 0, 100);
-    /* waste: fish, uneaten food, and the algae that dies back */
-        /* fish waste, the water's own die-off, what the fish are still digesting, and the
+    /* fish waste, the water's own die-off, what the fish are still digesting, and the
        flakes that rotted - less what the cleaners lifted out. The octopus dispels
        nothing, and neither does an algae eater, so they are not counted as dirty fish. */
     const dirtyFish = state.fish.filter(function (f) { return !CLEAN_SPECIES[f.species]; }).length;
@@ -3684,11 +3703,12 @@
     }
     const film = (state.algae || 0) / 100;
     if (film > 0.02) {
-      ctx.fillStyle = "rgba(34,92,28," + (0.08 + film * 0.38) + ")";
+      ctx.fillStyle = "rgba(34,92,28," + (0.1 + film * 0.52) + ")";
       ctx.fillRect(0, h * 0.72, w, h * 0.28);
       ctx.fillRect(0, h * 0.16, Math.max(4, w * film * 0.08), h * 0.62);
       ctx.fillRect(w - Math.max(4, w * film * 0.08), h * 0.16, Math.max(4, w * film * 0.08), h * 0.62);
     }
+    drawAlgaeBits(w, h);
     if ((state.quality || 100) < 60) {
       ctx.fillStyle = "rgba(90,60,20," + ((60 - state.quality) / 180) + ")";
       ctx.fillRect(0, 0, w, h);
@@ -3738,6 +3758,15 @@
       ctx.restore();
     });
     drawFlakes(w, h);
+    /* the water itself goes green as the algae climbs: the same number, over everything */
+    const grime = clamp((state.algae || 0) / 100, 0, 1);
+    if (grime > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = 0.04 + grime * 0.1;
+      ctx.fillStyle = "#5c8f3f";
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
     drawMotes(w, h, true);
     ripples.forEach(function (r) {
       ctx.save();
@@ -3815,15 +3844,46 @@
     let rotted = 0;
     flakes.forEach(function (fl) {
       fl.rot = (fl.rot || 0) + dt;
-      if (!fl.gone && fl.rot > LOOP.flakeRot) { fl.gone = true; rotted += 1; }
+      if (!fl.gone && fl.rot > LOOP.flakeRot) {
+        fl.gone = true;
+        rotted += 1;
+        /* it does not disappear: it turns green where it settled, and it waits there for
+           an algae eater to come and take it off the sand */
+        algaeBits.push({ x: fl.x, y: 0.88 + Math.random() * 0.06, r: 2.4 + Math.random() * 2.6,
+          wob: Math.random() * 3, age: 0, pulse: Math.random() });
+      }
     });
     if (rotted) {
       flakes = flakes.filter(function (fl) { return !fl.gone; });
-      state.waste = clamp((state.waste || 0) + rotted * LOOP.rotWaste, 0, 100);
+      state.algae = clamp((state.algae || 0) + rotted * LOOP.rotAlgae, 0, 100);
       if (Math.random() < 0.5) {
-        log(rotted === 1 ? "A flake nobody ate sinks and rots into the sand."
-          : rotted + " flakes nobody ate rot into the sand.");
+        log(rotted === 1 ? "A flake nobody ate settles on the sand and turns green."
+          : rotted + " flakes nobody ate settle on the sand and turn green.");
       }
+    }
+    /* The green on the sand is the algae readout made visible: the number decides how much
+       of it there is, and it fills back in slowly behind anything that grazes. */
+    const wantBits = Math.round(clamp((state.algae || 0) / 100, 0, 1) * LOOP.algaeBits);
+    if (algaeBits.length < wantBits && now - (state._bitAt || 0) > LOOP.bitSpawnMs) {
+      state._bitAt = now;
+      algaeBits.push({ x: 0.04 + Math.random() * 0.92, y: 0.86 + Math.random() * 0.09,
+        r: 2 + Math.random() * 3.4, wob: Math.random() * 3, age: 0, pulse: Math.random() });
+    }
+    while (algaeBits.length > wantBits) algaeBits.shift();
+    algaeBits.forEach(function (b) { b.age = (b.age || 0) + dt; });
+    /* the algae eater works through them, and the number comes down with each patch */
+    if (algaeBits.length) {
+      state.crew.forEach(function (c) {
+        if (c.role !== "otto" && c.role !== "snail") return;
+        const reach = c.role === "otto" ? 0.055 : 0.028;
+        for (let i = algaeBits.length - 1; i >= 0; i -= 1) {
+          const b = algaeBits[i];
+          if (Math.abs(b.x - c.x) > reach || Math.abs(b.y - c.y) > 0.12) continue;
+          algaeBits.splice(i, 1);
+          state.algae = clamp((state.algae || 0) - LOOP.bitEat, 0, 100);
+          if (Math.random() < 0.25) playSfx("nibble");
+        }
+      });
     }
     state.crew.forEach(function (c) {
       /* The nerite is a snail: it walks the sand and never floats. It steps, then creeps,

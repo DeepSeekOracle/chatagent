@@ -116,14 +116,26 @@ must("eating is the only thing that pays", js.indexOf("state.points += fl.pellet
 must("a full fish refuses food, and a meal comes back as waste over hours", js.indexOf("function isFull(f, now)") >= 0 &&
   js.indexOf("const hungry = !isFull(f, Date.now());") >= 0 && js.indexOf("function shed(f, span)") >= 0 &&
   js.indexOf("winner.digest = (winner.digest || 0) +") >= 0 && js.indexOf("digestOut - wasteLifted") >= 0);
-must("uneaten food rots into garbage", js.indexOf("fl.rot = (fl.rot || 0) + dt;") >= 0 &&
-  js.indexOf("LOOP.flakeRot") >= 0 && js.indexOf("rots into the sand") >= 0);
+must("uneaten food times out where it lies", js.indexOf("fl.rot = (fl.rot || 0) + dt;") >= 0 &&
+  js.indexOf("LOOP.flakeRot") >= 0 && js.indexOf("turns green") >= 0);
 must("cleaners lift waste and pay in algae", js.indexOf("lifted * LOOP.algaePerLift") >= 0 &&
   js.indexOf("LOOP.cleanPerHour") >= 0);
 must("the algae eater is the only real sink for algae", js.indexOf("- span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae)") >= 0 &&
   /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
   js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+must("leftover food stays, and turns green where it settled", js.indexOf("it does not disappear: it turns green where it settled") >= 0 &&
+  js.indexOf("algaeBits.push({ x: fl.x, y: 0.88") >= 0 && js.indexOf("settles on the sand and turns green") >= 0 &&
+  js.indexOf("rotWaste") < 0);
+must("the algae number decides how much green is on the sand", js.indexOf("const wantBits = Math.round(clamp((state.algae || 0) / 100, 0, 1) * LOOP.algaeBits);") >= 0 &&
+  js.indexOf("while (algaeBits.length > wantBits) algaeBits.shift();") >= 0 &&
+  js.indexOf("algaeBits: 26,") >= 0);
+must("the algae eater eats the green, and the number follows it down", js.indexOf("state.algae = clamp((state.algae || 0) - LOOP.bitEat, 0, 100);") >= 0 &&
+  js.indexOf('if (c.role !== "otto" && c.role !== "snail") return;') >= 0 &&
+  js.indexOf("algaeBits.splice(i, 1);") >= 0);
+must("the green is drawn behind the fish, and the water takes a green cast", js.indexOf("function drawAlgaeBits(w, h)") >= 0 &&
+  js.indexOf("drawAlgaeBits(w, h);") >= 0 && js.indexOf("const grime = clamp((state.algae || 0) / 100, 0, 1);") >= 0 &&
+  js.indexOf("if (false)") < 0 && /ctx\.fillStyle = "#5c8f3f";/.test(js));
 must("every tank hour draws its own moment", js.indexOf("state.huntAt = state.hourAt + Math.floor(Math.random() * HOUR);") >= 0 &&
   js.indexOf("if (state.huntAt == null)") >= 0 && js.indexOf("while (now >= state.huntAt && guard < 72)") >= 0);
 must("the draw is thrown away every hour, not reused", (function () {
