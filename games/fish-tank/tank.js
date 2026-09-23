@@ -209,6 +209,26 @@
 
   const FISH_CAP = 50;
   const HUNTER_CAP = 10;
+  const KEEPERS = {
+    mara: { id: "mara", name: "Mara", pitch: 1.05, bio: "Mara has kept glass boxes for twenty years. She talks softly and notices the water before anyone else." },
+    ellis: { id: "ellis", name: "Ellis", pitch: 0.96, bio: "Ellis names every fish and remembers who ate. He thinks a happy tank is a noisy one, in a quiet way." },
+    ren: { id: "ren", name: "Ren", pitch: 0.9, bio: "Ren likes the long watch. Hunters do not surprise Ren. Ren just says when one is coming." },
+    june: { id: "june", name: "June", pitch: 1.08, bio: "June keeps a peaceful room. She would rather have more fish and no hunters at all." },
+    mateo: { id: "mateo", name: "Mateo", pitch: 0.93, bio: "Mateo feeds by hand and hates a wasted flake. Meals last longer when he is on the glass." },
+    nia: { id: "nia", name: "Nia", pitch: 1.1, bio: "Nia likes a mixed tank. One kind of fish makes her nervous. A crowd of different kinds makes her relax." }
+  };
+  const PERKS = [
+    { id: "clear", name: "Clear glass", text: "Algae grows slower and the water holds its quality." },
+    { id: "bright", name: "Bright mood", text: "Fish stay content a little longer when the water is off." },
+    { id: "shortwatch", name: "Short watch", text: "A hunter can enter after 30 quiet minutes, not a full hour." },
+    { id: "sanctuary", name: "Sanctuary", text: "The tank holds 70 fish. No hunters enter. Short watch does nothing." },
+    { id: "meals", name: "Long meals", text: "A feeding lasts about a quarter longer." },
+    { id: "pockets", name: "Full pockets", text: "Start with 40 points." },
+    { id: "years", name: "Long years", text: "Every fish lives about a fifth longer." },
+    { id: "keen", name: "Keen eye", text: "Hunters miss a little more often. Five points off the bite." },
+    { id: "crowd", name: "Roomy glass", text: "Crowding starts later, nearer 42 fish than 30." },
+    { id: "quickfry", name: "Quick fry", text: "Eggs hatch sooner." }
+  ];
   const CREW = [
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
@@ -313,15 +333,48 @@
     return name;
   }
   function moodOf(f, now) {
-    if (state && state.quality < 32) return "sad";
-    if (f && comfort(f) > 1.6) return "sad";
+    if (state && state.quality < (hasPerk("bright") ? 22 : 32)) return "sad";
+    if (f && comfort(f) > (hasPerk("bright") ? 2.4 : 1.6)) return "sad";
     if (now - f.lastFed > 8 * HOUR) return "sad";
     if (now - f.lastPlay < 20 * 60000 && (!state || state.quality >= 55)) return "happy";
     return "normal";
   }
   function vitals(f) { return VITALS[f.species] || { hp: 100, regen: 5, hurt: 10, food: 16 }; }
-  function foodLeft(f, now) { return vitals(f).food * HOUR - (now - (f.lastFed || f.born)); }
-  function lifeOf(f) { return cycleOf(f.species)[5] * HOUR + (f.bonus || 0); }
+  function foodLeft(f, now) {
+    const hours = vitals(f).food * (hasPerk("meals") ? 1.28 : 1);
+    return hours * HOUR - (now - (f.lastFed || f.born));
+  }
+  function lifeOf(f) {
+    const base = cycleOf(f.species)[5] * HOUR;
+    return base * (hasPerk("years") ? 1.2 : 1) + (f.bonus || 0);
+  }
+  function keeperInfo() {
+    const k = state && state.keeper;
+    return k && KEEPERS[k.id] ? k : { id: "mara", name: (state && state.owner) || "Keeper", perks: [] };
+  }
+  function hasPerk(id) {
+    const k = state && state.keeper;
+    return !!(k && k.perks && k.perks.indexOf(id) >= 0);
+  }
+  function fishCap() { return hasPerk("sanctuary") ? 70 : FISH_CAP; }
+  function quietNeed() { return hasPerk("shortwatch") && !hasPerk("sanctuary") ? HOUR / 2 : HOUR; }
+  function mixScale() {
+    const fish = (state && state.fish) || [];
+    const n = fish.length;
+    if (n < 2) return { temp: 1.2, dirt: 1.12, share: 1, kinds: n };
+    const counts = {};
+    fish.forEach(function (f) { counts[f.species] = (counts[f.species] || 0) + 1; });
+    let max = 0;
+    Object.keys(counts).forEach(function (id) { if (counts[id] > max) max = counts[id]; });
+    const share = max / n;
+    const kinds = Object.keys(counts).length;
+    return {
+      temp: clamp(0.4 + share * 1.4 - Math.min(kinds, 8) * 0.035, 0.4, 1.9),
+      dirt: clamp(0.7 + share * 0.9, 0.7, 1.6),
+      share: share,
+      kinds: kinds
+    };
+  }
   function ageOf(f, now) { return Math.max(0, now - f.born); }
   function bodyAge(f) { return f.growth || 0; }
   function accrueGrowth(f, now) {
@@ -460,6 +513,8 @@
   let playing = false;
   let hasSave = false;
   let menuMode = "standard";
+  let menuKeeper = "mara";
+  let menuPerks = [];
   let menuTheme = "river";
   let menuPicks = ["glimmer", "dart", "puff"];
   let heldOpts = null;
@@ -471,6 +526,7 @@
     const now = Date.now();
     state = {
       points: 0,
+      keeper: menuKeeperPick(ownerName),
       mode: mode || "standard",
       theme: theme.id,
       openedAt: now,
@@ -481,6 +537,7 @@
       owner: String(ownerName || "Keeper").slice(0, 18)
     };
     ensureState();
+    if (hasPerk("pockets")) state.points = 40;
     if (heldOpts) state.opts = Object.assign(state.opts, heldOpts);
     state.temp = theme.temp;
     state.opts.temp = theme.temp;
@@ -504,6 +561,7 @@
     if (state.temp == null) state.temp = 25;
     if (!state.waterAt) state.waterAt = Date.now();
     if (!state.theme) state.theme = "river";
+    if (!state.keeper) state.keeper = { id: "mara", name: state.owner || "Mara", perks: [] };
     (state.predators || []).forEach(function (p) {
       if (p.pending == null) p.pending = false;
       if (p.victim == null) p.victim = null;
@@ -647,7 +705,7 @@
     if (span <= 0) return;
     const unfed = now - (f.lastFed || f.born) > v.food * HOUR;
     const dirty = (state.quality || 100) < 45 || (state.algae || 0) > 68;
-    const crowded = state.fish.length >= 30;
+    const crowded = state.fish.length >= (hasPerk("crowd") ? 42 : 30);
     let delta = 0;
     if (!unfed && !dirty && !crowded) delta += v.regen * span;
     else if (!unfed && !dirty) delta += v.regen * 0.4 * span;
@@ -692,7 +750,7 @@
     }
     const goal = (state.predators || []).length ? 16 : 12;
     const cost = price();
-    if (state.fish.length < goal && state.fish.length < FISH_CAP && state.quality >= 50 && state.points >= cost) {
+    if (state.fish.length < goal && state.fish.length < fishCap() && state.quality >= 50 && state.points >= cost) {
       let id = autoSpecies();
       if (id === "octo" && hasOcto()) id = "dart";
       state.points -= cost;
@@ -714,6 +772,7 @@
     if (f.species === "octo" && (f.inkUntil || 0) > now) chance = clamp(chance - 0.10, 0.05, 0.85);
     if (f.species === "mandarin") chance = clamp(chance - 0.08, 0.05, 0.85);
     if (f.species === "dragon" && nearWeed(f)) chance = clamp(chance - 0.12, 0.05, 0.85);
+    if (hasPerk("keen")) chance = clamp(chance - 0.05, 0.05, 0.85);
     return chance;
   }
   function nearWeed(f) {
@@ -813,6 +872,8 @@
         (reason === "contact" ? " in the open" : ", the weakest") +
         (victim.species === "octo" && (victim.inkUntil || 0) > now ? " through the ink" : "") +
         (born ? ". A baby hunter is born." : "."));
+      if (p.elder) keeperNote(p.name + " just took " + victim.name + ". I am sorry. Stay with the others.");
+      else keeperNote(p.name + " took " + victim.name + ". The rest are still here.");
       addRipple(victim.x, victim.y);
       playSfx("bite");
       playSfx("death");
@@ -943,7 +1004,8 @@
     const living = state.predators.filter(function (p) { return (p.fails || 0) < 2; });
     if (!living.length) {
       if (!state.clearSince) state.clearSince = state.openedAt || now;
-      if (now - state.clearSince >= HOUR) {
+      if (hasPerk("sanctuary")) return;
+      if (now - state.clearSince >= quietNeed()) {
         const kinds = ["pike", "cinder", "gar", "eel", "shark"];
         const kind = kinds[(Math.random() * kinds.length) | 0];
         if (state.predators.length >= HUNTER_CAP) {
@@ -1219,7 +1281,7 @@
         x: clamp(spot.x + (Math.random() - 0.5) * 0.05, 0.06, 0.94),
         y: clamp(spot.y + (Math.random() - 0.5) * 0.04, 0.1, 0.86),
         laid: now,
-        hatchAt: now + (fast ? HATCH_MS * 0.7 : HATCH_MS),
+        hatchAt: now + (fast ? HATCH_MS * 0.7 : HATCH_MS) * (hasPerk("quickfry") ? 0.65 : 1),
         gen: Math.max(a.gen || 1, b.gen || 1) + 1,
         traits: makeTraits(traits(a), traits(b)),
         parents: [a.name, b.name]
@@ -1245,7 +1307,7 @@
     }
     hatchList.forEach(function (e) {
       state.eggs = state.eggs.filter(function (o) { return o !== e; });
-      if (state.fish.length >= FISH_CAP) { log("An egg hatches but the glass is full."); return; }
+      if (state.fish.length >= fishCap()) { log("An egg hatches but the glass is full."); return; }
       if (e.species === "octo" && hasOcto()) { log("An octopus egg fades. One already keeps this glass."); return; }
       const fry = makeFish(e.species, fryName(e.species));
       fry.traits = e.traits || makeTraits();
@@ -1512,9 +1574,10 @@
   function comfort(f) {
     const band = TEMP_BAND[f.species] || [22, 28];
     const t = state.temp || 25;
-    if (t < band[0]) return band[0] - t;
-    if (t > band[1]) return t - band[1];
-    return 0;
+    let raw = 0;
+    if (t < band[0]) raw = band[0] - t;
+    else if (t > band[1]) raw = t - band[1];
+    return raw * mixScale().temp;
   }
   function tempNote(f) {
     if (comfort(f) <= 1.5) return "";
@@ -2477,9 +2540,11 @@
     const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
     const day = phase() === "night" ? 0.35 : 1;
-    const pace = (state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1) * themeOf(state.theme).algae;
+    const mix = mixScale();
+    const clear = hasPerk("clear") ? 0.72 : 1;
+    const pace = (state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1) * themeOf(state.theme).algae * mix.dirt * clear;
     state.algae = clamp(state.algae + span * pace * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
-    state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 - state.algae * 0.03), 0, 100);
+    state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 * mix.dirt * clear - state.algae * 0.03), 0, 100);
   }
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -2666,7 +2731,7 @@
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
-    document.getElementById("mLiving").textContent = state.fish.length + "/" + FISH_CAP;
+    document.getElementById("mLiving").textContent = state.fish.length + "/" + fishCap();
     const huntEl = document.getElementById("mHunters");
     if (huntEl) huntEl.textContent = (state.predators || []).length + "/" + HUNTER_CAP;
     const autoBtn = document.getElementById("btnAuto");
@@ -2724,7 +2789,7 @@
       if (cold) notes.push(cold + (cold > 1 ? " fish find" : " fish finds") + " it too cold — they hang low and slow.");
       if ((state.quality || 0) < 45) notes.push("The water is foul. Fish are listless and scratch on the rockwork.");
       if ((state.algae || 0) > 68) notes.push("Green film everywhere. The cleaners cannot keep up.");
-      if (state.fish.length >= 30) notes.push("Crowded. Everyone heals slower.");
+      if (state.fish.length >= (hasPerk("crowd") ? 42 : 30)) notes.push("Crowded. Everyone heals slower.");
       if ((state.eggs || []).length) notes.push((state.eggs || []).length + " egg" + ((state.eggs || []).length > 1 ? "s" : "") + " on the rockwork.");
       noteEl.textContent = notes.join(" ") || "Water is steady.";
     }
@@ -2797,6 +2862,144 @@
     });
   }
 
+  function menuKeeperPick(ownerName) {
+    const who = KEEPERS[menuKeeper] || KEEPERS.mara;
+    return {
+      id: who.id,
+      name: String(ownerName || who.name).slice(0, 18),
+      perks: menuPerks.slice(0, 3)
+    };
+  }
+  let keeperNext = 0;
+  let keeperLast = "";
+  let keeperHide = 0;
+  const KEEPER_LINES = {
+    hot: [
+      "Hey. It is getting warm in there for somebody.",
+      "The water is a bit hot for the fish that need it cooler.",
+      "If this tank is mostly one kind, the heat will bother them more."
+    ],
+    cold: [
+      "It is a little cold for some of them.",
+      "A few fish are hanging low. The water is under their range.",
+      "Cool water is fine for a mix. One kind feels it more."
+    ],
+    dirty: [
+      "The glass is getting green. A snail would help.",
+      "Algae is climbing. Nothing angry about it. Just time for a scrape.",
+      "One kind of fish dirties a tank faster. A mix stays cleaner."
+    ],
+    foul: [
+      "The water is turning. A change would be kind.",
+      "Quality is low. They will be listless until it clears."
+    ],
+    variety: [
+      "A mixed tank. Temperature matters less when they are different.",
+      "I like this. Lots of kinds. The water can wander a little."
+    ],
+    mono: [
+      "Almost one kind in there. Keep the temperature close to what they like.",
+      "A single school is beautiful, and fussier about the heat."
+    ],
+    calm: [
+      "They look settled. I will leave them to it.",
+      "Quiet hour. That is a good hour.",
+      "Nothing to fix. Just watching."
+    ],
+    feed: [
+      "There. Someone will get that flake.",
+      "Food is in. Let them sort it out."
+    ]
+  };
+  function keeperLine(key) {
+    const list = KEEPER_LINES[key] || KEEPER_LINES.calm;
+    return list[(Math.random() * list.length) | 0];
+  }
+  function paintKeeperBox() {
+    const box = document.getElementById("keeperBox");
+    if (!box || !state) return;
+    const info = keeperInfo();
+    const face = KEEPERS[info.id] || KEEPERS.mara;
+    const pic = document.getElementById("keeperPic");
+    const label = document.getElementById("keeperLabel");
+    if (pic) { pic.src = "./assets/keepers/" + face.id + ".png"; pic.alt = face.name; }
+    if (label) label.textContent = info.name || face.name;
+  }
+  function keeperSay(text, force) {
+    if (!text) return;
+    const now = Date.now();
+    if (!force && now < keeperNext) return;
+    if (text === keeperLast && now < keeperNext + 20000) return;
+    keeperLast = text;
+    keeperNext = now + (force ? 32000 : 72000);
+    const bubble = document.getElementById("keeperBubble");
+    if (bubble) {
+      bubble.textContent = text;
+      bubble.classList.remove("hidden");
+      clearTimeout(keeperHide);
+      keeperHide = setTimeout(function () { bubble.classList.add("hidden"); }, 8500);
+    }
+    if (!sfxOn() || typeof speechSynthesis === "undefined") return;
+    try {
+      const face = KEEPERS[keeperInfo().id] || KEEPERS.mara;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.94;
+      u.pitch = face.pitch || 1;
+      u.volume = Math.max(0.2, sfxVol());
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (_) {}
+  }
+  function keeperNote(text) {
+    if (!state) return;
+    state._keeperNote = { at: Date.now(), text: text };
+  }
+  function keeperPulse(now) {
+    if (!playing || !state) return;
+    const thanks = document.getElementById("thanksLayer");
+    if (thanks && !thanks.classList.contains("hidden")) return;
+    const note = state._keeperNote;
+    if (note && now - note.at < 20000 && note.text !== keeperLast) {
+      keeperSay(note.text, true);
+      state._keeperNote = null;
+      return;
+    }
+    if (now < keeperNext) return;
+    if (now - (state._keeperLook || 0) < 18000) return;
+    state._keeperLook = now;
+    const mix = mixScale();
+    let warm = 0, cold = 0;
+    state.fish.forEach(function (f) {
+      const noteWord = tempNote(f);
+      if (noteWord === "too warm") warm += 1;
+      else if (noteWord === "too cold") cold += 1;
+    });
+    if (warm >= 1 && mix.share > 0.45) { keeperSay(keeperLine("hot"), false); return; }
+    if (cold >= 1 && mix.share > 0.45) { keeperSay(keeperLine("cold"), false); return; }
+    if ((state.algae || 0) > 55) { keeperSay(keeperLine("dirty"), false); return; }
+    if ((state.quality || 100) < 48) { keeperSay(keeperLine("foul"), false); return; }
+    if (mix.kinds >= 5 && Math.random() < 0.35) { keeperSay(keeperLine("variety"), false); return; }
+    if (mix.kinds === 1 && state.fish.length >= 4 && Math.random() < 0.4) { keeperSay(keeperLine("mono"), false); return; }
+    if (Math.random() < 0.25) keeperSay(keeperLine("calm"), false);
+  }
+  function paintKeeperMenu() {
+    const box = document.getElementById("menuKeepers");
+    const perks = document.getElementById("menuPerks");
+    const bio = document.getElementById("keeperBio");
+    if (!box || !perks) return;
+    box.innerHTML = Object.keys(KEEPERS).map(function (id) {
+      const k = KEEPERS[id];
+      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img src='./assets/keepers/" + id + ".png' alt=''><b>" + k.name + "</b><span>" + k.bio + "</span></button>";
+    }).join("");
+    perks.innerHTML = PERKS.map(function (p) {
+      const on = menuPerks.indexOf(p.id) >= 0;
+      return "<button type='button' class='perk-card" + (on ? " on" : "") + "' data-perk='" + p.id + "'><b>" + p.name + "</b><span>" + p.text + "</span></button>";
+    }).join("");
+    const face = KEEPERS[menuKeeper] || KEEPERS.mara;
+    if (bio) bio.textContent = face.bio;
+    const note = document.getElementById("perkNote");
+    if (note) note.textContent = menuPerks.length === 3 ? "Three gifts chosen." : ("Choose " + (3 - menuPerks.length) + " more.");
+  }
   function loop(t) {
     if (!playing || !state) { syncLoops(); requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, (t - last) / 1000);
@@ -2866,6 +3069,7 @@
     resize();
     draw();
     syncLoops();
+    keeperPulse(now);
     requestAnimationFrame(loop);
   }
   function pick(id) { selected = id; renderRail(); }
@@ -2907,7 +3111,7 @@
   document.getElementById("shop").onclick = function (e) {
     const b = e.target.closest("[data-buy]");
     if (!b) return;
-    if (state.fish.length >= FISH_CAP) { log("The tank holds " + FISH_CAP + " fish. More than that and the water turns."); return; }
+    if (state.fish.length >= fishCap()) { log("The tank holds " + fishCap() + " fish. More than that and the water turns."); return; }
     const sp = b.getAttribute("data-buy");
     if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
@@ -2994,6 +3198,7 @@
     resize();
     renderRail();
     syncLoops();
+    paintKeeperBox();
     if (thanksQueued) openThanks();
   }
   function paintCast() {
@@ -3013,7 +3218,7 @@
     if (!hasSave || !state) return;
     enterTank();
   };
-  document.getElementById("menuNew").onclick = function () { showPanel("panelNew"); paintCast(); };
+  document.getElementById("menuNew").onclick = function () { showPanel("panelNew"); paintCast(); paintKeeperMenu(); };
   document.getElementById("menuHow").onclick = function () { showPanel("panelHow"); };
   document.getElementById("menuBack").onclick = function () { showPanel("panelHome"); };
   document.getElementById("howBack").onclick = function () { showPanel("panelHome"); };
@@ -3049,7 +3254,8 @@
   });
   document.getElementById("menuAuto").onclick = function () {
     const ownerName = document.getElementById("menuOwner") ? document.getElementById("menuOwner").value : "Keeper";
-    fresh(["dart", "ruby", "azure"], "standard", ownerName, menuTheme || "river");
+    if (menuPerks.length !== 3) menuPerks = ["clear", "bright", "meals"];
+    fresh(["dart", "ruby", "azure"], "standard", ownerName || "Keeper", menuTheme || "river");
     state.auto = true;
     save();
     enterTank();
@@ -3062,14 +3268,34 @@
     save();
     renderRail();
   };
+  document.getElementById("menuKeepers").onclick = function (e) {
+    const b = e.target.closest("[data-keeper]");
+    if (!b) return;
+    menuKeeper = b.getAttribute("data-keeper");
+    paintKeeperMenu();
+  };
+  document.getElementById("menuPerks").onclick = function (e) {
+    const b = e.target.closest("[data-perk]");
+    if (!b) return;
+    const id = b.getAttribute("data-perk");
+    const ix = menuPerks.indexOf(id);
+    if (ix >= 0) menuPerks.splice(ix, 1);
+    else if (menuPerks.length < 3) menuPerks.push(id);
+    paintKeeperMenu();
+  };
   document.getElementById("menuOpen").onclick = function () {
     if (menuPicks.length !== 3) {
       document.getElementById("menuNote").textContent = "Pick exactly three fish.";
       return;
     }
-    const ownerName = document.getElementById("menuOwner").value;
+    if (menuPerks.length !== 3) {
+      document.getElementById("perkNote").textContent = "Pick exactly three gifts.";
+      return;
+    }
+    const ownerName = document.getElementById("menuOwner").value || (KEEPERS[menuKeeper] || KEEPERS.mara).name;
     fresh(menuPicks.slice(), menuMode, ownerName, menuTheme);
     enterTank();
+    keeperSay("I am here. We will take this slow.", true);
   };
   document.getElementById("btnMenu").onclick = function () {
     if (state) save();

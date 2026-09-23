@@ -46,7 +46,7 @@ must("hunters have their own cap of 10", js.indexOf("const HUNTER_CAP = 10;") >=
 must("a bite starts at 25%", js.indexOf("clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85)") >= 0);
 must("hunter takes the weakest", js.indexOf("function weakestPrey(now)") >= 0);
 must("two misses kill the hunter", js.indexOf("(p.fails || 0) < 2") >= 0);
-must("a boss enters after an hour of quiet", js.indexOf("now - state.clearSince >= HOUR") >= 0);
+must("a boss enters after an hour of quiet", js.indexOf("now - state.clearSince >= quietNeed()") >= 0 && js.indexOf("HOUR / 2") >= 0);
 must("a bite leaves a baby hunter", js.indexOf("state.predators.push(makePredator(p.kind, false))") >= 0);
 must("hunger kills in about a day and a half", js.indexOf("const STARVE = 36 * HOUR;") >= 0);
 must("save stays in this browser", js.indexOf('const SAVE = "lygo_fish_tank_v1";') >= 0);

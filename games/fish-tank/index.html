@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=6">
+<link rel="stylesheet" href="./tank.css?v=7">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -66,7 +66,7 @@
       <div id="panelHome">
         <div class="modes">
           <button type="button" class="mode-card" id="menuContinue"><b>Continue</b><span>Open the tank already in this browser.</span></button>
-          <button type="button" class="mode-card" id="menuNew"><b>New tank</b><span>Pick a mode and three starting fish.</span></button>
+          <button type="button" class="mode-card" id="menuNew"><b>New tank</b><span>Choose a caretaker, three gifts, then the fish.</span></button>
           <button type="button" class="mode-card" id="menuAuto"><b>Automatic</b><span>The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.</span></button>
           <button type="button" class="mode-card" id="menuHow"><b>How to keep them</b><span>Ages, food, water, cleaners, points.</span></button>
           <button type="button" class="mode-card" id="menuOpt"><b>Options</b><span>Names, light, heater, motion.</span></button>
@@ -77,9 +77,14 @@
         </div>
       </div>
       <div id="panelNew" class="hidden">
-        <p class="kicker">New tank</p>
-        <label>Keeper</label>
-        <input class="name" id="menuOwner" maxlength="18" value="Keeper" aria-label="Keeper name">
+        <p class="kicker">Caretaker</p>
+        <div class="keeper-pick" id="menuKeepers"></div>
+        <label>Your name</label>
+        <input class="name" id="menuOwner" maxlength="18" value="" placeholder="What should we call you?" aria-label="Your name">
+        <p class="lore" id="keeperBio"></p>
+        <p class="kicker">Three gifts</p>
+        <div class="keeper-pick" id="menuPerks"></div>
+        <p class="lore" id="perkNote">Choose three gifts.</p>
         <p class="kicker">Tank</p>
         <div class="modes" id="themePick">
           <button type="button" class="mode-card on" data-theme="river"><b>River garden</b><span>Clear water, plants, and a stone arch. 25°.</span></button>
@@ -150,6 +155,11 @@
     <p class="lore board-note" id="waterNote">Water is steady.</p>
   </section>
   <div class="stage">
+    <aside id="keeperBox" class="keeper-box" aria-live="polite">
+      <p id="keeperBubble" class="keeper-bubble hidden"></p>
+      <img id="keeperPic" alt="" width="120" height="120">
+      <b id="keeperLabel">Keeper</b>
+    </aside>
     <div class="tankwrap"><canvas id="tank"></canvas></div>
     <aside class="rail">
       <p class="kicker">Keeper</p>
@@ -251,6 +261,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=32"></script>
+<script src="./tank.js?v=33"></script>
 </body>
 </html>
