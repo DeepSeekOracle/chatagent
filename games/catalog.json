@@ -142,7 +142,7 @@
       "featured": true,
       "order": 8,
       "href": "/games/fish-tank/",
-      "cover": "/games/fish-tank/assets/og.jpg",
+      "cover": "/games/fish-tank/assets/og.jpg?v=2",
       "coverAlt": "Daylight aquarium with plants, stones, and driftwood",
       "genre": ["sim"],
       "players": "1, autonomous",
