@@ -36,6 +36,9 @@
     { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Grazes and cruises the whole tank." }
   ];
   const CREW_LIFE = 30 * DAY;
+  const HANDS = { f: new Image(), m: new Image() };
+  HANDS.f.src = "./assets/crew/hand-f.png";
+  HANDS.m.src = "./assets/crew/hand-m.png";
   const CREW_SPRITES = {};
   const CREW_H = { snail: 0.12, otto: 0.075, cory: 0.1, jelly: 0.2, turtle: 0.16 };
   const SPRITES = {};
@@ -351,40 +354,83 @@
     return "night";
   }
 
+  function fishSprint(f) {
+    const hungry = Date.now() - (f.lastFed || f.born) > 3 * HOUR;
+    const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
+    return desperate ? 0.78 : hungry ? 0.58 : 0.34;
+  }
   function nearestFlake(f) {
+    if (!flakes.length) return null;
+    const mine = fishSprint(f);
     let best = null;
-    let bestD = 0.7;
+    let bestScore = 1e9;
+    const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
     flakes.forEach(function (fl) {
       if (fl.gone) return;
       const d = Math.hypot(fl.x - f.x, fl.y - f.y);
-      if (d < bestD) { bestD = d; best = fl; }
+      let beaten = false;
+      if (!desperate) {
+        state.fish.forEach(function (o) {
+          if (o === f || o.dead) return;
+          const od = Math.hypot(fl.x - o.x, fl.y - o.y);
+          if (od / fishSprint(o) + 0.04 < d / mine) beaten = true;
+        });
+      }
+      const score = d / mine + (beaten ? 0.42 : 0);
+      if (score < bestScore) { bestScore = score; best = fl; }
     });
     return best;
   }
   function startHand(kind) {
     if (!state.fish.length) { log("No one is home to feed."); return false; }
     if (hand || flakes.length) { log("The last pinch is still in the water."); return false; }
-    hand = { x: -0.12, t: 0, dur: kind === "pellet" ? 1.6 : 2.6, kind: kind, next: 0.35, drops: 0, max: kind === "pellet" ? 1 : 9 };
-    log(kind === "pellet" ? "A hand offers one pellet." : "A hand crosses the glass and spills flakes.");
+    const who = Math.random() < 0.5 ? "f" : "m";
+    hand = {
+      who: who,
+      x: 0.12 + Math.random() * 0.76,
+      tx: 0.12 + Math.random() * 0.76,
+      dip: 0,
+      wait: 0.2,
+      kind: kind,
+      drops: 0,
+      max: kind === "pellet" ? 1 : 8,
+      leave: false
+    };
+    log((who === "f" ? "A woman's hand" : "A man's hand") + (kind === "pellet" ? " offers one pellet." : " reaches over the glass."));
     return true;
+  }
+  function dropFlake() {
+    flakes.push({
+      x: Math.max(0.08, Math.min(0.92, hand.x + (Math.random() - 0.5) * 0.12)),
+      y: 0.02 + hand.dip * 0.05,
+      vy: 0.14 + Math.random() * 0.12,
+      age: 0,
+      pellet: hand.kind === "pellet"
+    });
   }
   function stepHand(dt) {
     if (hand) {
-      hand.t += dt;
-      const u = Math.min(1, hand.t / hand.dur);
-      hand.x = -0.12 + u * 1.24;
-      if (hand.t >= hand.next && hand.drops < hand.max && hand.x > 0.06 && hand.x < 0.94) {
-        hand.drops += 1;
-        hand.next = hand.t + (hand.kind === "pellet" ? 0.2 : 0.22);
-        flakes.push({
-          x: hand.x + (Math.random() - 0.5) * 0.04,
-          y: 0.1,
-          vy: 0.16 + Math.random() * 0.1,
-          age: 0,
-          pellet: hand.kind === "pellet"
-        });
+      const dx = hand.tx - hand.x;
+      hand.x += Math.max(-0.7, Math.min(0.7, dx * 2.2)) * dt;
+      if (hand.leave) {
+        if (hand.x < -0.28 || hand.x > 1.28) hand = null;
+      } else if (Math.abs(dx) < 0.035) {
+        hand.dip = Math.min(1, hand.dip + dt * 3.2);
+        hand.wait -= dt;
+        if (hand.dip > 0.8 && hand.wait <= 0 && hand.drops < hand.max) {
+          dropFlake();
+          hand.drops += 1;
+          hand.wait = 0.28 + Math.random() * 0.25;
+          hand.dip = 0;
+          hand.tx = 0.1 + Math.random() * 0.8;
+          if (hand.drops >= hand.max) {
+            hand.leave = true;
+            hand.tx = hand.x < 0.5 ? -0.35 : 1.35;
+          }
+        }
+      } else {
+        hand.dip = Math.max(0, hand.dip - dt * 2);
       }
-      if (u >= 1) hand = null;
     }
     flakes.forEach(function (fl) {
       fl.age += dt;
@@ -440,24 +486,14 @@
   }
   function drawHand(w, h) {
     if (!hand) return;
+    const img = HANDS[hand.who];
+    const bw = Math.min(w * 0.34, 260);
+    const bh = img && img.complete && img.naturalWidth ? bw * (img.naturalHeight / img.naturalWidth) : bw * 1.1;
     const x = hand.x * w;
-    const y = 6 + Math.sin(hand.t * 7) * 3;
+    const y = -bh * 0.08 + hand.dip * h * 0.07;
     ctx.save();
     ctx.translate(x, y);
-    ctx.fillStyle = "#f0c9a0";
-    ctx.fillRect(-16, -48, 32, 34);
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 24, 16, 0, 0, Math.PI * 2);
-    ctx.fill();
-    [-12, -4, 6, 14].forEach(function (fx, i) {
-      ctx.beginPath();
-      ctx.ellipse(fx, -8, 5, 13, (i - 1.5) * 0.18, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.fillStyle = hand.kind === "pellet" ? "#fbbf24" : "#b45309";
-    ctx.beginPath();
-    ctx.arc(0, 18, hand.kind === "pellet" ? 6 : 3.5, 0, Math.PI * 2);
-    ctx.fill();
+    if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, 0, bw, bh);
     ctx.restore();
   }
   function drawFlakes(w, h) {
@@ -475,8 +511,7 @@
     if (bite) {
       f.actionT = 0;
       f.action = "";
-      const hungry = Date.now() - (f.lastFed || 0) > 3 * HOUR;
-      const cap = (hungry ? 0.62 : 0.36) * slow;
+      const cap = fishSprint(f) * slow;
       let vx = bite.x - f.x;
       let vy = bite.y - f.y;
       const mag = Math.hypot(vx, vy) || 1;
