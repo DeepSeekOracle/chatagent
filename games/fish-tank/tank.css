@@ -11,6 +11,39 @@ button, input { font:inherit; color:inherit; }
 .dock { border-top:1px solid var(--line); }
 .brand, .mini { color:var(--gold); text-decoration:none; font-weight:700; letter-spacing:.08em; font-size:.78rem; }
 .grow { flex:1; }
+.board {
+  display:grid; grid-template-columns:repeat(6, 1fr); gap:.35rem;
+  padding:.45rem .7rem; background:#0c1824; border-bottom:1px solid var(--line);
+}
+.board div { background:#101c28; border:1px solid var(--line); border-radius:8px; padding:.35rem .45rem; }
+.board b { display:block; font-family:Syne,sans-serif; font-size:1.05rem; color:var(--gold); }
+.board span { color:var(--mute); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; }
+.board-table { font-size:.78rem; }
+.board-table .rowline {
+  display:grid; grid-template-columns:1.2fr .8fr .6fr .7fr; gap:.3rem;
+  padding:.22rem 0; border-bottom:1px solid #1e2a3a;
+}
+.board-table .head { color:var(--mute); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; }
+.radio-inline { display:flex; align-items:center; gap:.35rem; flex-wrap:wrap; }
+.radio-inline button {
+  background:#1a2836; color:var(--text); border:1px solid #3a4e64; border-radius:8px;
+  padding:.28rem .55rem; cursor:pointer; font:650 .72rem Syne,sans-serif; min-height:36px;
+}
+.radio-title-inline { font:600 .68rem "IBM Plex Mono",monospace; color:var(--mute); max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.radio-vol { display:inline-flex; align-items:center; gap:.28rem; font:650 .62rem "IBM Plex Mono",monospace; color:var(--mute); }
+.radio-vol input { width:88px; accent-color:var(--gold); }
+.opt { position:fixed; inset:0; z-index:30; background:#070e16cc; display:grid; place-items:center; padding:1rem; }
+.opt.hidden { display:none !important; }
+.optbox { width:min(460px, 100%); background:#0c1622; border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; }
+.optbox h2 { font-family:Syne,sans-serif; margin:.2rem 0 .6rem; }
+.check { display:flex; align-items:center; gap:.45rem; margin:.4rem 0; color:var(--mute); }
+.check select, .check input[type="range"] { margin-left:auto; accent-color:var(--gold); }
+.q-good { color:#86efac; }
+.q-fair { color:#fbbf24; }
+.q-poor { color:#fb7185; }
+@media (max-width:900px) {
+  .board { grid-template-columns:repeat(3, 1fr); }
+}
 h1 { font-family:Syne,sans-serif; font-size:1.05rem; margin:0; letter-spacing:.04em; }
 .clock { font:600 .78rem "IBM Plex Mono",monospace; color:var(--cyan); }
 .points { font:700 .9rem Syne,sans-serif; color:var(--gold); }

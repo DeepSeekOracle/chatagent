@@ -26,6 +26,14 @@
     { id: "sunscale", name: "Sunscale", play: "lap", bulk: 1.12, blurb: "Slow laps, larger tips." },
     { id: "pearl", name: "Pearl", play: "flash", bulk: 0.7, blurb: "Flashes a fan tail." }
   ];
+  const CREW = [
+    { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
+    { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
+    { id: "cory", name: "Cory", cost: 28, blurb: "Bottom feeder. Lifts the waste." },
+    { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses when the water is kind." },
+    { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Grazes and cruises the whole tank." }
+  ];
+  const CREW_LIFE = 30 * DAY;
   const SPRITES = {};
   const TANKS = { day: new Image(), night: new Image() };
   TANKS.day.src = "./assets/tank-day.jpg";
@@ -52,14 +60,17 @@
     return name;
   }
   function moodOf(f, now) {
+    if (state && state.quality < 32) return "sad";
     if (now - f.lastFed > 8 * HOUR) return "sad";
-    if (now - f.lastPlay < 20 * 60000) return "happy";
+    if (now - f.lastPlay < 20 * 60000 && (!state || state.quality >= 55)) return "happy";
     return "normal";
   }
   function lifeOf(f) { return LIFE + (f.bonus || 0); }
   function ageOf(f, now) { return Math.max(0, now - f.born); }
   function hours(ms) { return Math.round(ms / HOUR * 10) / 10; }
   function price() { return 30 + state.fish.length * 18; }
+  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+  function crewOf(id) { return CREW.filter(function (c) { return c.id === id; })[0]; }
   function uid() { return "f" + Math.random().toString(36).slice(2, 8); }
   function log(t) {
     state.log.unshift(t);
@@ -102,7 +113,20 @@
       lastTick: now,
       owner: "Keeper"
     };
+    ensureState();
     save();
+  }
+  function ensureState() {
+    state.crew = state.crew || [];
+    state.cemetery = state.cemetery || [];
+    state.log = state.log || [];
+    if (state.algae == null) state.algae = 8;
+    if (state.quality == null) state.quality = 86;
+    if (state.temp == null) state.temp = 25;
+    if (!state.waterAt) state.waterAt = Date.now();
+    state.opts = Object.assign({
+      names: true, board: true, motion: true, heater: true, temp: 25, clock: "real"
+    }, state.opts || {});
   }
   function load() {
     try {
@@ -113,19 +137,33 @@
         state.log = state.log || [];
         state.points = state.points || 0;
         state.owner = state.owner || "Keeper";
+        ensureState();
         return;
       }
     } catch (_) {}
     fresh();
+  }
+  function makeCrew(role) {
+    const spec = crewOf(role);
+    return {
+      id: uid(),
+      role: role,
+      name: spec ? spec.name : role,
+      born: Date.now(),
+      x: 0.15 + Math.random() * 0.7,
+      y: role === "jelly" ? 0.28 : 0.8,
+      vx: (Math.random() < 0.5 ? -1 : 1) * 0.02,
+      wobble: Math.random() * 6
+    };
   }
 
   function bury(f, now) {
     const age = ageOf(f, now);
     const row = {
       name: f.name,
-      species: f.species,
+      species: f.species || f.role || "",
       score: Math.round(age / HOUR),
-      stage: stageName(age),
+      stage: f.species ? stageName(age) : "crew",
       date: new Date(now).toISOString().slice(0, 10)
     };
     state.cemetery.unshift(row);
@@ -147,7 +185,15 @@
     state.fish.forEach(function (f) {
       if (ageOf(f, now) >= lifeOf(f)) dead.push(f);
     });
-    if (!dead.length) return;
+    const retired = [];
+    (state.crew || []).forEach(function (c) {
+      if (now - c.born >= CREW_LIFE) retired.push(c);
+    });
+    if (retired.length) {
+      retired.forEach(function (c) { log(c.name + " finishes a month of work."); });
+      state.crew = state.crew.filter(function (c) { return retired.indexOf(c) < 0; });
+    }
+    if (!dead.length) { if (retired.length) save(); return; }
     dead.forEach(function (f) { bury(f, now); });
     state.fish = state.fish.filter(function (f) { return dead.indexOf(f) < 0; });
     if (selected && dead.some(function (f) { return f.id === selected; })) selected = null;
@@ -215,6 +261,9 @@
   }
 
   function phase() {
+    const mode = state && state.opts && state.opts.clock;
+    if (mode === "day") return "day";
+    if (mode === "night") return "night";
     const h = new Date().getHours();
     if (h >= 6 && h < 17) return "day";
     if (h >= 17 && h < 20) return "dusk";
@@ -271,7 +320,7 @@
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
-    const bob = Math.sin(now / 400 + f.x * 12) * 6;
+    const bob = state.opts.motion === false ? 0 : Math.sin(now / 400 + f.x * 12) * 6;
     let y = f.y * h + bob;
     if (f.action === "jump") {
       const u = Math.max(0, f.actionT / 1.1);
@@ -283,7 +332,7 @@
     const artRight = FACE_RIGHT[f.species] !== false;
     const face = ((f.vx >= 0) === artRight) ? 1 : -1;
     ctx.scale(face, 1);
-    const wag = Math.sin(now / 180 + f.y * 20) * 0.12;
+    const wag = state.opts.motion === false ? 0 : Math.sin(now / 180 + f.y * 20) * 0.12;
     ctx.rotate(wag * (f.action === "flare" ? 2.2 : 1));
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     else {
@@ -297,10 +346,99 @@
       ctx.strokeStyle = "#fbbf24";
       ctx.strokeRect(x - bw / 2 - 4, y - bh / 2 - 4, bw + 8, bh + 8);
     }
-    ctx.fillStyle = moodOf(f, now) === "sad" ? "#fb7185" : "#e8eef5";
-    ctx.font = "600 13px Syne, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(f.name, x, y - bh / 2 - 8);
+    if (state.opts.names !== false) {
+      ctx.fillStyle = moodOf(f, now) === "sad" ? "#fb7185" : "#e8eef5";
+      ctx.font = "600 13px Syne, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(f.name, x, y - bh / 2 - 8);
+    }
+  }
+  function drawCrew(c, w, h, now) {
+    const t = now / 1000 + c.wobble;
+    let x = c.x * w;
+    let y = c.y * h;
+    if (state.opts.motion !== false) {
+      if (c.role === "jelly") y += Math.sin(t) * 10;
+      else if (c.role === "turtle") y += Math.sin(t * 0.7) * 8;
+      else y += Math.sin(t * 1.4) * 3;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(c.vx >= 0 ? 1 : -1, 1);
+    if (c.role === "snail") {
+      ctx.fillStyle = "#d6c4a8";
+      ctx.beginPath(); ctx.ellipse(-6, 4, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#b45309";
+      ctx.beginPath(); ctx.arc(4, 0, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(4, 0, 4, 0.4, 4); ctx.stroke();
+    } else if (c.role === "otto") {
+      ctx.fillStyle = "#94a3b8";
+      ctx.beginPath(); ctx.ellipse(0, 0, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(8, -2, 3, 3);
+    } else if (c.role === "cory") {
+      ctx.fillStyle = "#a8a29e";
+      ctx.beginPath(); ctx.ellipse(0, 2, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#e7e5e4";
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(22, -6); ctx.moveTo(12, 2); ctx.lineTo(22, 4); ctx.stroke();
+    } else if (c.role === "jelly") {
+      const g = ctx.createRadialGradient(0, -4, 2, 0, 0, 22);
+      g.addColorStop(0, "rgba(186,230,253,0.9)");
+      g.addColorStop(1, "rgba(125,211,252,0.15)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.ellipse(0, -6, 18, 12, 0, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = "rgba(224,242,254,0.7)";
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 6, 2);
+        ctx.quadraticCurveTo(i * 8, 16 + Math.sin(t * 3 + i) * 4, i * 4, 28);
+        ctx.stroke();
+      }
+    } else {
+      ctx.fillStyle = "#166534";
+      ctx.beginPath(); ctx.ellipse(0, 0, 22, 14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#14532d";
+      ctx.beginPath(); ctx.ellipse(-2, -2, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#bbf7d0";
+      ctx.beginPath(); ctx.arc(16, -2, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#052e16";
+      ctx.beginPath(); ctx.arc(18, -3, 1.4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    if (state.opts.names !== false) {
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "600 12px Syne, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(c.name, x, y - 22);
+    }
+  }
+  function stepCrew(c, dt) {
+    const slow = c.role === "snail" ? 0.35 : c.role === "jelly" ? 0.45 : 1;
+    if (Math.random() < dt * 0.2) c.vx = (Math.random() < 0.5 ? -1 : 1) * 0.025 * slow;
+    c.x += c.vx * dt;
+    if (c.role === "jelly") c.y = 0.26 + Math.sin(Date.now() / 1400 + c.wobble) * 0.06;
+    else if (c.role === "turtle") c.y = 0.48 + Math.sin(Date.now() / 1800 + c.wobble) * 0.12;
+    else if (c.role === "otto") c.y = 0.34 + Math.sin(Date.now() / 2200 + c.wobble) * 0.18;
+    else c.y = 0.8 + Math.sin(Date.now() / 900 + c.wobble) * 0.03;
+    if (c.x < 0.08) { c.x = 0.08; c.vx = Math.abs(c.vx); }
+    if (c.x > 0.92) { c.x = 0.92; c.vx = -Math.abs(c.vx); }
+  }
+  function simWater(now) {
+    const hour = new Date().getHours();
+    const ambient = 23 + Math.sin(((hour - 6) / 24) * Math.PI * 2) * 1.5;
+    const target = state.opts.heater ? (state.opts.temp || 25) : ambient;
+    state.temp += (target - state.temp) * 0.02;
+    const prev = state.waterAt || now;
+    const span = Math.min(72, Math.max(0, (now - prev) / HOUR));
+    if (span < 0.004) return;
+    state.waterAt = now;
+    const fishN = state.fish.length;
+    const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
+    const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
+    const day = phase() === "night" ? 0.35 : 1;
+    state.algae = clamp(state.algae + span * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
+    state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 - state.algae * 0.03), 0, 100);
   }
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -327,8 +465,20 @@
       ctx.arc(b.x * w, b.y * h, b.r, 0, Math.PI * 2);
       ctx.stroke();
     });
+    const film = (state.algae || 0) / 100;
+    if (film > 0.02) {
+      ctx.fillStyle = "rgba(34,92,28," + (0.08 + film * 0.38) + ")";
+      ctx.fillRect(0, h * 0.72, w, h * 0.28);
+      ctx.fillRect(0, h * 0.16, Math.max(4, w * film * 0.08), h * 0.62);
+      ctx.fillRect(w - Math.max(4, w * film * 0.08), h * 0.16, Math.max(4, w * film * 0.08), h * 0.62);
+    }
+    if ((state.quality || 100) < 60) {
+      ctx.fillStyle = "rgba(90,60,20," + ((60 - state.quality) / 180) + ")";
+      ctx.fillRect(0, 0, w, h);
+    }
     const list = state.fish.slice().sort(function (a, b) { return a.y - b.y; });
     list.forEach(function (f) { drawFish(f, w, h, now); });
+    (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
   }
 
   function renderRail() {
@@ -362,6 +512,33 @@
     document.getElementById("selMeta").textContent = f
       ? (specOf(f.species).name + " · " + specOf(f.species).blurb)
       : "Click a fish in the tank or the list.";
+    const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
+    const long = ranked.length ? ageOf(ranked[0], now) : 0;
+    const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
+    document.getElementById("mLiving").textContent = String(state.fish.length);
+    document.getElementById("mLong").textContent = hours(long) + " h";
+    document.getElementById("mBest").textContent = hall + " h";
+    document.getElementById("mTemp").textContent = (Math.round(state.temp * 10) / 10) + "°";
+    document.getElementById("mAlgae").textContent = Math.round(state.algae) + "%";
+    const qEl = document.getElementById("mQual");
+    qEl.textContent = String(Math.round(state.quality));
+    qEl.className = state.quality >= 70 ? "q-good" : state.quality >= 40 ? "q-fair" : "q-poor";
+    document.getElementById("board").classList.toggle("hidden", state.opts.board === false);
+    document.getElementById("boardRows").innerHTML = "<div class='rowline head'><span>Name</span><span>Kind</span><span>Age</span><span>Mood</span></div>" +
+      ranked.map(function (fish) {
+        return "<div class='rowline'><span>" + esc(fish.name) + "</span><span>" + esc(specOf(fish.species).name) +
+          "</span><span>" + hours(ageOf(fish, now)) + "h</span><span class='mood-" + moodOf(fish, now) + "'>" + moodOf(fish, now) + "</span></div>";
+      }).join("") +
+      (state.crew || []).map(function (c) {
+        return "<div class='rowline'><span>" + esc(c.name) + "</span><span>cleaner</span><span>" +
+          hours(ageOf(c, now)) + "h</span><span>work</span></div>";
+      }).join("");
+    const crewShop = document.getElementById("crewShop");
+    crewShop.innerHTML = CREW.map(function (c) {
+      const n = state.crew.filter(function (x) { return x.role === c.id; }).length;
+      return "<button type='button' class='btn' data-crew='" + c.id + "'>" + esc(c.name) + " · " + c.cost +
+        " <span class='lore'>(" + n + ") " + esc(c.blurb) + "</span></button>";
+    }).join("");
   }
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {
@@ -374,7 +551,9 @@
     last = t;
     const now = Date.now();
     catchUp(now);
+    simWater(now);
     state.fish.forEach(function (f) { stepFish(f, dt); });
+    (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     if (!state._pts || now - state._pts > 45000) {
       state._pts = now;
       state.fish.forEach(function (f) {
@@ -426,7 +605,8 @@
     state.fish.forEach(function (f) {
       if (now - f.lastFed > 3 * HOUR) { f.lastFed = now; n++; }
     });
-    log(n ? ("Flakes for " + n + ". Mood lifts. Life is still about a week unless you use pellets.") : "They are not hungry yet.");
+    if (n) state.algae = clamp((state.algae || 0) + 4, 0, 100);
+    log(n ? ("Flakes for " + n + ". Mood lifts. A little food stays in the water.") : "They are not hungry yet.");
     save();
     renderRail();
   };
@@ -460,6 +640,70 @@
     state.owner = String(e.target.value || "Keeper").slice(0, 18);
     save();
   });
+  document.getElementById("change").onclick = function () {
+    if (state.points < 10) { log("A water change costs 10 points."); return; }
+    state.points -= 10;
+    state.algae = clamp(state.algae - 28, 0, 100);
+    state.quality = clamp(state.quality + 24, 0, 100);
+    log("You change a third of the water. Algae drops. The glass clears.");
+    save();
+    renderRail();
+  };
+  document.getElementById("crewShop").onclick = function (e) {
+    const b = e.target.closest("[data-crew]");
+    if (!b) return;
+    if (state.crew.length >= 8) { log("Eight cleaners fill the work."); return; }
+    const spec = crewOf(b.getAttribute("data-crew"));
+    if (!spec) return;
+    if (state.points < spec.cost) { log(spec.name + " costs " + spec.cost + " points."); return; }
+    state.points -= spec.cost;
+    state.crew.push(makeCrew(spec.id));
+    log(spec.name + " starts work.");
+    save();
+    renderRail();
+  };
+  function syncOpt() {
+    const o = state.opts;
+    document.getElementById("optNames").checked = o.names !== false;
+    document.getElementById("optBoard").checked = o.board !== false;
+    document.getElementById("optMotion").checked = o.motion !== false;
+    document.getElementById("optHeater").checked = !!o.heater;
+    document.getElementById("optClock").value = o.clock || "real";
+    document.getElementById("optTemp").value = String(o.temp || 25);
+    document.getElementById("optTempVal").textContent = (o.temp || 25) + "°";
+  }
+  function readOpt() {
+    const o = state.opts;
+    o.names = document.getElementById("optNames").checked;
+    o.board = document.getElementById("optBoard").checked;
+    o.motion = document.getElementById("optMotion").checked;
+    o.heater = document.getElementById("optHeater").checked;
+    o.clock = document.getElementById("optClock").value || "real";
+    o.temp = Number(document.getElementById("optTemp").value) || 25;
+    document.getElementById("optTempVal").textContent = o.temp + "°";
+    save();
+    renderRail();
+  }
+  document.getElementById("btnOpt").onclick = function () {
+    syncOpt();
+    document.getElementById("optLayer").classList.remove("hidden");
+  };
+  document.getElementById("optClose").onclick = function () {
+    readOpt();
+    document.getElementById("optLayer").classList.add("hidden");
+  };
+  ["optNames", "optBoard", "optMotion", "optHeater", "optClock"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", readOpt);
+  });
+  document.getElementById("optTemp").addEventListener("input", readOpt);
+  document.getElementById("optReset").onclick = function () {
+    if (!window.confirm("Clear this tank, the cleaners, and the cemetery in this browser?")) return;
+    fresh();
+    const ownerEl = document.getElementById("owner");
+    if (ownerEl) ownerEl.value = state.owner || "Keeper";
+    document.getElementById("optLayer").classList.add("hidden");
+    renderRail();
+  };
 
   load();
   const owner = document.getElementById("owner");

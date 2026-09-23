@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=1">
+<link rel="stylesheet" href="./tank.css?v=2">
 </head>
 <body>
 <div class="app">
@@ -25,9 +25,18 @@
     <span class="clock" id="clock">day</span>
     <span class="points" id="points">0 pts</span>
     <span class="grow"></span>
+    <button type="button" class="btn" id="btnOpt">Options</button>
     <a class="mini" href="./ledger.html">Cemetery hall</a>
     <a class="mini" href="/games/">Hub</a>
   </header>
+  <section class="board" id="board" aria-label="Tank scoreboard">
+    <div><b id="mLiving">0</b><span>living</span></div>
+    <div><b id="mLong">0 h</b><span>longest now</span></div>
+    <div><b id="mBest">0 h</b><span>hall best</span></div>
+    <div><b id="mTemp">25.0°</b><span>water</span></div>
+    <div><b id="mAlgae">0%</b><span>algae</span></div>
+    <div><b id="mQual">100</b><span>quality</span></div>
+  </section>
   <div class="stage">
     <div class="tankwrap"><canvas id="tank"></canvas></div>
     <aside class="rail">
@@ -37,7 +46,10 @@
       <div class="row">
         <button type="button" class="btn gold" id="feed">Flakes</button>
         <button type="button" class="btn" id="pellet">Pellet · 15</button>
+        <button type="button" class="btn" id="change">Water change · 10</button>
       </div>
+      <h2>Scoreboard</h2>
+      <div class="board-table" id="boardRows"></div>
       <h2>This fish</h2>
       <input class="name" id="fishName" maxlength="16" placeholder="Name" aria-label="Fish name">
       <p class="lore" id="selMeta">Click a fish.</p>
@@ -45,6 +57,9 @@
       <div id="fishList"></div>
       <h2>Bring a baby</h2>
       <div class="row" id="shop"></div>
+      <h2>Cleaners</h2>
+      <p class="lore">Snails and algae eaters scrape the green. Corys and the turtle lift waste. Jellies pulse when the water is kind.</p>
+      <div class="row" id="crewShop"></div>
       <h2>Cemetery</h2>
       <div id="graves"></div>
       <h2>Log</h2>
@@ -52,11 +67,42 @@
     </aside>
   </div>
   <footer class="dock">
-    <span class="lore">Jump, race, and play-bump. They do not hurt each other. Longest lives lead the hall.</span>
+    <audio id="radioEl" preload="none"></audio>
+    <div id="radioDock" class="radio-inline">
+      <button type="button" id="radioPlay">Radio</button>
+      <button type="button" id="radioNext">Next</button>
+      <button type="button" id="radioMute">Mute</button>
+      <label class="radio-vol">Vol <input type="range" data-radio-vol min="0" max="100" value="55" aria-label="Radio volume"></label>
+      <span class="radio-title-inline" id="radioTitle">Idle</span>
+    </div>
+    <span class="lore">Jump, race, and play-bump. Cleaners keep the water. Longest lives lead the hall.</span>
     <a class="mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">Donate</a>
   </footer>
 </div>
+<div id="optLayer" class="opt hidden" role="dialog" aria-modal="true" aria-label="Options">
+  <div class="optbox">
+    <p class="kicker">Options</p>
+    <h2>The glass</h2>
+    <label class="check"><input type="checkbox" id="optNames" checked> Show names</label>
+    <label class="check"><input type="checkbox" id="optBoard" checked> Show the scoreboard</label>
+    <label class="check"><input type="checkbox" id="optMotion" checked> Swim motion</label>
+    <label class="check"><input type="checkbox" id="optHeater" checked> Heater on</label>
+    <label class="check">Light
+      <select id="optClock">
+        <option value="real">Follow the real clock</option>
+        <option value="day">Always day</option>
+        <option value="night">Always night</option>
+      </select>
+    </label>
+    <label class="check">Target temp <input type="range" id="optTemp" min="20" max="30" value="25"> <b id="optTempVal">25°</b></label>
+    <div class="row">
+      <button type="button" class="btn gold" id="optClose">Close</button>
+      <button type="button" class="btn" id="optReset">Reset this tank</button>
+    </div>
+  </div>
+</div>
 <script src="/games/arcade-ledger.js?v=4"></script>
-<script src="./tank.js?v=1"></script>
+<script src="./radio.js?v=1"></script>
+<script src="./tank.js?v=2"></script>
 </body>
 </html>
