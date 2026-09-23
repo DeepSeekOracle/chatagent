@@ -124,6 +124,17 @@ must("the algae eater is the only real sink for algae", js.indexOf("- span * (al
   /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
   js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+must("every tank hour draws its own moment", js.indexOf("state.huntAt = state.hourAt + Math.floor(Math.random() * HOUR);") >= 0 &&
+  js.indexOf("if (state.huntAt == null)") >= 0 && js.indexOf("while (now >= state.huntAt && guard < 72)") >= 0);
+must("the draw is thrown away every hour, not reused", (function () {
+  const i = js.indexOf("while (now >= state.huntAt && guard < 72)");
+  const body = js.slice(i, i + 300);
+  const adv = body.indexOf("state.hourAt += HOUR;");
+  const redraw = body.indexOf("state.huntAt = state.hourAt + Math.floor(Math.random() * HOUR);");
+  return adv >= 0 && redraw > adv && /Math\.random\(\)/.test(body.slice(adv, redraw + 80)) &&
+    body.indexOf("seed") < 0 && body.indexOf(".replace(") < 0;
+})());
+must("the stalk leads the drawn moment, not the hour stroke", js.indexOf("const due = state.huntAt || ((state.hourAt || now) + HOUR);") >= 0);
 must("the nerite walks the sand and never floats", js.indexOf('if (c.role === "snail")') >= 0 &&
   js.indexOf("c.y = clamp(0.88 + Math.sin(now / 9000 + c.wobble) * 0.015, 0.85, 0.92);") >= 0 &&
   js.indexOf("c.vy = 0;") >= 0 && /const step = Math\.sin\(now \/ 2800/.test(js) &&

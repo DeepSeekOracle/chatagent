@@ -1673,7 +1673,7 @@
     thanksQueued = false;
   }
   function armStalk(now) {
-    const due = (state.hourAt || now) + HOUR;
+    const due = state.huntAt || ((state.hourAt || now) + HOUR);
     if (now < due - STALK_LEAD || now >= due) return;
     if (state._stalkedHour === state.hourAt) return;
     let any = false;
@@ -1734,11 +1734,21 @@
       }
     });
     if (!state.hourAt) state.hourAt = now;
+    /* ---- a hunter's hour is not a stopwatch ----
+       Every tank hour draws its own moment to happen in, anywhere between the top of the
+       hour and the next one, and the draw is thrown away when the hour is spent. Nothing is
+       carried over and nothing is seeded from the hour number, so no hour can repeat the
+       hour before it - the roll is a fresh Math.random() each time, and a hunter, its baby,
+       or the next boss can arrive at any second of the hour rather than on the stroke. */
+    if (state.huntAt == null) {
+      state.huntAt = state.hourAt + Math.floor(Math.random() * HOUR);
+    }
     let guard = 0;
-    while (now - state.hourAt >= HOUR && guard < 72) {
-      state.hourAt += HOUR;
+    while (now >= state.huntAt && guard < 72) {
       guard += 1;
-      onTankHour(state.hourAt);
+      onTankHour(state.huntAt);
+      state.hourAt += HOUR;
+      state.huntAt = state.hourAt + Math.floor(Math.random() * HOUR);
     }
     if (guard) queueThanks();
     armStalk(now);
