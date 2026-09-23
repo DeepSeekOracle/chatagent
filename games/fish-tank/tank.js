@@ -483,6 +483,11 @@
   const ctx = canvas.getContext("2d");
   let state = null;
   let selected = null;
+  /* where each fish was actually drawn, in canvas pixels - the click test reads this */
+  const hitBoxes = {};
+  const HIT_PAD = 0.008;
+  const HIT_FAR = 0.1;
+  const HIT_LABEL = 0.05;
   let bubbles = [];
   let flakes = [];
   let inks = [];
@@ -2888,6 +2893,7 @@
       const u = Math.max(0, f.actionT / 1.1);
       y = h * 0.18 - Math.sin((1 - u) * Math.PI) * h * 0.12;
     }
+    hitBoxes[f.id] = { x: x, y: y, bw: bw, bh: bh, z: z, at: now };
     if (motionOf(f).glow === true && phase() !== "day") {
       const pulse = state.opts.motion === false ? 0.6 : 0.55 + Math.sin(now / 700 + (f.wseed || 0)) * 0.2;
       const g = ctx.createRadialGradient(x, y, 1, x, y, Math.max(18, bh * 1.8));
@@ -3205,6 +3211,7 @@
       if (!predClose(p, now)) drawPredator(p, w, h, now);
     });
     order.forEach(function (f) { drawFish(f, w, h, now); });
+    Object.keys(hitBoxes).forEach(function (k) { if (hitBoxes[k].at !== now) delete hitBoxes[k]; });
     drawInks(w, h, now);
     (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
     (state.predators || []).forEach(function (p) {
@@ -4069,6 +4076,26 @@
     tickFishNoise(now);
     requestAnimationFrame(loop);
   }
+  /* Click what you can see: the box the sprite was drawn in, its name plate above it,
+     and if that misses, the nearest fish within reach. Ties go to the fish nearer the glass. */
+  function fishAt(x, y, w, h) {
+    let best = null, bestScore = 1e9;
+    state.fish.forEach(function (f) {
+      const box = hitBoxes[f.id];
+      const cx = box ? box.x / w : f.x;
+      const cy = box ? box.y / h : f.y;
+      const z = box ? box.z : (f.z == null ? 0.5 : f.z);
+      const hw = Math.max(0.016, (box ? box.bw / w : 0.05) * 0.5) + HIT_PAD;
+      const hh = Math.max(0.02, (box ? box.bh / h : 0.06) * 0.5) + HIT_PAD;
+      const dx = Math.abs(x - cx), dy = Math.abs(y - cy);
+      const inBox = dx <= hw && y >= cy - hh - HIT_LABEL && y <= cy + hh;
+      const dist = Math.hypot(dx, dy);
+      if (!inBox && dist > HIT_FAR) return;
+      const score = (inBox ? 0 : 10) + (1 - z) + dist * 0.4;
+      if (score < bestScore) { bestScore = score; best = f; }
+    });
+    return best;
+  }
   function pick(id) {
     selected = id;
     renderRail();
@@ -4080,15 +4107,12 @@
     if (b) pick(b.getAttribute("data-id"));
   };
   canvas.addEventListener("click", function (e) {
+    if (!state || !state.fish) return;
     const r = canvas.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width;
     const y = (e.clientY - r.top) / r.height;
-    let best = null, bd = 0.08;
-    state.fish.forEach(function (f) {
-      const d = Math.hypot(f.x - x, f.y - y) + (1 - depthOf(f)) * 0.045;
-      if (d < bd) { bd = d; best = f; }
-    });
-    if (best) pick(best.id); else hideFishCard();
+    const hit = fishAt(x, y, r.width, r.height);
+    if (hit) pick(hit.id); else hideFishCard();
   });
   document.getElementById("fishName").addEventListener("change", function (e) {
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];

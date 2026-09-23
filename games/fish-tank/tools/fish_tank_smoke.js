@@ -169,11 +169,22 @@ must("it carries the fish's own metadata", ["fishCardPic", "fishCardSpecies", "f
 must("it fades on its own and hides after", js.indexOf("function hideFishCard()") >= 0 && js.indexOf("const FISH_CARD_MS = 9000") >= 0 &&
   css.indexOf(".fish-card.fade") >= 0 && css.indexOf(".fish-card.hidden") >= 0);
 must("clicking a fish opens it, from the list or the glass", js.indexOf("if (f) showFishCard(f); else hideFishCard();") >= 0 &&
-  js.indexOf("if (best) pick(best.id); else hideFishCard();") >= 0);
+  js.indexOf("if (hit) pick(hit.id); else hideFishCard();") >= 0);
 must("the placard is tank themed, not a browser dialog", js.indexOf("function showFishCard(f)") >= 0 &&
   css.indexOf(".fish-card {") >= 0 && css.indexOf(".fish-card-rows dt") >= 0 && css.indexOf("linear-gradient(180deg, #0b1c24ee") >= 0 &&
   (js.match(/fishCardRows|fishCardChips/g) || []).length >= 2);
 must("the keeper signs the fish card in their own voice", js.indexOf("const FISH_VOICE = {") >= 0 && js.indexOf("function fishVoice(f)") >= 0);
+
+/* 4f. clicking a fish: you hit what you see, and nothing eats the click */
+must("the hit test uses the box the sprite was drawn in", js.indexOf("hitBoxes[f.id] = { x: x, y: y, bw: bw, bh: bh, z: z, at: now }") >= 0 &&
+  js.indexOf("function fishAt(x, y, w, h)") >= 0 && js.indexOf("const cx = box ? box.x / w : f.x;") >= 0);
+must("the name plate above a fish is part of the target", js.indexOf("y >= cy - hh - HIT_LABEL") >= 0);
+must("a near miss still picks the nearest fish", js.indexOf("if (!inBox && dist > HIT_FAR) return;") >= 0 && js.indexOf("const HIT_FAR = 0.1;") >= 0);
+must("no more depth penalty pushing far fish out of reach", js.indexOf("(1 - depthOf(f)) * 0.045") < 0);
+must("stale boxes are dropped each frame", js.indexOf("if (hitBoxes[k].at !== now) delete hitBoxes[k];") >= 0);
+must("the canvas click is guarded when no tank is loaded", js.indexOf('canvas.addEventListener("click", function (e) {\n    if (!state || !state.fish) return;') >= 0);
+must("the fish card never swallows a click meant for a fish", /\.fish-card \{[^}]*pointer-events: none/.test(css));
+must("and neither does the keeper box", /\.keeper-box \{[^}]*pointer-events:none/.test(css) || /\.keeper-box \{[^}]*pointer-events: none/.test(css));
 
 /* 5. ambient water, and the reduced-motion contract */
 must("light shafts", js.indexOf('ctx.globalCompositeOperation = "lighter"') >= 0);
