@@ -16,8 +16,25 @@
 .tale-row, .tale-schools { display: flex; flex-wrap: wrap; gap: .35rem; margin: .35rem 0; }
 .tale-roster, .tale-skills, .tale-pips { display: grid; gap: .4rem; }
 .tale-roster { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); margin: .4rem 0 .8rem; }
+.tale .btn,
+.tale .btn.ghost {
+  background: #1a2836;
+  color: #e8eef5;
+  border: 1px solid #3a4e64;
+  min-width: 0;
+}
+.tale .btn.gold,
+.tale .btn.ghost.gold {
+  background: #fbbf24;
+  color: #1a1204;
+  border-color: #fbbf24;
+}
+.tale .btn:hover,
+.tale .btn.ghost:hover { transform: none; border-color: #5eead4; }
+.tale .btn.gold:hover,
+.tale .btn.ghost.gold:hover { border-color: #fde68a; color: #1a1204; }
 .tale-hero, .tale-skill, .tale-card, .tale-unit {
-  text-align: left; background: #0c1018; color: inherit; border: 1px solid #1e2a3a;
+  text-align: left; background: #162033; color: #e8eef5; border: 1px solid #3a4e64;
   border-radius: 10px; padding: .45rem; font: inherit; cursor: pointer;
 }
 .tale-hero.on, .tale-skill.on, .tale-mini.on { border-color: #fbbf24; }
@@ -81,7 +98,7 @@
 .tale-log { grid-column: 1 / -1; max-height: 28vh; overflow: auto; font-size: .82rem; color: #cbd5e1; }
 .tale-log div { border-bottom: 1px solid #1e2a3a; padding: .2rem 0; }
 .tale-mini {
-  background: #10141c; color: inherit; border: 1px solid #1e2a3a; border-radius: 8px;
+  background: #1a2836; color: #e8eef5; border: 1px solid #3a4e64; border-radius: 8px;
   padding: .28rem .4rem; font: 650 .68rem Syne, sans-serif; cursor: pointer;
 }
 .tale-skills.tight { grid-template-columns: 1fr; }
