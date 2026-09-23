@@ -401,6 +401,14 @@ must("the copy follows the tank, not the page", js.indexOf("function modeCopyTic
 must("nothing still calls a retired name", js.indexOf("rpgCopied") < 0 && js.indexOf("rpgCopy(") < 0 &&
   js.indexOf("_rpgCopy") < 0 && js.indexOf("scrapers") < 0 && js.indexOf("rotWaste") < 0);
 
+must("the run shelf gives its buttons a column of their own",
+  css.indexOf(".rpg-panel .wrow { grid-template-columns: 58px 34px minmax(0, 1fr) 66px; }") >= 0 &&
+  css.indexOf(".rpg-panel .wsub {") >= 0 && css.indexOf(".rpg-panel .wrow .btn {") >= 0 &&
+  css.indexOf("display: block; width: 100%; min-height: 0;") >= 0);
+
+must("the shelf's notes fit their column", js.indexOf('"paired" : n ? "needs a mate" : "not here"') >= 0 &&
+  js.indexOf("3 fish") < 0 && js.indexOf('k + " fish · " +') >= 0);
+
 console.log("");
 if (fails) {
   console.log(fails + " smoke check(s) failed");

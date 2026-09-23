@@ -3897,10 +3897,14 @@
     if (!box) {
       const anchor = document.getElementById("crewShop");
       if (!anchor || !anchor.parentNode) return;
+      /* sit above the Cleaners heading, not between it and the cleaner buttons: the run's shelf
+         is its own shelf and should not split someone else's section */
+      let head = anchor.previousElementSibling;
+      while (head && head.tagName !== "H2") head = head.previousElementSibling;
       box = document.createElement("div");
       box.id = "rpgPanel";
       box.className = "rpg-panel wgrid";
-      anchor.parentNode.insertBefore(box, anchor);
+      anchor.parentNode.insertBefore(box, head || anchor);
     }
     const run = state.run || {};
     const k = state.fish.length;
@@ -3910,11 +3914,13 @@
       const n = kinds[s.id] || 0;
       const hasM = state.fish.some(function (f) { return f.species === s.id && f.sex !== "f"; });
       const hasF = state.fish.some(function (f) { return f.species === s.id && f.sex === "f"; });
-      const pair = hasM && hasF ? "a pair in the water" : n ? "needs a mate" : "not in the tank";
+      /* short on purpose: the shelf's note column is about 86px wide and a wrapped note
+         makes the whole row look broken */
+      const pair = hasM && hasF ? "paired" : n ? "needs a mate" : "not here";
       return "<div class='wrow'><span class='wlabel'>" + esc(s.name) + "</span>" +
-        "<b class='q-fair'>" + n + "/2</b><span class='wsub'>" + pair + " <button type='button' class='btn'" +
-        " data-spawn='" + s.id + "'" + (n >= 2 ? " disabled" : "") + ">" +
-        (n >= 2 ? "full" : "spawn") + "</button></span></div>";
+        "<b class='q-fair'>" + n + "/2</b><span class='wsub'>" + pair + "</span>" +
+        "<button type='button' class='btn' data-spawn='" + s.id + "'" + (n >= 2 ? " disabled" : "") + ">" +
+        (n >= 2 ? "full" : "spawn") + "</button></div>";
     }).join("");
     box.innerHTML =
       "<p class='kicker'>Fish Tank RPG</p>" +
@@ -3922,8 +3928,8 @@
       " A pair breeds once a 30 minute window, at a moment of its own, so watch and wait. A run that empties is over.</p>" +
       "<div class='wrow'><span class='wlabel'>run</span><b class='q-fair'>" +
       hours(Date.now() - (run.start || Date.now())) + "h</b><span class='wsub'>" + k + " fish · " +
-      Object.keys(kinds).length + " kinds · came " + (run.added || 0) + " · lost " + (run.lost || 0) +
-      (run.collapsed ? " · this run is over" : "") + "</span></div>" + rows;
+      Object.keys(kinds).length + " kinds" + (run.collapsed ? " · over" : "") + "</span>" +
+      "<span></span></div>" + rows;
   }
   /* the run, watched from the outside -
      Nothing here reaches into the simulation: it counts what appears and what is lost, and
