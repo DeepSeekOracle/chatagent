@@ -68,6 +68,14 @@ button, input { font:inherit; color:inherit; }
 .opt.hidden { display:none !important; }
 .optbox { width:min(460px, 100%); background:#0c1622; border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; }
 .optbox h2 { font-family:Syne,sans-serif; margin:.2rem 0 .6rem; }
+.thanks-box { width:min(520px, 100%); }
+.thanks-copy { color:var(--mute); margin:0 0 .8rem; line-height:1.45; }
+.thanks-links { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 .9rem; }
+.thanks-links a {
+  text-decoration:none; font:700 .78rem Syne,sans-serif; color:#e8eef5;
+  background:#101c28; border:1px solid #3a4e64; padding:.5rem .75rem; border-radius:8px;
+}
+.thanks-links a:hover { border-color:var(--gold); color:var(--gold); }
 .check { display:flex; align-items:center; gap:.45rem; margin:.4rem 0; color:var(--mute); }
 .check select, .check input[type="range"] { margin-left:auto; accent-color:var(--gold); }
 .q-good { color:#86efac; }

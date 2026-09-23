@@ -813,6 +813,22 @@
       if (state.predators.length > before) spawnLeft = 0;
     });
   }
+  let thanksQueued = false;
+  function queueThanks() {
+    if (playing) openThanks();
+    else thanksQueued = true;
+  }
+  function openThanks() {
+    const el = document.getElementById("thanksLayer");
+    if (!el) return;
+    thanksQueued = false;
+    el.classList.remove("hidden");
+  }
+  function closeThanks() {
+    const el = document.getElementById("thanksLayer");
+    if (el) el.classList.add("hidden");
+    thanksQueued = false;
+  }
   function armStalk(now) {
     const due = (state.hourAt || now) + HOUR;
     if (now < due - STALK_LEAD || now >= due) return;
@@ -876,6 +892,7 @@
       guard += 1;
       onTankHour(state.hourAt);
     }
+    if (guard) queueThanks();
     armStalk(now);
     const before = state.predators.length;
     state.predators = state.predators.filter(function (p) { return (p.fails || 0) < 2; });
@@ -2706,6 +2723,7 @@
     resize();
     renderRail();
     syncLoops();
+    if (thanksQueued) openThanks();
   }
   function paintCast() {
     const box = document.getElementById("menuCast");
@@ -2789,6 +2807,10 @@
   document.getElementById("btnOpt").onclick = function () {
     syncOpt();
     document.getElementById("optLayer").classList.remove("hidden");
+  };
+  document.getElementById("thanksClose").onclick = function () { closeThanks(); };
+  document.getElementById("thanksLayer").onclick = function (e) {
+    if (e.target.id === "thanksLayer") closeThanks();
   };
   document.getElementById("optClose").onclick = function () {
     readOpt();
