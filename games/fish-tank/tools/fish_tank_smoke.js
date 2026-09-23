@@ -124,6 +124,12 @@ must("the algae eater is the only real sink for algae", js.indexOf("- span * (al
   /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
   js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+must("home and the caretaker are one menu tab", html.indexOf(">Caretaker</button>") < 0 &&
+  html.indexOf('data-tab="panelHome"') >= 0 && html.indexOf('data-tab="panelTank"') >= 0 &&
+  js.indexOf("const HOME_GROUP = [\"panelHome\", \"panelKeep\"];") >= 0 &&
+  js.indexOf('if (id === "panelKeep" || id === "panelHome") paintKeeperMenu();') >= 0 &&
+  html.indexOf('data-tab="panelKeep"') < 0 &&
+  js.indexOf("the caretaker list is on the home tab now") >= 0);
 must("every fish is stamped with the real clock", js.indexOf("function bornStamp(ms)") >= 0 &&
   /Math\.round\(born \|\| 0\)/.test(js) && js.indexOf('["Born", bornStamp(f.born)') >= 0 &&
   js.indexOf('["Stamp", String(Math.round(f.born || 0)) + " ms"]') >= 0);

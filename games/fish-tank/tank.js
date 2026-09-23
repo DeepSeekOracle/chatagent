@@ -4976,6 +4976,8 @@
     playing = false;
     const cont = document.getElementById("menuContinue");
     if (cont) cont.disabled = !hasSave;
+    /* the caretaker list is on the home tab now, so it has to be drawn with the cards */
+    paintKeeperMenu();
     document.getElementById("menu").classList.remove("hidden");
     document.getElementById("app").classList.add("hidden");
     paintCast();
@@ -5002,12 +5004,18 @@
     }).join("");
   }
   function showPanel(which) {
+    /* Home and the caretaker are one tab now, so the caretaker panel rides with the home
+       cards: opening either shows both, and the Home tab is the one that lights up. */
+    const HOME_GROUP = ["panelHome", "panelKeep"];
     ["panelHome", "panelKeep", "panelTank", "panelHow"].forEach(function (id) {
       const el = document.getElementById(id);
-      if (el) el.classList.toggle("hidden", id !== which);
+      if (!el) return;
+      if (HOME_GROUP.indexOf(id) >= 0) el.classList.toggle("hidden", HOME_GROUP.indexOf(which) < 0);
+      else el.classList.toggle("hidden", id !== which);
     });
     document.querySelectorAll(".menu-tabs .tab").forEach(function (tab) {
-      tab.classList.toggle("on", tab.getAttribute("data-tab") === which);
+      const t = tab.getAttribute("data-tab");
+      tab.classList.toggle("on", t === which || (HOME_GROUP.indexOf(t) >= 0 && HOME_GROUP.indexOf(which) >= 0));
     });
   }
   document.getElementById("menuContinue").onclick = function () {
@@ -5018,7 +5026,7 @@
   document.querySelectorAll(".menu-tabs .tab").forEach(function (tab) {
     tab.onclick = function () {
       const id = tab.getAttribute("data-tab");
-      if (id === "panelKeep") paintKeeperMenu();
+      if (id === "panelKeep" || id === "panelHome") paintKeeperMenu();
       if (id === "panelTank") paintCast();
       showPanel(id);
     };
