@@ -422,7 +422,7 @@
     { id: "quickfry", name: "Quick fry", text: "Eggs hatch sooner." }
   ];
   const CREW = [
-    { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
+    { id: "snail", name: "Nerite", cost: 20, blurb: "Walks the sand and scrapes the green." },
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
     { id: "cory", name: "Cory", cost: 28, blurb: "Bottom feeder. Lifts the waste." },
     { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses in the top and middle water only." },
@@ -3816,6 +3816,19 @@
       }
     }
     state.crew.forEach(function (c) {
+      /* The nerite is a snail: it walks the sand and never floats. It steps, then creeps,
+         then steps again, and it turns around at the glass instead of climbing it. */
+      if (c.role === "snail") {
+        if (!c.walkDir) c.walkDir = Math.random() < 0.5 ? -1 : 1;
+        if (c.x < 0.07) c.walkDir = 1;
+        if (c.x > 0.93) c.walkDir = -1;
+        const step = Math.sin(now / 2800 + c.wobble) > 0.35 ? 0.03 : 0.006;
+        c.vx = c.walkDir * step;
+        c.x = clamp(c.x + c.vx * dt, 0.05, 0.95);
+        c.y = clamp(0.88 + Math.sin(now / 9000 + c.wobble) * 0.015, 0.85, 0.92);
+        c.vy = 0;
+        return;
+      }
       if (c.role === "otto") c.y = clamp(0.79 + Math.sin(now / 3400 + c.wobble) * 0.05, 0.72, 0.9);
       if (c.role !== "otto") return;
       if (c.eggs && now >= c.eggs) {

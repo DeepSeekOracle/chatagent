@@ -124,6 +124,10 @@ must("the algae eater is the only real sink for algae", js.indexOf("- span * (al
   /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
   js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+must("the nerite walks the sand and never floats", js.indexOf('if (c.role === "snail")') >= 0 &&
+  js.indexOf("c.y = clamp(0.88 + Math.sin(now / 9000 + c.wobble) * 0.015, 0.85, 0.92);") >= 0 &&
+  js.indexOf("c.vy = 0;") >= 0 && /const step = Math\.sin\(now \/ 2800/.test(js) &&
+  js.indexOf("Walks the sand and scrapes the green.") >= 0);
 must("the menu opens the merged pair, not the markup's classes", js.indexOf('showPanel(litTab ? litTab.getAttribute("data-tab") : "panelHome");') >= 0);
 must("home and the caretaker are one menu tab", html.indexOf(">Caretaker</button>") < 0 &&
   html.indexOf('data-tab="panelHome"') >= 0 && html.indexOf('data-tab="panelTank"') >= 0 &&
