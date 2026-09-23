@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fish Tank — real-time aquarium | chatagent.ca</title>
-<meta name="description" content="Free real-time aquarium. Thirteen species, including one octopus, LYGO Claw the lobster, and a reef crab, grow through six ages and breed generations of fry. Adult in a day, a week unless you use pellets. Snails, algae eaters, and a turtle keep the water. Local save. Cemetery hall. No account.">
+<meta name="description" content="Free real-time aquarium. Eighteen species, including one octopus, LYGO Claw the lobster, and a reef crab, grow through six ages and breed generations of fry. Adult in a day, a week unless you use pellets. Snails, algae eaters, and a turtle keep the water. Local save. Cemetery hall. No account.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#071018">
@@ -15,14 +15,14 @@
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/games/fish-tank/">
 <meta property="og:title" content="Fish Tank — real-time aquarium">
-<meta property="og:description" content="Name your fish, keep the water, and see who lasts. Thirteen species, including one octopus, LYGO Claw the lobster, and a reef crab. Six ages, day and night on the real clock. Cemetery hall ranks the longest lives.">
+<meta property="og:description" content="Name your fish, keep the water, and see who lasts. Eighteen species, including one octopus, LYGO Claw the lobster, and a reef crab. Six ages, day and night on the real clock. Cemetery hall ranks the longest lives.">
 <meta property="og:image" content="https://chatagent.ca/games/fish-tank/assets/og.jpg?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Fish Tank title over a golden aquarium with a goldfish, a blue stripe, an octopus, and a gold-clawed lobster">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Fish Tank — real-time aquarium">
-<meta name="twitter:description" content="Thirteen species, including one octopus, LYGO Claw the lobster, and a reef crab. Six ages, real day and night. Local save. Cemetery hall. No account.">
+<meta name="twitter:description" content="Eighteen species, including one octopus, LYGO Claw the lobster, and a reef crab. Six ages, real day and night. Local save. Cemetery hall. No account.">
 <meta name="twitter:image" content="https://chatagent.ca/games/fish-tank/assets/og.jpg?v=2">
 <meta name="twitter:image:alt" content="Fish Tank title over a golden aquarium with a goldfish, a blue stripe, an octopus, and a gold-clawed lobster">
 <script type="application/ld+json">
@@ -32,7 +32,7 @@
   "name": "Fish Tank",
   "url": "https://chatagent.ca/games/fish-tank/",
   "image": "https://chatagent.ca/games/fish-tank/assets/og.jpg?v=2",
-  "description": "Free real-time aquarium. Thirteen species, including one octopus, LYGO Claw the lobster, and a reef crab, grow through six ages. Cleaners keep algae and water quality in check. Local save. Cemetery hall ranks hours lived.",
+  "description": "Free real-time aquarium. Eighteen species, including one octopus, LYGO Claw the lobster, and a reef crab, grow through six ages. Cleaners keep algae and water quality in check. Local save. Cemetery hall ranks hours lived.",
   "genre": ["Simulation", "Casual"],
   "playMode": "SinglePlayer",
   "applicationCategory": "Game",
@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=5">
+<link rel="stylesheet" href="./tank.css?v=6">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -108,7 +108,7 @@
           <li>While this page is open they patrol, school, glide, graze the gravel, rest, shelter in the weeds, and shove each other off the food. Bigger fish push smaller ones around. All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.</li>
           <li>Watch temperature, algae, and quality on the scoreboard. Every species has its own comfort range: too warm and they gulp at the surface, too cold and they hang low and slow. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
           <li>Keep the water clean and two grown fish of the same species will court and leave eggs on the rockwork. The eggs hatch into fry that inherit their parents' tempers and traits, and each generation is marked in the list. Foul water kills eggs.</li>
-          <li>The tank holds 50 fish, and only one octopus. It jets between two poses. When a hunter chases it, it throws black ink, and that cloud takes 10% off the bite. Each species grows on its own hour count. A fed hour counts double. Crowding and dirty water drain health.</li>
+          <li>Click a fish for its character card: bio, health, hunger, growth, and how it lives with the others. The tank holds 50 fish, and only one octopus. It jets between two poses. When a hunter chases it, it throws black ink, and that cloud takes 10% off the bite. Each species grows on its own hour count. A fed hour counts double. Crowding and dirty water drain health.</li>
           <li>One tank hour is the hunter clock. One hunter can enter in a quiet hour. A bite still targets the weakest fish. A full, fed fish is only a 25% bite. A success leaves one baby that hour, and that baby grows into another hunter. Two misses and it dies. Greymaw the shark becomes JAWS after three clean meals in a row. JAWS is larger, can take two fish on an eat hour, heals 25% for each, and dies if it misses food for two hours. Another hunter can fight JAWS, once a tank hour, with hit points. Two fights will usually finish JAWS. You cannot stop them. Tank sounds, including the air pump and the low music while JAWS is in the glass, turn off in Options. The radio has its own volume.</li>
         </ol>
         <button type="button" class="btn" id="howBack">Back</button>
@@ -165,8 +165,19 @@
       <p class="lore">Marks pay points the first time they happen.</p>
       <div class="goals" id="goals"></div>
       <h2>This fish</h2>
+      <article id="charCard" class="char-card">
+        <div class="char-head">
+          <img id="charPic" alt="" width="200" height="110">
+          <div>
+            <p class="kicker" id="charNiche">Character</p>
+            <h3 id="charTitle">Choose a fish</h3>
+            <p class="lore" id="charLatin"></p>
+          </div>
+        </div>
+        <p id="charBio" class="char-bio">Click a fish in the glass or the list.</p>
+        <dl id="charStats" class="char-stats"></dl>
+      </article>
       <input class="name" id="fishName" maxlength="16" placeholder="Name" aria-label="Fish name">
-      <p class="lore" id="selMeta">Click a fish.</p>
       <h2>Living</h2>
       <div id="fishList"></div>
       <h2>Bring a baby</h2>
@@ -239,6 +250,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=28"></script>
+<script src="./tank.js?v=29"></script>
 </body>
 </html>

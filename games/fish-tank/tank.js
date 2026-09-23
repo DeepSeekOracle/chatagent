@@ -29,7 +29,12 @@
     { id: "pearl", name: "Pearl", play: "flash", temper: "lively", social: "school", bulk: 0.7, blurb: "Happy. Schools and flashes." },
     { id: "claw", name: "LYGO Claw", play: "snap", temper: "chill", social: "loner", bulk: 1.28, blurb: "The lobster. Walks the sand. Gold claws." },
     { id: "crab", name: "Pincer", play: "scuttle", temper: "chill", social: "loner", bulk: 1.05, blurb: "Reef crab. Sideways on the bottom." },
-    { id: "octo", name: "Octopus", play: "curl", temper: "lively", social: "loner", bulk: 1.15, blurb: "One in the tank. Jets, and inks when a hunter chases." }
+    { id: "octo", name: "Octopus", play: "curl", temper: "lively", social: "loner", bulk: 1.15, blurb: "One in the tank. Jets, and inks when a hunter chases." },
+    { id: "mandarin", name: "Mandarin", play: "pulse", temper: "chill", social: "loner", bulk: 0.62, blurb: "Dragonet. Hides on the rockwork and ignores most flakes." },
+    { id: "pepper", name: "Peppermint", play: "hover", temper: "chill", social: "loner", bulk: 0.84, blurb: "Deep angel. Stays low and leaves when the water runs hot." },
+    { id: "tusk", name: "Tusk", play: "flare", temper: "lively", social: "loner", bulk: 1.18, blurb: "Harlequin tusk. Clears a little algae and shoves smaller fish aside." },
+    { id: "dragon", name: "Seadragon", play: "drift", temper: "chill", social: "loner", bulk: 1.22, blurb: "Leafy seadragon. Drifts in the plants. Hard for a hunter to pick out." },
+    { id: "mask", name: "Masked angel", play: "school", temper: "chill", social: "school", bulk: 0.9, blurb: "Schools only with its own kind, and gives a tusk room." }
   ];
   const VITALS = {
     glimmer: { hp: 100, regen: 8, hurt: 10, food: 14 },
@@ -44,7 +49,12 @@
     pearl: { hp: 60, regen: 11, hurt: 15, food: 7 },
     claw: { hp: 160, regen: 3, hurt: 5, food: 26 },
     crab: { hp: 110, regen: 5, hurt: 7, food: 16 },
-    octo: { hp: 130, regen: 5, hurt: 7, food: 18 }
+    octo: { hp: 130, regen: 5, hurt: 7, food: 18 },
+    mandarin: { hp: 72, regen: 4, hurt: 9, food: 20 },
+    pepper: { hp: 96, regen: 3, hurt: 8, food: 22 },
+    tusk: { hp: 150, regen: 4, hurt: 6, food: 16 },
+    dragon: { hp: 110, regen: 2, hurt: 7, food: 28 },
+    mask: { hp: 84, regen: 5, hurt: 8, food: 14 }
   };
   const PREDATORS = {
     pike: { id: "pike", name: "Reed", blurb: "Long bill. A boss if the tank is quiet for an hour." },
@@ -67,7 +77,12 @@
     pearl: [2, 5, 9, 16, 60, 100],
     claw: [6, 18, 36, 64, 220, 360],
     crab: [4, 10, 20, 36, 130, 210],
-    octo: [5, 14, 30, 52, 180, 300]
+    octo: [5, 14, 30, 52, 180, 300],
+    mandarin: [4, 12, 24, 40, 140, 220],
+    pepper: [8, 20, 40, 72, 240, 400],
+    tusk: [5, 14, 28, 48, 180, 300],
+    dragon: [8, 24, 48, 80, 260, 420],
+    mask: [5, 14, 28, 46, 170, 280]
   };
   const PRED_STAT = {
     pike: { hp: 90, dmg: 78 },
@@ -96,7 +111,12 @@
     pearl: { cruise: 0.092, burst: 0.46, turn: 2.9, vision: 0.22, band: [0.14, 0.48], tail: 21, glide: 0.35 },
     claw: { cruise: 0.024, burst: 0.08, turn: 0.95, vision: 0.15, band: [0.82, 0.86], tail: 4, glide: 0.08, walk: true },
     crab: { cruise: 0.046, burst: 0.18, turn: 2.1, vision: 0.16, band: [0.82, 0.86], tail: 9, glide: 0.05, walk: true },
-    octo: { cruise: 0.05, burst: 0.36, turn: 1.7, vision: 0.22, band: [0.22, 0.74], tail: 7, glide: 0.72, jet: true }
+    octo: { cruise: 0.05, burst: 0.36, turn: 1.7, vision: 0.22, band: [0.22, 0.74], tail: 7, glide: 0.72, jet: true },
+    mandarin: { cruise: 0.032, burst: 0.12, turn: 1.3, vision: 0.12, band: [0.58, 0.84], tail: 6, glide: 0.82 },
+    pepper: { cruise: 0.04, burst: 0.14, turn: 1.2, vision: 0.14, band: [0.64, 0.88], tail: 7, glide: 0.8 },
+    tusk: { cruise: 0.062, burst: 0.22, turn: 1.8, vision: 0.18, band: [0.42, 0.78], tail: 10, glide: 0.55 },
+    dragon: { cruise: 0.02, burst: 0.06, turn: 0.7, vision: 0.12, band: [0.36, 0.72], tail: 4, glide: 0.95 },
+    mask: { cruise: 0.055, burst: 0.18, turn: 1.6, vision: 0.2, band: [0.32, 0.64], tail: 11, glide: 0.62 }
   };
   /* Soft obstacles read off the painted tank, per theme. rx/ry are real
      stretches in screen fractions, so a rock blocks as tall as it is wide.
@@ -137,7 +157,28 @@
   const TEMP_BAND = {
     glimmer: [23, 28], azure: [22, 27], dart: [22, 27], puff: [23, 28], lantern: [23, 28],
     moss: [20, 26], ruby: [23, 28], veil: [22, 27], sunscale: [21, 26], pearl: [23, 28],
-    claw: [16, 24], crab: [22, 29], octo: [20, 27]
+    claw: [16, 24], crab: [22, 29], octo: [20, 27],
+    mandarin: [24, 28], pepper: [22, 25], tusk: [24, 28], dragon: [16, 22], mask: [23, 27]
+  };
+  const BIOS = {
+    glimmer: { niche: "Upper school", text: "An original tank fish. It keeps to the bright middle water, schools with the other lively fish, and jumps when the glass is kind." },
+    azure: { niche: "Loner", text: "An original betta-like fish. It keeps its own patch of water, flares when another fish crowds it, and does not join a school." },
+    dart: { niche: "Fast school", text: "An original dash fish. It lives high in the water, races the school, and burns hunger faster than the slow fish." },
+    puff: { niche: "Soft loner", text: "An original round fish. It drifts, bumps a neighbor, then wants space again. Dirty water bothers it less than a dart." },
+    lantern: { niche: "Night light", text: "An original schooling fish. It glows once the tank goes dark and stays with the other small swimmers." },
+    moss: { niche: "Low grazer", text: "An original bottom fish. It stays near the sand, picks at the green, and grows on a slow clock." },
+    ruby: { niche: "School anchor", text: "An original calm fish. It holds the school together and does not sprint unless the food is close." },
+    veil: { niche: "Slow arc", text: "An original long-finned fish. It takes wide slow turns and likes a little room around those fins." },
+    sunscale: { niche: "Lap swimmer", text: "An original koi-like fish. It cruises a long lap, lives a long time, and does not school." },
+    pearl: { niche: "Flash school", text: "An original small fish. It flashes in the school, eats often, and has the shortest life of the originals." },
+    claw: { niche: "Sand walker", text: "LYGO Claw, the lobster. It walks the sand, takes food after it settles, and sidesteps a hunter instead of swimming up. It likes cooler water." },
+    crab: { niche: "Sand walker", text: "Pincer, a reef crab. It scuttles the bottom, lifts a little waste, and stays on the sand even when the fish above bolt." },
+    octo: { niche: "Jet and ink", text: "One octopus in the glass. It jets through the middle water. When a hunter chases, the ink takes 10% off that bite. It does not share the tank with a second octopus." },
+    mandarin: { latin: "Synchiropus splendidus", niche: "Cryptic grazer", text: "A real mandarin dragonet. It picks tiny life off the rockwork, skips most flakes unless it is starving, and keeps away from the open school. The bitter skin makes a hunter 8% less likely to finish the bite." },
+    pepper: { latin: "Centropyge boylei", niche: "Deep reef", text: "A real peppermint angelfish, one of the rare deep angels. It stays low, wants cooler water than the goldfish, and backs off when a tusk comes through. It grows slowly and lives a long time." },
+    tusk: { latin: "Choerodon fasciatus", niche: "Territory", text: "A real harlequin tusk. It pushes smaller neighbors aside, takes food with confidence, and scrapes a little algae while it patrols. Masked angels, peppermints, and seadragons give it room." },
+    dragon: { latin: "Phycodurus eques", niche: "Plant drift", text: "A real leafy seadragon. It barely swims, drifts into the plants, and is poor at chasing flakes. In the weeds a hunter is 12% less likely to land the bite. This tank does not hatch extra dragons from eggs." },
+    mask: { latin: "Genicanthus personatus", niche: "Own-kind school", text: "A real masked angelfish from deep Hawaiian water. It schools only with other masked angels and slides away from a tusk. It does not join the glimmer school." }
   };
   const TRAIT_WORDS = {
     bold: ["timid", "wary", "steady", "bold", "fearless"],
@@ -159,7 +200,7 @@
     { id: "clear", text: "Quality 95 with twelve fish", pay: 35 },
     { id: "gen3", text: "A third generation is born here", pay: 60 },
     { id: "thirty", text: "Thirty fish at once", pay: 60 },
-    { id: "allten", text: "All thirteen species at once", pay: 70 }
+    { id: "allten", text: "All eighteen species at once", pay: 70 }
   ];
   const STALK_LEAD = 22000;
   const STRIKE_WINDOW = 40000;
@@ -201,7 +242,7 @@
   CREW_SPRITES.turtleSleep.src = "./assets/crew/turtle-sleep.png";
   STAGES.forEach(function (pair) {
     SPECIES.forEach(function (sp) {
-      if (sp.id === "claw" || sp.id === "crab" || sp.id === "octo") return;
+      if (sp.id === "claw" || sp.id === "crab" || sp.id === "octo" || sp.id === "mandarin" || sp.id === "pepper" || sp.id === "tusk" || sp.id === "dragon" || sp.id === "mask") return;
       const img = new Image();
       img.src = "./assets/fish/" + sp.id + "_" + pair[0] + ".png";
       SPRITES[sp.id + "_" + pair[0]] = img;
@@ -225,7 +266,7 @@
     img.src = "./assets/fish/" + key + ".png";
     PRED_SPRITES[key] = img;
   });
-  ["octo_r", "octo_r_swim", "ink_1", "ink_2", "ink_3"].forEach(function (key) {
+  ["octo_r", "octo_r_swim", "ink_1", "ink_2", "ink_3", "mandarin_r", "mandarin_r_swim", "pepper_r", "pepper_r_swim", "tusk_r", "tusk_r_swim", "dragon_r", "dragon_r_swim", "mask_r", "mask_r_swim"].forEach(function (key) {
     const img = new Image();
     img.src = "./assets/fish/" + key + ".png";
     SPRITES[key] = img;
@@ -394,7 +435,7 @@
       wseed: Math.random() * 90
     };
   }
-  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer", octo: "Eight" };
+  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer", octo: "Eight", mandarin: "Mandy", pepper: "Mint", tusk: "Tusk", dragon: "Leaf", mask: "Mask" };
   let playing = false;
   let hasSave = false;
   let menuMode = "standard";
@@ -593,7 +634,7 @@
     if (off > 2.5) delta -= (1.1 + (off - 2.5) * 1.5) * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
   }
-  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure", "crab", "claw", "octo"];
+  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure", "crab", "claw", "octo", "mandarin", "pepper", "tusk", "dragon", "mask"];
   function autoSpecies() {
     let best = AUTO_CAST[0];
     let bestN = 99;
@@ -647,7 +688,16 @@
     const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
     let chance = clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
     if (f.species === "octo" && (f.inkUntil || 0) > now) chance = clamp(chance - 0.10, 0.05, 0.85);
+    if (f.species === "mandarin") chance = clamp(chance - 0.08, 0.05, 0.85);
+    if (f.species === "dragon" && nearWeed(f)) chance = clamp(chance - 0.12, 0.05, 0.85);
     return chance;
+  }
+  function nearWeed(f) {
+    let close = false;
+    decorOf().forEach(function (d) {
+      if (d.kind === "weed" && Math.hypot(f.x - d.x, f.y - d.y) < 0.16) close = true;
+    });
+    return close;
   }
   function hasOcto(exceptId) {
     return (state.fish || []).some(function (f) { return f.species === "octo" && f.id !== exceptId; });
@@ -1139,7 +1189,7 @@
         (f.hp || 0) >= vitals(f).hp * 0.7 &&
         now - (f.lastFed || f.born) < 3 * HOUR &&
         now - (f.spawnCd || 0) > 45 * 60000 &&
-        f.species !== "octo";
+        f.species !== "octo" && f.species !== "dragon";
     });
     if (ready.length < 2) return;
     let pair = null;
@@ -1442,6 +1492,8 @@
       const d = Math.hypot(fl.x - f.x, (fl.y - f.y) * AR);
       let score = d / mine * (1 + Math.abs(fl.y - mid) * 1.5);
       if (band[0] > 0.5 && fl.y < 0.52) score += 0.9;
+      if ((f.species === "mandarin" || f.species === "dragon") && !starving) score += 1.35;
+      if (f.species === "tusk") score -= 0.2;
       if (band[1] < 0.48 && fl.y > 0.72) score += 0.7;
       if (!starving) {
         state.fish.forEach(function (o) {
@@ -1492,7 +1544,8 @@
       const dx = o.x - f.x, dy = (o.y - f.y) * AR;
       const d = Math.hypot(dx, dy);
       if (d > vision || d < 0.0001) return;
-      if (socialOf(o) === "school" || d < sepR) { n += 1; cx += o.x; cy += o.y; vx += o.vx; vy += o.vy / AR; }
+      const kin = f.species !== "mask" || o.species === "mask";
+      if (kin && (socialOf(o) === "school" || o.species === f.species || d < sepR)) { n += 1; cx += o.x; cy += o.y; vx += o.vx; vy += o.vy / AR; }
       if (d < sepR) {
         const w = (sepR - d) / sepR;
         ax -= dx / d * w;
@@ -1517,6 +1570,49 @@
     }
     out.x += ax * 1.5;
     out.y += ay * 1.5;
+  }
+  function nicheSteer(f, out) {
+    const id = f.species;
+    state.fish.forEach(function (o) {
+      if (o === f) return;
+      const dx = o.x - f.x, dy = (o.y - f.y) * AR;
+      const d = Math.hypot(dx, dy);
+      if (d > 0.32 || d < 0.0001) return;
+      if (id === "mandarin" && o.species === "mandarin") {
+        out.x += dx / d * 0.35;
+        out.y += dy / d * 0.2;
+      } else if (id === "mandarin") {
+        out.x -= dx / d * 0.45;
+      }
+      if (id === "mask" && o.species === "tusk") {
+        out.x -= dx / d * 0.9;
+        out.y -= dy / d * 0.35;
+      }
+      if ((id === "pepper" || id === "dragon") && o.species === "tusk") {
+        out.x -= dx / d * 0.55;
+      }
+      if (id === "tusk" && o.species !== "tusk" && specOf(o.species).bulk <= fBulk(f)) {
+        out.x += dx / d * 0.22;
+        o.vx += (o.x - f.x) * 0.15;
+      }
+    });
+    if (id === "dragon" || id === "mandarin" || id === "pepper") {
+      let best = null, bd = 1e9;
+      decorOf().forEach(function (d) {
+        const want = id === "dragon" ? d.kind === "weed" : (d.kind === "solid" || d.shelter);
+        if (!want) return;
+        const dist = Math.hypot(f.x - d.x, f.y - d.y);
+        if (dist < bd) { bd = dist; best = d; }
+      });
+      if (best) {
+        const pull = id === "dragon" ? 0.7 : 0.28;
+        out.x += (best.x - f.x) * pull;
+        out.y += (best.y - f.y) * pull * 0.45;
+      }
+    }
+  }
+  function fBulk(f) {
+    return specOf(f.species).bulk * (STAGE_DRAW[stageName(bodyAge(f), f.species)] || 1);
   }
   function decorSteer(f, out) {
     const push = 1.95 + traits(f).bold * 0.7 + (f.startleT > 0 ? 1.2 : 0);
@@ -1818,6 +1914,7 @@
     }
     if (mind.mode !== "glide") {
       shoalSteer(f, out);
+      nicheSteer(f, out);
       decorSteer(f, out);
     }
     bandSteer(f, out, mind.mode === "gasp" ? 0.12 : null);
@@ -1851,6 +1948,8 @@
     }
     bodyUpdate(f, dt, cap);
     if (f.state === "graze" && Math.random() < dt * 0.5) state.algae = clamp((state.algae || 0) - 0.05, 0, 100);
+    if (f.species === "tusk" && Math.random() < dt * 0.4) state.algae = clamp((state.algae || 0) - 0.09, 0, 100);
+    if (f.species === "mandarin" && Math.random() < dt * 0.25) state.algae = clamp((state.algae || 0) - 0.03, 0, 100);
   }
   function stepInks(dt, now) {
     inks.forEach(function (k) {
@@ -2033,9 +2132,9 @@
     const goingRight = (f.face || 1) !== -1;
     let img = SPRITES[f.species + "_" + stage];
     let useTurn = false;
-    if (f.species === "octo") {
-      const jetting = (f.jetT || 0) > 0.05;
-      const posed = SPRITES[jetting ? "octo_r_swim" : "octo_r"] || SPRITES.octo_r;
+    if (f.species === "octo" || f.species === "mandarin" || f.species === "pepper" || f.species === "tusk" || f.species === "dragon" || f.species === "mask") {
+      const moving = f.species === "octo" ? (f.jetT || 0) > 0.05 : Math.abs(f.vx) > 0.01;
+      const posed = SPRITES[f.species + "_r" + (moving ? "_swim" : "")] || SPRITES[f.species + "_r"];
       if (posed) img = posed;
     } else if (f.species === "claw" || f.species === "crab") {
       const dir = goingRight ? "r" : "l";
@@ -2055,8 +2154,9 @@
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
-    if (f.species === "octo" && img && img.complete && img.naturalWidth) {
-      bw = Math.min(w * 0.32, 320) * STAGE_DRAW[stage] * (0.85 + z * 0.2);
+    if ((f.species === "octo" || f.species === "mandarin" || f.species === "pepper" || f.species === "tusk" || f.species === "dragon" || f.species === "mask") && img && img.complete && img.naturalWidth) {
+      const wide = f.species === "dragon" ? 0.4 : (f.species === "octo" ? 0.32 : 0.26);
+      bw = Math.min(w * wide, f.species === "dragon" ? 420 : 320) * STAGE_DRAW[stage] * (0.85 + z * 0.2);
       bh = bw * (img.naturalHeight / img.naturalWidth);
     }
     const breathe = state.opts.motion === false ? 0 : Math.sin(now / (f.state === "rest" ? 1700 : 900) + f.x * 10) * (f.state === "rest" ? 2.4 : 1.1);
@@ -2445,9 +2545,7 @@
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
     const name = document.getElementById("fishName");
     if (document.activeElement !== name) name.value = f ? f.name : "";
-    document.getElementById("selMeta").textContent = f
-      ? (specOf(f.species).name + " · " + specOf(f.species).blurb + (stateWord(f) ? " · " + stateWord(f) : "") + (tempNote(f) ? " · " + tempNote(f) : ""))
-      : "Click a fish in the tank or the list.";
+    paintChar(f, now);
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
@@ -2519,6 +2617,59 @@
           (done ? "" : " <span class='lore'>+" + g.pay + "</span>") + "</div>";
       }).join("");
     }
+  }
+  function portraitSrc(id) {
+    if (id === "octo" || id === "mandarin" || id === "pepper" || id === "tusk" || id === "dragon" || id === "mask") return "./assets/fish/" + id + "_r.png";
+    if (id === "claw" || id === "crab") return "./assets/fish/" + id + "_r.png";
+    return "./assets/fish/" + id + "_adult.png";
+  }
+  function paintChar(f, now) {
+    const title = document.getElementById("charTitle");
+    const latin = document.getElementById("charLatin");
+    const niche = document.getElementById("charNiche");
+    const bio = document.getElementById("charBio");
+    const stats = document.getElementById("charStats");
+    const pic = document.getElementById("charPic");
+    if (!title) return;
+    if (!f) {
+      title.textContent = "Choose a fish";
+      latin.textContent = "";
+      niche.textContent = "Character";
+      bio.textContent = "Click a fish in the glass or the list. The card shows who they are, how they live, and the numbers on them right now.";
+      stats.innerHTML = "";
+      pic.removeAttribute("src");
+      pic.alt = "";
+      return;
+    }
+    const spec = specOf(f.species);
+    const card = BIOS[f.species] || {};
+    const cycle = cycleOf(f.species);
+    const grown = f.growthHours || 0;
+    const lifeH = cycle[5] + Math.round((f.bonus || 0) / HOUR);
+    const left = Math.max(0, lifeH - grown);
+    title.textContent = f.name;
+    latin.textContent = (card.latin ? card.latin + " · " : "") + spec.name;
+    niche.textContent = card.niche || "Fish";
+    bio.textContent = card.text || spec.blurb;
+    pic.src = portraitSrc(f.species);
+    pic.alt = spec.name;
+    const rows = [
+      ["Stage", stageName(bodyAge(f), f.species)],
+      ["Age", hours(ageOf(f, now)) + " h"],
+      ["Growth", grown + " / " + lifeH + " h"],
+      ["Life left", left + " h"],
+      ["Health", Math.round(f.hp || 0) + " / " + vitals(f).hp],
+      ["Fed for", hours(Math.max(0, foodLeft(f, now))) + " h"],
+      ["Mood", moodOf(f, now)],
+      ["Doing", stateWord(f) || "cruising"],
+      ["Water", tempNote(f) || "comfortable"],
+      ["Temper", spec.temper === "chill" ? "Relaxed" : "Swims a lot"],
+      ["With others", spec.social === "loner" ? "Loner" : "School"],
+      ["Line", "gen " + (f.gen || 1)]
+    ];
+    stats.innerHTML = rows.map(function (row) {
+      return "<div><dt>" + esc(row[0]) + "</dt><dd>" + esc(row[1]) + "</dd></div>";
+    }).join("");
   }
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {

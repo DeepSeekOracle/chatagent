@@ -76,6 +76,15 @@ button, input { font:inherit; color:inherit; }
   background:#101c28; border:1px solid #3a4e64; padding:.5rem .75rem; border-radius:8px;
 }
 .thanks-links a:hover { border-color:var(--gold); color:var(--gold); }
+.char-card { background:#101c28; border:1px solid var(--line); border-radius:12px; padding:.7rem .75rem .55rem; margin:.35rem 0 .6rem; }
+.char-head { display:flex; gap:.65rem; align-items:center; }
+.char-head img { width:118px; height:72px; object-fit:contain; background:#071018; border-radius:8px; flex:0 0 auto; }
+.char-head h3 { font-family:Syne,sans-serif; margin:.1rem 0; font-size:1.05rem; }
+.char-bio { color:var(--mute); font-size:.86rem; line-height:1.4; margin:.55rem 0 .4rem; }
+.char-stats { display:grid; grid-template-columns:1fr 1fr; gap:.2rem .6rem; margin:0; }
+.char-stats div { display:flex; justify-content:space-between; gap:.4rem; border-top:1px solid #1c2c3c; padding:.18rem 0; }
+.char-stats dt { color:var(--mute); font-size:.72rem; }
+.char-stats dd { margin:0; font:600 .75rem "IBM Plex Mono",monospace; }
 .check { display:flex; align-items:center; gap:.45rem; margin:.4rem 0; color:var(--mute); }
 .check select, .check input[type="range"] { margin-left:auto; accent-color:var(--gold); }
 .q-good { color:#86efac; }
