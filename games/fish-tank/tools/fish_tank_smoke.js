@@ -110,6 +110,36 @@ must("a life that goes on the board carries its whole identity", js.indexOf('nam
 must("the side panel is a real scroll box", css.indexOf(".manage-scroll") >= 0 &&
   /max-height:min\(54vh, 30rem\)/.test(css) && css.indexOf("overflow-y:auto") >= 0 &&
   css.indexOf("::-webkit-scrollbar-thumb") >= 0);
+must("eating is the only thing that pays", js.indexOf("state.points += fl.pellet ? 2 : 1;") >= 0 &&
+  js.indexOf("no points for leaving the page open any more") >= 0 &&
+  js.indexOf("state.points += m === \"happy\" ? 1") < 0);
+must("a full fish refuses food, and a meal comes back as waste over hours", js.indexOf("function isFull(f, now)") >= 0 &&
+  js.indexOf("const hungry = !isFull(f, Date.now());") >= 0 && js.indexOf("function shed(f, span)") >= 0 &&
+  js.indexOf("winner.digest = (winner.digest || 0) +") >= 0 && js.indexOf("digestOut - wasteLifted") >= 0);
+must("uneaten food rots into garbage", js.indexOf("fl.rot = (fl.rot || 0) + dt;") >= 0 &&
+  js.indexOf("LOOP.flakeRot") >= 0 && js.indexOf("rots into the sand") >= 0);
+must("cleaners lift waste and pay in algae", js.indexOf("lifted * LOOP.algaePerLift") >= 0 &&
+  js.indexOf("LOOP.cleanPerHour") >= 0);
+must("the algae eater is the only real sink for algae", js.indexOf("- span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae)") >= 0 &&
+  /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
+must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
+  js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+must("every fish is stamped with the real clock", js.indexOf("function bornStamp(ms)") >= 0 &&
+  /Math\.round\(born \|\| 0\)/.test(js) && js.indexOf('["Born", bornStamp(f.born)') >= 0 &&
+  js.indexOf('["Stamp", String(Math.round(f.born || 0)) + " ms"]') >= 0);
+must("the stamp is part of the genome, and the card says so", /Math\.round\(born \|\| 0\), salt \|\| ""\]\.join/.test(js) &&
+  js.indexOf('["DNA", f.dna ? f.dna + (verifyDna(f).ok ? " · matches"') >= 0 &&
+  js.indexOf("bornOn: bornStamp(f.born)") >= 0 && js.indexOf("bornStamp: bornStamp,") >= 0);
+must("the sim reads the real clock, not a sped up one", /clock: "real",/.test(js) &&
+  js.indexOf("Always day") < 0 && js.indexOf('{"hour: "2-digit", minute: "2-digit", second: "2-digit"}') < 0 &&
+  js.indexOf("second: \"2-digit\"") >= 0);
+must("a new fish is born hungry, so a new tank can earn", js.indexOf("lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * 0.8) * HOUR),") >= 0);
+must("the shop sells two algae eaters and no more", /ottoBought: 2/.test(js) &&
+  js.indexOf("The shop will only sell two algae eaters") >= 0);
+must("algae eaters breed, and sit on the sand", js.indexOf('baby.bought = false;') >= 0 &&
+  js.indexOf('c.role === "otto") c.y = clamp(0.79') >= 0 && js.indexOf("lays a clutch") >= 0);
+must("the octopus and the algae eater dispel nothing", js.indexOf("const CLEAN_SPECIES = { octo: true };") >= 0 &&
+  js.indexOf("return !CLEAN_SPECIES[f.species];") >= 0);
 must("the rail refreshes itself while the tank runs", js.indexOf("if (playing && state) renderRail();") >= 0 &&
   js.indexOf("}, 5000);") >= 0);
 must("the panel holds cleaners beside the fish", html.indexOf('id="crewList"') >= 0 && html.indexOf('id="manageScroll"') >= 0 &&

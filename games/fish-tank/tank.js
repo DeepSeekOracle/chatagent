@@ -222,6 +222,28 @@
     gasp: 44                                     // and gulp at the surface here
   };
   const WASTE = { fish: 0.14, meal: 1.4, lift: 0.7, grazer: 0.16, settle: 1.7 };
+  /* ---- the feeding loop, end to end ----
+     A flake a fish eats is the only thing that pays. A fish that is still full refuses it,
+     so that flake sinks and rots into waste instead. What a fish does eat works through it
+     over the next hours and comes back out as waste. Cleaners lift that waste and pay for
+     it in algae, and the only creature that eats algae - the final cleaner - is an algae
+     eater. Nothing closes that loop but an otto, which is why every tank needs one, the
+     shop will only sell two, and the rest have to be bred. */
+  const LOOP = {
+    full: 0.72,          // a fish will not take a flake while this much of its meal is left
+    flakeRot: 60,        // seconds an uneaten flake floats before it turns to garbage
+    rotWaste: 2.2,       // waste one rotted flake leaves behind
+    digest: 0.85,        // share of a meal that comes back as waste
+    digestHours: 3,      // how long a meal takes to work through
+    cleanPerHour: 1.1,   // waste one cleaner lifts each hour
+    algaePerLift: 0.22,  // algae a cleaner makes per unit of waste it lifts
+    bloomPerHour: 0.9,   // the water's own slow bloom, per hour
+    ottoAlgae: 6.5,      // algae one algae eater clears an hour - the only real sink
+    snailAlgae: 0.6,     // a nerite scrapes the glass, but cannot keep up
+    ottoBought: 2,       // algae eaters the shop will sell at a time
+    ottoClutch: 5,       // hours between clutches for a settled algae eater
+    ottoHatch: 0.35      // hours in the egg before an otto hatches
+  };
   const KEEPERS = {
     mara: {
       id: "mara", name: "Mara", tag: "Water", pitch: 1.05, rate: 0.94, cast: "hand", ext: "png", talk: true,
@@ -520,6 +542,17 @@
     return "normal";
   }
   function vitals(f) { return VITALS[f.species] || { hp: 100, regen: 5, hurt: 10, food: 16 }; }
+  /* true while a fish still has enough of its last meal to turn a flake down */
+  function isFull(f, now) {
+    return foodLeft(f, now) > LOOP.full * vitals(f).food * HOUR;
+  }
+  /* what a fish has eaten and not yet put back into the water, shed over the next hours */
+  function shed(f, span) {
+    if (!f.digest) return 0;
+    const out = Math.min(f.digest, (f.digest / Math.max(0.25, LOOP.digestHours)) * span);
+    f.digest -= out;
+    return out;
+  }
   function foodLeft(f, now) {
     const hours = vitals(f).food * (hasPerk("meals") ? 1.28 : 1);
     return hours * HOUR - (now - (f.lastFed || f.born));
@@ -834,6 +867,15 @@
       .toString(16).padStart(8, "0");
   }
   function isDna(v) { return String(v || "").indexOf("LG1-") === 0; }
+  /* Every fish is born on the real clock: `born` is a browser timestamp in milliseconds and
+     it is already part of the genome (see genomeOf), so the hash commits to the very second
+     the fish arrived. These two only say it out loud, in the same shape a card can print. */
+  function bornStamp(ms) {
+    const d = new Date(ms || 0);
+    const p = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " +
+      p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
   /* the gene bank is the part of the ledger that survives a fish: hashes, parents, names */
   function bankFish(f) {
     if (!f || !f.dna) return;
@@ -940,7 +982,8 @@
       bonus: 0,
       growth: 0,
       growthAt: now,
-      lastFed: now,
+      /* born hungry: the first pinch has to be worth something, or no tank can earn */
+      lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * 0.8) * HOUR),
       lastPlay: now,
       x: 0.2 + Math.random() * 0.6,
       y: clamp(band[0] + Math.random() * (band[1] - band[0]), 0.12, 0.86),
@@ -1110,6 +1153,8 @@
       id: uid(),
       role: role,
       name: spec ? spec.name : role,
+      bought: true,
+      bred: false,
       born: Date.now(),
       x: 0.15 + Math.random() * 0.7,
       y: role === "jelly" ? 0.28 : 0.8,
@@ -2535,7 +2580,9 @@
     const crew = state.crew || [];
     if (!crew.length) return;
     const tr = traits(f);
-    const hungry = foodLeft(f, Date.now()) < 4 * HOUR;
+    /* a fish that still has a meal in it will not chase a flake: that is what leaves food
+       in the water to rot, and it is the whole reason over feeding costs a tank */
+    const hungry = !isFull(f, Date.now());
     const floor = bandOf(f)[0] > 0.5;
     crew.forEach(function (c) {
       const d = Math.hypot(c.x - f.x, (c.y - f.y) * AR);
@@ -3162,7 +3209,8 @@
       if (!near.length) {
         if (fl.age > 8) {
           fl.gone = true;
-          state.algae = clamp((state.algae || 0) + (fl.pellet ? 1.5 : 0.6), 0, 100);
+          /* food in the water does not make green any more: it rots, and the cleaners
+             that lift the rot are what make it */
         }
         return;
       }
@@ -3190,8 +3238,10 @@
         winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + 10 * HOUR);
         if (near.length > 1 && Math.random() < 0.45) log(winner.name + " snatches a flake from " + near[1].name + " and grows.");
       }
+      /* the only thing that pays: a fish actually taking the food */
       state.points += fl.pellet ? 2 : 1;
-      state.waste = clamp((state.waste || 0) + (fl.pellet ? WASTE.meal * 1.6 : WASTE.meal), 0, 100);
+      /* and it comes back later, over the hours it takes to work through */
+      winner.digest = (winner.digest || 0) + (fl.pellet ? WASTE.meal * 1.6 : WASTE.meal) * LOOP.digest;
       playSfx("nibble");
       fl.gone = true;
     });
@@ -3516,8 +3566,12 @@
     if (span < 0.004) return;
     state.waterAt = now;
     const wasAlgae = state.algae || 0, wasOxy = state.oxygen == null ? 88 : state.oxygen, wasWaste = state.waste || 0;
+    let wasteLifted = 0;
+    let digestOut = 0;
+    state.fish.forEach(function (f) { digestOut += shed(f, span); });
     const fishN = state.fish.length;
-    const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
+    const algalEaters = state.crew.filter(function (c) { return c.role === "otto"; }).length;
+    const scrapers = state.crew.filter(function (c) { return c.role === "snail"; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
     const night = rhythm() === "night";
     const day = night ? 0.35 : 1;
@@ -3529,10 +3583,23 @@
     const algae0 = clamp((state.algae || 0) / 100, 0, 1);
     /* green film with momentum: slow to start, quick in the middle, capped by light */
     const bloom = 0.5 + algae0 * 1.05;
-    state.algae = clamp(state.algae + span * pace * bloom * (0.55 * day + fishN * 0.3) * (1 - algae0 * 0.4) - span * grazers * 2.1, 0, 100);
+    /* the chain, in one place: cleaners lift waste out of the water and pay for it in
+       algae; the water makes a little green of its own; and the only thing that eats that
+       green is an algae eater. A tank with cleaners and no otto blooms, every time. */
+    const lifted = Math.min(state.waste || 0, (state.crew || []).length * LOOP.cleanPerHour * span);
+    wasteLifted = lifted;
+    state.algae = clamp((state.algae || 0)
+      + span * pace * bloom * LOOP.bloomPerHour * (0.35 + load)
+      + lifted * LOOP.algaePerLift
+      - span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae), 0, 100);
     /* waste: fish, uneaten food, and the algae that dies back */
-    state.waste = clamp((state.waste || 0) + span * (fishN * WASTE.fish * mix.dirt * (0.8 + load * 0.5) + (state.algae || 0) * 0.008)
-      - span * (bottoms * WASTE.lift + grazers * WASTE.grazer + WASTE.settle), 0, 100);
+        /* fish waste, the water's own die-off, what the fish are still digesting, and the
+       flakes that rotted - less what the cleaners lifted out. The octopus dispels
+       nothing, and neither does an algae eater, so they are not counted as dirty fish. */
+    const dirtyFish = state.fish.filter(function (f) { return !CLEAN_SPECIES[f.species]; }).length;
+    state.waste = clamp((state.waste || 0)
+      + span * (dirtyFish * WASTE.fish * mix.dirt * (0.8 + load * 0.5) + (state.algae || 0) * 0.008)
+      + digestOut - wasteLifted, 0, 100);
     /* oxygen: plants and the surface make it, the fish, the waste and the night
        algae spend it, and warm water simply holds less */
     const warm = clamp(1.22 - ((state.temp || 25) - 20) * 0.032, 0.55, 1.25);
@@ -3540,7 +3607,7 @@
     const spent = fishN * OX.fish * (0.55 + load * 0.25) + (state.waste || 0) * OX.waste
       + (night ? (state.algae || 0) * OX.algaeNight * 0.008 : 0);
     state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + span * (made + OX.exchange * warm - spent), 0, 100);
-    state.quality = clamp(state.quality + span * (bottoms * 1.8 + grazers * 0.4 + 1.6 - fishN * 0.3 * (0.55 + mix.dirt * 0.4) * clear
+    state.quality = clamp(state.quality + span * (bottoms * 1.8 + (algalEaters + scrapers) * 0.4 + 1.6 - fishN * 0.3 * (0.55 + mix.dirt * 0.4) * clear
       - (state.waste || 0) * 0.03 - (state.algae || 0) * 0.02
       - Math.max(0, OX.thin - (state.oxygen || 100)) * 0.05), 0, 100);
     const dir = function (d) { return d > 0.06 ? 1 : d < -0.06 ? -1 : 0; };
@@ -3726,6 +3793,54 @@
     renderRail();
     hideFishCard();
   }
+  /* the octopus and the algae eater are the two that dispel nothing */
+  const CLEAN_SPECIES = { octo: true };
+
+  /* ---- one beat of the feeding loop ----
+     Flakes nobody took rot where they lie. The algae eater works the sand, because that is
+     where the green settles. An algae eater that has food and kind water lays a clutch:
+     that is the only way a tank ever gets a third one, because the shop stops at two. */
+  function stepLoop(dt, now) {
+    if (!state) return;
+    let rotted = 0;
+    flakes.forEach(function (fl) {
+      fl.rot = (fl.rot || 0) + dt;
+      if (!fl.gone && fl.rot > LOOP.flakeRot) { fl.gone = true; rotted += 1; }
+    });
+    if (rotted) {
+      flakes = flakes.filter(function (fl) { return !fl.gone; });
+      state.waste = clamp((state.waste || 0) + rotted * LOOP.rotWaste, 0, 100);
+      if (Math.random() < 0.5) {
+        log(rotted === 1 ? "A flake nobody ate sinks and rots into the sand."
+          : rotted + " flakes nobody ate rot into the sand.");
+      }
+    }
+    state.crew.forEach(function (c) {
+      if (c.role === "otto") c.y = clamp(0.79 + Math.sin(now / 3400 + c.wobble) * 0.05, 0.72, 0.9);
+      if (c.role !== "otto") return;
+      if (c.eggs && now >= c.eggs) {
+        c.eggs = 0;
+        if (state.crew.length < 8) {
+          const baby = makeCrew("otto");
+          baby.bought = false;
+          baby.bred = true;
+          baby.name = "Otto fry";
+          state.crew.push(baby);
+          log("An algae eater fry hatches on the glass. " + state.crew.length + "/8 berths.");
+          keeperNote("The algae eaters bred. That is the only way past two - buy the pair, then let them work.");
+          save();
+        }
+        return;
+      }
+      if (state.crew.length >= 8) return;
+      if ((state.algae || 0) < 12) return;
+      if (now - (c.lastClutch || 0) < LOOP.ottoClutch * HOUR) return;
+      c.lastClutch = now;
+      c.eggs = now + LOOP.ottoHatch * HOUR;
+      log(c.name + " lays a clutch on the glass.");
+      save();
+    });
+  }
   function renderRail() {
     const now = Date.now();
     /* ---- every fish and every cleaner, in one box that scrolls ----
@@ -3755,6 +3870,7 @@
         const rich = f.id === selected;
         const line = [spec.name, stageName(bodyAge(f), f.species),
           Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp",
+          isFull(f, now) ? "full" : "hungry",
           "feed " + hours(Math.max(0, foodLeft(f, now))) + "h"].join(" · ");
         let body = "<b>" + esc(f.name) + "</b>" + (f.gen > 1 ? " <span class='gen'>gen " + f.gen + "</span>" : "") +
           " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
@@ -3817,7 +3933,8 @@
     document.getElementById("points").textContent = state.points + " pts";
     const clock = document.getElementById("clock");
     const d = new Date();
-    clock.textContent = themeOf(state.theme).name + " · " + phase() + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    clock.textContent = themeOf(state.theme).name + " · " + phase() + " · " +
+      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     const shop = document.getElementById("shop");
     const cost = price();
     shop.innerHTML = SPECIES.map(function (s) {
@@ -3887,9 +4004,17 @@
       }).join("");
     const crewShop = document.getElementById("crewShop");
     crewShop.innerHTML = CREW.map(function (c) {
-      const n = state.crew.filter(function (x) { return x.role === c.id; }).length;
-      return "<button type='button' class='btn' data-crew='" + c.id + "'>" + esc(c.name) + " · " + c.cost +
-        " <span class='lore'>(" + n + ") " + esc(c.blurb) + "</span></button>";
+      const owned = state.crew.filter(function (x) { return x.role === c.id; });
+      const bought = owned.filter(function (x) { return x.bought !== false; }).length;
+      const bred = owned.length - bought;
+      /* the final cleaner is the one the shop rations: two from the shop, the rest bred */
+      const rationed = c.id === "otto";
+      const soldOut = rationed && bought >= LOOP.ottoBought;
+      return "<button type='button' class='btn' data-crew='" + c.id + "'" + (soldOut ? " disabled" : "") + ">" +
+        esc(c.name) + " · " + c.cost + " <span class='lore'>(" + owned.length +
+        (rationed ? " · " + bought + "/" + LOOP.ottoBought + " from the shop" : "") +
+        (bred ? " · " + bred + " bred" : "") +
+        (soldOut ? " - it has to breed now" : "") + ") " + esc(c.blurb) + "</span></button>";
     }).join("");
     const wp = document.getElementById("waterPanel");
     if (wp) {
@@ -3905,13 +4030,20 @@
         else if (t === "too cold") cold += 1;
         else ok += 1;
       });
-      const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
+      const algalEaters = state.crew.filter(function (c) { return c.role === "otto"; }).length;
+    const scrapers = state.crew.filter(function (c) { return c.role === "snail"; }).length;
       const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
       const load = crowdLoad();
       const rows = [
         ["oxygen", oxy + "% " + arrow(-trend.oxygen), band(oxy, OX.thin + 12, OX.thin), oxy / 100, oxy < OX.thin ? "thin for " + elapsedWord(state._oxyAt) : "fine"],
         ["waste", waste + "% " + arrow(trend.waste), band(100 - waste, 55, 30), waste / 100, bottoms ? bottoms + " lifting" : "nobody lifting"],
-        ["algae", Math.round(state.algae) + "% " + arrow(trend.algae), band(100 - state.algae, 55, 32), state.algae / 100, grazers ? grazers + " grazing" : "no grazers"],
+        ["algae", Math.round(state.algae) + "% " + arrow(trend.algae), band(100 - state.algae, 55, 32), state.algae / 100,
+          (algalEaters ? algalEaters + " algae eater" + (algalEaters === 1 ? "" : "s") + " clearing" : "no algae eater") +
+          (scrapers ? " · " + scrapers + " scraping" : "")],
+        ["the loop", algalEaters ? "closed" : "open - add an algae eater", band(algalEaters ? 70 : 18, 55, 32),
+          Math.min(1, algalEaters / 2),
+          (state.crew || []).length + " cleaners lifting · " +
+          state.crew.filter(function (x) { return x.role === "otto" && x.bought !== false; }).length + "/" + LOOP.ottoBought + " bought"],
         ["space used", Math.round(fishLoad()) + "/" + loadCap(), band(100 - load * 55, 60, 40), Math.min(1, load), load > 0.95 ? "healing slower" : "water is keeping up"],
         ["public hall", state.hallPublic
           ? (hallBest() ? (hallBest().hours + "h · " + hallBest().fish + " by " + hallBest().keeper) : "no lives inscribed yet")
@@ -3985,7 +4117,10 @@
         title.textContent = c.name;
         latin.textContent = cspec.name + " · cleaner";
         niche.textContent = "Cleaners";
-        bio.textContent = (cspec.blurb || "") + " " + whatCrewIsDoing(c);
+        bio.textContent = (cspec.blurb || "") + " " + whatCrewIsDoing(c) +
+          (c.role === "otto"
+            ? " Algae eaters are the last link in the chain: the shop sells two and no more, so the rest have to be bred."
+            : "");
         pic.removeAttribute("src");
         pic.alt = "";
         const acts = document.getElementById("charActions");
@@ -3994,6 +4129,7 @@
             Math.floor((cspec.cost || 0) / 2) + " pts</button>";
         }
         stats.innerHTML = [
+          ["From", c.bought === false ? "bred in this tank" : "the shop"],
           ["On the job", hours(onJob) + " h"],
           ["Service left", Math.round(Math.max(0, CREW_LIFE - onJob) / DAY) + " days"],
           ["Berths taken", ((state.crew || []).length) + " / 8"],
@@ -4032,6 +4168,9 @@
     pic.src = portraitSrc(f.species);
     pic.alt = spec.name;
     const rows = [
+      ["Born", bornStamp(f.born) + " · your clock"],
+      ["Stamp", String(Math.round(f.born || 0)) + " ms"],
+      ["DNA", f.dna ? f.dna + (verifyDna(f).ok ? " · matches" : " · does not match") : "none"],
       ["Stage", stageName(bodyAge(f), f.species)],
       ["Age", hours(ageOf(f, now)) + " h"],
       ["Growth", grown + " / " + lifeH + " h"],
@@ -4134,6 +4273,8 @@
       ["Water here", temp + "° " + (f.y > 0.62 ? "at the sand" : f.y < 0.3 ? "at the surface" : "mid water")],
       ["Keeping", ok ? "comfortable" : (tempNote(f) || "off its band")],
       ["Oxygen", oxy + "%" + (oxy < OX.thin ? " · thin" : "")],
+      ["Born", bornStamp(f.born)],
+      ["Stamp", String(Math.round(f.born || 0)) + " ms"],
       ["Line", "gen " + (f.gen || 1) + " · " + (f.sex === "f" ? "f" : "m")],
       ["DNA", f.dna || "—"],
       ["Genome", dnaLine(f)],
@@ -4593,6 +4734,7 @@
     stepInks(dt, now);
     resolveBites();
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
+    stepLoop(dt, now);
     (state.predators || []).forEach(function (p) { stepPredator(p, dt); });
     stepAmbient(dt, now);
     state.fish.forEach(function (f) {
@@ -4603,10 +4745,8 @@
     });
     if (!state._pts || now - state._pts > 45000) {
       state._pts = now;
-      state.fish.forEach(function (f) {
-        const m = moodOf(f, now);
-        state.points += m === "happy" ? 1 : m === "normal" ? 1 : 0;
-      });
+      /* no points for leaving the page open any more: a keeper earns by feeding, and
+         every flake a fish actually takes is paid for on the spot (see the meal). */
       if (state.fish.length) save();
       const lead = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); })[0];
       const leadHours = lead ? Math.round(ageOf(lead, now) / HOUR) : 0;
@@ -4774,6 +4914,16 @@
     if (state.crew.length >= 8) { log("Eight cleaners fill the work."); return; }
     const spec = crewOf(b.getAttribute("data-crew"));
     if (!spec) return;
+    /* the shelf is only rationed for the final cleaner, and only from the shop: what is
+       bred here does not count against the two */
+    if (spec.id === "otto") {
+      const bought = state.crew.filter(function (x) { return x.role === "otto" && x.bought !== false; }).length;
+      if (bought >= LOOP.ottoBought) {
+        log("The shop will only sell two algae eaters. This tank has to breed the third.");
+        keeperNote("Two algae eaters is the shop's limit. Keep the water kind and they will lay a clutch.");
+        return;
+      }
+    }
     if (state.points < spec.cost) { log(spec.name + " costs " + spec.cost + " points."); return; }
     state.points -= spec.cost;
     state.crew.push(makeCrew(spec.id));
@@ -4995,15 +5145,21 @@
   window.FishTank = {
     get: function () { return state; },
     /* recompute a fish's DNA from its genome; with no id, the whole tank */
+    /* the real clock, for anyone asking a fish when it arrived */
+    bornStamp: bornStamp,
     verify: function (id) {
       if (!state) return null;
       if (id) {
         const f = state.fish.filter(function (x) { return x.id === id || x.name === id || x.dna === id; })[0];
         if (!f) return null;
         const v = verifyDna(f);
-        return { name: f.name, dna: v.dna, ok: v.ok, reason: v.reason, lineage: lineageOf(f), parents: f.parents || [] };
+        return { name: f.name, dna: v.dna, ok: v.ok, reason: v.reason, lineage: lineageOf(f), parents: f.parents || [],
+          born: Math.round(f.born || 0), bornOn: bornStamp(f.born), stamp: Math.round(f.born || 0) };
       }
-      const fish = state.fish.map(function (f) { const v = verifyDna(f); return { name: f.name, dna: v.dna, ok: v.ok }; });
+      const fish = state.fish.map(function (f) {
+        const v = verifyDna(f);
+        return { name: f.name, dna: v.dna, ok: v.ok, bornOn: bornStamp(f.born), stamp: Math.round(f.born || 0) };
+      });
       return { fish: fish, ok: fish.filter(function (x) { return x.ok; }).length, bank: Object.keys(state.bank || {}).length };
     },
     debug: function () {

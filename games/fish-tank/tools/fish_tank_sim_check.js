@@ -137,6 +137,11 @@ const helpers = [
   grab("decorSteer"),
   grab("nearestShelter"),
   grab("simWater"),
+  grab("shed"),
+  grab("isFull"),
+  grabConst("LOOP", "\n  const KEEPERS"),
+  grabConst("CLEAN_SPECIES", "\n  /* ---- one beat"),
+
   grab("tickHealth"),
   grab("unitDir"),
   grab("depthOf"),
