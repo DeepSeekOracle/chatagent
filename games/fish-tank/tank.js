@@ -3946,6 +3946,10 @@
   }
   function stepRpg(now) {
     if (!RPG() || !state.run || state.run.collapsed) return;
+    /* a run picked up from the save never went through the menu, so the shell's copy is
+       swapped here too. rpgCopy only rewrites what still says points, so this is safe to
+       land on any state, whenever it was started. */
+    if (!state._rpgCopy) { state._rpgCopy = true; rpgCopy(); }
     /* nothing can be bought, so nothing can be saved up */
     if (state.points) state.points = 0;
     if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }

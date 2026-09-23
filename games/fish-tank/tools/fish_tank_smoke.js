@@ -352,6 +352,8 @@ must("the shell stops promising points in a run", js.indexOf("function rpgCopy()
   js.indexOf("Marks are what the run is measured on.") >= 0 && js.indexOf("rpgCopy();") >= 0 &&
   html.indexOf('id="howLine"') >= 0 && js.indexOf('getElementById("change")') >= 0 &&
   js.indexOf("Water change · free") >= 0);
+must("a resumed run re-swaps the copy too", js.indexOf("if (!state._rpgCopy) { state._rpgCopy = true; rpgCopy(); }") >= 0 &&
+  js.indexOf("function rpgCopy()") >= 0);
 must("the run panel wears the tank's own classes", js.indexOf('box.className = "rpg-panel wgrid";') >= 0 &&
   js.indexOf("class='wrow'") >= 0 && js.indexOf("class='wlabel'") >= 0 && js.indexOf("class='wsub'") >= 0);
 
