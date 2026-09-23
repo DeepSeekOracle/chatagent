@@ -343,6 +343,18 @@ must("one click listener, guarded, and no duplicate", js.indexOf('e.target && e.
   js.indexOf('const b = e.target.closest("[data-spawn]")') < 0);
 must("the shelf repaints the moment a fish goes in", js.indexOf("paintRpg();\n  }") >= 0);
 
+must("nothing charges an RPG run a point", js.indexOf("if (!RPG() && state.points < 15)") >= 0 &&
+  js.indexOf("if (!RPG() && state.points < 10)") >= 0 &&
+  js.split("state.points -=").length === js.split("RPG()) state.points -=").length &&
+  js.indexOf("if (state.points) state.points = 0;") >= 0);
+must("the shell stops promising points in a run", js.indexOf("function rpgCopy()") >= 0 &&
+  js.indexOf("There is no shop in a run") >= 0 && js.indexOf("A water change is free in a run.") >= 0 &&
+  js.indexOf("Marks are what the run is measured on.") >= 0 && js.indexOf("rpgCopy();") >= 0 &&
+  html.indexOf('id="howLine"') >= 0 && js.indexOf('getElementById("change")') >= 0 &&
+  js.indexOf("Water change · free") >= 0);
+must("the run panel wears the tank's own classes", js.indexOf('box.className = "rpg-panel wgrid";') >= 0 &&
+  js.indexOf("class='wrow'") >= 0 && js.indexOf("class='wlabel'") >= 0 && js.indexOf("class='wsub'") >= 0);
+
 console.log("");
 if (fails) {
   console.log(fails + " smoke check(s) failed");

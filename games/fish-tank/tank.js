@@ -1318,18 +1318,18 @@
     const soon = state.fish.some(function (f) { return foodLeft(f, now) < 3 * HOUR; });
     if ((soon || !state.fish.length) && !hand && !flakes.length) startHand("flakes");
     if ((state.quality < 60 || state.algae > 45) && state.points >= 10) {
-      state.points -= 10;
+    if (!RPG()) state.points -= 10;
       state.algae = clamp(state.algae - 28, 0, 100);
       state.quality = clamp(state.quality + 24, 0, 100);
       log("Auto keeper changes some water.");
     }
     const crewN = (state.crew || []).length;
     if (crewN < 2 && state.points >= 20 && state.algae > 25) {
-      state.points -= 20;
+    if (!RPG()) state.points -= 20;
       state.crew.push(makeCrew("snail"));
       log("Auto keeper adds a nerite.");
     } else if (crewN < 4 && state.points >= 28 && state.quality < 65) {
-      state.points -= 28;
+    if (!RPG()) state.points -= 28;
       state.crew.push(makeCrew("cory"));
       log("Auto keeper adds a cory.");
     }
@@ -1339,14 +1339,14 @@
       let id = autoSpecies();
       if (!canAdd(id)) return;
       if (id === "octo" && hasOcto()) id = "dart";
-      state.points -= cost;
+    if (!RPG()) state.points -= cost;
       const fish = makeFish(id, specOf(id).name);
       state.fish.push(fish);
       log("Auto keeper adds " + fish.name + ". Hunters are not touched.");
     }
     const weak = state.fish.slice().sort(function (a, b) { return (a.hp || 0) - (b.hp || 0); })[0];
     if (weak && (weak.hp || 0) < vitals(weak).hp * 0.35 && state.points >= 15 && !hand && !flakes.length) {
-      state.points -= 15;
+    if (!RPG()) state.points -= 15;
       if (!startHand("pellet")) state.points += 15;
     }
   }
@@ -3873,7 +3873,7 @@
       if (!anchor || !anchor.parentNode) return;
       box = document.createElement("div");
       box.id = "rpgPanel";
-      box.className = "rpg-panel";
+      box.className = "rpg-panel wgrid";
       anchor.parentNode.insertBefore(box, anchor);
     }
     const run = state.run || {};
@@ -3885,18 +3885,19 @@
       const hasM = state.fish.some(function (f) { return f.species === s.id && f.sex !== "f"; });
       const hasF = state.fish.some(function (f) { return f.species === s.id && f.sex === "f"; });
       const pair = hasM && hasF ? "a pair in the water" : n ? "needs a mate" : "not in the tank";
-      return "<div class='rpgrow'><b>" + esc(s.name) + "</b><span class='lore'>" + n + "/2 · " + pair + "</span>" +
-        "<button type='button' class='btn' data-spawn='" + s.id + "'" + (n >= 2 ? " disabled" : "") + ">" +
-        (n >= 2 ? "full" : "spawn") + "</button></div>";
+      return "<div class='wrow'><span class='wlabel'>" + esc(s.name) + "</span>" +
+        "<b class='q-fair'>" + n + "/2</b><span class='wsub'>" + pair + " <button type='button' class='btn'" +
+        " data-spawn='" + s.id + "'" + (n >= 2 ? " disabled" : "") + ">" +
+        (n >= 2 ? "full" : "spawn") + "</button></span></div>";
     }).join("");
     box.innerHTML =
       "<p class='kicker'>Fish Tank RPG</p>" +
       "<p class='lore'>No points, no shop. Two of each kind from the shelf, everything else from a pair breeding." +
       " A run that empties is over.</p>" +
-      "<div class='rpgrow'><b>run " + hours(Date.now() - (run.start || Date.now())) + "h</b>" +
-      "<span class='lore'>" + k + " fish · " + Object.keys(kinds).length + " kinds · came " + (run.added || 0) +
-      " · lost " + (run.lost || 0) + (run.collapsed ? " · this run is over" : "") + "</span></div>" +
-      rows;
+      "<div class='wrow'><span class='wlabel'>run</span><b class='q-fair'>" +
+      hours(Date.now() - (run.start || Date.now())) + "h</b><span class='wsub'>" + k + " fish · " +
+      Object.keys(kinds).length + " kinds · came " + (run.added || 0) + " · lost " + (run.lost || 0) +
+      (run.collapsed ? " · this run is over" : "") + "</span></div>" + rows;
   }
   /* the run, watched from the outside -
      Nothing here reaches into the simulation: it counts what appears and what is lost, and
@@ -3904,6 +3905,31 @@
      however good the water looks. */
   /* a run flagged at the menu becomes a run as soon as the water does */
   let menuRpg = false;
+  /* The shell's copy talks about points in a mode that has none. Swapped once, when the run
+     starts: the keeper's own line, the how-to card, the paragraphs that promise points for
+     feeding and for marks, and the two buttons that still advertise a price. */
+  function rpgCopy() {
+    const swap = function (find, put) {
+      const els = [].slice.call(document.querySelectorAll("p.lore, li, span, b"));
+      for (let i = 0; i < els.length; i += 1) {
+        if (els[i].children.length) continue;
+        if (els[i].textContent.indexOf(find) < 0) continue;
+        els[i].textContent = els[i].textContent.split(find).join(put);
+      }
+    };
+    swap("Points come from every flake a fish actually eats — so feeding is the job.",
+      "There is no shop in a run, so nothing is bought: every fish in the water came from your pick, the shelf, or a pair breeding. Feeding is still the job.");
+    swap("All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.",
+      "The clock pays a run in hours survived, not points. Two of each kind is all the shelf gives you; the rest has to breed.");
+    swap("A water change costs 10 points.", "A water change is free in a run.");
+    swap("Marks pay points the first time they happen.", "Marks are what the run is measured on.");
+    const how = document.getElementById("howLine");
+    if (how) how.textContent = "Ages, food, water, cleaners, and the run.";
+    const wc = document.getElementById("change");
+    if (wc) wc.textContent = "Water change · free";
+    const pl = document.getElementById("pellet");
+    if (pl) pl.textContent = "Pellet · free";
+  }
   function applyRpgRun() {
     if (!menuRpg || !state) return;
     menuRpg = false;
@@ -3913,6 +3939,7 @@
     if (!state.run) {
       state.run = { start: Date.now(), added: 0, lost: 0, seen: state.fish.length, collapsed: false, ended: 0 };
     }
+    rpgCopy();
     log("Fish Tank RPG. Three of your pick, two of a kind from the shelf, and the rest has to breed. Nothing can be bought.");
     keeperNote("Fish Tank RPG: feed them, watch the water, and let the pairs breed. There is no shop to fall back on, and an empty tank ends the run.");
     save();
@@ -5087,8 +5114,8 @@
   };
   document.getElementById("pellet").onclick = function () {
     if (!state.fish.length) { log("No one is home to feed."); return; }
-    if (state.points < 15) { log("A pellet costs 15 points."); return; }
-    state.points -= 15;
+    if (!RPG() && state.points < 15) { log("A pellet costs 15 points."); return; }
+    if (!RPG()) state.points -= 15;
     if (!startHand("pellet")) { state.points += 15; return; }
     save();
     renderRail();
@@ -5101,7 +5128,7 @@
     if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
     if (state.points < cost) { log("Need " + cost + " points."); return; }
-    state.points -= cost;
+    if (!RPG()) state.points -= cost;
     const fish = makeFish(sp, specOf(sp).name);
     state.fish.push(fish);
     selected = fish.id;
@@ -5114,8 +5141,8 @@
     save();
   });
   document.getElementById("change").onclick = function () {
-    if (state.points < 10) { log("A water change costs 10 points."); return; }
-    state.points -= 10;
+    if (!RPG() && state.points < 10) { log("A water change costs 10 points."); return; }
+    if (!RPG()) state.points -= 10;
     state.algae = clamp(state.algae - 28, 0, 100);
     state.quality = clamp(state.quality + 24, 0, 100);
     state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + 18, 0, 100);
