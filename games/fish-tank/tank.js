@@ -45,6 +45,91 @@
     cinder: { id: "cinder", name: "Cinder", blurb: "Orange hunter. A lucky bite leaves a baby." },
     gar: { id: "gar", name: "Sable", blurb: "Dark gar. Two misses in a row and it dies." }
   };
+  /* ---------------------------------------------------------------
+     Phase 2 — living water.
+     MOTION: how each species moves. DECOR: what it steers around.
+     TEMP_BAND: the water each species is built for.
+     GOALS: first-time marks that pay points.
+     --------------------------------------------------------------- */
+  const MOTION = {
+    glimmer: { cruise: 0.085, burst: 0.40, turn: 2.4, vision: 0.20, band: [0.24, 0.60], tail: 15, glide: 0.50 },
+    azure: { cruise: 0.070, burst: 0.30, turn: 1.9, vision: 0.17, band: [0.26, 0.68], tail: 13, glide: 0.70 },
+    dart: { cruise: 0.125, burst: 0.62, turn: 3.4, vision: 0.24, band: [0.16, 0.52], tail: 23, glide: 0.25 },
+    puff: { cruise: 0.048, burst: 0.15, turn: 1.4, vision: 0.14, band: [0.32, 0.74], tail: 9, glide: 0.85 },
+    lantern: { cruise: 0.078, burst: 0.38, turn: 2.6, vision: 0.22, band: [0.34, 0.68], tail: 17, glide: 0.55, glow: true },
+    moss: { cruise: 0.042, burst: 0.13, turn: 1.3, vision: 0.13, band: [0.60, 0.88], tail: 8, glide: 0.90 },
+    ruby: { cruise: 0.072, burst: 0.34, turn: 2.2, vision: 0.25, band: [0.24, 0.62], tail: 15, glide: 0.60 },
+    veil: { cruise: 0.055, burst: 0.20, turn: 1.6, vision: 0.18, band: [0.22, 0.70], tail: 10, glide: 0.80 },
+    sunscale: { cruise: 0.050, burst: 0.26, turn: 1.5, vision: 0.18, band: [0.30, 0.80], tail: 9, glide: 0.85 },
+    pearl: { cruise: 0.092, burst: 0.46, turn: 2.9, vision: 0.22, band: [0.14, 0.48], tail: 21, glide: 0.35 }
+  };
+  /* Soft obstacles read off the painted tank, per theme. rx/ry are real
+     stretches in screen fractions, so a rock blocks as tall as it is wide.
+     kind "weed" is cover: fish swim in and through it, solid rock they round. */
+  const DECOR = {
+    river: [
+      { x: 0.08, y: 0.45, rx: 0.11, ry: 0.36, kind: "weed", shelter: 1 },
+      { x: 0.14, y: 0.68, rx: 0.07, ry: 0.10, kind: "weed", shelter: 1 },
+      { x: 0.32, y: 0.47, rx: 0.055, ry: 0.13, kind: "solid", egg: 1 },
+      { x: 0.50, y: 0.47, rx: 0.06, ry: 0.14, kind: "solid", egg: 1 },
+      { x: 0.68, y: 0.45, rx: 0.11, ry: 0.14, kind: "solid" },
+      { x: 0.82, y: 0.33, rx: 0.06, ry: 0.09, kind: "solid" },
+      { x: 0.92, y: 0.45, rx: 0.10, ry: 0.34, kind: "weed", shelter: 1 },
+      { x: 0.88, y: 0.68, rx: 0.08, ry: 0.10, kind: "weed", shelter: 1 },
+      { x: 0.13, y: 0.70, rx: 0.10, ry: 0.07, kind: "solid" },
+      { x: 0.78, y: 0.71, rx: 0.14, ry: 0.06, kind: "solid" }
+    ],
+    coral: [
+      { x: 0.10, y: 0.26, rx: 0.12, ry: 0.18, kind: "solid" },
+      { x: 0.19, y: 0.42, rx: 0.10, ry: 0.10, kind: "solid" },
+      { x: 0.09, y: 0.56, rx: 0.10, ry: 0.09, kind: "weed", shelter: 1, egg: 1 },
+      { x: 0.44, y: 0.57, rx: 0.11, ry: 0.14, kind: "solid", egg: 1 },
+      { x: 0.68, y: 0.46, rx: 0.12, ry: 0.12, kind: "solid" },
+      { x: 0.88, y: 0.24, rx: 0.12, ry: 0.18, kind: "solid" },
+      { x: 0.94, y: 0.46, rx: 0.08, ry: 0.09, kind: "solid" },
+      { x: 0.86, y: 0.64, rx: 0.10, ry: 0.08, kind: "weed", shelter: 1, egg: 1 }
+    ],
+    bog: [
+      { x: 0.08, y: 0.42, rx: 0.10, ry: 0.34, kind: "weed", shelter: 1 },
+      { x: 0.18, y: 0.60, rx: 0.07, ry: 0.09, kind: "weed", shelter: 1 },
+      { x: 0.31, y: 0.60, rx: 0.055, ry: 0.14, kind: "solid", egg: 1 },
+      { x: 0.50, y: 0.60, rx: 0.06, ry: 0.15, kind: "solid", egg: 1 },
+      { x: 0.69, y: 0.52, rx: 0.12, ry: 0.13, kind: "solid" },
+      { x: 0.82, y: 0.40, rx: 0.07, ry: 0.10, kind: "solid" },
+      { x: 0.93, y: 0.45, rx: 0.09, ry: 0.32, kind: "weed", shelter: 1 }
+    ]
+  };
+  const TEMP_BAND = {
+    glimmer: [23, 28], azure: [22, 27], dart: [22, 27], puff: [23, 28], lantern: [23, 28],
+    moss: [20, 26], ruby: [23, 28], veil: [22, 27], sunscale: [21, 26], pearl: [23, 28]
+  };
+  const TRAIT_WORDS = {
+    bold: ["timid", "wary", "steady", "bold", "fearless"],
+    social: ["solitary", "private", "easy", "sociable", "inseparable"],
+    appetite: ["picky", "light", "steady", "greedy", "ravenous"],
+    vigor: ["frail", "delicate", "sound", "hardy", "vigorous"]
+  };
+  const GOALS = [
+    { id: "adult", text: "One fish grows to adult", pay: 20 },
+    { id: "court", text: "A pair courts in good water", pay: 20 },
+    { id: "hatch", text: "A fry hatches in the tank", pay: 30 },
+    { id: "dodge", text: "A hunter's bite misses", pay: 25 },
+    { id: "eight", text: "Eight fish in the glass at once", pay: 25 },
+    { id: "crew5", text: "Five cleaners at work", pay: 25 },
+    { id: "school", text: "Six of one species at once", pay: 30 },
+    { id: "elder", text: "A fish reaches elder", pay: 45 },
+    { id: "hundred", text: "A fish lives a hundred hours", pay: 50 },
+    { id: "twenty", text: "Twenty fish at once", pay: 40 },
+    { id: "clear", text: "Quality 95 with twelve fish", pay: 35 },
+    { id: "gen3", text: "A third generation is born here", pay: 60 },
+    { id: "thirty", text: "Thirty fish at once", pay: 60 },
+    { id: "allten", text: "All ten species at once", pay: 70 }
+  ];
+  const STALK_LEAD = 22000;
+  const STRIKE_WINDOW = 40000;
+  const HATCH_MS = 20 * 60000;
+  const EGG_CAP = 6;
+
   const FISH_CAP = 50;
   const CREW = [
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
@@ -112,6 +197,9 @@
   let selected = null;
   let bubbles = [];
   let flakes = [];
+  let motes = [];
+  let ripples = [];
+  let AR = 1.7;
   let hand = null;
   let last = performance.now();
 
@@ -123,6 +211,7 @@
   }
   function moodOf(f, now) {
     if (state && state.quality < 32) return "sad";
+    if (f && comfort(f) > 1.6) return "sad";
     if (now - f.lastFed > 8 * HOUR) return "sad";
     if (now - f.lastPlay < 20 * 60000 && (!state || state.quality >= 55)) return "happy";
     return "normal";
@@ -161,6 +250,7 @@
   }
   function makeFish(species, name) {
     const now = Date.now();
+    const band = (MOTION[species] || MOTION.glimmer).band;
     return {
       id: uid(),
       species: species,
@@ -172,13 +262,30 @@
       lastFed: now,
       lastPlay: now,
       x: 0.2 + Math.random() * 0.6,
-      y: 0.35 + Math.random() * 0.4,
-      vx: (Math.random() < 0.5 ? -1 : 1) * (0.04 + Math.random() * 0.04),
+      y: clamp(band[0] + Math.random() * (band[1] - band[0]), 0.12, 0.86),
+      vx: (Math.random() < 0.5 ? -1 : 1) * (0.02 + Math.random() * 0.02),
       vy: 0,
       action: "",
       actionT: 0,
       tx: 0,
-      ty: 0
+      ty: 0,
+      state: "cruise",
+      stateT: 0,
+      idleT: 0,
+      phase: Math.random() * 6.283,
+      heading: Math.random() < 0.5 ? 0 : Math.PI,
+      bank: 0,
+      pitch: 0,
+      z: 0.25 + Math.random() * 0.6,
+      zTarget: 0.25 + Math.random() * 0.6,
+      sex: Math.random() < 0.5 ? "m" : "f",
+      gen: 1,
+      parents: [],
+      traits: makeTraits(),
+      startleT: 0,
+      courtT: 0,
+      speed: 0,
+      wseed: Math.random() * 90
     };
   }
   const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan" };
@@ -217,11 +324,23 @@
     state.predators = state.predators || [];
     state.cemetery = state.cemetery || [];
     state.log = state.log || [];
+    state.eggs = state.eggs || [];
+    state.goals = state.goals || {};
+    state.simV = 2;
+    if (state.hatched == null) state.hatched = 0;
+    if (state.court == null) state.court = 0;
+    if (state.dodge == null) state.dodge = 0;
+    if (state.gen == null) state.gen = 1;
     if (state.algae == null) state.algae = 8;
     if (state.quality == null) state.quality = 86;
     if (state.temp == null) state.temp = 25;
     if (!state.waterAt) state.waterAt = Date.now();
     if (!state.theme) state.theme = "river";
+    (state.predators || []).forEach(function (p) {
+      if (p.pending == null) p.pending = false;
+      if (p.victim == null) p.victim = null;
+      if (p.heading == null) p.heading = (p.vx || 0) < 0 ? Math.PI : 0;
+    });
     (state.fish || []).forEach(function (f) {
       if (f.growth == null) f.growth = Math.max(0, Date.now() - (f.born || Date.now()));
       if (!f.growthAt) f.growthAt = Date.now();
@@ -230,6 +349,25 @@
       if (f.hp == null) f.hp = v.hp;
       f.maxHp = v.hp;
       if (!f.hpAt) f.hpAt = Date.now();
+      if (!f.traits) f.traits = makeTraits();
+      if (!f.sex) f.sex = Math.random() < 0.5 ? "m" : "f";
+      if (f.gen == null) f.gen = 1;
+      if (!f.parents) f.parents = [];
+      if (!f.state) f.state = "cruise";
+      if (f.phase == null) f.phase = Math.random() * 6.283;
+      if (f.heading == null) f.heading = (f.vx || 0) < 0 ? Math.PI : 0;
+      if (f.bank == null) f.bank = 0;
+      if (f.pitch == null) f.pitch = 0;
+      if (f.z == null) f.z = 0.25 + Math.random() * 0.6;
+      if (f.zTarget == null) f.zTarget = f.z;
+      if (f.wseed == null) f.wseed = Math.random() * 90;
+      if (f.startleT == null) f.startleT = 0;
+      if (f.courtT == null) f.courtT = 0;
+      const band = (MOTION[f.species] || MOTION.glimmer).band;
+      const ymid = (band[0] + band[1]) / 2;
+      if (!(f.x >= 0.02 && f.x <= 0.98)) f.x = 0.5;
+      if (!(f.y >= 0.1 && f.y <= 0.9)) f.y = ymid;
+      f.y = clamp(f.y, 0.1, 0.88);
     });
     if (!state.openedAt) {
       const births = (state.fish || []).map(function (f) { return f.born; }).filter(Boolean);
@@ -341,6 +479,8 @@
     if (unfed) delta -= v.hurt * span;
     if (dirty) delta -= (5 + (crowded ? 4 : 0)) * span;
     else if (crowded) delta -= 2 * span;
+    const off = comfort(f);
+    if (off > 2.5) delta -= (1.1 + (off - 2.5) * 1.5) * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
   }
   const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure"];
@@ -407,8 +547,14 @@
     });
     return prey[0];
   }
-  function rollPredator(p, now) {
-    const victim = weakestPrey(now);
+  function stalkTarget(p) {
+    if (!p.victim) return null;
+    return state.fish.filter(function (f) { return f.id === p.victim; })[0] || null;
+  }
+  function rollPredator(p, now, reason) {
+    const victim = stalkTarget(p) || weakestPrey(now);
+    p.pending = false;
+    p.victim = null;
     if (!victim) {
       p.fails = (p.fails || 0) + 1;
       log(p.name + " finds no fish." + (p.fails >= 2 ? " Two empty hours. It dies." : " It has one more hour."));
@@ -425,26 +571,47 @@
       if (selected === victim.id) selected = null;
       p.fails = 0;
       state.predators.push(makePredator(p.kind, false));
-      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name + ", the weakest. A baby hunter is born.");
+      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name +
+        (reason === "contact" ? " in the open" : ", the weakest") + ". A baby hunter is born.");
+      addRipple(victim.x, victim.y);
     } else {
       p.fails = (p.fails || 0) + 1;
-      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name + "." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
+      if (reason === "contact") state.dodge = (state.dodge || 0) + 1;
+      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name +
+        (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
+        "." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
     }
     p.nextRoll = now + HOUR;
   }
   function tickPredators(now) {
     state.predators = state.predators || [];
     state.predators.forEach(function (p) {
+      if (p.pending == null) p.pending = false;
+      if (p.heading == null) p.heading = p.vx < 0 ? Math.PI : 0;
       if (!p.adult && now >= (p.adultAt || 0)) {
         p.adult = true;
         p.name = predOf(p.kind).name;
         p.nextRoll = (p.adultAt || now) + HOUR;
         log(p.name + " is grown. It hunts in an hour.");
       }
-      let guard = 0;
-      while (p.adult && (p.fails || 0) < 2 && p.nextRoll && now >= p.nextRoll && guard < 48) {
-        rollPredator(p, p.nextRoll);
-        guard += 1;
+      if (!p.adult) return;
+      if (!p.pending && now >= (p.nextRoll || 0) + STRIKE_WINDOW) {
+        let guard = 0;
+        while ((p.fails || 0) < 2 && now >= (p.nextRoll || 0) + STRIKE_WINDOW && guard < 48) {
+          rollPredator(p, p.nextRoll, "away");
+          guard += 1;
+        }
+      } else if (!p.pending && now >= (p.nextRoll || 0) - STALK_LEAD) {
+        const victim = weakestPrey(now);
+        p.pending = true;
+        p.stalkAt = now;
+        p.victim = victim ? victim.id : null;
+        if (victim) {
+          log(p.name + " turns toward " + victim.name + ", the weakest. The shoal scatters.");
+          victim.startleT = 2.5;
+        } else {
+          log(p.name + " hunts an empty glass.");
+        }
       }
     });
     const before = state.predators.length;
@@ -462,26 +629,57 @@
     } else state.clearSince = 0;
   }
   function stepPredator(p, dt) {
-    const prey = state.fish.slice().sort(function (a, b) {
-      return Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y);
-    })[0];
-    if (p.adult && prey) {
-      const dx = prey.x - p.x;
-      const dy = prey.y - p.y;
-      const mag = Math.hypot(dx, dy) || 1;
-      p.vx = dx / mag * 0.05;
-      p.vy = dy / mag * 0.04;
-    } else if (Math.random() < dt * 0.3) {
-      p.vx = (Math.random() < 0.5 ? -1 : 1) * 0.02;
+    const now = Date.now();
+    if (p.phase == null) p.phase = Math.random() * 6.28;
+    const prey = p.pending ? stalkTarget(p) : null;
+    if (p.pending && !prey) { rollPredator(p, now, "lost"); return; }
+    let sp = p.adult ? 0.13 : 0.07;
+    let dx = 0, dy = 0;
+    if (prey) {
+      const to = unitDir(p, prey.x, prey.y);
+      dx = to.x * 2.2;
+      dy = to.y * 2.2;
+      sp = 0.58 * (p.adult ? 1 : 0.6);
+      if (to.d < 0.3) sp *= 1.25;
+      p.lunge = to.d < 0.16 ? 1 : 0;
+      if ((p.pending && (now >= (p.nextRoll || 0) + STRIKE_WINDOW || now - (p.stalkAt || 0) > STRIKE_WINDOW))) {
+        rollPredator(p, now, "lost");
+        return;
+      }
+      if (to.d < (p.adult ? 0.11 : 0.05)) {
+        rollPredator(p, now, "contact");
+        return;
+      }
+    } else if (Math.random() < dt * 0.4) {
+      p.wanderA = (p.wanderA || 0) + (Math.random() - 0.5) * 1.6;
+      dx = Math.cos(p.wanderA);
+      dy = Math.sin(p.wanderA) * 0.5;
+    } else {
+      dx = Math.cos(p.wanderA == null ? 0 : p.wanderA);
+      dy = Math.sin(p.wanderA == null ? 0 : p.wanderA) * 0.5;
     }
-    p.x += (p.vx || 0) * dt;
-    p.y += (p.vy || 0) * dt;
-    if (p.vx > 0.004) p.face = 1;
-    else if (p.vx < -0.004) p.face = -1;
-    if (p.x < 0.08) { p.x = 0.08; p.vx = Math.abs(p.vx || 0.02); }
-    if (p.x > 0.92) { p.x = 0.92; p.vx = -Math.abs(p.vx || 0.02); }
-    if (p.y < 0.2) p.y = 0.2;
-    if (p.y > 0.72) p.y = 0.72;
+    const out = { x: dx, y: dy };
+    decorSteer(p, out);
+    wallSteer(p, out);
+    const mag = Math.hypot(out.x, out.y) || 1;
+    const vx = out.x / mag * sp, vy = out.y / mag * sp * AR;
+    const step = (sp * 3 + 0.05) * dt;
+    p.vx += clamp(vx - p.vx, -step, step);
+    p.vy += clamp(vy - (p.vy || 0), -step, step);
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.x < 0.05) { p.x = 0.05; p.vx = Math.abs(p.vx) * 0.4; }
+    if (p.x > 0.95) { p.x = 0.95; p.vx = -Math.abs(p.vx) * 0.4; }
+    if (p.y < 0.1) { p.y = 0.1; p.vy = Math.abs(p.vy) * 0.4; }
+    if (p.y > 0.86) { p.y = 0.86; p.vy = -Math.abs(p.vy) * 0.4; }
+    const want = Math.atan2(p.vy / AR, p.vx);
+    let diff = want - p.heading;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    p.heading += clamp(diff, -1.6 * dt, 1.6 * dt);
+    p.face = Math.cos(p.heading) >= 0 ? 1 : -1;
+    p.bank = (p.bank || 0) + (clamp(clamp(diff, -1.6 * dt, 1.6 * dt) / Math.max(dt, 0.01) * 0.16, -0.3, 0.3) - (p.bank || 0)) * Math.min(1, dt * 4);
+    p.phase += dt * (2.2 + Math.hypot(p.vx, p.vy / AR) * 22);
   }
   function drawPredator(p, w, h, now) {
     const key = p.kind + "_" + (p.adult ? "adult" : "baby");
@@ -492,9 +690,28 @@
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     const x = p.x * w;
     const y = p.y * h;
+    const alpha = p.pending ? 1 : 0.88;
     ctx.save();
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = "#240608";
+    ctx.beginPath();
+    ctx.ellipse(x, h * 0.92, bw * 0.3, bh * 0.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (p.pending) {
+      const pulse = state.opts.motion === false ? 0.5 : 0.45 + Math.sin(now / 300) * 0.35;
+      const g = ctx.createRadialGradient(x, y, 2, x, y, bh * 1.6);
+      g.addColorStop(0, "rgba(251,113,133," + (0.22 * pulse).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(251,113,133,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - bh * 1.7, y - bh * 1.7, bh * 3.4, bh * 3.4);
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.scale(p.face === -1 ? -1 : 1, 1);
+    const wag = state.opts.motion === false ? 0 : Math.sin(p.phase || 0) * (p.pending ? 0.09 : 0.045);
+    ctx.rotate(wag + (p.bank || 0) * 0.5);
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     ctx.restore();
     if (state.opts.names !== false) {
@@ -504,8 +721,185 @@
       const wait = Math.max(0, (p.nextRoll || now) - now);
       ctx.fillText(p.name + (p.adult ? "" : " · baby"), x, y - bh / 2 - 8);
       ctx.font = "600 11px Source Sans 3, sans-serif";
-      ctx.fillText(p.adult ? ("hunt " + hours(wait) + "h") : ("grows " + hours(Math.max(0, (p.adultAt || now) - now)) + "h"), x, y - bh / 2 + 6);
+      ctx.fillText(p.pending ? "stalking" : (p.adult ? ("hunts in " + hours(wait) + "h") : ("grows " + hours(Math.max(0, (p.adultAt || now) - now)) + "h")), x, y - bh / 2 + 6);
     }
+  }
+  /* ---------------- generations: courtship, eggs, fry ---------------- */
+  function fryName(sp) {
+    const base = specOf(sp).name;
+    const taken = state.fish.filter(function (f) { return f.name.indexOf(base) === 0; }).length;
+    return taken ? base + " " + (taken + 1) : base;
+  }
+  function eggSpot() {
+    const spots = decorOf().filter(function (d) { return d.egg; });
+    if (!spots.length) return { x: 0.5, y: 0.8 };
+    return spots[(Math.random() * spots.length) | 0];
+  }
+  function layEggs(a, b, now) {
+    const spot = eggSpot();
+    const room = EGG_CAP - state.eggs.length;
+    if (room <= 0) return;
+    const n = Math.min(room, Math.random() < 0.35 ? 3 : 2);
+    const fast = (state.quality || 0) >= 82;
+    for (let i = 0; i < n; i += 1) {
+      state.eggs.push({
+        id: uid(),
+        species: a.species,
+        x: clamp(spot.x + (Math.random() - 0.5) * 0.05, 0.06, 0.94),
+        y: clamp(spot.y + (Math.random() - 0.5) * 0.04, 0.1, 0.86),
+        laid: now,
+        hatchAt: now + (fast ? HATCH_MS * 0.7 : HATCH_MS),
+        gen: Math.max(a.gen || 1, b.gen || 1) + 1,
+        traits: makeTraits(traits(a), traits(b)),
+        parents: [a.name, b.name]
+      });
+    }
+    log(a.name + " and " + b.name + " leave " + n + " " + specOf(a.species).name + " eggs on the rockwork.");
+    addRipple(clamp(spot.x, 0.06, 0.94), clamp(spot.y, 0.1, 0.86));
+    save();
+  }
+  function tickEggs(now) {
+    state.eggs = state.eggs || [];
+    if (!state.eggs.length) return;
+    const hatchList = [], lostList = [];
+    const foul = (state.quality || 100) < 22;
+    state.eggs.forEach(function (e) {
+      if (now >= e.hatchAt) hatchList.push(e);
+      else if (foul) lostList.push(e);
+    });
+    if (lostList.length) {
+      state.eggs = state.eggs.filter(function (e) { return lostList.indexOf(e) < 0; });
+      log(lostList.length + " egg" + (lostList.length > 1 ? "s" : "") + " never hatch. The water is foul.");
+      save();
+    }
+    hatchList.forEach(function (e) {
+      state.eggs = state.eggs.filter(function (o) { return o !== e; });
+      if (state.fish.length >= FISH_CAP) { log("An egg hatches but the glass is full."); return; }
+      const fry = makeFish(e.species, fryName(e.species));
+      fry.traits = e.traits || makeTraits();
+      fry.gen = e.gen || 2;
+      fry.parents = (e.parents || []).slice();
+      fry.x = e.x;
+      fry.y = e.y;
+      fry.vx = 0.01;
+      state.fish.push(fry);
+      state.hatched = (state.hatched || 0) + 1;
+      state.gen = Math.max(state.gen || 1, fry.gen);
+      state.points += 12;
+      log("A fry hatches by the rockwork: " + fry.name + ", generation " + fry.gen + ", from " +
+        (fry.parents.join(" and ") || "the pair") + ". +12");
+      addRipple(e.x, e.y);
+      save();
+    });
+  }
+  function breedCheck(now) {
+    if (!playing || !state) return;
+    state.eggs = state.eggs || [];
+    if (state.eggs.length >= EGG_CAP) return;
+    if (state.fish.length + state.eggs.length >= 40) return;
+    if ((state.quality || 0) < 62 || (state.algae || 0) > 55) return;
+    if (now - (state._breedAt || 0) < 12 * 60000) return;
+    const ready = state.fish.filter(function (f) {
+      return bodyAge(f) >= DAY && bodyAge(f) <= 5 * DAY &&
+        (f.hp || 0) >= vitals(f).hp * 0.7 &&
+        now - (f.lastFed || f.born) < 3 * HOUR &&
+        now - (f.spawnCd || 0) > 45 * 60000;
+    });
+    if (ready.length < 2) return;
+    let pair = null;
+    for (let i = 0; i < ready.length && !pair; i += 1) {
+      for (let j = i + 1; j < ready.length; j += 1) {
+        if (ready[i].species === ready[j].species && ready[i].sex !== ready[j].sex) { pair = [ready[i], ready[j]]; break; }
+      }
+    }
+    if (!pair) return;
+    pair.forEach(function (f) {
+      f.courtT = 7;
+      f.spawnCd = now;
+      f.lastPlay = now;
+      f.state = "court";
+      f.idleT = 7;
+      f.actionT = 0;
+      f.action = "";
+    });
+    state._breedAt = now;
+    state.court = (state.court || 0) + 1;
+    const layer = pair[0].sex === "f" ? pair[0] : pair[1];
+    layer.layAt = now + 7000;
+    log(pair[0].name + " and " + pair[1].name + " turn slow circles. " + specOf(pair[0].species).name + " eggs are coming.");
+  }
+  function spawnLayCheck(now) {
+    state.fish.forEach(function (f) {
+      if (f.layAt && now >= f.layAt) {
+        f.layAt = 0;
+        const mate = state.fish.filter(function (o) {
+          return o !== f && o.species === f.species && now - (o.spawnCd || 0) < 30000;
+        })[0];
+        if (mate) layEggs(f, mate, now);
+      }
+    });
+  }
+  /* ---------------- first-time marks ---------------- */
+  function checkGoals(now) {
+    state.goals = state.goals || {};
+    const counts = {};
+    state.fish.forEach(function (f) { counts[f.species] = (counts[f.species] || 0) + 1; });
+    const anySpeciesAt = function (n) {
+      return Object.keys(counts).some(function (k) { return counts[k] >= n; });
+    };
+    let oldest = 0;
+    state.fish.forEach(function (f) { oldest = Math.max(oldest, bodyAge(f)); });
+    const met = {
+      adult: oldest >= DAY,
+      court: (state.court || 0) >= 1,
+      hatch: (state.hatched || 0) >= 1,
+      dodge: (state.dodge || 0) >= 1,
+      eight: state.fish.length >= 8,
+      crew5: (state.crew || []).length >= 5,
+      school: anySpeciesAt(6),
+      elder: oldest >= 4 * DAY,
+      hundred: state.fish.some(function (f) { return ageOf(f, now) >= 100 * HOUR; }),
+      twenty: state.fish.length >= 20,
+      clear: (state.quality || 0) >= 95 && state.fish.length >= 12,
+      gen3: (state.gen || 1) >= 3,
+      thirty: state.fish.length >= 30,
+      allten: SPECIES.every(function (s) { return counts[s.id]; })
+    };
+    GOALS.forEach(function (g) {
+      if (state.goals[g.id] || !met[g.id]) return;
+      state.goals[g.id] = now;
+      state.points += g.pay;
+      log("First time — " + g.text + ". +" + g.pay + " pts.");
+      save();
+    });
+  }
+  /* ---------------- ambient water: motes, ripples, air ---------------- */
+  function seedMotes() {
+    motes = [];
+    for (let i = 0; i < 42; i += 1) {
+      motes.push({
+        x: Math.random(), y: Math.random(), z: 0.12 + Math.random() * 0.88,
+        r: 0.6 + Math.random() * 1.7, ph: Math.random() * 6.28
+      });
+    }
+  }
+  function addRipple(x, y) {
+    if (!state || state.opts.motion === false) return;
+    if (ripples.length > 24) return;
+    ripples.push({ x: x, y: y, r: 0.008, t: 0 });
+  }
+  function stepAmbient(dt, now) {
+    if (!motes.length) seedMotes();
+    if (state.opts.motion === false) return;
+    motes.forEach(function (m) {
+      m.ph += dt * (0.35 + m.z * 0.7);
+      m.x += (0.004 + m.z * 0.01) * dt + Math.sin(m.ph) * 0.0035 * dt;
+      m.y -= 0.0035 * dt;
+      if (m.x > 1.02) m.x = -0.02;
+      if (m.y < -0.02) m.y = 1.02;
+    });
+    ripples.forEach(function (r) { r.t += dt; r.r += dt * 0.2; });
+    if (ripples.length) ripples = ripples.filter(function (r) { return r.t < 2.4; });
   }
   function catchUp(now) {
     const dead = [];
@@ -528,20 +922,27 @@
       state.crew = state.crew.filter(function (c) { return retired.indexOf(c) < 0; });
     }
     tickPredators(now);
-    if (!dead.length) { if (retired.length) save(); return; }
-    dead.forEach(function (f) { bury(f, now); });
-    state.fish = state.fish.filter(function (f) { return dead.indexOf(f) < 0; });
-    if (selected && dead.some(function (f) { return f.id === selected; })) selected = null;
-    if (!state.fish.length) {
-      const sp = SPECIES[(Math.random() * SPECIES.length) | 0].id;
-      const fry = makeFish(sp, "Fry");
-      state.fish.push(fry);
-      selected = fry.id;
-      log("The glass was empty. A fry drifted in so the tank can go on.");
+    tickEggs(now);
+    if (dead.length) {
+      dead.forEach(function (f) { bury(f, now); });
+      state.fish = state.fish.filter(function (f) { return dead.indexOf(f) < 0; });
+      if (selected && dead.some(function (f) { return f.id === selected; })) selected = null;
+      if (!state.fish.length) {
+        const sp = SPECIES[(Math.random() * SPECIES.length) | 0].id;
+        const fry = makeFish(sp, "Fry");
+        state.fish.push(fry);
+        selected = fry.id;
+        log("The glass was empty. A fry drifted in so the tank can go on.");
+      }
+      save();
+    } else if (retired.length) save();
+    if (now - (state._lifeAt || 0) > 5000) {
+      state._lifeAt = now;
+      spawnLayCheck(now);
+      breedCheck(now);
+      checkGoals(now);
     }
-    save();
   }
-
   function award(f, n, why) {
     const mood = moodOf(f, Date.now());
     const gain = Math.max(1, Math.round(n * (mood === "happy" ? 1.25 : mood === "sad" ? 0.5 : 1)));
@@ -574,6 +975,7 @@
       other.actionT = 1.2;
       award(f, 6, "play-bumps " + other.name);
     } else if (kind === "jump") {
+      f.splashAt = Date.now() + 1150;
       award(f, 7, "jumps the surface");
     } else if (kind === "glow") {
       award(f, phase() === "night" ? 10 : 4, phase() === "night" ? "lights the night tank" : "glimmers");
@@ -607,63 +1009,443 @@
 
   function temperOf(f) { return specOf(f.species).temper === "chill" ? "chill" : "lively"; }
   function socialOf(f) { return specOf(f.species).social === "loner" ? "loner" : "school"; }
-  function applySocial(f) {
-    if (socialOf(f) === "school") {
-      const mates = state.fish.filter(function (o) { return o !== f && socialOf(o) === "school"; });
-      if (!mates.length) return;
-      let sx = 0, sy = 0, svx = 0;
-      mates.forEach(function (o) { sx += o.x; sy += o.y; svx += o.vx || 0; });
-      sx /= mates.length; sy /= mates.length; svx /= mates.length;
-      f.vx += (sx - f.x) * 0.45;
-      f.vy += (sy - f.y) * 0.45;
-      f.vx = f.vx * 0.65 + svx * 0.35;
-      mates.forEach(function (o) {
-        const nd = Math.hypot(o.x - f.x, o.y - f.y);
-        if (nd < 0.075 && nd > 0.001) {
-          f.vx -= (o.x - f.x) / nd * 0.025;
-          f.vy -= (o.y - f.y) / nd * 0.02;
-        }
-      });
-    } else {
-      state.fish.forEach(function (o) {
-        if (o === f) return;
-        const nd = Math.hypot(o.x - f.x, o.y - f.y);
-        if (nd < 0.18 && nd > 0.001) {
-          f.vx -= (o.x - f.x) / nd * 0.045;
-          f.vy -= (o.y - f.y) / nd * 0.03;
-        }
-      });
+  function motionOf(f) { return MOTION[f.species] || MOTION.glimmer; }
+  function bandOf(f) { return motionOf(f).band; }
+  function traits(f) {
+    if (!f.traits) f.traits = { bold: 0.5, social: 0.5, appetite: 0.5, vigor: 0.5 };
+    const t = f.traits;
+    ["bold", "social", "appetite", "vigor"].forEach(function (k) { if (t[k] == null) t[k] = 0.5; });
+    return t;
+  }
+  function traitWord(k, v) { return TRAIT_WORDS[k][clamp(Math.round(v * 4), 0, 4)]; }
+  function makeTraits(pa, pb) {
+    const out = {};
+    ["bold", "social", "appetite", "vigor"].forEach(function (k) {
+      const base = pa ? (pa[k] + (pb ? pb[k] : pa[k])) / 2 : 0.5;
+      out[k] = clamp(base + (Math.random() - 0.5) * 0.32, 0.05, 0.95);
+    });
+    return out;
+  }
+  function comfort(f) {
+    const band = TEMP_BAND[f.species] || [22, 28];
+    const t = state.temp || 25;
+    if (t < band[0]) return band[0] - t;
+    if (t > band[1]) return t - band[1];
+    return 0;
+  }
+  function tempNote(f) {
+    if (comfort(f) <= 1.5) return "";
+    const band = TEMP_BAND[f.species] || [22, 28];
+    return (state.temp || 25) > band[1] ? "too warm" : "too cold";
+  }
+  function decorOf() { return DECOR[themeOf(state.theme).id] || DECOR.river; }
+  function nearestShelter(x, y, far) {
+    let best = null, bd = 1e9;
+    decorOf().forEach(function (d) {
+      if (!d.shelter) return;
+      const dist = Math.hypot((x - d.x) / d.rx, (y - d.y) / d.ry);
+      if (dist < bd) { bd = dist; best = d; }
+    });
+    return best && bd < (far == null ? 1.7 : far) ? best : null;
+  }
+  function stageSpeed(stage) {
+    return stage === "baby" ? 0.55 : stage === "infant" ? 0.72 : stage === "child" ? 0.86 : stage === "teen" ? 0.96 : 1;
+  }
+  /* One place that decides how fast a fish may go right now. */
+  function speedOf(f, now, mode) {
+    const m = motionOf(f);
+    const tr = traits(f);
+    const stageF = stageSpeed(stageName(bodyAge(f))) * (1.14 - 0.24 * specOf(f.species).bulk);
+    const hunger = clamp((now - (f.lastFed || f.born)) / Math.max(1, vitals(f).food * HOUR), 0, 1.2);
+    const vigor = 0.84 + tr.vigor * 0.34;
+    if (mode === "burst") return m.burst * stageF * (1 + hunger * 0.25) * vigor;
+    if (mode === "panic") {
+      const left = clamp(f.stamina == null ? 1 : f.stamina, 0, 1);
+      return m.burst * stageF * 0.94 * (0.78 + tr.bold * 0.5) * vigor * (0.55 + 0.45 * left);
     }
+    if (mode === "rest") return m.cruise * stageF * 0.28;
+    const mood = moodOf(f, now);
+    const moodF = mood === "happy" ? 1.18 : mood === "sad" ? 0.62 : 1;
+    return m.cruise * stageF * (1 + hunger * 0.3) * moodF * vigor;
   }
   function fishSprint(f) {
-    const hungry = Date.now() - (f.lastFed || f.born) > 3 * HOUR;
-    const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
-    if (temperOf(f) === "chill" && !desperate) return hungry ? 0.2 : 0.12;
-    if (desperate) return 0.78;
-    if (temperOf(f) === "lively") return hungry ? 0.66 : 0.5;
-    return hungry ? 0.58 : 0.34;
+    const now = Date.now();
+    const starving = STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR;
+    return speedOf(f, now, starving ? "burst" : "cruise");
   }
+  /* Food choice: distance over the fish's own top speed, tilted toward the
+     depth the species feeds at, and off flakes a faster rival will reach first. */
   function nearestFlake(f) {
     if (!flakes.length) return null;
-    const mine = fishSprint(f);
-    let best = null;
-    let bestScore = 1e9;
-    const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
+    const now = Date.now();
+    const band = bandOf(f);
+    const mid = (band[0] + band[1]) / 2;
+    const starving = STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR;
+    const mine = Math.max(0.02, speedOf(f, now, starving ? "burst" : "cruise") * (1 + traits(f).appetite * 0.3));
+    let best = null, bestScore = 1e9;
     flakes.forEach(function (fl) {
       if (fl.gone) return;
-      const d = Math.hypot(fl.x - f.x, fl.y - f.y);
-      let beaten = false;
-      if (!desperate) {
+      const d = Math.hypot(fl.x - f.x, (fl.y - f.y) * AR);
+      let score = d / mine * (1 + Math.abs(fl.y - mid) * 1.5);
+      if (band[0] > 0.5 && fl.y < 0.52) score += 0.9;
+      if (band[1] < 0.48 && fl.y > 0.72) score += 0.7;
+      if (!starving) {
         state.fish.forEach(function (o) {
-          if (o === f || o.dead) return;
-          const od = Math.hypot(fl.x - o.x, fl.y - o.y);
-          if (od / fishSprint(o) + 0.04 < d / mine) beaten = true;
+          if (o === f) return;
+          const od = Math.hypot(fl.x - o.x, (fl.y - o.y) * AR);
+          if (od / Math.max(0.02, fishSprint(o)) + 0.05 < d / mine) score += 0.5;
         });
       }
-      const score = d / mine + (beaten ? 0.42 : 0);
       if (score < bestScore) { bestScore = score; best = fl; }
     });
     return best;
+  }
+  function unitDir(f, tx, ty) {
+    const dx = tx - f.x, dy = (ty - f.y) * AR;
+    const d = Math.hypot(dx, dy) || 1;
+    return { x: dx / d, y: dy / d, d: d };
+  }
+  function patrolPoint(f) {
+    const band = bandOf(f);
+    const t = traits(f);
+    return {
+      x: clamp(0.12 + Math.random() * 0.76, 0.1, 0.9),
+      y: clamp(band[0] + (band[1] - band[0]) * (0.15 + Math.random() * 0.7) - t.bold * 0.05, 0.15, 0.86)
+    };
+  }
+  /* Slow, smooth heading drift: why fish paths curve instead of jitter. */
+  function wanderDir(f, now, dt) {
+    if (f.wseed == null) f.wseed = Math.random() * 90;
+    const w = f.wseed;
+    if (f.wanderA == null) f.wanderA = f.vx < 0 ? Math.PI : 0;
+    const n = Math.sin(now / 3300 + w) * 0.55 + Math.sin(now / 1100 + w * 1.7) * 0.3 + Math.sin(now / 470 + w * 2.1) * 0.15;
+    f.wanderA += n * dt * 0.9;
+    return { x: Math.cos(f.wanderA), y: Math.sin(f.wanderA) * 0.5 };
+  }
+  /* Boids: separation always, alignment and cohesion by how social the fish is.
+     A bigger fish shoves a smaller one aside, so the tank grows a pecking order. */
+  function shoalSteer(f, out) {
+    const m = motionOf(f);
+    const tr = traits(f);
+    const crowd = state.fish.length >= 30 ? 0.6 : 1;
+    const social = (socialOf(f) === "school" ? 0.35 + tr.social * 0.7 : tr.social * 0.22) * crowd;
+    const vision = m.vision * (0.8 + tr.social * 0.6);
+    const sepR = (f.startleT > 0 ? 0.08 : 0.105) * (1.15 - tr.social * 0.25);
+    const mineSize = Math.max(0.2, specOf(f.species).bulk * STAGE_DRAW[stageName(bodyAge(f))]);
+    let ax = 0, ay = 0, cx = 0, cy = 0, vx = 0, vy = 0, n = 0;
+    state.fish.forEach(function (o) {
+      if (o === f) return;
+      const dx = o.x - f.x, dy = (o.y - f.y) * AR;
+      const d = Math.hypot(dx, dy);
+      if (d > vision || d < 0.0001) return;
+      if (socialOf(o) === "school" || d < sepR) { n += 1; cx += o.x; cy += o.y; vx += o.vx; vy += o.vy / AR; }
+      if (d < sepR) {
+        const w = (sepR - d) / sepR;
+        ax -= dx / d * w;
+        ay -= dy / d * w;
+      }
+      const sizeF = (specOf(o.species).bulk * STAGE_DRAW[stageName(bodyAge(o))]) / mineSize;
+      if (sizeF > 1.12 && d < sepR * 1.8) {
+        const w = (sizeF - 1.12) * (1 - d / (sepR * 1.8));
+        ax -= dx / d * w * 1.5;
+        ay -= dy / d * w * 1.5;
+      }
+    });
+    if (n) {
+      cx /= n; cy /= n;
+      const coh = unitDir(f, cx, cy);
+      ax += coh.x * social * 0.5;
+      ay += coh.y * social * 0.5;
+      const avx = vx / n, avy = vy / n;
+      const av = Math.hypot(avx, avy) || 1;
+      ax += avx / av * social * 0.65;
+      ay += avy / av * social * 0.65;
+    }
+    out.x += ax * 1.5;
+    out.y += ay * 1.5;
+  }
+  function decorSteer(f, out) {
+    const push = 1.95 + traits(f).bold * 0.7 + (f.startleT > 0 ? 1.2 : 0);
+    decorOf().forEach(function (d) {
+      if (d.kind === "weed") return;
+      const nx = (f.x - d.x) / d.rx, ny = (f.y - d.y) / d.ry;
+      const dist = Math.hypot(nx, ny);
+      const reach = 1.28;
+      if (dist >= reach || dist < 0.0001) return;
+      const w = (reach - dist) / reach;
+      out.x += nx / dist * w * push;
+      out.y += ny / dist * w * push * AR;
+    });
+  }
+  function wallSteer(f, out) {
+    const look = 0.05 + Math.hypot(f.vx, f.vy / AR) * 0.35;
+    const px = f.x + f.vx * 0.7, py = f.y + f.vy * 0.7;
+    if (px < 0.14) out.x += (0.14 - px) * 8;
+    if (px > 0.86) out.x -= (px - 0.86) * 8;
+    const top = f.action === "jump" ? 0.02 : 0.14;
+    if (py < top) out.y += (top - py) * 10;
+    if (py > 0.86) out.y -= (py - 0.86) * 10;
+    out.x += clamp((0.5 - f.x) * 0.12, -0.1, 0.1);
+  }
+  function bandSteer(f, out, override) {
+    const band = bandOf(f);
+    const mid = (band[0] + band[1]) / 2;
+    const span = Math.max(0.05, (band[1] - band[0]) / 2);
+    const off = (f.y - (override != null ? override : mid)) / span;
+    out.y += clamp(-off * 0.9, -1, 1) * 0.4 * (1.2 - traits(f).bold * 0.4);
+  }
+  /* Danger pressure: a hunter in the water, or a hand reaching over the glass. */
+  function huntPressure(f) {
+    let flee = null;
+    (state.predators || []).forEach(function (p) {
+      if (!p.adult) return;
+      const d = Math.hypot(p.x - f.x, (p.y - f.y) * AR);
+      const reach = p.pending ? 0.46 : 0.30;
+      if (d >= reach) return;
+      const w = (1 - d / reach) * (p.pending ? 1.7 : 1);
+      if (!flee || w > flee.w) flee = { x: p.x, y: p.y, w: w, stalk: !!p.pending };
+    });
+    if (hand && hand.dip > 0.2 && f.y < 0.38) {
+      const d = Math.hypot(hand.x - f.x, (0.03 - f.y) * AR);
+      if (d < 0.3) {
+        const w = (1 - d / 0.3) * hand.dip * 0.95;
+        if (!flee || w > flee.w) flee = { x: hand.x, y: 0.01, w: w, stalk: false };
+      }
+    }
+    return flee && flee.w > 0.12 ? flee : null;
+  }
+  /* What the fish is doing, in priority order, for this frame. */
+  function fishMind(f, now, dt, mood) {
+    const m = motionOf(f);
+    const tr = traits(f);
+    const band = bandOf(f);
+    const night = phase() === "night";
+    const starving = STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR;
+    const danger = huntPressure(f);
+    if (danger && tr.bold < 0.94) {
+      f.state = "flee";
+      f.stateT = 2.4;
+      f.idleT = 0;
+      return { mode: "flee", tx: danger.x, ty: danger.y, w: danger.w, stalk: danger.stalk,
+        cap: speedOf(f, now, "panic") * (0.78 + tr.bold * 0.45) };
+    }
+    const flake = nearestFlake(f);
+    if (flake) {
+      f.state = "eat";
+      f.stateT = 1.6;
+      f.idleT = 0;
+      return { mode: "eat", tx: flake.x, ty: flake.y, flake: flake,
+        cap: speedOf(f, now, starving ? "burst" : "cruise") * (0.7 + tr.appetite * 0.5) };
+    }
+    if (comfort(f) > 2.5) {
+      f.state = "gasp";
+      f.stateT = 1.2;
+      f.idleT = 0;
+      return { mode: "gasp", tx: clamp(f.x + Math.sin(now / 2600 + (f.wseed || 0)) * 0.04, 0.12, 0.88), ty: 0.12,
+        cap: speedOf(f, now, "cruise") * 0.42 };
+    }
+    if (f.actionT > 0) {
+      f.state = "play";
+      f.stateT = f.actionT;
+      return { mode: "play", cap: m.burst * (f.action === "race" ? 0.8 : 0.5) * stageSpeed(stageName(bodyAge(f))) };
+    }
+    if (f.courtT > 0) {
+      f.state = "court";
+      f.stateT = f.courtT;
+      return { mode: "court", cap: speedOf(f, now, "cruise") * 0.8 };
+    }
+    if (f.idleT == null || f.idleT <= 0 || !f.state || f.state === "play") scheduleIdle(f, now, night, mood);
+    f.idleT -= dt;
+    const mid = (band[0] + band[1]) / 2;
+    if (f.state === "graze") {
+      if (!f.grazeT || f.grazeT <= 0) f.grazeT = 2 + Math.random() * 4;
+      return { mode: "graze", tx: clamp(f.x + Math.sin(now / 4000 + (f.wseed || 0)) * 0.1, 0.1, 0.9), ty: clamp(band[1] + 0.04, 0.3, 0.88),
+        cap: speedOf(f, now, "cruise") * 0.5 };
+    }
+    if (f.state === "rest") {
+      const restY = clamp(mid + 0.16, 0.2, 0.86);
+      return { mode: "rest", tx: f.x + Math.sin(now / 9000 + (f.wseed || 0)) * 0.08, ty: restY, cap: speedOf(f, now, "rest") };
+    }
+    if (f.state === "shelter") {
+      const s = nearestShelter(f.x, f.y, 2.2);
+      if (s) return { mode: "shelter", tx: s.x + 0.05, ty: s.y, cap: speedOf(f, now, "cruise") * 0.6 };
+      f.state = "cruise";
+    }
+    if (f.state === "hover") {
+      return { mode: "hover", tx: f.x + Math.sin(now / 1500 + (f.wseed || 0)) * 0.03,
+        ty: mid + Math.sin(now / 2100 + (f.wseed || 0)) * 0.03, cap: speedOf(f, now, "cruise") * 0.3 };
+    }
+    if (f.state === "glide") return { mode: "glide", cap: speedOf(f, now, "cruise") * 0.35, glide: true };
+    f.state = "cruise";
+    if (!f.cruise || unitDir(f, f.cruise.x, f.cruise.y).d < 0.06) f.cruise = patrolPoint(f);
+    return { mode: "cruise", tx: f.cruise.x, ty: f.cruise.y, cap: speedOf(f, now, "cruise") };
+  }
+  function scheduleIdle(f, now, night, mood) {
+    const tr = traits(f);
+    const band = bandOf(f);
+    const roll = Math.random();
+    const grazeT = band[0] > 0.5 ? 0.5 : (f.species === "puff" ? 0.12 : 0.05);
+    const restT = (night ? 0.36 : 0.05) + (1 - tr.bold) * (night ? 0.26 : 0.08) + (mood === "sad" ? 0.15 : 0);
+    if (roll < grazeT) { f.state = "graze"; f.stateT = 4 + Math.random() * 7; f.grazeT = f.stateT; }
+    else if (roll < grazeT + restT) { f.state = "rest"; f.stateT = 6 + Math.random() * 12; }
+    else if (roll < grazeT + restT + 0.11) { f.state = "hover"; f.stateT = 3 + Math.random() * 5; }
+    else if (roll < grazeT + restT + 0.11 + motionOf(f).glide * 0.22) { f.state = "glide"; f.stateT = 0.7 + Math.random() * 1.6; }
+    else { f.state = "cruise"; f.stateT = 4 + Math.random() * 9; f.cruise = patrolPoint(f); }
+    f.idleT = f.stateT;
+  }
+  /* Speed is a force, not a snap: accelerate toward the wish, then integrate. */
+  function applyVelocity(f, dt, wx, wy, cap, glide) {
+    const mag = Math.hypot(wx, wy);
+    let vx = 0, vy = 0;
+    if (mag > 0.0001) {
+      vx = wx / mag * cap;
+      vy = wy / mag * cap * AR;
+    }
+    if (glide) {
+      f.vx *= 1 - Math.min(0.9, dt * 0.9);
+      f.vy *= 1 - Math.min(0.9, dt * 0.9);
+    } else {
+      const step = (cap * 3.6 + 0.06) * dt;
+      f.vx += clamp(vx - f.vx, -step, step);
+      f.vy += clamp(vy - f.vy, -step, step);
+    }
+  }
+  /* Body: heading chases the velocity, heading drives bank, tail beat tracks effort. */
+  function bodyUpdate(f, dt, cap) {
+    const m = motionOf(f);
+    const tr = traits(f);
+    const sp = Math.hypot(f.vx, f.vy / AR);
+    let want = f.heading || 0;
+    if (sp > 0.002) want = Math.atan2(f.vy / AR, f.vx);
+    let diff = want - (f.heading || 0);
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const rate = m.turn * (1 + tr.bold * 0.35) * clamp(1 + 0.45 / (0.3 + sp * 5), 1, 1.7);
+    const turn = clamp(diff, -rate * dt, rate * dt);
+    f.heading = (f.heading || 0) + turn;
+    if (f.heading > Math.PI) f.heading -= Math.PI * 2;
+    if (f.heading < -Math.PI) f.heading += Math.PI * 2;
+    const turnRate = dt > 0.001 ? turn / dt : 0;
+    f.bank = (f.bank || 0) + (clamp(turnRate * 0.22, -0.42, 0.42) - (f.bank || 0)) * Math.min(1, dt * 4);
+    f.pitch = (f.pitch || 0) + (clamp((f.vy / AR) * 2.4, -0.5, 0.5) - (f.pitch || 0)) * Math.min(1, dt * 5);
+    const strain = clamp(sp / Math.max(0.02, cap), 0, 1.4);
+    const beat = f.state === "rest" ? 2.4 : f.state === "hover" ? 6.5 : 4.6 + strain * 11 * (m.tail / 14);
+    f.phase = (f.phase || 0) + dt * beat;
+    f.face = Math.cos(f.heading || 0) >= 0 ? 1 : -1;
+    if (f.zTarget == null) f.zTarget = 0.25 + Math.random() * 0.6;
+    f.z = f.z == null ? f.zTarget : f.z + (f.zTarget - f.z) * Math.min(1, dt * 0.1);
+    f.speed = sp;
+  }
+  function stepFish(f, dt) {
+    const now = Date.now();
+    const tr = traits(f);
+    if (f.phase == null) f.phase = Math.random() * 6.283;
+    if (f.heading == null) f.heading = f.vx < 0 ? Math.PI : 0;
+    if (f.state == null) f.state = "cruise";
+    if (f.z == null) f.z = 0.25 + Math.random() * 0.6;
+    f.startleT = Math.max(0, (f.startleT || 0) - dt);
+    if (f.courtT) f.courtT = Math.max(0, f.courtT - dt);
+    const spent = f.state === "flee" || f.startleT > 0.2;
+    f.stamina = clamp((f.stamina == null ? 1 : f.stamina) + (spent ? -dt * 0.16 : dt * 0.09), 0, 1);
+    const mood = moodOf(f, now);
+    const mind = fishMind(f, now, dt, mood);
+    const cap = Math.max(0.01, mind.cap || 0.05);
+    const out = { x: 0, y: 0 };
+    let glide = false;
+    if (mind.mode === "flee") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x -= t.x * (2.6 + mind.w * 2);
+      out.y -= t.y * (2.6 + mind.w * 2);
+      if (mind.stalk) {
+        const s = nearestShelter(f.x, f.y, 1.4);
+        if (s) {
+          const sv = unitDir(f, s.x, s.y);
+          out.x += sv.x * 1.6;
+          out.y += sv.y * 1.6;
+          f.state = "shelter";
+        }
+      }
+      f.startleT = Math.max(f.startleT, 0.7);
+    } else if (mind.mode === "eat") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x += t.x * 1.7;
+      out.y += t.y * 1.7;
+      if (temperOf(f) === "lively" || STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR) {
+        state.fish.forEach(function (o) {
+          if (o === f) return;
+          if (Math.hypot(o.x - f.x, (o.y - f.y) * AR) < 0.085 && Math.hypot(o.x - mind.tx, (o.y - mind.ty) * AR) < 0.17) {
+            const back = unitDir(o, f.x, f.y);
+            out.x += back.x * 1.2;
+            out.y += back.y * 1.2;
+          }
+        });
+      }
+    } else if (mind.mode === "play") {
+      const a = f.action;
+      if (a === "race") { out.x += f.tx > f.x ? 1 : -1; out.y += (f.ty || f.y) > f.y ? 0.25 : -0.25; }
+      else if (a === "dance") { out.x += Math.cos(f.actionT * 3); out.y += Math.sin(f.actionT * 3) * 0.8; }
+      else if (a === "clean") { out.y += Math.max(0, 0.86 - f.y) * 3; out.x += Math.sin(now / 900 + (f.wseed || 0)) * 0.4; }
+      else if (a === "jump") { out.x += f.face; out.y -= 0.6; }
+      else if (a === "glow") { out.x += Math.cos(now / 3000 + (f.wseed || 0)) * 0.5; out.y += 0.2; }
+      else if (a === "flare") { out.x += Math.sin(now / 1200 + (f.wseed || 0)) * 0.2; out.y += 0.1; }
+      else if (a === "flash") { const t = unitDir(f, f.tx || f.x + f.face * 0.4, f.ty || f.y); out.x += t.x * 1.6; out.y += t.y * 1.6; }
+      else if (a === "lap") {
+        const t = unitDir(f, f.tx, 0.34 + Math.sin(now / 5200 + (f.wseed || 0)) * 0.12);
+        out.x += t.x * 1.1; out.y += t.y * 1.1;
+      } else if (a === "boop" || a === "school") {
+        if (f.tx) { const t = unitDir(f, f.tx, f.ty == null ? f.y : f.ty); out.x += t.x * 1.4; out.y += t.y * 1.4; }
+      }
+    } else if (mind.mode === "court") {
+      const pair = state.fish.filter(function (o) { return o !== f && o.courtT > 0 && o.species === f.species; })[0];
+      if (pair) {
+        const rel = unitDir(f, pair.x, pair.y);
+        const spin = f.id < pair.id ? 1 : -1;
+        out.x += rel.x * 0.5 - rel.y * 0.9 * spin;
+        out.y += rel.y * 0.5 + rel.x * 0.9 * spin;
+      } else out.x += Math.cos(now / 1800 + (f.wseed || 0));
+    } else if (mind.mode === "gasp") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x += t.x * 1.4;
+      out.y += t.y * 1.4;
+      out.x += Math.sin(now / 700 + (f.wseed || 0)) * 0.3;
+    } else if (mind.mode === "graze") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x += t.x * 0.8;
+      out.y += t.y * 1.2;
+      out.x += Math.sin(now / 4000 + (f.wseed || 0)) * 0.25;
+    } else if (mind.mode === "rest" || mind.mode === "hover") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x += t.x * 0.6;
+      out.y += t.y * 0.6;
+    } else if (mind.mode === "glide") {
+      glide = true;
+    } else if (mind.mode === "shelter") {
+      const t = unitDir(f, mind.tx, mind.ty);
+      out.x += t.x * 0.9;
+      out.y += t.y * 0.9;
+    } else {
+      const t = unitDir(f, mind.tx, mind.ty);
+      const w = wanderDir(f, now, dt);
+      out.x += t.x * 1.1 + w.x * 0.5;
+      out.y += t.y * 1.1 + w.y * 0.5;
+    }
+    if (mind.mode !== "glide") {
+      shoalSteer(f, out);
+      decorSteer(f, out);
+    }
+    bandSteer(f, out, mind.mode === "gasp" ? 0.12 : null);
+    wallSteer(f, out);
+    if (f.state === "rest" || f.state === "hover") { out.x *= 0.4; out.y *= 0.4; }
+    applyVelocity(f, dt, out.x, out.y, cap, glide);
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    const top = mind.mode === "gasp" ? 0.08 : f.action === "jump" ? 0.02 : 0.11;
+    if (f.x < 0.05) { f.x = 0.05; f.vx = Math.abs(f.vx) * 0.4; }
+    if (f.x > 0.95) { f.x = 0.95; f.vx = -Math.abs(f.vx) * 0.4; }
+    if (f.y < top) { f.y = top; f.vy = Math.abs(f.vy) * 0.4; }
+    if (f.y > 0.88) { f.y = 0.88; f.vy = -Math.abs(f.vy) * 0.4; }
+    bodyUpdate(f, dt, cap);
+    if (f.state === "graze" && Math.random() < dt * 0.5) state.algae = clamp((state.algae || 0) - 0.05, 0, 100);
   }
   function startHand(kind) {
     if (!state.fish.length) { log("No one is home to feed."); return false; }
@@ -788,83 +1570,6 @@
       ctx.fill();
     });
   }
-  function stepFish(f, dt) {
-    const mood = moodOf(f, Date.now());
-    const slow = mood === "sad" ? 0.55 : 1;
-    const bite = nearestFlake(f);
-    if (bite) {
-      f.actionT = 0;
-      f.action = "";
-      const cap = fishSprint(f) * slow;
-      let vx = bite.x - f.x;
-      let vy = bite.y - f.y;
-      const mag = Math.hypot(vx, vy) || 1;
-      f.vx = vx / mag * cap;
-      f.vy = vy / mag * cap;
-      const pushy = temperOf(f) === "lively" || STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
-      if (pushy) state.fish.forEach(function (o) {
-        if (o === f) return;
-        if (Math.hypot(o.x - f.x, o.y - f.y) < 0.08 && Math.hypot(o.x - bite.x, o.y - bite.y) < 0.16) {
-          f.vx += (f.x - o.x) * 1.1;
-          f.vy += (f.y - o.y) * 0.6;
-        }
-      });
-    } else if (f.actionT > 0) {
-      f.actionT -= dt;
-      if (f.action === "race") f.vx = 0.28 * slow;
-      else if (f.action === "dance") {
-        f.vx = Math.cos(f.actionT * 3) * 0.08;
-        f.vy = Math.sin(f.actionT * 3) * 0.05;
-      } else if (f.action === "clean") f.vy = 0.06;
-      else if (f.action === "jump") f.vx *= 0.98;
-      else if ((f.action === "boop" || f.action === "school") && f.tx) {
-        f.vx = (f.tx - f.x) * 0.8;
-        f.vy = ((f.ty || f.y) - f.y) * 0.8;
-      }
-      if (f.actionT <= 0) f.action = "";
-    } else if (temperOf(f) === "chill") {
-      if (!f.hold || f.hold < Date.now()) {
-        f.hold = Date.now() + 4000 + Math.random() * 7000;
-        f.vx = (Math.random() < 0.5 ? -1 : 1) * (0.012 + Math.random() * 0.018) * slow;
-        f.vy = (Math.random() - 0.5) * 0.012;
-      }
-      if (f.y < 0.45) f.vy += 0.01;
-      if (f.y > 0.78) f.vy -= 0.01;
-      if (!f.nextPlay) f.nextPlay = Date.now() + 18000 + Math.random() * 24000;
-      if (Date.now() > f.nextPlay) {
-        f.nextPlay = Date.now() + 20000 + Math.random() * 30000;
-        startPlay(f);
-      }
-    } else {
-      if (!f.cruise || Math.hypot(f.cruise.x - f.x, f.cruise.y - f.y) < 0.06) {
-        f.cruise = { x: 0.12 + Math.random() * 0.76, y: 0.24 + Math.random() * 0.55 };
-      }
-      const happy = mood === "happy" ? 1.25 : 1;
-      const dx = f.cruise.x - f.x;
-      const dy = f.cruise.y - f.y;
-      const mag = Math.hypot(dx, dy) || 1;
-      const cap = (0.055 + Math.random() * 0.01) * happy * slow;
-      f.vx = dx / mag * cap * 8;
-      f.vy = dy / mag * cap * 4;
-      const spd = Math.hypot(f.vx, f.vy) || 1;
-      if (spd > cap) { f.vx = f.vx / spd * cap; f.vy = f.vy / spd * cap; }
-      if (!f.nextPlay) f.nextPlay = Date.now() + 5000 + Math.random() * 8000;
-      if (Date.now() > f.nextPlay) {
-        f.nextPlay = Date.now() + 7000 + Math.random() * 10000;
-        startPlay(f);
-      }
-    }
-    if (!bite) applySocial(f);
-    f.x += f.vx * dt;
-    f.y += f.vy * dt;
-    if (f.x < 0.08) { f.x = 0.08; f.vx = Math.abs(f.vx); }
-    if (f.x > 0.92) { f.x = 0.92; f.vx = -Math.abs(f.vx); }
-    const top = f.action === "jump" ? 0.02 : 0.2;
-    if (f.y < top) { f.y = top; f.vy = Math.abs(f.vy); }
-    if (f.y > 0.86) { f.y = 0.86; f.vy = -Math.abs(f.vy) * 0.5; }
-    f.vy *= 0.98;
-  }
-
   function resize() {
     const r = canvas.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -872,12 +1577,24 @@
     canvas.height = Math.max(2, r.height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
+  function stateWord(f) {
+    const s = f.state;
+    if (s === "flee") return (f.stamina != null && f.stamina < 0.35) ? "tiring" : "bolting";
+    if (s === "shelter") return "in the weeds";
+    if (s === "gasp") return "gasping at the top";
+    if (s === "rest") return "resting";
+    if (s === "graze") return "grazing";
+    if (s === "court") return "courting";
+    if (s === "eat") return "feeding";
+    if (s === "hover") return "holding still";
+    if (s === "glide") return "gliding";
+    return "";
+  }
   function drawFish(f, w, h, now) {
-    const age = bodyAge(f);
-    const stage = stageName(age);
-    if (f.vx > 0.004) f.face = 1;
-    else if (f.vx < -0.004) f.face = -1;
-    const goingRight = f.face !== -1;
+    const stage = stageName(bodyAge(f));
+    const z = f.z == null ? 0.5 : f.z;
+    const sp = f.speed == null ? Math.hypot(f.vx, f.vy / AR) : f.speed;
+    const goingRight = (f.face || 1) !== -1;
     let img = SPRITES[f.species + "_" + stage];
     let useTurn = false;
     if (f.species === "azure" || f.species === "sunscale") {
@@ -887,25 +1604,43 @@
       const turned = SPRITES[f.species + "_" + turnStage + "_" + (goingRight ? "r" : "l")];
       if (turned) { img = turned; useTurn = true; }
     }
-    const sc = STAGE_DRAW[stage] * specOf(f.species).bulk;
+    const flare = f.action === "flare" ? 1.16 : 1;
+    const sc = STAGE_DRAW[stage] * specOf(f.species).bulk * (0.8 + z * 0.28) * flare;
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
-    const bob = state.opts.motion === false ? 0 : Math.sin(now / 400 + f.x * 12) * 6;
-    let y = f.y * h + bob;
+    const breathe = state.opts.motion === false ? 0 : Math.sin(now / (f.state === "rest" ? 1700 : 900) + f.x * 10) * (f.state === "rest" ? 2.4 : 1.1);
+    let y = f.y * h + breathe;
+    const x = f.x * w;
     if (f.action === "jump") {
       const u = Math.max(0, f.actionT / 1.1);
       y = h * 0.18 - Math.sin((1 - u) * Math.PI) * h * 0.12;
     }
-    const x = f.x * w;
+    if (motionOf(f).glow === true && phase() !== "day") {
+      const pulse = state.opts.motion === false ? 0.6 : 0.55 + Math.sin(now / 700 + (f.wseed || 0)) * 0.2;
+      const g = ctx.createRadialGradient(x, y, 1, x, y, Math.max(18, bh * 1.8));
+      g.addColorStop(0, "rgba(186,238,255," + (0.3 * pulse).toFixed(3) + ")");
+      g.addColorStop(1, "rgba(120,200,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - bh * 2, y - bh * 2, bh * 4, bh * 4);
+    }
     ctx.save();
+    ctx.globalAlpha = 0.08 + z * 0.12;
+    ctx.fillStyle = "#04121c";
+    ctx.beginPath();
+    ctx.ellipse(x, h * 0.9, bw * 0.32, bh * 0.09, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha = 0.55 + z * 0.45;
     ctx.translate(x, y);
     const artRight = FACE_RIGHT[f.species] !== false;
-    const face = useTurn ? 1 : (((goingRight) === artRight) ? 1 : -1);
+    const face = useTurn ? 1 : ((goingRight === artRight) ? 1 : -1);
+    const strain = clamp(sp / Math.max(0.02, speedOf(f, now, "cruise")), 0, 1.5);
+    const amp = (temperOf(f) === "chill" ? 0.03 : 0.07) * (0.4 + strain * 0.8);
+    const wag = state.opts.motion === false ? 0 : Math.sin(f.phase || 0) * amp * (f.state === "rest" ? 0.35 : 1);
     ctx.scale(face, 1);
-    const wagAmp = temperOf(f) === "chill" ? 0.05 : 0.14;
-    const wag = state.opts.motion === false ? 0 : Math.sin(now / (temperOf(f) === "chill" ? 320 : 160) + f.y * 20) * wagAmp;
-    ctx.rotate(wag * (f.action === "flare" ? 2.2 : 1));
+    ctx.rotate(wag * (f.action === "flare" ? 2 : 1) + (f.bank || 0) * 0.5 - (f.pitch || 0) * 0.3);
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     else {
       ctx.fillStyle = "#fbbf24";
@@ -914,16 +1649,96 @@
       ctx.fill();
     }
     ctx.restore();
+    if (state.opts.motion !== false && f.startleT > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.5, f.startleT);
+      ctx.strokeStyle = "rgba(255,235,200,0.9)";
+      ctx.beginPath();
+      ctx.arc(x, y, bh * 0.75 + f.startleT * 10, -0.6, 0.6);
+      ctx.stroke();
+      ctx.restore();
+    }
     if (f.id === selected) {
       ctx.strokeStyle = "#fbbf24";
       ctx.strokeRect(x - bw / 2 - 4, y - bh / 2 - 4, bw + 8, bh + 8);
     }
     if (state.opts.names !== false) {
-      ctx.fillStyle = moodOf(f, now) === "sad" ? "#fb7185" : "#e8eef5";
-      ctx.font = "600 13px Syne, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(f.name, x, y - bh / 2 - 8);
+      ctx.font = "600 13px Syne, sans-serif";
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(3,10,18,0.72)";
+      const label = f.name + (f.gen > 1 ? " ·" + f.gen : "");
+      ctx.strokeText(label, x, y - bh / 2 - 8);
+      ctx.fillStyle = moodOf(f, now) === "sad" ? "#fb7185" : "#e8eef5";
+      ctx.fillText(label, x, y - bh / 2 - 8);
+      const word = stateWord(f);
+      if (word) {
+        ctx.font = "600 11px Source Sans 3, sans-serif";
+        ctx.lineWidth = 2.5;
+        ctx.strokeText(word, x, y - bh / 2 + 5);
+        ctx.fillStyle = f.stamina != null && f.stamina < 0.35 && f.state === "flee" ? "#fb7185" : "#9fd8e8";
+        ctx.fillText(word, x, y - bh / 2 + 5);
+      }
     }
+  }
+  function drawEggs(w, h, now) {
+    (state.eggs || []).forEach(function (e) {
+      const x = e.x * w, y = e.y * h;
+      const left = clamp((e.hatchAt - now) / HATCH_MS, 0, 1);
+      const jiggle = state.opts.motion === false ? 0 : Math.sin(now / 900 + x) * 0.6;
+      ctx.save();
+      ctx.globalAlpha = 0.6 + (1 - left) * 0.35;
+      for (let i = 0; i < 4; i += 1) {
+        const a = i * 1.57 + x;
+        const ex = x + Math.cos(a) * 7, ey = y + Math.sin(a) * 5 + jiggle;
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, 3.2, 2.5, a, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(18,28,38,0.55)";
+        ctx.beginPath();
+        ctx.arc(ex, ey, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (state.opts.names !== false) {
+        ctx.globalAlpha = 0.75;
+        ctx.fillStyle = "#e8eef5";
+        ctx.font = "600 10px Source Sans 3, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(specOf(e.species).name + " eggs · " + Math.ceil(left * 20) + "m", x, y - 14);
+      }
+      ctx.restore();
+    });
+  }
+  function drawMotes(w, h, front) {
+    motes.forEach(function (m) {
+      if ((m.z >= 0.5) !== !!front) return;
+      ctx.save();
+      ctx.globalAlpha = (front ? 0.32 : 0.2) * (0.4 + m.z * 0.6);
+      ctx.fillStyle = "#dff3ff";
+      ctx.beginPath();
+      ctx.arc(m.x * w, m.y * h, m.r * (0.6 + m.z * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+  function drawGlass(w, h) {
+    const g = ctx.createRadialGradient(w * 0.5, h * 0.45, Math.min(w, h) * 0.25, w * 0.5, h * 0.45, Math.max(w, h) * 0.75);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(2,8,14,0.5)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = "#dff3ff";
+    ctx.beginPath();
+    ctx.moveTo(w * 0.02, h * 0.34);
+    ctx.lineTo(w * 0.2, h * 0.02);
+    ctx.lineTo(w * 0.3, h * 0.02);
+    ctx.lineTo(w * 0.09, h * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
   function drawCrew(c, w, h, now) {
     const t = now / 1000 + c.wobble;
@@ -1003,29 +1818,56 @@
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const now = Date.now();
-    const night = phase() === "night";
+    const ph = phase();
+    const motion = state.opts.motion !== false;
     const art = THEME_ART[themeOf(state.theme).id] || THEME_ART.river;
-    const bg = night ? art.night : art.day;
+    const bg = ph === "night" ? art.night : art.day;
     if (bg.complete && bg.naturalWidth) ctx.drawImage(bg, 0, 0, w, h);
     else {
-      ctx.fillStyle = night ? "#071525" : "#0c3a48";
+      ctx.fillStyle = ph === "night" ? "#071525" : "#0c3a48";
       ctx.fillRect(0, 0, w, h);
     }
-    if (phase() === "dusk") {
+    if (ph === "dusk") {
       ctx.fillStyle = "rgba(40,16,28,0.28)";
       ctx.fillRect(0, 0, w, h);
     }
-    ctx.strokeStyle = "rgba(255,255,255,0.25)";
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.14);
-    ctx.bezierCurveTo(w * 0.3, h * 0.12, w * 0.7, h * 0.16, w, h * 0.13);
-    ctx.stroke();
-    bubbles.forEach(function (b) {
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(255,255,255,0.45)";
-      ctx.arc(b.x * w, b.y * h, b.r, 0, Math.PI * 2);
-      ctx.stroke();
-    });
+    if (motion) {
+      const shaftA = ph === "day" ? 0.09 : ph === "dusk" ? 0.12 : 0.04;
+      const drift = Math.sin(now / 6200) * w * 0.02;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      [[0.30, 0.09], [0.44, 0.12], [0.66, 0.07], [0.86, 0.10]].forEach(function (s, i) {
+        const g = ctx.createLinearGradient(0, 0, 0, h * 0.86);
+        g.addColorStop(0, "rgba(222,242,255," + (shaftA * (1 + (i % 2) * 0.35) * (0.7 + Math.sin(now / 5200 + i * 1.4) * 0.3)).toFixed(3) + ")");
+        g.addColorStop(1, "rgba(200,230,255,0)");
+        ctx.fillStyle = g;
+        const top = s[0] * w + drift * (1 + i * 0.25);
+        const bw = s[1] * w * (1 + Math.sin(now / 4200 + i) * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(top - bw * 0.14, 0);
+        ctx.lineTo(top + bw * 0.14, 0);
+        ctx.lineTo(top + bw, h * 0.9);
+        ctx.lineTo(top - bw, h * 0.9);
+        ctx.closePath();
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+    const fog = ctx.createLinearGradient(0, 0, 0, h);
+    fog.addColorStop(0, ph === "night" ? "rgba(6,18,30,0.34)" : "rgba(118,188,208,0.10)");
+    fog.addColorStop(0.55, "rgba(4,14,24,0.05)");
+    fog.addColorStop(1, "rgba(2,8,16,0.32)");
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, 0, w, h);
+    if (motion) {
+      [[0.42, 0.86], [0.6, 0.88]].forEach(function (a) {
+        const g = ctx.createLinearGradient(0, a[1] * h, 0, h * 0.1);
+        g.addColorStop(0, "rgba(255,255,255,0.10)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect((a[0] - 0.022) * w, h * 0.1, 0.044 * w, (a[1] - 0.1) * h);
+      });
+    }
     const film = (state.algae || 0) / 100;
     if (film > 0.02) {
       ctx.fillStyle = "rgba(34,92,28," + (0.08 + film * 0.38) + ")";
@@ -1037,28 +1879,102 @@
       ctx.fillStyle = "rgba(90,60,20," + ((60 - state.quality) / 180) + ")";
       ctx.fillRect(0, 0, w, h);
     }
-    const list = state.fish.slice().sort(function (a, b) { return a.y - b.y; });
-    list.forEach(function (f) { drawFish(f, w, h, now); });
+    drawMotes(w, h, false);
+    bubbles.forEach(function (b) {
+      const bx = b.x * w, by = b.y * h;
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(224,244,255,0.14)";
+      ctx.arc(bx, by, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.32)";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.arc(bx - b.r * 0.3, by - b.r * 0.35, Math.max(0.6, b.r * 0.26), 0, Math.PI * 2);
+      ctx.fill();
+    });
+    drawEggs(w, h, now);
+    const order = state.fish.slice().sort(function (a, b) {
+      const az = a.z == null ? 0.5 : a.z, bz = b.z == null ? 0.5 : b.z;
+      if (az !== bz) return az - bz;
+      return a.y - b.y;
+    });
+    order.forEach(function (f) { drawFish(f, w, h, now); });
     (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
     (state.predators || []).forEach(function (p) { drawPredator(p, w, h, now); });
+    (state.predators || []).forEach(function (p) {
+      if (!p.pending || !p.victim) return;
+      const v = state.fish.filter(function (f) { return f.id === p.victim; })[0];
+      if (!v) return;
+      const pulse = motion ? 0.5 + Math.sin(now / 260) * 0.5 : 0.7;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + pulse * 0.45;
+      ctx.strokeStyle = "#fb7185";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(v.x * w, v.y * h, Math.min(h * 0.22, 140) * 0.5 + 10 + pulse * 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
     drawFlakes(w, h);
+    drawMotes(w, h, true);
+    ripples.forEach(function (r) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 0.4 - r.t * 0.18);
+      ctx.strokeStyle = "#e8f6ff";
+      ctx.beginPath();
+      ctx.ellipse(r.x * w, r.y * h, r.r * w, r.r * w * 0.35, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+    if (motion) {
+      const surf = Math.sin(now / 3400);
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.14 + surf * 3);
+      ctx.bezierCurveTo(w * 0.3, h * 0.12 - surf * 4, w * 0.7, h * 0.16 + surf * 4, w, h * 0.13 - surf * 3);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.17 + surf * 2);
+      ctx.bezierCurveTo(w * 0.35, h * 0.15 + surf * 3, w * 0.65, h * 0.19 - surf * 3, w, h * 0.16 + surf * 2);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.14);
+      ctx.bezierCurveTo(w * 0.3, h * 0.12, w * 0.7, h * 0.16, w, h * 0.13);
+      ctx.stroke();
+    }
     drawHand(w, h);
+    drawGlass(w, h);
   }
-
   function renderRail() {
     const now = Date.now();
     const list = document.getElementById("fishList");
     list.innerHTML = state.fish.map(function (f) {
       const mood = moodOf(f, now);
+      const tr = traits(f);
+      const word = stateWord(f);
+      const line = [specOf(f.species).name, stageName(bodyAge(f)),
+        Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp",
+        (temperOf(f) === "chill" ? "relaxed" : "swims"),
+        (socialOf(f) === "loner" ? "loner" : "school"),
+        "feed " + hours(Math.max(0, foodLeft(f, now))) + "h"].join(" · ");
+      const mine = [traitWord("bold", tr.bold), traitWord("social", tr.social),
+        traitWord("appetite", tr.appetite), traitWord("vigor", tr.vigor)].join(", ");
       return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
-        esc(f.name) + "</b> <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" +
-        esc(specOf(f.species).name) + " · " + Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp · " + (temperOf(f) === "chill" ? "relaxed" : "swims") + " · " + (socialOf(f) === "loner" ? "loner" : "school") + " · " + stageName(bodyAge(f)) + " · feed " + hours(Math.max(0, foodLeft(f, now))) + "h</span></button>";
+        esc(f.name) + "</b>" + (f.gen > 1 ? " <span class='gen'>gen " + f.gen + "</span>" : "") +
+        " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
+        (word ? " · <b class='act'>" + word + "</b>" : "") + "<br>traits: " + esc(mine) +
+        (f.parents && f.parents.length ? " · from " + esc(f.parents.join(" and ")) : "") + "</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
-      return "<div class='grave'><b>" + esc(g.name) + "</b><br><span class='lore'>" + esc(g.species) + " · fish " + g.score + "h · tank " + (g.tankHours || 0) + "h · " + esc(g.theme || "") + "</span></div>";
+      return "<div class='grave'><b>" + esc(g.name) + "</b><br><span class='lore'>" + esc(g.species) +
+        " · fish " + g.score + "h · tank " + (g.tankHours || 0) + "h · " + esc(g.theme || "") + "</span></div>";
     }).join("") || "<p class='lore'>No stones yet.</p>";
-    document.getElementById("log").innerHTML = state.log.slice(0, 8).map(function (t) { return "<div>" + esc(t) + "</div>"; }).join("");
+    document.getElementById("log").innerHTML = state.log.slice(0, 10).map(function (t) { return "<div>" + esc(t) + "</div>"; }).join("");
     document.getElementById("points").textContent = state.points + " pts";
     const clock = document.getElementById("clock");
     const d = new Date();
@@ -1066,13 +1982,14 @@
     const shop = document.getElementById("shop");
     const cost = price();
     shop.innerHTML = SPECIES.map(function (s) {
-      return "<button type='button' class='btn' data-buy='" + s.id + "'>" + esc(s.name) + " · " + cost + "<br><span class='lore'>" + esc(s.blurb) + "</span></button>";
+      return "<button type='button' class='btn' data-buy='" + s.id + "'>" + esc(s.name) + " · " + cost +
+        "<br><span class='lore'>" + esc(s.blurb) + "</span></button>";
     }).join("");
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
     const name = document.getElementById("fishName");
     if (document.activeElement !== name) name.value = f ? f.name : "";
     document.getElementById("selMeta").textContent = f
-      ? (specOf(f.species).name + " · " + specOf(f.species).blurb)
+      ? (specOf(f.species).name + " · " + specOf(f.species).blurb + (stateWord(f) ? " · " + stateWord(f) : "") + (tempNote(f) ? " · " + tempNote(f) : ""))
       : "Click a fish in the tank or the list.";
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
@@ -1086,11 +2003,22 @@
     document.getElementById("mLong").textContent = hours(long) + " h";
     document.getElementById("mTank").textContent = hours(tankAge(now)) + " h";
     document.getElementById("mBest").textContent = hall + " h";
-    document.getElementById("mTemp").textContent = (Math.round(state.temp * 10) / 10) + "°";
+    const mTemp = document.getElementById("mTemp");
+    mTemp.textContent = (Math.round(state.temp * 10) / 10) + "°";
+    const offs = state.fish.map(function (x) { return comfort(x); });
+    const worst = offs.length ? Math.max.apply(null, offs) : 0;
+    mTemp.className = worst > 2.5 ? "q-poor" : worst > 1.5 ? "q-fair" : "q-good";
     document.getElementById("mAlgae").textContent = Math.round(state.algae) + "%";
     const qEl = document.getElementById("mQual");
     qEl.textContent = String(Math.round(state.quality));
     qEl.className = state.quality >= 70 ? "q-good" : state.quality >= 40 ? "q-fair" : "q-poor";
+    const eg = document.getElementById("mEggs");
+    if (eg) {
+      eg.textContent = String((state.eggs || []).length);
+      eg.className = (state.eggs || []).length ? "q-good" : "";
+    }
+    const gn = document.getElementById("mGen");
+    if (gn) gn.textContent = "gen " + (state.gen || 1);
     document.getElementById("board").classList.toggle("hidden", state.opts.board === false);
     document.getElementById("boardRows").innerHTML = "<div class='rowline head'><span>Name</span><span>Kind</span><span>Age</span><span>Mood</span></div>" +
       ranked.map(function (fish) {
@@ -1107,6 +2035,30 @@
       return "<button type='button' class='btn' data-crew='" + c.id + "'>" + esc(c.name) + " · " + c.cost +
         " <span class='lore'>(" + n + ") " + esc(c.blurb) + "</span></button>";
     }).join("");
+    const noteEl = document.getElementById("waterNote");
+    if (noteEl) {
+      const notes = [];
+      let warm = 0, cold = 0;
+      state.fish.forEach(function (x) {
+        if (tempNote(x) === "too warm") warm += 1;
+        else if (tempNote(x) === "too cold") cold += 1;
+      });
+      if (warm) notes.push(warm + (warm > 1 ? " fish find" : " fish finds") + " the water too warm — they gulp at the surface.");
+      if (cold) notes.push(cold + (cold > 1 ? " fish find" : " fish finds") + " it too cold — they hang low and slow.");
+      if ((state.quality || 0) < 45) notes.push("The water is foul. Fish are listless and scratch on the rockwork.");
+      if ((state.algae || 0) > 68) notes.push("Green film everywhere. The cleaners cannot keep up.");
+      if (state.fish.length >= 30) notes.push("Crowded. Everyone heals slower.");
+      if ((state.eggs || []).length) notes.push((state.eggs || []).length + " egg" + ((state.eggs || []).length > 1 ? "s" : "") + " on the rockwork.");
+      noteEl.textContent = notes.join(" ") || "Water is steady.";
+    }
+    const goalEl = document.getElementById("goals");
+    if (goalEl) {
+      goalEl.innerHTML = GOALS.map(function (g) {
+        const done = state.goals && state.goals[g.id];
+        return "<div class='goal" + (done ? " done" : "") + "'>" + (done ? "✓" : "·") + " " + esc(g.text) +
+          (done ? "" : " <span class='lore'>+" + g.pay + "</span>") + "</div>";
+      }).join("");
+    }
   }
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {
@@ -1119,6 +2071,7 @@
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     const now = Date.now();
+    AR = Math.max(0.5, canvas.clientWidth / Math.max(1, canvas.clientHeight));
     catchUp(now);
     simWater(now);
     tickAuto(now);
@@ -1127,6 +2080,13 @@
     resolveBites();
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     (state.predators || []).forEach(function (p) { stepPredator(p, dt); });
+    stepAmbient(dt, now);
+    state.fish.forEach(function (f) {
+      if (f.splashAt && now >= f.splashAt) {
+        f.splashAt = 0;
+        addRipple(f.x, 0.08);
+      }
+    });
     if (!state._pts || now - state._pts > 45000) {
       state._pts = now;
       state.fish.forEach(function (f) {
@@ -1150,11 +2110,23 @@
         });
       }
     }
-    if (Math.random() < dt * 3) {
-      bubbles.push({ x: 0.15 + Math.random() * 0.7, y: 0.84, r: 2 + Math.random() * 4, v: 0.04 + Math.random() * 0.05 });
+    if (state.opts.motion !== false) {
+      [0.42, 0.60].forEach(function (ax, i) {
+        if (Math.random() < dt * (i ? 1.7 : 1.1)) {
+          bubbles.push({ x: ax + (Math.random() - 0.5) * 0.018, y: 0.84, r: 1.5 + Math.random() * 3.2, v: 0.05 + Math.random() * 0.06, wob: Math.random() * 6.28, at: 0 });
+        }
+      });
+      if (Math.random() < dt * 0.5) {
+        bubbles.push({ x: 0.15 + Math.random() * 0.7, y: 0.84, r: 2 + Math.random() * 3, v: 0.04 + Math.random() * 0.04, wob: Math.random() * 6.28, at: 0 });
+      }
+      bubbles.forEach(function (b) {
+        b.at = (b.at || 0) + dt;
+        b.y -= b.v * dt;
+        b.x += Math.sin(b.at * 2.2 + b.wob) * 0.004 * dt;
+        b.r += dt * 0.18;
+      });
+      bubbles = bubbles.filter(function (b) { return b.y > 0.12 && b.x > 0.01 && b.x < 0.99; });
     }
-    bubbles.forEach(function (b) { b.y -= b.v * dt; });
-    bubbles = bubbles.filter(function (b) { return b.y > 0.12; });
     if (!state._paint || now - state._paint > 400) {
       state._paint = now;
       renderRail();
@@ -1163,7 +2135,6 @@
     draw();
     requestAnimationFrame(loop);
   }
-
   function pick(id) { selected = id; renderRail(); }
   document.getElementById("fishList").onclick = function (e) {
     const b = e.target.closest("[data-id]");
@@ -1382,6 +2353,32 @@
     renderRail();
   };
 
+  /* Read-only view: for the curious, and for the tools. Nothing here writes. */
+  window.FishTank = {
+    get: function () { return state; },
+    debug: function () {
+      const counts = {};
+      (state && state.fish ? state.fish : []).forEach(function (f) { counts[f.state || "?"] = (counts[f.state || "?"] || 0) + 1; });
+      const offs = (state && state.fish ? state.fish : []).map(function (f) { return comfort(f); });
+      return {
+        fish: state ? state.fish.length : 0,
+        states: counts,
+        crew: state ? (state.crew || []).length : 0,
+        hunters: state ? (state.predators || []).length : 0,
+        stalking: state ? (state.predators || []).filter(function (p) { return p.pending; }).length : 0,
+        eggs: state ? (state.eggs || []).length : 0,
+        gen: state ? (state.gen || 1) : 1,
+        worstTempOff: offs.length ? Math.round(Math.max.apply(null, offs) * 10) / 10 : 0,
+        temp: state ? Math.round((state.temp || 0) * 10) / 10 : 0,
+        quality: state ? Math.round(state.quality || 0) : 0,
+        algae: state ? Math.round(state.algae || 0) : 0,
+        goals: state ? Object.keys(state.goals || {}).length : 0,
+        motes: motes.length,
+        aspect: Math.round(AR * 100) / 100,
+        points: state ? state.points : 0
+      };
+    }
+  };
   load();
   showMenu();
   window.addEventListener("resize", resize);

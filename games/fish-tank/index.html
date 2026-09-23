@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fish Tank — real-time aquarium | chatagent.ca</title>
-<meta name="description" content="Free real-time aquarium. Ten species grow through six ages. Adult in a day, a week unless you use pellets. Snails, algae eaters, and a turtle keep the water. Local save. Cemetery hall. No account.">
+<meta name="description" content="Free real-time aquarium. Ten species grow through six ages and breed generations of fry. Adult in a day, a week unless you use pellets. Snails, algae eaters, and a turtle keep the water. Local save. Cemetery hall. No account.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#071018">
@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=3">
+<link rel="stylesheet" href="./tank.css?v=4">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -103,11 +103,12 @@
       <div id="panelHow" class="hidden">
         <p class="kicker">Instructions</p>
         <ol class="how">
-          <li>Pick Calm, Standard, or Busy, then three babies. They start young.</li>
-          <li>A meal makes a fish grow faster and live longer. No food for about a day and a half, and that fish dies. Flakes fall from a hand. The fish race and shove. A pellet adds a day to whoever reaches it first.</li>
-          <li>While this page is open they swim, jump, race, and play-bump. That earns points. Points buy more fish and cleaners.</li>
-          <li>Watch temperature, algae, and quality on the scoreboard. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
-          <li>The tank holds 50 fish. Crowding and dirty water drain health. Each species heals and hungers on its own clock. After an hour with no hunter, a boss targets the weakest, hungriest fish. A full, fed fish is only a 25% bite. Lower health or an empty belly raises that chance. A bite leaves a baby. Two misses and the hunter dies. You cannot stop it.</li>
+          <li>Pick Calm, Standard, or Busy, then three babies. Each fish is born with its own temper — bold, wary, social, solitary, greedy, delicate. Click one and the rail names what it is.</li>
+          <li>A meal makes a fish grow faster and live longer. No food for about a day and a half, and that fish dies. Flakes fall from a hand. Top-feeders race for them, mid-water fish cut across, and bottom-feeders wait for what settles. A pellet adds a day to whoever reaches it first.</li>
+          <li>While this page is open they patrol, school, glide, graze the gravel, rest, shelter in the weeds, and shove each other off the food. Bigger fish push smaller ones around. All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.</li>
+          <li>Watch temperature, algae, and quality on the scoreboard. Every species has its own comfort range: too warm and they gulp at the surface, too cold and they hang low and slow. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
+          <li>Keep the water clean and two grown fish of the same species will court and leave eggs on the rockwork. The eggs hatch into fry that inherit their parents' tempers and traits, and each generation is marked in the list. Foul water kills eggs.</li>
+          <li>The tank holds 50 fish. Crowding and dirty water drain health. Each species heals and hungers on its own clock. After an hour with no hunter, a boss targets the weakest, hungriest fish — you can see it turn and stalk, and the shoal scatter for the weeds. A full, fed fish is only a 25% bite. Lower health or an empty belly raises that chance. A bite leaves a baby. Two misses and the hunter dies. You cannot stop it.</li>
         </ol>
         <button type="button" class="btn" id="howBack">Back</button>
       </div>
@@ -142,6 +143,9 @@
     <div><b id="mTemp">25.0°</b><span>water</span></div>
     <div><b id="mAlgae">0%</b><span>algae</span></div>
     <div><b id="mQual">100</b><span>quality</span></div>
+    <div><b id="mEggs">0</b><span>eggs</span></div>
+    <div><b id="mGen">gen 1</b><span>lineage</span></div>
+    <p class="lore board-note" id="waterNote">Water is steady.</p>
   </section>
   <div class="stage">
     <div class="tankwrap"><canvas id="tank"></canvas></div>
@@ -156,6 +160,9 @@
       </div>
       <h2>Scoreboard</h2>
       <div class="board-table" id="boardRows"></div>
+      <h2>Firsts</h2>
+      <p class="lore">Marks pay points the first time they happen.</p>
+      <div class="goals" id="goals"></div>
       <h2>This fish</h2>
       <input class="name" id="fishName" maxlength="16" placeholder="Name" aria-label="Fish name">
       <p class="lore" id="selMeta">Click a fish.</p>
@@ -181,7 +188,7 @@
       <label class="radio-vol">Vol <input type="range" data-radio-vol min="0" max="100" value="55" aria-label="Radio volume"></label>
       <span class="radio-title-inline" id="radioTitle">Idle</span>
     </div>
-    <span class="lore">Jump, race, and play-bump. Cleaners keep the water. Longest lives lead the hall.</span>
+    <span class="lore">School, graze, court, and play. Cleaners keep the water. Longest lives lead the hall.</span>
     <a class="mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal</a>
     <a class="mini" href="https://www.patreon.com/Excavationpro" target="_blank" rel="noopener">Patreon</a>
   </footer>
@@ -210,6 +217,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=19"></script>
+<script src="./tank.js?v=23"></script>
 </body>
 </html>
