@@ -275,9 +275,32 @@
       var tank = JSON.parse(localStorage.getItem("lygo_fish_tank_v1") || "{}");
       if (tank.cemetery) fish = fish.concat(tank.cemetery);
     } catch (e) {}
-    fish = fish.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
-    paintHall("fish", fish.length ? (stamp + fish.length + " lives") : "No stones yet.", fish.slice(0, 12).map(function (r) {
-      return { name: r.name || "Fish", score: String(r.score) + " h", meta: [r.species, r.stage].filter(Boolean).join(" · ") };
+    if (tank && tank.openedAt) {
+      var lead = (tank.fish || []).slice().sort(function (a, b) { return (a.born || 0) - (b.born || 0); })[0];
+      fish.push({
+        name: tank.owner || "Keeper",
+        event: "tank",
+        tankHours: Math.round((Date.now() - tank.openedAt) / 3600000),
+        score: lead && lead.born ? Math.round((Date.now() - lead.born) / 3600000) : 0,
+        species: lead ? lead.species : "",
+        theme: ({ river: "River garden", coral: "Coral shelf", bog: "Blackwater" })[tank.theme] || tank.theme || "River garden",
+        stage: "living",
+        fish: lead ? lead.name : ""
+      });
+    }
+    var tankBest = {};
+    var fishFold = [];
+    fish.forEach(function (r) {
+      if (r.event === "tank") {
+        var k = (r.name || "") + "|" + (r.theme || "");
+        if (!tankBest[k] || (r.tankHours || 0) > (tankBest[k].tankHours || 0)) tankBest[k] = r;
+      } else if ((r.score || 0) > 0) fishFold.push(r);
+    });
+    Object.keys(tankBest).forEach(function (k) { fishFold.push(tankBest[k]); });
+    fish = fishFold.sort(function (a, b) { return (b.tankHours || 0) - (a.tankHours || 0) || (b.score || 0) - (a.score || 0); });
+    paintHall("fish", fish.length ? (stamp + fish.length + " lines") : "No stones yet.", fish.slice(0, 12).map(function (r) {
+      var who = r.event === "tank" ? ((r.fish || r.name) + " · " + (r.name || "Keeper")) : (r.name || "Fish");
+      return { name: who, score: (r.tankHours || 0) + "h tank", meta: [(r.score || 0) + "h fish", r.theme, r.species].filter(Boolean).join(" · ") };
     }));
   }
 

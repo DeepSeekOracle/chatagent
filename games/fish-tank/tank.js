@@ -37,9 +37,17 @@
   const CREW_SPRITES = {};
   const CREW_H = { snail: 0.12, otto: 0.075, cory: 0.1, jelly: 0.2, turtle: 0.16 };
   const SPRITES = {};
-  const TANKS = { day: new Image(), night: new Image() };
-  TANKS.day.src = "./assets/tank-day.jpg";
-  TANKS.night.src = "./assets/tank-night.jpg";
+  const THEMES = {
+    river: { id: "river", name: "River garden", blurb: "Clear water, plants, and a stone arch.", temp: 25, algae: 1, day: "tank-day.jpg", night: "tank-night.jpg" },
+    coral: { id: "coral", name: "Coral shelf", blurb: "Warm shallows, corals, and an anemone.", temp: 27, algae: 1.15, day: "coral-day.jpg", night: "coral-night.jpg" },
+    bog: { id: "bog", name: "Blackwater", blurb: "Tea-stained water, roots, and leaf litter.", temp: 23, algae: 0.7, day: "bog-day.jpg", night: "bog-night.jpg" }
+  };
+  const THEME_ART = {};
+  Object.keys(THEMES).forEach(function (id) {
+    THEME_ART[id] = { day: new Image(), night: new Image() };
+    THEME_ART[id].day.src = "./assets/" + THEMES[id].day;
+    THEME_ART[id].night.src = "./assets/" + THEMES[id].night;
+  });
   CREW.forEach(function (c) {
     const img = new Image();
     img.src = "./assets/crew/" + c.id + ".png";
@@ -110,21 +118,30 @@
   let playing = false;
   let hasSave = false;
   let menuMode = "standard";
+  let menuTheme = "river";
   let menuPicks = ["glimmer", "dart", "puff"];
   let heldOpts = null;
-  function fresh(picks, mode, ownerName) {
+  function themeOf(id) { return THEMES[id] || THEMES.river; }
+  function tankAge(now) { return Math.max(0, now - (state.openedAt || now)); }
+  function fresh(picks, mode, ownerName, themeId) {
     const ids = (picks && picks.length ? picks : ["glimmer", "dart", "puff"]).slice(0, 3);
+    const theme = themeOf(themeId);
+    const now = Date.now();
     state = {
       points: 0,
       mode: mode || "standard",
+      theme: theme.id,
+      openedAt: now,
       fish: ids.map(function (id) { return makeFish(id, STARTER_NAMES[id] || specOf(id).name); }),
       cemetery: [],
-      log: ["Three fish settle into the glass. Mode: " + (mode || "standard") + "."],
-      lastTick: Date.now(),
+      log: ["Three fish settle into the " + theme.name + ". Mode: " + (mode || "standard") + "."],
+      lastTick: now,
       owner: String(ownerName || "Keeper").slice(0, 18)
     };
     ensureState();
     if (heldOpts) state.opts = Object.assign(state.opts, heldOpts);
+    state.temp = theme.temp;
+    state.opts.temp = theme.temp;
     save();
     hasSave = true;
   }
@@ -136,6 +153,11 @@
     if (state.quality == null) state.quality = 86;
     if (state.temp == null) state.temp = 25;
     if (!state.waterAt) state.waterAt = Date.now();
+    if (!state.theme) state.theme = "river";
+    if (!state.openedAt) {
+      const births = (state.fish || []).map(function (f) { return f.born; }).filter(Boolean);
+      state.openedAt = births.length ? Math.min.apply(null, births) : Date.now();
+    }
     state.opts = Object.assign({
       names: true, board: true, motion: true, heater: true, temp: 25, clock: "real"
     }, state.opts || {});
@@ -178,6 +200,8 @@
       name: f.name,
       species: f.species || f.role || "",
       score: Math.round(age / HOUR),
+      tankHours: Math.round(tankAge(now) / HOUR),
+      theme: themeOf(state.theme).name,
       stage: f.species ? stageName(age) : "crew",
       date: new Date(now).toISOString().slice(0, 10)
     };
@@ -188,6 +212,8 @@
       ArcadeLedger.fish({
         name: row.name,
         score: row.score,
+        tankHours: row.tankHours,
+        theme: row.theme,
         species: row.species,
         stage: row.stage,
         date: row.date,
@@ -419,7 +445,7 @@
     const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
     const day = phase() === "night" ? 0.35 : 1;
-    const pace = state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1;
+    const pace = (state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1) * themeOf(state.theme).algae;
     state.algae = clamp(state.algae + span * pace * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
     state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 - state.algae * 0.03), 0, 100);
   }
@@ -427,7 +453,8 @@
     const w = canvas.clientWidth, h = canvas.clientHeight;
     const now = Date.now();
     const night = phase() === "night";
-    const bg = night ? TANKS.night : TANKS.day;
+    const art = THEME_ART[themeOf(state.theme).id] || THEME_ART.river;
+    const bg = night ? art.night : art.day;
     if (bg.complete && bg.naturalWidth) ctx.drawImage(bg, 0, 0, w, h);
     else {
       ctx.fillStyle = night ? "#071525" : "#0c3a48";
@@ -477,13 +504,13 @@
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
-      return "<div class='grave'><b>" + esc(g.name) + "</b><br><span class='lore'>" + esc(g.species) + " · " + g.score + " hours · " + esc(g.stage) + "</span></div>";
+      return "<div class='grave'><b>" + esc(g.name) + "</b><br><span class='lore'>" + esc(g.species) + " · fish " + g.score + "h · tank " + (g.tankHours || 0) + "h · " + esc(g.theme || "") + "</span></div>";
     }).join("") || "<p class='lore'>No stones yet.</p>";
     document.getElementById("log").innerHTML = state.log.slice(0, 8).map(function (t) { return "<div>" + esc(t) + "</div>"; }).join("");
     document.getElementById("points").textContent = state.points + " pts";
     const clock = document.getElementById("clock");
     const d = new Date();
-    clock.textContent = phase() + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    clock.textContent = themeOf(state.theme).name + " · " + phase() + " · " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const shop = document.getElementById("shop");
     const cost = price();
     shop.innerHTML = SPECIES.map(function (s) {
@@ -500,6 +527,7 @@
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
     document.getElementById("mLiving").textContent = String(state.fish.length);
     document.getElementById("mLong").textContent = hours(long) + " h";
+    document.getElementById("mTank").textContent = hours(tankAge(now)) + " h";
     document.getElementById("mBest").textContent = hall + " h";
     document.getElementById("mTemp").textContent = (Math.round(state.temp * 10) / 10) + "°";
     document.getElementById("mAlgae").textContent = Math.round(state.algae) + "%";
@@ -545,6 +573,21 @@
         state.points += m === "happy" ? 1 : m === "normal" ? 1 : 0;
       });
       if (state.fish.length) save();
+      if (window.ArcadeLedger && ArcadeLedger.fish && (!state._tankPost || now - state._tankPost > HOUR)) {
+        state._tankPost = now;
+        const lead = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); })[0];
+        ArcadeLedger.fish({
+          name: state.owner || "Keeper",
+          score: lead ? Math.round(ageOf(lead, now) / HOUR) : 0,
+          tankHours: Math.round(tankAge(now) / HOUR),
+          theme: themeOf(state.theme).name,
+          species: lead ? lead.species : "",
+          stage: lead ? stageName(ageOf(lead, now)) : "",
+          fish: lead ? lead.name : "",
+          date: new Date(now).toISOString().slice(0, 10),
+          event: "tank"
+        });
+      }
     }
     if (Math.random() < dt * 3) {
       bubbles.push({ x: 0.15 + Math.random() * 0.7, y: 0.84, r: 2 + Math.random() * 4, v: 0.04 + Math.random() * 0.05 });
@@ -726,6 +769,12 @@
     paintCast();
     document.getElementById("menuNote").textContent = menuPicks.length === 3 ? "Three chosen." : ("Choose " + (3 - menuPicks.length) + " more.");
   };
+  document.querySelectorAll("[data-theme]").forEach(function (btn) {
+    btn.onclick = function () {
+      menuTheme = btn.getAttribute("data-theme") || "river";
+      document.querySelectorAll("[data-theme]").forEach(function (el) { el.classList.toggle("on", el === btn); });
+    };
+  });
   document.querySelectorAll("[data-mode]").forEach(function (btn) {
     btn.onclick = function () {
       menuMode = btn.getAttribute("data-mode");
@@ -738,7 +787,7 @@
       return;
     }
     const ownerName = document.getElementById("menuOwner").value;
-    fresh(menuPicks.slice(), menuMode, ownerName);
+    fresh(menuPicks.slice(), menuMode, ownerName, menuTheme);
     enterTank();
   };
   document.getElementById("btnMenu").onclick = function () {

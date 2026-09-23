@@ -77,11 +77,36 @@ a { color:#5eead4; }
       seen[k] = 1;
       return (r.score || 0) > 0;
     });
-    rows.sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
-    document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " · " + src) : "The cemetery is empty — a real zero.";
+    if (save && save.openedAt) {
+      var lead = (save.fish || []).slice().sort(function (a, b) { return (b.born ? (Date.now() - b.born) : 0) - (a.born ? (Date.now() - a.born) : 0); })[0];
+      rows.push({
+        name: save.owner || "Keeper",
+        event: "tank",
+        tankHours: Math.round((Date.now() - save.openedAt) / 3600000),
+        score: lead && lead.born ? Math.round((Date.now() - lead.born) / 3600000) : 0,
+        species: lead ? lead.species : "",
+        fish: lead ? lead.name : "",
+        theme: ({ river: "River garden", coral: "Coral shelf", bog: "Blackwater" })[save.theme] || save.theme || "River garden",
+        stage: "living",
+        date: new Date().toISOString().slice(0, 10)
+      });
+    }
+    var tanks = {};
+    var folded = [];
+    rows.forEach(function (r) {
+      if (r.event === "tank") {
+        var k = (r.name || "") + "|" + (r.theme || "");
+        if (!tanks[k] || (r.tankHours || 0) > (tanks[k].tankHours || 0)) tanks[k] = r;
+      } else folded.push(r);
+    });
+    Object.keys(tanks).forEach(function (k) { folded.push(tanks[k]); });
+    rows = folded;
+    rows.sort(function (a, b) { return (b.tankHours || 0) - (a.tankHours || 0) || (b.score || 0) - (a.score || 0); });
+    document.getElementById("srcMeta").textContent = rows.length ? ("Longest tank, then longest fish · " + rows.length + " · " + src) : "The cemetery is empty — a real zero.";
     document.getElementById("hall").innerHTML = rows.slice(0, 40).map(function (r) {
-      return "<div class='round'><div class='rtop'><b>" + esc(r.name) + "</b><span>" + (r.score || 0) + " h</span></div>" +
-        "<div class='rmeta'>" + esc(r.species || "") + " · reached <b>" + esc(r.stage || "—") + "</b></div></div>";
+      var who = r.event === "tank" ? (esc(r.fish || r.name) + " in " + esc(r.name)) : esc(r.name);
+      return "<div class='round'><div class='rtop'><b>" + who + "</b><span>tank " + (r.tankHours || 0) + "h · fish " + (r.score || 0) + "h</span></div>" +
+        "<div class='rmeta'>" + esc(r.theme || "") + " · " + esc(r.species || "") + " · <b>" + esc(r.stage || "—") + "</b></div></div>";
     }).join("") || "<p class='muted'>No stones yet.</p>";
   }
   pull();

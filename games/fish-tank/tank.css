@@ -12,7 +12,7 @@ button, input { font:inherit; color:inherit; }
 .brand, .mini { color:var(--gold); text-decoration:none; font-weight:700; letter-spacing:.08em; font-size:.78rem; }
 .grow { flex:1; }
 .board {
-  display:grid; grid-template-columns:repeat(6, 1fr); gap:.35rem;
+  display:grid; grid-template-columns:repeat(7, 1fr); gap:.35rem;
   padding:.45rem .7rem; background:#0c1824; border-bottom:1px solid var(--line);
 }
 .board div { background:#101c28; border:1px solid var(--line); border-radius:8px; padding:.35rem .45rem; }

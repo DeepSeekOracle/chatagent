@@ -79,6 +79,12 @@
         <p class="kicker">New tank</p>
         <label>Keeper</label>
         <input class="name" id="menuOwner" maxlength="18" value="Keeper" aria-label="Keeper name">
+        <p class="kicker">Tank</p>
+        <div class="modes" id="themePick">
+          <button type="button" class="mode-card on" data-theme="river"><b>River garden</b><span>Clear water, plants, and a stone arch. 25°.</span></button>
+          <button type="button" class="mode-card" data-theme="coral"><b>Coral shelf</b><span>Warm shallows, corals, and an anemone. 27°.</span></button>
+          <button type="button" class="mode-card" data-theme="bog"><b>Blackwater</b><span>Tea-stained water, roots, and leaf litter. 23°. Less algae.</span></button>
+        </div>
         <p class="kicker">Mode</p>
         <div class="modes">
           <button type="button" class="mode-card" data-mode="calm"><b>Calm</b><span>Algae grows slowly. A quiet glass.</span></button>
@@ -100,7 +106,7 @@
           <li>Adult takes about a day of real time. Without pellets, a fish rests after about a week. Flakes lift mood. A pellet adds a day.</li>
           <li>While this page is open they swim, jump, race, and play-bump. That earns points. Points buy more fish and cleaners.</li>
           <li>Watch temperature, algae, and quality on the scoreboard. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
-          <li>The save stays in this browser. The cemetery hall ranks hours lived. They do not hurt each other.</li>
+          <li>The save stays in this browser. The hall ranks the longest tank, then the longest fish in it. They do not hurt each other.</li>
         </ol>
         <button type="button" class="btn" id="howBack">Back</button>
       </div>
@@ -128,8 +134,9 @@
   </header>
   <section class="board" id="board" aria-label="Tank scoreboard">
     <div><b id="mLiving">0</b><span>living</span></div>
-    <div><b id="mLong">0 h</b><span>longest now</span></div>
-    <div><b id="mBest">0 h</b><span>hall best</span></div>
+    <div><b id="mTank">0 h</b><span>tank up</span></div>
+    <div><b id="mLong">0 h</b><span>longest fish</span></div>
+    <div><b id="mBest">0 h</b><span>hall fish</span></div>
     <div><b id="mTemp">25.0°</b><span>water</span></div>
     <div><b id="mAlgae">0%</b><span>algae</span></div>
     <div><b id="mQual">100</b><span>quality</span></div>
@@ -201,6 +208,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=4"></script>
+<script src="./tank.js?v=5"></script>
 </body>
 </html>
