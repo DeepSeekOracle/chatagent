@@ -71,6 +71,8 @@
   let state = null;
   let selected = null;
   let bubbles = [];
+  let flakes = [];
+  let hand = null;
   let last = performance.now();
 
   function specOf(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || SPECIES[0]; }
@@ -316,10 +318,141 @@
     return "night";
   }
 
+  function nearestFlake(f) {
+    let best = null;
+    let bestD = 0.7;
+    flakes.forEach(function (fl) {
+      if (fl.gone) return;
+      const d = Math.hypot(fl.x - f.x, fl.y - f.y);
+      if (d < bestD) { bestD = d; best = fl; }
+    });
+    return best;
+  }
+  function startHand(kind) {
+    if (!state.fish.length) { log("No one is home to feed."); return false; }
+    if (hand || flakes.length) { log("The last pinch is still in the water."); return false; }
+    hand = { x: -0.12, t: 0, dur: kind === "pellet" ? 1.6 : 2.6, kind: kind, next: 0.35, drops: 0, max: kind === "pellet" ? 1 : 9 };
+    log(kind === "pellet" ? "A hand offers one pellet." : "A hand crosses the glass and spills flakes.");
+    return true;
+  }
+  function stepHand(dt) {
+    if (hand) {
+      hand.t += dt;
+      const u = Math.min(1, hand.t / hand.dur);
+      hand.x = -0.12 + u * 1.24;
+      if (hand.t >= hand.next && hand.drops < hand.max && hand.x > 0.06 && hand.x < 0.94) {
+        hand.drops += 1;
+        hand.next = hand.t + (hand.kind === "pellet" ? 0.2 : 0.22);
+        flakes.push({
+          x: hand.x + (Math.random() - 0.5) * 0.04,
+          y: 0.1,
+          vy: 0.16 + Math.random() * 0.1,
+          age: 0,
+          pellet: hand.kind === "pellet"
+        });
+      }
+      if (u >= 1) hand = null;
+    }
+    flakes.forEach(function (fl) {
+      fl.age += dt;
+      fl.y += fl.vy * dt;
+      fl.x += Math.sin(fl.age * 3) * 0.01 * dt;
+      if (fl.y > 0.84) { fl.y = 0.84; fl.vy = 0; }
+    });
+  }
+  function resolveBites() {
+    const now = Date.now();
+    flakes.forEach(function (fl) {
+      if (fl.gone) return;
+      const near = state.fish.filter(function (f) {
+        return Math.hypot(f.x - fl.x, f.y - fl.y) < 0.06;
+      }).sort(function (a, b) {
+        return Math.hypot(a.x - fl.x, a.y - fl.y) - Math.hypot(b.x - fl.x, b.y - fl.y);
+      });
+      if (!near.length) {
+        if (fl.age > 8) {
+          fl.gone = true;
+          state.algae = clamp((state.algae || 0) + (fl.pellet ? 1.5 : 0.6), 0, 100);
+        }
+        return;
+      }
+      const winner = near[0];
+      near.slice(1).forEach(function (loser) {
+        const push = (loser.x - winner.x) || (Math.random() - 0.5);
+        loser.vx += push * 1.4;
+        loser.vy += 0.08;
+        loser.face = loser.vx >= 0 ? 1 : -1;
+      });
+      winner.lastFed = now;
+      winner.lastPlay = now;
+      if (fl.pellet) {
+        winner.bonus = Math.min(7 * DAY, (winner.bonus || 0) + DAY);
+        log(near.length > 1
+          ? (winner.name + " wins the pellet. " + near[1].name + " is shoved off.")
+          : (winner.name + " takes the pellet. One more day."));
+      } else if (near.length > 1 && Math.random() < 0.45) {
+        log(winner.name + " snatches a flake from " + near[1].name + ".");
+      }
+      state.points += fl.pellet ? 2 : 1;
+      fl.gone = true;
+    });
+    if (flakes.some(function (fl) { return fl.gone; })) {
+      flakes = flakes.filter(function (fl) { return !fl.gone; });
+      save();
+    }
+  }
+  function drawHand(w, h) {
+    if (!hand) return;
+    const x = hand.x * w;
+    const y = 6 + Math.sin(hand.t * 7) * 3;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = "#f0c9a0";
+    ctx.fillRect(-16, -48, 32, 34);
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 24, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    [-12, -4, 6, 14].forEach(function (fx, i) {
+      ctx.beginPath();
+      ctx.ellipse(fx, -8, 5, 13, (i - 1.5) * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.fillStyle = hand.kind === "pellet" ? "#fbbf24" : "#b45309";
+    ctx.beginPath();
+    ctx.arc(0, 18, hand.kind === "pellet" ? 6 : 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  function drawFlakes(w, h) {
+    flakes.forEach(function (fl) {
+      ctx.fillStyle = fl.pellet ? "#fbbf24" : "#d97706";
+      ctx.beginPath();
+      ctx.ellipse(fl.x * w, fl.y * h, fl.pellet ? 7 : 3.5, fl.pellet ? 5 : 2.2, fl.age, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
   function stepFish(f, dt) {
     const mood = moodOf(f, Date.now());
     const slow = mood === "sad" ? 0.55 : 1;
-    if (f.actionT > 0) {
+    const bite = nearestFlake(f);
+    if (bite) {
+      f.actionT = 0;
+      f.action = "";
+      const hungry = Date.now() - (f.lastFed || 0) > 3 * HOUR;
+      const cap = (hungry ? 0.62 : 0.36) * slow;
+      let vx = bite.x - f.x;
+      let vy = bite.y - f.y;
+      const mag = Math.hypot(vx, vy) || 1;
+      f.vx = vx / mag * cap;
+      f.vy = vy / mag * cap;
+      state.fish.forEach(function (o) {
+        if (o === f) return;
+        if (Math.hypot(o.x - f.x, o.y - f.y) < 0.08 && Math.hypot(o.x - bite.x, o.y - bite.y) < 0.16) {
+          f.vx += (f.x - o.x) * 1.1;
+          f.vy += (f.y - o.y) * 0.6;
+        }
+      });
+    } else if (f.actionT > 0) {
       f.actionT -= dt;
       if (f.action === "race") f.vx = 0.28 * slow;
       else if (f.action === "dance") {
@@ -502,6 +635,8 @@
     const list = state.fish.slice().sort(function (a, b) { return a.y - b.y; });
     list.forEach(function (f) { drawFish(f, w, h, now); });
     (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
+    drawFlakes(w, h);
+    drawHand(w, h);
   }
 
   function renderRail() {
@@ -577,7 +712,9 @@
     const now = Date.now();
     catchUp(now);
     simWater(now);
+    stepHand(dt);
     state.fish.forEach(function (f) { stepFish(f, dt); });
+    resolveBites();
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     if (!state._pts || now - state._pts > 45000) {
       state._pts = now;
@@ -640,24 +777,15 @@
     renderRail();
   });
   document.getElementById("feed").onclick = function () {
-    const now = Date.now();
-    let n = 0;
-    state.fish.forEach(function (f) {
-      if (now - f.lastFed > 3 * HOUR) { f.lastFed = now; n++; }
-    });
-    if (n) state.algae = clamp((state.algae || 0) + 4, 0, 100);
-    log(n ? ("Flakes for " + n + ". Mood lifts. A little food stays in the water.") : "They are not hungry yet.");
-    save();
+    if (!startHand("flakes")) return;
+    state.algae = clamp((state.algae || 0) + 3, 0, 100);
     renderRail();
   };
   document.getElementById("pellet").onclick = function () {
-    const f = state.fish.filter(function (x) { return x.id === selected; })[0];
-    if (!f) { log("Choose a fish for a pellet."); return; }
+    if (!state.fish.length) { log("No one is home to feed."); return; }
     if (state.points < 15) { log("A pellet costs 15 points."); return; }
     state.points -= 15;
-    f.bonus = Math.min(7 * DAY, (f.bonus || 0) + DAY);
-    f.lastFed = Date.now();
-    log(f.name + " takes a pellet. One more day on the clock.");
+    if (!startHand("pellet")) { state.points += 15; return; }
     save();
     renderRail();
   };
