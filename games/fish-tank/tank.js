@@ -28,7 +28,8 @@
     { id: "sunscale", name: "Sunscale", play: "lap", temper: "chill", social: "loner", bulk: 1.12, blurb: "Relaxed loner. One slow lap." },
     { id: "pearl", name: "Pearl", play: "flash", temper: "lively", social: "school", bulk: 0.7, blurb: "Happy. Schools and flashes." },
     { id: "claw", name: "LYGO Claw", play: "snap", temper: "chill", social: "loner", bulk: 1.28, blurb: "The lobster. Walks the sand. Gold claws." },
-    { id: "crab", name: "Pincer", play: "scuttle", temper: "chill", social: "loner", bulk: 1.05, blurb: "Reef crab. Sideways on the bottom." }
+    { id: "crab", name: "Pincer", play: "scuttle", temper: "chill", social: "loner", bulk: 1.05, blurb: "Reef crab. Sideways on the bottom." },
+    { id: "octo", name: "Octopus", play: "curl", temper: "lively", social: "loner", bulk: 1.15, blurb: "One in the tank. Jets, and inks when a hunter chases." }
   ];
   const VITALS = {
     glimmer: { hp: 100, regen: 8, hurt: 10, food: 14 },
@@ -42,7 +43,8 @@
     sunscale: { hp: 150, regen: 3, hurt: 6, food: 24 },
     pearl: { hp: 60, regen: 11, hurt: 15, food: 7 },
     claw: { hp: 160, regen: 3, hurt: 5, food: 26 },
-    crab: { hp: 110, regen: 5, hurt: 7, food: 16 }
+    crab: { hp: 110, regen: 5, hurt: 7, food: 16 },
+    octo: { hp: 130, regen: 5, hurt: 7, food: 18 }
   };
   const PREDATORS = {
     pike: { id: "pike", name: "Reed", blurb: "Long bill. A boss if the tank is quiet for an hour." },
@@ -68,7 +70,8 @@
     sunscale: { cruise: 0.050, burst: 0.26, turn: 1.5, vision: 0.18, band: [0.30, 0.80], tail: 9, glide: 0.85 },
     pearl: { cruise: 0.092, burst: 0.46, turn: 2.9, vision: 0.22, band: [0.14, 0.48], tail: 21, glide: 0.35 },
     claw: { cruise: 0.024, burst: 0.08, turn: 0.95, vision: 0.15, band: [0.82, 0.86], tail: 4, glide: 0.08, walk: true },
-    crab: { cruise: 0.046, burst: 0.18, turn: 2.1, vision: 0.16, band: [0.82, 0.86], tail: 9, glide: 0.05, walk: true }
+    crab: { cruise: 0.046, burst: 0.18, turn: 2.1, vision: 0.16, band: [0.82, 0.86], tail: 9, glide: 0.05, walk: true },
+    octo: { cruise: 0.05, burst: 0.36, turn: 1.7, vision: 0.22, band: [0.22, 0.74], tail: 7, glide: 0.72, jet: true }
   };
   /* Soft obstacles read off the painted tank, per theme. rx/ry are real
      stretches in screen fractions, so a rock blocks as tall as it is wide.
@@ -109,7 +112,7 @@
   const TEMP_BAND = {
     glimmer: [23, 28], azure: [22, 27], dart: [22, 27], puff: [23, 28], lantern: [23, 28],
     moss: [20, 26], ruby: [23, 28], veil: [22, 27], sunscale: [21, 26], pearl: [23, 28],
-    claw: [16, 24], crab: [22, 29]
+    claw: [16, 24], crab: [22, 29], octo: [20, 27]
   };
   const TRAIT_WORDS = {
     bold: ["timid", "wary", "steady", "bold", "fearless"],
@@ -131,7 +134,7 @@
     { id: "clear", text: "Quality 95 with twelve fish", pay: 35 },
     { id: "gen3", text: "A third generation is born here", pay: 60 },
     { id: "thirty", text: "Thirty fish at once", pay: 60 },
-    { id: "allten", text: "All twelve species at once", pay: 70 }
+    { id: "allten", text: "All thirteen species at once", pay: 70 }
   ];
   const STALK_LEAD = 22000;
   const STRIKE_WINDOW = 40000;
@@ -173,7 +176,7 @@
   CREW_SPRITES.turtleSleep.src = "./assets/crew/turtle-sleep.png";
   STAGES.forEach(function (pair) {
     SPECIES.forEach(function (sp) {
-      if (sp.id === "claw" || sp.id === "crab") return;
+      if (sp.id === "claw" || sp.id === "crab" || sp.id === "octo") return;
       const img = new Image();
       img.src = "./assets/fish/" + sp.id + "_" + pair[0] + ".png";
       SPRITES[sp.id + "_" + pair[0]] = img;
@@ -196,6 +199,11 @@
     const img = new Image();
     img.src = "./assets/fish/" + key + ".png";
     PRED_SPRITES[key] = img;
+  });
+  ["octo_r", "octo_r_swim", "ink_1", "ink_2", "ink_3"].forEach(function (key) {
+    const img = new Image();
+    img.src = "./assets/fish/" + key + ".png";
+    SPRITES[key] = img;
   });
   ["claw", "crab"].forEach(function (id) {
     ["l", "r"].forEach(function (dir) {
@@ -220,6 +228,7 @@
   let selected = null;
   let bubbles = [];
   let flakes = [];
+  let inks = [];
   let motes = [];
   let ripples = [];
   let AR = 1.7;
@@ -311,7 +320,7 @@
       wseed: Math.random() * 90
     };
   }
-  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer" };
+  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer", octo: "Eight" };
   let playing = false;
   let hasSave = false;
   let menuMode = "standard";
@@ -506,7 +515,7 @@
     if (off > 2.5) delta -= (1.1 + (off - 2.5) * 1.5) * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
   }
-  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure", "crab", "claw"];
+  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure", "crab", "claw", "octo"];
   function autoSpecies() {
     let best = AUTO_CAST[0];
     let bestN = 99;
@@ -541,7 +550,8 @@
     const goal = (state.predators || []).length ? 16 : 12;
     const cost = price();
     if (state.fish.length < goal && state.fish.length < FISH_CAP && state.quality >= 50 && state.points >= cost) {
-      const id = autoSpecies();
+      let id = autoSpecies();
+      if (id === "octo" && hasOcto()) id = "dart";
       state.points -= cost;
       const fish = makeFish(id, specOf(id).name);
       state.fish.push(fish);
@@ -557,7 +567,30 @@
     const v = vitals(f);
     const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
     const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
-    return clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
+    let chance = clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
+    if (f.species === "octo" && (f.inkUntil || 0) > now) chance = clamp(chance - 0.10, 0.05, 0.85);
+    return chance;
+  }
+  function hasOcto(exceptId) {
+    return (state.fish || []).some(function (f) { return f.species === "octo" && f.id !== exceptId; });
+  }
+  function releaseInk(f, now) {
+    f.inkUntil = now + 14000;
+    if ((f.inkCd || 0) > now) return;
+    f.inkCd = now + 700;
+    for (let i = 0; i < 3; i += 1) {
+      inks.push({
+        x: clamp(f.x - (f.face || 1) * 0.04 + (Math.random() - 0.5) * 0.06, 0.04, 0.96),
+        y: clamp(f.y + (Math.random() - 0.5) * 0.05, 0.12, 0.86),
+        born: now,
+        life: 2200 + Math.random() * 900,
+        drift: (Math.random() - 0.5) * 0.03
+      });
+    }
+    if (!f.inkSaid || now - f.inkSaid > 8000) {
+      f.inkSaid = now;
+      log(f.name + " throws a cloud of black ink.");
+    }
   }
   function weakestPrey(now) {
     const prey = state.fish.slice();
@@ -595,13 +628,16 @@
       p.fails = 0;
       state.predators.push(makePredator(p.kind, false));
       log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name +
-        (reason === "contact" ? " in the open" : ", the weakest") + ". A baby hunter is born.");
+        (reason === "contact" ? " in the open" : ", the weakest") +
+        (victim.species === "octo" && (victim.inkUntil || 0) > now ? " through the ink" : "") +
+        ". A baby hunter is born.");
       addRipple(victim.x, victim.y);
     } else {
       p.fails = (p.fails || 0) + 1;
       if (reason === "contact") state.dodge = (state.dodge || 0) + 1;
       log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name +
         (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
+        (victim.species === "octo" && (victim.inkUntil || 0) > now ? ". The ink takes 10% off the bite" : "") +
         "." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
     }
     p.nextRoll = now + HOUR;
@@ -861,6 +897,7 @@
     hatchList.forEach(function (e) {
       state.eggs = state.eggs.filter(function (o) { return o !== e; });
       if (state.fish.length >= FISH_CAP) { log("An egg hatches but the glass is full."); return; }
+      if (e.species === "octo" && hasOcto()) { log("An octopus egg fades. One already keeps this glass."); return; }
       const fry = makeFish(e.species, fryName(e.species));
       fry.traits = e.traits || makeTraits();
       fry.gen = e.gen || 2;
@@ -889,7 +926,8 @@
       return bodyAge(f) >= DAY && bodyAge(f) <= 5 * DAY &&
         (f.hp || 0) >= vitals(f).hp * 0.7 &&
         now - (f.lastFed || f.born) < 3 * HOUR &&
-        now - (f.spawnCd || 0) > 45 * 60000;
+        now - (f.spawnCd || 0) > 45 * 60000 &&
+        f.species !== "octo";
     });
     if (ready.length < 2) return;
     let pair = null;
@@ -1323,6 +1361,7 @@
     const starving = STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR;
     const danger = huntPressure(f);
     if (danger && tr.bold < 0.94) {
+      if (f.species === "octo") releaseInk(f, now);
       f.state = "flee";
       f.stateT = 2.4;
       f.idleT = 0;
@@ -1577,6 +1616,18 @@
     if (f.x > 0.95) { f.x = 0.95; f.vx = -Math.abs(f.vx) * 0.4; }
     if (f.y < top) { f.y = top; f.vy = Math.abs(f.vy) * 0.4; }
     if (f.y > 0.88) { f.y = 0.88; f.vy = -Math.abs(f.vy) * 0.4; }
+    if (motionOf(f).jet) {
+      f.jetCd = (f.jetCd == null ? 0.4 : f.jetCd) - dt;
+      f.jetT = Math.max(0, (f.jetT || 0) - dt);
+      if (f.jetCd <= 0) {
+        f.jetCd = (f.state === "flee" ? 0.48 : 1.2) + Math.random() * 0.4;
+        f.jetT = f.state === "flee" ? 0.5 : 0.38;
+        const burst = f.state === "flee" ? 0.26 : 0.11;
+        const aim = f.heading == null ? (f.vx < 0 ? Math.PI : 0) : f.heading;
+        f.vx += Math.cos(aim) * burst;
+        f.vy += Math.sin(aim) * burst * 0.4;
+      }
+    }
     if (motionOf(f).walk) {
       const floor = (bandOf(f)[0] + bandOf(f)[1]) / 2;
       f.y += (floor - f.y) * Math.min(1, dt * 8);
@@ -1584,6 +1635,34 @@
     }
     bodyUpdate(f, dt, cap);
     if (f.state === "graze" && Math.random() < dt * 0.5) state.algae = clamp((state.algae || 0) - 0.05, 0, 100);
+  }
+  function stepInks(dt, now) {
+    inks.forEach(function (k) {
+      k.x += (k.drift || 0) * dt;
+      k.y -= 0.02 * dt;
+    });
+    inks = inks.filter(function (k) { return now - k.born < k.life; });
+    if (inks.length > 24) inks = inks.slice(inks.length - 24);
+  }
+  function drawInks(w, h, now) {
+    inks.forEach(function (k) {
+      const u = clamp((now - k.born) / k.life, 0, 1);
+      const frame = u < 0.28 ? "ink_1" : (u < 0.62 ? "ink_2" : "ink_3");
+      const img = SPRITES[frame];
+      const size = (64 + u * 170) * (Math.min(w, 1100) / 900);
+      ctx.save();
+      ctx.globalAlpha = (u < 0.12 ? u / 0.12 : 1 - u) * 0.82;
+      if (img && img.complete && img.naturalWidth) {
+        const ih = size * (img.naturalHeight / img.naturalWidth);
+        ctx.drawImage(img, k.x * w - size / 2, k.y * h - ih / 2, size, ih);
+      } else {
+        ctx.fillStyle = "rgba(6,6,8,0.45)";
+        ctx.beginPath();
+        ctx.arc(k.x * w, k.y * h, size * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
   }
   function startHand(kind) {
     if (!state.fish.length) { log("No one is home to feed."); return false; }
@@ -1716,6 +1795,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function stateWord(f) {
+    if (f.species === "octo" && (f.inkUntil || 0) > Date.now()) return "inking";
     const s = f.state;
     const walk = motionOf(f).walk;
     if (s === "flee") return walk ? "scuttling clear" : ((f.stamina != null && f.stamina < 0.35) ? "tiring" : "bolting");
@@ -1736,7 +1816,11 @@
     const goingRight = (f.face || 1) !== -1;
     let img = SPRITES[f.species + "_" + stage];
     let useTurn = false;
-    if (f.species === "claw" || f.species === "crab") {
+    if (f.species === "octo") {
+      const jetting = (f.jetT || 0) > 0.05;
+      const posed = SPRITES[jetting ? "octo_r_swim" : "octo_r"] || SPRITES.octo_r;
+      if (posed) img = posed;
+    } else if (f.species === "claw" || f.species === "crab") {
       const dir = goingRight ? "r" : "l";
       const stepMs = f.species === "claw" ? 460 : 220;
       const stepping = Math.abs(f.vx) > 0.004 && ((Math.floor(now / stepMs) % 2) === 1);
@@ -1754,6 +1838,10 @@
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
+    if (f.species === "octo" && img && img.complete && img.naturalWidth) {
+      bw = Math.min(w * 0.32, 320) * STAGE_DRAW[stage] * (0.85 + z * 0.2);
+      bh = bw * (img.naturalHeight / img.naturalWidth);
+    }
     const breathe = state.opts.motion === false ? 0 : Math.sin(now / (f.state === "rest" ? 1700 : 900) + f.x * 10) * (f.state === "rest" ? 2.4 : 1.1);
     let y = f.y * h + breathe;
     if (motionOf(f).walk) {
@@ -2049,6 +2137,7 @@
       return a.y - b.y;
     });
     order.forEach(function (f) { drawFish(f, w, h, now); });
+    drawInks(w, h, now);
     (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
     (state.predators || []).forEach(function (p) { drawPredator(p, w, h, now); });
     (state.predators || []).forEach(function (p) {
@@ -2131,7 +2220,9 @@
     const shop = document.getElementById("shop");
     const cost = price();
     shop.innerHTML = SPECIES.map(function (s) {
-      return "<button type='button' class='btn' data-buy='" + s.id + "'>" + esc(s.name) + " · " + cost +
+      const taken = s.id === "octo" && hasOcto();
+      return "<button type='button' class='btn' " + (taken ? "disabled " : "") + "data-buy='" + s.id + "'>" +
+        esc(s.name) + (taken ? " · one already" : (" · " + cost)) +
         "<br><span class='lore'>" + esc(s.blurb) + "</span></button>";
     }).join("");
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
@@ -2229,6 +2320,7 @@
     tickAuto(now);
     stepHand(dt);
     state.fish.forEach(function (f) { stepFish(f, dt); });
+    stepInks(dt, now);
     resolveBites();
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     (state.predators || []).forEach(function (p) { stepPredator(p, dt); });
@@ -2327,10 +2419,11 @@
     const b = e.target.closest("[data-buy]");
     if (!b) return;
     if (state.fish.length >= FISH_CAP) { log("The tank holds " + FISH_CAP + " fish. More than that and the water turns."); return; }
+    const sp = b.getAttribute("data-buy");
+    if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
     if (state.points < cost) { log("Need " + cost + " points."); return; }
     state.points -= cost;
-    const sp = b.getAttribute("data-buy");
     const fish = makeFish(sp, specOf(sp).name);
     state.fish.push(fish);
     selected = fish.id;
