@@ -168,7 +168,8 @@ must("the stamp is part of the genome, and the card says so", /Math\.round\(born
 must("the sim reads the real clock, not a sped up one", /clock: "real",/.test(js) &&
   js.indexOf("Always day") < 0 && js.indexOf('{"hour: "2-digit", minute: "2-digit", second: "2-digit"}') < 0 &&
   js.indexOf("second: \"2-digit\"") >= 0);
-must("a new fish is born hungry, so a new tank can earn", js.indexOf("lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * 0.8) * HOUR),") >= 0);
+must("a new fish is born hungry, so a new tank can earn", js.indexOf("lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * HOUR) *") >= 0 &&
+  js.indexOf("(RPG() ? LOOP.rpgFoodScale * 0.5 : 0.8)),") >= 0);
 must("the shop sells two algae eaters and no more", /ottoBought: 2/.test(js) &&
   js.indexOf("The shop will only sell two algae eaters") >= 0);
 must("algae eaters breed, and sit on the sand", js.indexOf('baby.bought = false;') >= 0 &&
@@ -371,6 +372,20 @@ must("the standard mode keeps its own species clock", js.indexOf(": b.cd) * 6000
 must("no log line promises a point in a run", js.indexOf('RPG() ? "A mark for the run." : "+" + g.pay + " pts."') >= 0 &&
   js.indexOf('RPG() ? " Nothing is bought in a run, so nothing comes back."') >= 0 &&
   js.indexOf('["Wage", RPG() ? "free in a run"') >= 0);
+
+must("an RPG run squeezes the food window into the hour", js.indexOf("rpgFoodScale: 1 / 36,") >= 0 &&
+  js.indexOf("return vitals(f).food * HOUR * (RPG() ? LOOP.rpgFoodScale : 1);") >= 0 &&
+  js.indexOf("available") < 0 && js.indexOf("> foodWindow(f);") >= 0 && js.indexOf("LOOP.full * foodWindow(f)") >= 0 &&
+  js.indexOf("foodLeft(f, now) / foodWindow(f)") >= 0 && js.indexOf("Math.max(1, foodWindow(f))") >= 0);
+must("a run's fish breed only if they have eaten inside the hour", js.indexOf("RPG() ? LOOP.rpgFedForBreed : 3 * HOUR") >= 0 &&
+  js.indexOf("rpgFedForBreed: 20 * 60000,") >= 0);
+must("the shell tells the run about the hour", js.indexOf("a fish with no food for an hour is a dead fish") >= 0 &&
+  js.indexOf("No food for about an hour, and that fish dies.") >= 0 &&
+  js.indexOf("A pellet fills whoever reaches it first for the hour.") >= 0 &&
+  js.indexOf("and does its best. No promises.") >= 0);
+
+must("Automatic can feed a run", js.indexOf("(RPG() || state.points >= 15) && !hand && !flakes.length") >= 0 &&
+  js.indexOf("a run leans on Automatic") >= 0 && js.indexOf("state.fish.some(function (f) { return !isFull(f, now); })") >= 0);
 
 console.log("");
 if (fails) {

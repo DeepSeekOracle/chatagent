@@ -244,6 +244,10 @@
     ottoAlgae: 6.5,      // algae one algae eater clears an hour - the only real sink
     snailAlgae: 2.4,     // a nerite eats the green too - slower than an otto, but it counts
     ottoBought: 2,       // algae eaters the shop will sell at a time
+    /* an RPG run rations the clock: the food window is squeezed so a fish that is not fed
+       inside the hour is a dead fish. Bred pairs also have to have eaten recently. */
+    rpgFoodScale: 1 / 36,
+    rpgFedForBreed: 20 * 60000,
     ottoClutch: 5,       // hours between clutches for a settled algae eater
     rpgBreedMin: 30,     // an RPG run breeds on a 30 minute window, not on the species clock
     ottoHatch: 0.35      // hours in the egg before an otto hatches
@@ -548,7 +552,7 @@
   function vitals(f) { return VITALS[f.species] || { hp: 100, regen: 5, hurt: 10, food: 16 }; }
   /* true while a fish still has enough of its last meal to turn a flake down */
   function isFull(f, now) {
-    return foodLeft(f, now) > LOOP.full * vitals(f).food * HOUR;
+    return foodLeft(f, now) > LOOP.full * foodWindow(f);
   }
   /* what a fish has eaten and not yet put back into the water, shed over the next hours */
   function shed(f, span) {
@@ -557,8 +561,12 @@
     f.digest -= out;
     return out;
   }
+  /* how long a fish's meal lasts. An RPG run scales the whole clock down to the hour. */
+  function foodWindow(f) {
+    return vitals(f).food * HOUR * (RPG() ? LOOP.rpgFoodScale : 1);
+  }
   function foodLeft(f, now) {
-    const hours = vitals(f).food * (hasPerk("meals") ? 1.28 : 1);
+    const hours = vitals(f).food * (hasPerk("meals") ? 1.28 : 1) * (RPG() ? LOOP.rpgFoodScale : 1);
     return hours * HOUR - (now - (f.lastFed || f.born));
   }
   function lifeOf(f) {
@@ -987,7 +995,8 @@
       growth: 0,
       growthAt: now,
       /* born hungry: the first pinch has to be worth something, or no tank can earn */
-      lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * 0.8) * HOUR),
+      lastFed: now - Math.round(((VITALS[species] || { food: 16 }).food * HOUR) *
+        (RPG() ? LOOP.rpgFoodScale * 0.5 : 0.8)),
       lastPlay: now,
       x: 0.2 + Math.random() * 0.6,
       y: clamp(band[0] + Math.random() * (band[1] - band[0]), 0.12, 0.86),
@@ -1284,7 +1293,7 @@
     const span = Math.min(48, Math.max(0, (now - from) / HOUR));
     f.hpAt = now;
     if (span <= 0) return;
-    const unfed = now - (f.lastFed || f.born) > v.food * HOUR;
+    const unfed = now - (f.lastFed || f.born) > foodWindow(f);
     const dirty = (state.quality || 100) < 45 || (state.algae || 0) > 68;
     const crowded = loadRatio() >= 0.85;
     const load = crowdLoad();
@@ -1330,7 +1339,7 @@
       state.crew.push(makeCrew("snail"));
       log("Auto keeper adds a nerite.");
     } else if (crewN < 4 && state.points >= 28 && state.quality < 65) {
-    if (!RPG()) state.points -= 28;
+      if (!RPG()) state.points -= 28;
       state.crew.push(makeCrew("cory"));
       log("Auto keeper adds a cory.");
     }
@@ -1340,14 +1349,19 @@
       let id = autoSpecies();
       if (!canAdd(id)) return;
       if (id === "octo" && hasOcto()) id = "dart";
-    if (!RPG()) state.points -= cost;
+      if (!RPG()) state.points -= cost;
       const fish = makeFish(id, specOf(id).name);
       state.fish.push(fish);
       log("Auto keeper adds " + fish.name + ". Hunters are not touched.");
     }
+    /* a run leans on Automatic: it keeps them fed, and makes no promises */
+    const rpgHungry = RPG() && !hand && !flakes.length &&
+      state.fish.some(function (f) { return !isFull(f, now); });
+    if (rpgHungry && Math.random() < 0.5) startHand("flakes");
     const weak = state.fish.slice().sort(function (a, b) { return (a.hp || 0) - (b.hp || 0); })[0];
-    if (weak && (weak.hp || 0) < vitals(weak).hp * 0.35 && state.points >= 15 && !hand && !flakes.length) {
-    if (!RPG()) state.points -= 15;
+    if (weak && (weak.hp || 0) < vitals(weak).hp * 0.35 &&
+      (RPG() || state.points >= 15) && !hand && !flakes.length) {
+      if (!RPG()) state.points -= 15;
       if (!startHand("pellet")) state.points += 15;
     }
   }
@@ -1407,7 +1421,7 @@
   function huntChance(f, now) {
     const v = vitals(f);
     const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
-    const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
+    const fedRatio = clamp(foodLeft(f, now) / foodWindow(f), 0, 1);
     let chance = clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
     /* armour and spines blunt the strike, speed and cover steal it, and a fish inside
        its own shoal is a bad bet: the nearest of its kind is the one that gets seen */
@@ -1454,7 +1468,7 @@
   function preyScore(f, now) {
     const v = vitals(f);
     const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
-    const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
+    const fedRatio = clamp(foodLeft(f, now) / foodWindow(f), 0, 1);
     let s = (1 - hpRatio) * 1.0 + (1 - fedRatio) * 0.7;
     s += (1 - schoolSafety(f)) * 0.5;
     s -= dval(f.species, "armor") * 0.25 + dval(f.species, "spines") * 0.2 +
@@ -2116,7 +2130,7 @@
         return f.species === id && breedReady(grown, b) &&
           bodyAge(f) <= cycleOf(f.species)[5] * HOUR * 0.9 &&
           (f.hp || 0) >= vitals(f).hp * 0.7 &&
-          now - (f.lastFed || f.born) < 3 * HOUR &&
+          now - (f.lastFed || f.born) < (RPG() ? LOOP.rpgFedForBreed : 3 * HOUR) &&
           now - (f.spawnCd || 0) > 30 * 60000;
       });
       if (ready.length < 2) continue;
@@ -2236,7 +2250,7 @@
     state.fish.forEach(function (f) {
       accrueGrowth(f, now);
       tickHealth(f, now);
-      const unfed = now - (f.lastFed || f.born) > vitals(f).food * HOUR;
+      const unfed = now - (f.lastFed || f.born) > foodWindow(f);
       const old = bodyAge(f) >= lifeOf(f);
       if ((f.hp || 0) <= 0 || old) {
         f.cause = old ? "age" : (unfed ? "hunger" : "filth");
@@ -2410,7 +2424,7 @@
     const m = motionOf(f);
     const tr = traits(f);
     const stageF = stageSpeed(stageName(bodyAge(f), f.species)) * (1.14 - 0.24 * specOf(f.species).bulk);
-    const hunger = clamp((now - (f.lastFed || f.born)) / Math.max(1, vitals(f).food * HOUR), 0, 1.2);
+    const hunger = clamp((now - (f.lastFed || f.born)) / Math.max(1, foodWindow(f)), 0, 1.2);
     const vigor = 0.84 + tr.vigor * 0.34;
     if (mode === "burst") return m.burst * stageF * (1 + hunger * 0.25) * vigor;
     if (mode === "panic") {
@@ -3935,6 +3949,14 @@
       "The clock pays a run in hours survived, not points. Two of each kind is all the shelf gives you; the rest has to breed.");
     swap("A water change costs 10 points.", "A water change is free in a run.");
     swap("Marks pay points the first time they happen.", "Marks are what the run is measured on.");
+    swap("About a day and a half with no food, and a fish dies.",
+      "Feed them inside the hour: a fish with no food for an hour is a dead fish.");
+    swap("No food for about a day and a half, and that fish dies.",
+      "No food for about an hour, and that fish dies.");
+    swap("A pellet adds a day to whoever reaches it first.",
+      "A pellet fills whoever reaches it first for the hour.");
+    swap("The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.",
+      "The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.");
     const how = document.getElementById("howLine");
     if (how) how.textContent = "Ages, food, water, cleaners, and the run.";
     const wc = document.getElementById("change");
@@ -5136,7 +5158,7 @@
   document.getElementById("pellet").onclick = function () {
     if (!state.fish.length) { log("No one is home to feed."); return; }
     if (!RPG() && state.points < 15) { log("A pellet costs 15 points."); return; }
-    if (!RPG()) state.points -= 15;
+      if (!RPG()) state.points -= 15;
     if (!startHand("pellet")) { state.points += 15; return; }
     save();
     renderRail();
@@ -5149,7 +5171,7 @@
     if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
     if (state.points < cost) { log("Need " + cost + " points."); return; }
-    if (!RPG()) state.points -= cost;
+      if (!RPG()) state.points -= cost;
     const fish = makeFish(sp, specOf(sp).name);
     state.fish.push(fish);
     selected = fish.id;
