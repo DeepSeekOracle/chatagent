@@ -108,7 +108,8 @@
           <li>While this page is open they patrol, school, glide, graze the gravel, rest, shelter in the weeds, and shove each other off the food. Bigger fish push smaller ones around. All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.</li>
           <li>Watch temperature, algae, and quality on the scoreboard. Every species has its own comfort range: too warm and they gulp at the surface, too cold and they hang low and slow. Snails and algae eaters scrape green. Corys and the turtle lift waste. A water change costs 10 points.</li>
           <li>Keep the water clean and two grown fish of the same species will court and leave eggs on the rockwork. The eggs hatch into fry that inherit their parents' tempers and traits, and each generation is marked in the list. Foul water kills eggs.</li>
-          <li>The tank holds 50 fish, and only one octopus. It jets between two poses. When a hunter chases it, it throws black ink, and that cloud takes 10% off the bite. Crowding and dirty water drain health. Each species heals and hungers on its own clock. After an hour with no hunter, a boss targets the weakest, hungriest fish — you can see it turn and stalk, and the shoal scatter for the weeds. Volt, the electric eel, can be that boss. While it stalks, it zaps, and fish nearby jolt. A full, fed fish is only a 25% bite. Lower health or an empty belly raises that chance. A bite leaves a baby of the same hunter, including a baby eel. Two misses and the hunter dies. You cannot stop it.</li>
+          <li>The tank holds 50 fish, and only one octopus. It jets between two poses. When a hunter chases it, it throws black ink, and that cloud takes 10% off the bite. Each species grows on its own hour count. A fed hour counts double. Crowding and dirty water drain health.</li>
+          <li>One tank hour is the hunter clock. One hunter can enter in a quiet hour. A bite still targets the weakest fish. A full, fed fish is only a 25% bite. A success leaves one baby that hour, and that baby grows into another hunter. Two misses and it dies. Greymaw the shark becomes JAWS after three clean meals in a row. JAWS is larger, can take two fish on an eat hour, heals 25% for each, and dies if it misses food for two hours. Another hunter can fight JAWS, once a tank hour, with hit points. Two fights will usually finish JAWS. You cannot stop them. Tank sounds, including the air pump and the low music while JAWS is in the glass, turn off in Options. The radio has its own volume.</li>
         </ol>
         <button type="button" class="btn" id="howBack">Back</button>
       </div>
@@ -201,6 +202,8 @@
     <label class="check"><input type="checkbox" id="optBoard" checked> Show the scoreboard</label>
     <label class="check"><input type="checkbox" id="optMotion" checked> Swim motion</label>
     <label class="check"><input type="checkbox" id="optHeater" checked> Heater on</label>
+    <label class="check"><input type="checkbox" id="optSound" checked> Tank sounds</label>
+    <label class="check">Sound <input type="range" id="optSoundVol" min="0" max="100" value="40"> <b id="optSoundVal">40%</b></label>
     <label class="check">Light
       <select id="optClock">
         <option value="real">Follow the real clock</option>
@@ -217,6 +220,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=26"></script>
+<script src="./tank.js?v=27"></script>
 </body>
 </html>

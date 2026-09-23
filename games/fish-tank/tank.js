@@ -50,7 +50,32 @@
     pike: { id: "pike", name: "Reed", blurb: "Long bill. A boss if the tank is quiet for an hour." },
     cinder: { id: "cinder", name: "Cinder", blurb: "Orange hunter. A lucky bite leaves a baby." },
     gar: { id: "gar", name: "Sable", blurb: "Dark gar. Two misses in a row and it dies." },
-    eel: { id: "eel", name: "Volt", blurb: "Electric eel. A boss. The zap stuns whoever is close." }
+    eel: { id: "eel", name: "Volt", blurb: "Electric eel. A boss. The zap stuns whoever is close." },
+    shark: { id: "shark", name: "Greymaw", blurb: "Reef shark. Three clean meals in a row and it becomes JAWS." }
+  };
+  /* Hours to infant, child, teen, adult, elder, then death. One tank hour is one tick. */
+  const LIFE_CYCLE = {
+    glimmer: [3, 8, 16, 28, 110, 180],
+    azure: [4, 10, 20, 36, 140, 220],
+    dart: [2, 5, 10, 18, 70, 120],
+    puff: [4, 12, 24, 40, 150, 240],
+    lantern: [2, 6, 12, 22, 80, 140],
+    moss: [5, 14, 28, 48, 170, 280],
+    ruby: [4, 12, 22, 36, 140, 230],
+    veil: [4, 12, 26, 42, 160, 250],
+    sunscale: [6, 16, 32, 56, 200, 320],
+    pearl: [2, 5, 9, 16, 60, 100],
+    claw: [6, 18, 36, 64, 220, 360],
+    crab: [4, 10, 20, 36, 130, 210],
+    octo: [5, 14, 30, 52, 180, 300]
+  };
+  const PRED_STAT = {
+    pike: { hp: 90, dmg: 78 },
+    cinder: { hp: 80, dmg: 70 },
+    gar: { hp: 100, dmg: 84 },
+    eel: { hp: 110, dmg: 96 },
+    shark: { hp: 120, dmg: 80 },
+    jaws: { hp: 200, dmg: 110 }
   };
   /* ---------------------------------------------------------------
      Phase 2 — living water.
@@ -188,14 +213,14 @@
     });
   });
   const PRED_SPRITES = {};
-  ["pike", "cinder", "gar", "eel"].forEach(function (id) {
+  ["pike", "cinder", "gar", "eel", "shark"].forEach(function (id) {
     ["baby", "adult"].forEach(function (age) {
       const img = new Image();
       img.src = "./assets/fish/" + id + "_" + age + ".png";
       PRED_SPRITES[id + "_" + age] = img;
     });
   });
-  ["eel_adult_zap", "eel_adult_zap2", "eel_baby_zap"].forEach(function (key) {
+  ["eel_adult_zap", "eel_adult_zap2", "eel_baby_zap", "shark_elder", "shark_elder_stalk"].forEach(function (key) {
     const img = new Image();
     img.src = "./assets/fish/" + key + ".png";
     PRED_SPRITES[key] = img;
@@ -236,9 +261,13 @@
   let last = performance.now();
 
   function specOf(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || SPECIES[0]; }
-  function stageName(age) {
+  function cycleOf(species) { return LIFE_CYCLE[species] || [2, 6, 12, 24, 96, 168]; }
+  function stageName(age, species) {
+    const hours = age > 5000 ? age / HOUR : age;
+    const marks = cycleOf(species);
+    const names = ["baby", "infant", "child", "teen", "adult", "elder"];
     let name = "baby";
-    for (let i = 0; i < STAGES.length; i++) if (age >= STAGES[i][1]) name = STAGES[i][0];
+    for (let i = 0; i < 5; i += 1) if (hours >= marks[i]) name = names[i + 1];
     return name;
   }
   function moodOf(f, now) {
@@ -250,23 +279,20 @@
   }
   function vitals(f) { return VITALS[f.species] || { hp: 100, regen: 5, hurt: 10, food: 16 }; }
   function foodLeft(f, now) { return vitals(f).food * HOUR - (now - (f.lastFed || f.born)); }
-  function lifeOf(f) { return LIFE + (f.bonus || 0); }
+  function lifeOf(f) { return cycleOf(f.species)[5] * HOUR + (f.bonus || 0); }
   function ageOf(f, now) { return Math.max(0, now - f.born); }
   function bodyAge(f) { return f.growth || 0; }
   function accrueGrowth(f, now) {
-    const from = f.growthAt || f.born || now;
-    if (!f.growth) f.growth = 0;
-    if (now > from) {
-      let t = from;
-      const boostEnd = (f.lastFed || f.born || from) + FED_FAST;
-      if (t < boostEnd) {
-        const end = Math.min(now, boostEnd);
-        f.growth += (end - t) * 2.4;
-        t = end;
-      }
-      if (t < now) f.growth += (now - t) * 0.7;
+    if (f.growthHours == null) {
+      const elapsed = Math.max(0, (f.growth || 0) > 0 ? f.growth : (now - (f.born || now)));
+      f.growthHours = Math.floor(elapsed / HOUR);
     }
+    f.growth = f.growthHours * HOUR;
     f.growthAt = now;
+  }
+  function addGrowthHours(f, n) {
+    f.growthHours = Math.max(0, (f.growthHours || 0) + n);
+    f.growth = f.growthHours * HOUR;
   }
   function hours(ms) { return Math.round(ms / HOUR * 10) / 10; }
   function price() { return 30 + state.fish.length * 18; }
@@ -276,6 +302,54 @@
   function log(t) {
     state.log.unshift(t);
     state.log = state.log.slice(0, 30);
+  }
+  const SFX = {};
+  let sfxReady = false;
+  function ensureSfx() {
+    if (sfxReady) return;
+    sfxReady = true;
+    ["pump", "death", "chase", "omen", "bite", "battle", "feed"].forEach(function (name) {
+      const a = new Audio("./assets/sfx/" + name + ".wav");
+      a.preload = "auto";
+      if (name === "pump" || name === "omen") a.loop = true;
+      SFX[name] = a;
+    });
+  }
+  function sfxOn() { return !!(state && state.opts && state.opts.sound !== false); }
+  function sfxVol() {
+    const v = state && state.opts ? state.opts.soundVol : null;
+    return v == null ? 0.4 : clamp(v, 0, 1);
+  }
+  function playSfx(name) {
+    if (!sfxOn() || sfxVol() < 0.02) return;
+    ensureSfx();
+    const a = SFX[name];
+    if (!a || a.loop) return;
+    try {
+      a.pause();
+      a.currentTime = 0;
+      a.volume = sfxVol() * (name === "death" || name === "bite" ? 0.5 : 0.7);
+      const go = a.play();
+      if (go && go.catch) go.catch(function () {});
+    } catch (_) {}
+  }
+  function tuneLoop(a, on, vol) {
+    if (!a) return;
+    a.volume = vol;
+    if (on) {
+      const go = a.play();
+      if (go && go.catch) go.catch(function () {});
+    } else {
+      a.pause();
+    }
+  }
+  function syncLoops() {
+    if (!sfxReady && !(playing && sfxOn())) return;
+    ensureSfx();
+    const on = !!(playing && sfxOn() && sfxVol() >= 0.02);
+    const jaws = on && (state.predators || []).some(function (p) { return p.elder; });
+    tuneLoop(SFX.pump, on, sfxVol() * 0.36);
+    tuneLoop(SFX.omen, jaws, sfxVol() * 0.48);
   }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(state)); } catch (_) {}
@@ -407,7 +481,7 @@
     }
     if (!state.predators.length && !state.clearSince) state.clearSince = state.openedAt || Date.now();
     state.opts = Object.assign({
-      names: true, board: true, motion: true, heater: true, temp: 25, clock: "real"
+      names: true, board: true, motion: true, heater: true, temp: 25, clock: "real", sound: true, soundVol: 0.4
     }, state.opts || {});
   }
   function load() {
@@ -450,7 +524,7 @@
       score: Math.round(age / HOUR),
       tankHours: Math.round(tankAge(now) / HOUR),
       theme: themeOf(state.theme).name,
-      stage: f.species ? stageName(bodyAge(f)) : "crew",
+      stage: f.species ? stageName(bodyAge(f), f.species) : "crew",
       date: new Date(now).toISOString().slice(0, 10)
     };
     state.cemetery.unshift(row);
@@ -488,6 +562,10 @@
       adultAt: boss ? now : now + HOUR,
       nextRoll: now + HOUR,
       fails: 0,
+      streak: 0,
+      elder: false,
+      hp: (PRED_STAT[kind] || PRED_STAT.pike).hp,
+      maxHp: (PRED_STAT[kind] || PRED_STAT.pike).hp,
       born: now,
       x: 0.15 + Math.random() * 0.7,
       y: 0.28 + Math.random() * 0.3,
@@ -607,15 +685,34 @@
     if (!p.victim) return null;
     return state.fish.filter(function (f) { return f.id === p.victim; })[0] || null;
   }
-  function rollPredator(p, now, reason) {
-    const victim = stalkTarget(p) || weakestPrey(now);
+  function predMax(p) { return p && p.elder ? PRED_STAT.jaws.hp : (PRED_STAT[p.kind] || PRED_STAT.pike).hp; }
+  function predDmg(p) { return p && p.elder ? PRED_STAT.jaws.dmg : (PRED_STAT[p.kind] || PRED_STAT.pike).dmg; }
+  function notePredator(p) {
+    if (p.elder == null) p.elder = false;
+    if (p.streak == null) p.streak = 0;
+    p.maxHp = predMax(p);
+    if (p.hp == null) p.hp = p.maxHp;
+    p.hp = clamp(p.hp, 0, p.maxHp);
+  }
+  function becomeJaws(p) {
+    p.elder = true;
+    p.name = "JAWS";
+    p.maxHp = PRED_STAT.jaws.hp;
+    p.hp = Math.min(p.maxHp, Math.round((p.hp || PRED_STAT.shark.hp) + p.maxHp * 0.2));
+    log("Greymaw becomes JAWS. It is larger, it stalks, and an eat hour can take two fish.");
+    playSfx("omen");
+  }
+  function rollPredator(p, now, reason, allowBaby, countFail) {
+    const victim = weakestPrey(now);
     p.pending = false;
     p.victim = null;
+    p._stalkSaid = false;
     if (!victim) {
-      p.fails = (p.fails || 0) + 1;
-      log(p.name + " finds no fish." + (p.fails >= 2 ? " Two empty hours. It dies." : " It has one more hour."));
+      if (countFail !== false) p.fails = (p.fails || 0) + 1;
+      if (p.kind === "shark" && !p.elder) p.streak = 0;
+      log(p.name + " finds no fish." + ((p.fails || 0) >= 2 ? " Two empty hours. It dies." : " It has one more hour."));
       p.nextRoll = now + HOUR;
-      return;
+      return false;
     }
     const chance = huntChance(victim, now);
     const roll = 1 + ((Math.random() * 100) | 0);
@@ -625,73 +722,173 @@
       bury(victim, now);
       state.fish = state.fish.filter(function (f) { return f !== victim; });
       if (selected === victim.id) selected = null;
-      p.fails = 0;
-      state.predators.push(makePredator(p.kind, false));
+      if (countFail !== false) p.fails = 0;
+      let born = false;
+      if (allowBaby) {
+        state.predators.push(makePredator(p.kind, false));
+        born = true;
+      }
+      if (p.elder) p.hp = Math.min(predMax(p), (p.hp || predMax(p)) + predMax(p) * 0.25);
+      if (p.kind === "shark" && !p.elder) {
+        p.streak = (p.streak || 0) + 1;
+        if (p.streak >= 3) becomeJaws(p);
+      }
       log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name +
         (reason === "contact" ? " in the open" : ", the weakest") +
         (victim.species === "octo" && (victim.inkUntil || 0) > now ? " through the ink" : "") +
-        ". A baby hunter is born.");
+        (born ? ". A baby hunter is born." : "."));
       addRipple(victim.x, victim.y);
-    } else {
-      p.fails = (p.fails || 0) + 1;
-      if (reason === "contact") state.dodge = (state.dodge || 0) + 1;
-      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name +
-        (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
-        (victim.species === "octo" && (victim.inkUntil || 0) > now ? ". The ink takes 10% off the bite" : "") +
-        "." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
+      playSfx("bite");
+      playSfx("death");
+      p.nextRoll = now + HOUR;
+      return true;
     }
+    if (countFail !== false) p.fails = (p.fails || 0) + 1;
+    if (p.kind === "shark" && !p.elder) p.streak = 0;
+    if (reason === "contact") state.dodge = (state.dodge || 0) + 1;
+    log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name +
+      (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
+      (victim.species === "octo" && (victim.inkUntil || 0) > now ? ". The ink takes 10% off the bite" : "") +
+      "." + ((p.fails || 0) >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
     p.nextRoll = now + HOUR;
+    return false;
+  }
+  function predatorBattle(a, b) {
+    notePredator(a);
+    notePredator(b);
+    playSfx("battle");
+    const bits = [a.name + " and " + b.name + " fight."];
+    for (let round = 0; round < 2 && a.hp > 0 && b.hp > 0; round += 1) {
+      const da = Math.round(predDmg(a) * (0.82 + Math.random() * 0.36));
+      const db = Math.round(predDmg(b) * (0.82 + Math.random() * 0.36));
+      b.hp = Math.max(0, b.hp - da);
+      a.hp = Math.max(0, a.hp - db);
+      if (b.hp <= 0 && a.hp > 0) a.hp = Math.max(0, a.hp - Math.round(db * 0.7));
+      if (a.hp <= 0 && b.hp > 0) b.hp = Math.max(0, b.hp - Math.round(da * 0.35));
+      bits.push(a.name + " deals " + da + ". " + b.name + " deals " + db + ".");
+    }
+    if (a.hp <= 0) a.fails = 2;
+    if (b.hp <= 0) b.fails = 2;
+    bits.push(a.name + " " + Math.round(a.hp) + "/" + a.maxHp + " hp. " + b.name + " " + Math.round(b.hp) + "/" + b.maxHp + " hp.");
+    log(bits.join(" "));
+  }
+  function runPredatorHour(now) {
+    let spawnLeft = 1;
+    const jaws = state.predators.filter(function (p) { return p.elder && p.adult && (p.fails || 0) < 2; })[0];
+    const foes = state.predators.filter(function (p) {
+      return p.adult && !p.elder && p.kind !== "shark" && (p.fails || 0) < 2;
+    });
+    let jawsBattled = false;
+    if (jaws && foes.length && Math.random() < 0.5) {
+      predatorBattle(jaws, foes[(Math.random() * foes.length) | 0]);
+      jawsBattled = true;
+      log("One predator battle this tank hour.");
+    }
+    state.predators.slice().forEach(function (p) {
+      if (!p.adult || (p.fails || 0) >= 2) return;
+      if (p.elder && jawsBattled) {
+        log(p.name + " spent the hour fighting. The eat waits.");
+        return;
+      }
+      if (p.elder) {
+        let ate = 0;
+        for (let i = 0; i < 2; i += 1) {
+          const before = state.predators.length;
+          if (rollPredator(p, now, "hour", spawnLeft > 0, false)) {
+            ate += 1;
+            if (state.predators.length > before) spawnLeft = 0;
+          }
+        }
+        if (ate) {
+          p.fails = 0;
+          log(p.name + " recovers " + (ate * 25) + "% from the meal.");
+        } else {
+          p.fails = (p.fails || 0) + 1;
+          log(p.name + ((p.fails || 0) >= 2 ? " misses two eat hours and dies." : " misses the eat hour. One hour left."));
+        }
+        return;
+      }
+      const before = state.predators.length;
+      rollPredator(p, now, "hour", spawnLeft > 0, true);
+      if (state.predators.length > before) spawnLeft = 0;
+    });
+  }
+  function armStalk(now) {
+    const due = (state.hourAt || now) + HOUR;
+    if (now < due - STALK_LEAD || now >= due) return;
+    if (state._stalkedHour === state.hourAt) return;
+    let any = false;
+    state.predators.forEach(function (p) {
+      if (!p.adult || (p.fails || 0) >= 2) return;
+      const victim = weakestPrey(now);
+      p.pending = true;
+      p.stalkAt = now;
+      p.victim = victim ? victim.id : null;
+      any = true;
+      if (victim && !p._stalkSaid) {
+        log(p.name + " turns toward " + victim.name + ", the weakest. The shoal scatters.");
+        victim.startleT = 2.5;
+        p._stalkSaid = true;
+      }
+    });
+    if (any) {
+      state._stalkedHour = state.hourAt;
+      playSfx("chase");
+    }
+  }
+  function onTankHour(now) {
+    state.fish.forEach(function (f) {
+      const fed = now - (f.lastFed || f.born) < FED_FAST;
+      addGrowthHours(f, fed ? 2 : 1);
+    });
+    const living = state.predators.filter(function (p) { return (p.fails || 0) < 2; });
+    if (!living.length) {
+      if (!state.clearSince) state.clearSince = state.openedAt || now;
+      if (now - state.clearSince >= HOUR) {
+        const kinds = ["pike", "cinder", "gar", "eel", "shark"];
+        const kind = kinds[(Math.random() * kinds.length) | 0];
+        state.predators.push(makePredator(kind, true));
+        state.clearSince = 0;
+        log("Boss " + predOf(kind).name + " enters. One hunter a tank hour. A full fish is 25%. Two misses and it dies. You cannot stop it.");
+        playSfx("chase");
+      }
+      return;
+    }
+    runPredatorHour(now);
   }
   function tickPredators(now) {
     state.predators = state.predators || [];
     state.predators.forEach(function (p) {
       if (p.pending == null) p.pending = false;
       if (p.heading == null) p.heading = p.vx < 0 ? Math.PI : 0;
+      notePredator(p);
       if (!p.adult && now >= (p.adultAt || 0)) {
         p.adult = true;
-        p.name = predOf(p.kind).name;
+        if (!p.elder) p.name = predOf(p.kind).name;
         p.nextRoll = (p.adultAt || now) + HOUR;
-        log(p.name + " is grown. It hunts in an hour.");
-      }
-      if (!p.adult) return;
-      if (!p.pending && now >= (p.nextRoll || 0) + STRIKE_WINDOW) {
-        let guard = 0;
-        while ((p.fails || 0) < 2 && now >= (p.nextRoll || 0) + STRIKE_WINDOW && guard < 48) {
-          rollPredator(p, p.nextRoll, "away");
-          guard += 1;
-        }
-      } else if (!p.pending && now >= (p.nextRoll || 0) - STALK_LEAD) {
-        const victim = weakestPrey(now);
-        p.pending = true;
-        p.stalkAt = now;
-        p.victim = victim ? victim.id : null;
-        if (victim) {
-          log(p.name + " turns toward " + victim.name + ", the weakest. The shoal scatters.");
-          victim.startleT = 2.5;
-        } else {
-          log(p.name + " hunts an empty glass.");
-        }
+        log(p.name + " is grown. It hunts on the next tank hour.");
       }
     });
+    if (!state.hourAt) state.hourAt = now;
+    let guard = 0;
+    while (now - state.hourAt >= HOUR && guard < 72) {
+      state.hourAt += HOUR;
+      guard += 1;
+      onTankHour(state.hourAt);
+    }
+    armStalk(now);
     const before = state.predators.length;
     state.predators = state.predators.filter(function (p) { return (p.fails || 0) < 2; });
     if (before && !state.predators.length) state.clearSince = now;
     if (!state.predators.length) {
       if (!state.clearSince) state.clearSince = state.openedAt || now;
-      if (now - state.clearSince >= HOUR) {
-        const kinds = ["pike", "cinder", "gar", "eel"];
-        const kind = kinds[(Math.random() * kinds.length) | 0];
-        state.predators.push(makePredator(kind, true));
-        state.clearSince = 0;
-        log("Boss " + predOf(kind).name + " enters. Each hour it targets the weakest, hungriest fish. A full fish is 25%. Lower health or an empty belly raises the odds. Two misses and it dies. You cannot stop it.");
-      }
     } else state.clearSince = 0;
   }
   function stepPredator(p, dt) {
     const now = Date.now();
     if (p.phase == null) p.phase = Math.random() * 6.28;
     const prey = p.pending ? stalkTarget(p) : null;
-    if (p.pending && !prey) { rollPredator(p, now, "lost"); return; }
+    if (p.pending && !prey) { p.pending = false; p.victim = null; }
     let sp = p.adult ? 0.13 : 0.07;
     let dx = 0, dy = 0;
     if (prey) {
@@ -701,14 +898,7 @@
       sp = 0.58 * (p.adult ? 1 : 0.6);
       if (to.d < 0.3) sp *= 1.25;
       p.lunge = to.d < 0.16 ? 1 : 0;
-      if ((p.pending && (now >= (p.nextRoll || 0) + STRIKE_WINDOW || now - (p.stalkAt || 0) > STRIKE_WINDOW))) {
-        rollPredator(p, now, "lost");
-        return;
-      }
-      if (to.d < (p.adult ? 0.11 : 0.05)) {
-        rollPredator(p, now, "contact");
-        return;
-      }
+      if (to.d < (p.elder ? 0.16 : (p.adult ? 0.11 : 0.05))) p.lunge = 1;
     } else if (Math.random() < dt * 0.4) {
       p.wanderA = (p.wanderA || 0) + (Math.random() - 0.5) * 1.6;
       dx = Math.cos(p.wanderA);
@@ -771,12 +961,15 @@
   function drawPredator(p, w, h, now) {
     const age = p.adult ? "adult" : "baby";
     let key = p.kind + "_" + age;
-    if (p.kind === "eel" && (p.zapT || 0) > 0) {
+    if (p.kind === "shark" && p.elder) {
+      const stalking = p.pending && ((Math.floor(now / 280) % 2) === 1);
+      key = stalking ? "shark_elder_stalk" : "shark_elder";
+    } else if (p.kind === "eel" && (p.zapT || 0) > 0) {
       const alt = p.adult && ((Math.floor(now / 140) % 2) === 1);
       key = alt ? "eel_adult_zap2" : (key + "_zap");
     }
     const img = PRED_SPRITES[key] || PRED_SPRITES[p.kind + "_" + age];
-    const sc = p.kind === "eel" ? (p.adult ? 0.72 : 0.4) : (p.adult ? 1.35 : 0.55);
+    const sc = p.elder ? 1.9 : (p.kind === "eel" ? (p.adult ? 0.72 : 0.4) : (p.adult ? 1.35 : 0.55));
     const bh = Math.min(h * (p.kind === "eel" ? 0.13 : 0.2), p.kind === "eel" ? 86 : 140) * sc;
     let bw = bh * 2.2;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
@@ -843,7 +1036,8 @@
       const wait = Math.max(0, (p.nextRoll || now) - now);
       ctx.fillText(p.name + (p.adult ? "" : " · baby"), x, y - bh / 2 - 8);
       ctx.font = "600 11px Source Sans 3, sans-serif";
-      ctx.fillText(p.pending ? "stalking" : (p.adult ? ("hunts in " + hours(wait) + "h") : ("grows " + hours(Math.max(0, (p.adultAt || now) - now)) + "h")), x, y - bh / 2 + 6);
+      const hpLine = p.maxHp ? (Math.round(p.hp || 0) + "/" + p.maxHp + " hp") : "";
+      ctx.fillText((p.pending ? "stalking" : (p.adult ? ("hunts in " + hours(wait) + "h") : ("grows " + hours(Math.max(0, (p.adultAt || now) - now)) + "h"))) + (hpLine ? " · " + hpLine : ""), x, y - bh / 2 + 6);
     }
   }
   /* ---------------- generations: courtship, eggs, fry ---------------- */
@@ -923,7 +1117,8 @@
     if ((state.quality || 0) < 62 || (state.algae || 0) > 55) return;
     if (now - (state._breedAt || 0) < 12 * 60000) return;
     const ready = state.fish.filter(function (f) {
-      return bodyAge(f) >= DAY && bodyAge(f) <= 5 * DAY &&
+      const grown = stageName(bodyAge(f), f.species);
+      return (grown === "adult" || grown === "elder") && bodyAge(f) <= cycleOf(f.species)[5] * HOUR * 0.9 &&
         (f.hp || 0) >= vitals(f).hp * 0.7 &&
         now - (f.lastFed || f.born) < 3 * HOUR &&
         now - (f.spawnCd || 0) > 45 * 60000 &&
@@ -974,14 +1169,17 @@
     let oldest = 0;
     state.fish.forEach(function (f) { oldest = Math.max(oldest, bodyAge(f)); });
     const met = {
-      adult: oldest >= DAY,
+      adult: state.fish.some(function (f) {
+        const s = stageName(bodyAge(f), f.species);
+        return s === "adult" || s === "elder";
+      }),
       court: (state.court || 0) >= 1,
       hatch: (state.hatched || 0) >= 1,
       dodge: (state.dodge || 0) >= 1,
       eight: state.fish.length >= 8,
       crew5: (state.crew || []).length >= 5,
       school: anySpeciesAt(6),
-      elder: oldest >= 4 * DAY,
+      elder: state.fish.some(function (f) { return stageName(bodyAge(f), f.species) === "elder"; }),
       hundred: state.fish.some(function (f) { return ageOf(f, now) >= 100 * HOUR; }),
       twenty: state.fish.length >= 20,
       clear: (state.quality || 0) >= 95 && state.fish.length >= 12,
@@ -1048,6 +1246,7 @@
     tickPredators(now);
     tickEggs(now);
     if (dead.length) {
+      playSfx("death");
       dead.forEach(function (f) { bury(f, now); });
       state.fish = state.fish.filter(function (f) { return dead.indexOf(f) < 0; });
       if (selected && dead.some(function (f) { return f.id === selected; })) selected = null;
@@ -1193,7 +1392,7 @@
   function speedOf(f, now, mode) {
     const m = motionOf(f);
     const tr = traits(f);
-    const stageF = stageSpeed(stageName(bodyAge(f))) * (1.14 - 0.24 * specOf(f.species).bulk);
+    const stageF = stageSpeed(stageName(bodyAge(f), f.species)) * (1.14 - 0.24 * specOf(f.species).bulk);
     const hunger = clamp((now - (f.lastFed || f.born)) / Math.max(1, vitals(f).food * HOUR), 0, 1.2);
     const vigor = 0.84 + tr.vigor * 0.34;
     if (mode === "burst") return m.burst * stageF * (1 + hunger * 0.25) * vigor;
@@ -1269,7 +1468,7 @@
     const social = (socialOf(f) === "school" ? 0.35 + tr.social * 0.7 : tr.social * 0.22) * crowd;
     const vision = m.vision * (0.8 + tr.social * 0.6);
     const sepR = (f.startleT > 0 ? 0.08 : 0.105) * (1.15 - tr.social * 0.25);
-    const mineSize = Math.max(0.2, specOf(f.species).bulk * STAGE_DRAW[stageName(bodyAge(f))]);
+    const mineSize = Math.max(0.2, specOf(f.species).bulk * STAGE_DRAW[stageName(bodyAge(f), f.species)]);
     let ax = 0, ay = 0, cx = 0, cy = 0, vx = 0, vy = 0, n = 0;
     state.fish.forEach(function (o) {
       if (o === f) return;
@@ -1282,7 +1481,7 @@
         ax -= dx / d * w;
         ay -= dy / d * w;
       }
-      const sizeF = (specOf(o.species).bulk * STAGE_DRAW[stageName(bodyAge(o))]) / mineSize;
+      const sizeF = (specOf(o.species).bulk * STAGE_DRAW[stageName(bodyAge(o), o.species)]) / mineSize;
       if (sizeF > 1.12 && d < sepR * 1.8) {
         const w = (sizeF - 1.12) * (1 - d / (sepR * 1.8));
         ax -= dx / d * w * 1.5;
@@ -1394,7 +1593,7 @@
     if (f.actionT > 0) {
       f.state = "play";
       f.stateT = f.actionT;
-      return { mode: "play", cap: m.burst * (f.action === "race" ? 0.8 : 0.5) * stageSpeed(stageName(bodyAge(f))) };
+      return { mode: "play", cap: m.burst * (f.action === "race" ? 0.8 : 0.5) * stageSpeed(stageName(bodyAge(f), f.species)) };
     }
     if (f.courtT > 0) {
       f.state = "court";
@@ -1680,6 +1879,7 @@
       leave: false
     };
     log((who === "f" ? "A woman's hand" : "A man's hand") + (kind === "pellet" ? " offers one pellet." : " reaches over the glass."));
+    playSfx("feed");
     return true;
   }
   function dropFlake() {
@@ -1749,13 +1949,13 @@
       winner.lastPlay = now;
       accrueGrowth(winner, now);
       if (fl.pellet) {
-        winner.growth += 2 * HOUR;
+        addGrowthHours(winner, 2);
         winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + DAY);
         log(near.length > 1
           ? (winner.name + " wins the pellet and grows. " + near[1].name + " is shoved off.")
           : (winner.name + " takes the pellet, grows faster, and gains a day."));
       } else {
-        winner.growth += 0.75 * HOUR;
+        addGrowthHours(winner, 1);
         winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + 10 * HOUR);
         if (near.length > 1 && Math.random() < 0.45) log(winner.name + " snatches a flake from " + near[1].name + " and grows.");
       }
@@ -1810,7 +2010,7 @@
     return "";
   }
   function drawFish(f, w, h, now) {
-    const stage = stageName(bodyAge(f));
+    const stage = stageName(bodyAge(f), f.species);
     const z = f.z == null ? 0.5 : f.z;
     const sp = f.speed == null ? Math.hypot(f.vx, f.vy / AR) : f.speed;
     const goingRight = (f.face || 1) !== -1;
@@ -2194,7 +2394,7 @@
       const mood = moodOf(f, now);
       const tr = traits(f);
       const word = stateWord(f);
-      const line = [specOf(f.species).name, stageName(bodyAge(f)),
+      const line = [specOf(f.species).name, stageName(bodyAge(f), f.species),
         Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp",
         (temperOf(f) === "chill" ? "relaxed" : "swims"),
         (socialOf(f) === "loner" ? "loner" : "school"),
@@ -2310,7 +2510,7 @@
   }
 
   function loop(t) {
-    if (!playing || !state) { requestAnimationFrame(loop); return; }
+    if (!playing || !state) { syncLoops(); requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     const now = Date.now();
@@ -2347,7 +2547,7 @@
           tankHours: Math.round(tankAge(now) / HOUR),
           theme: themeOf(state.theme).name,
           species: lead ? lead.species : "",
-          stage: lead ? stageName(bodyAge(lead)) : "",
+          stage: lead ? stageName(bodyAge(lead), lead.species) : "",
           fish: lead ? lead.name : "",
           date: new Date(now).toISOString().slice(0, 10),
           event: "tank"
@@ -2377,6 +2577,7 @@
     }
     resize();
     draw();
+    syncLoops();
     requestAnimationFrame(loop);
   }
   function pick(id) { selected = id; renderRail(); }
@@ -2463,6 +2664,9 @@
     document.getElementById("optBoard").checked = o.board !== false;
     document.getElementById("optMotion").checked = o.motion !== false;
     document.getElementById("optHeater").checked = !!o.heater;
+    document.getElementById("optSound").checked = o.sound !== false;
+    document.getElementById("optSoundVol").value = String(Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100));
+    document.getElementById("optSoundVal").textContent = Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100) + "%";
     document.getElementById("optClock").value = o.clock || "real";
     document.getElementById("optTemp").value = String(o.temp || 25);
     document.getElementById("optTempVal").textContent = (o.temp || 25) + "°";
@@ -2473,6 +2677,10 @@
     o.board = document.getElementById("optBoard").checked;
     o.motion = document.getElementById("optMotion").checked;
     o.heater = document.getElementById("optHeater").checked;
+    o.sound = document.getElementById("optSound").checked;
+    o.soundVol = (Number(document.getElementById("optSoundVol").value) || 0) / 100;
+    document.getElementById("optSoundVal").textContent = Math.round(o.soundVol * 100) + "%";
+    syncLoops();
     o.clock = document.getElementById("optClock").value || "real";
     o.temp = Number(document.getElementById("optTemp").value) || 25;
     document.getElementById("optTempVal").textContent = o.temp + "°";
@@ -2497,6 +2705,7 @@
     if (ownerEl) ownerEl.value = state.owner || "Keeper";
     resize();
     renderRail();
+    syncLoops();
   }
   function paintCast() {
     const box = document.getElementById("menuCast");
@@ -2585,10 +2794,11 @@
     readOpt();
     document.getElementById("optLayer").classList.add("hidden");
   };
-  ["optNames", "optBoard", "optMotion", "optHeater", "optClock"].forEach(function (id) {
+  ["optNames", "optBoard", "optMotion", "optHeater", "optClock", "optSound", "optSoundVol"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", readOpt);
   });
   document.getElementById("optTemp").addEventListener("input", readOpt);
+  document.getElementById("optSoundVol").addEventListener("input", readOpt);
   document.getElementById("optReset").onclick = function () {
     if (!window.confirm("Clear this tank, the cleaners, and the cemetery in this browser?")) return;
     fresh();

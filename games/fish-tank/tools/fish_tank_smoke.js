@@ -71,8 +71,21 @@ must("temperature drives gasping", js.indexOf('f.state = "gasp"') >= 0 && js.ind
 must("a hand startles the fish under it", js.indexOf("if (hand && hand.dip > 0.2 && f.y < 0.38)") >= 0);
 must("the hunter visibly stalks its victim", js.indexOf('log(p.name + " turns toward " + victim.name') >= 0 && js.indexOf("p.pending = true;") >= 0);
 must("the shoal shelters in the weeds", js.indexOf('f.state = "shelter"') >= 0 && js.indexOf("const s = nearestShelter(f.x, f.y, 1.4);") >= 0);
-must("a bite can miss at the last moment", js.indexOf('rollPredator(p, now, "contact")') >= 0 && js.indexOf('state.dodge = (state.dodge || 0) + 1;') >= 0);
-must("pairs court in good water", js.indexOf("function breedCheck(now)") >= 0 && js.indexOf("bodyAge(f) >= DAY && bodyAge(f) <= 5 * DAY") >= 0);
+must("a bite can miss at the last moment", js.indexOf('reason === "contact"') >= 0 && js.indexOf('state.dodge = (state.dodge || 0) + 1;') >= 0);
+must("tank hour grows each species on its own clock", js.indexOf("const LIFE_CYCLE = {") >= 0 && js.indexOf("addGrowthHours(f, fed ? 2 : 1)") >= 0);
+must("JAWS is the shark elder and battles once an hour", js.indexOf('p.name = "JAWS"') >= 0 && js.indexOf("function predatorBattle(a, b)") >= 0 && js.indexOf("One predator battle this tank hour.") >= 0);
+must("tank sounds can be turned off", js.indexOf('getElementById("optSound")') >= 0 && html.indexOf('id="optSound"') >= 0 && js.indexOf("function syncLoops()") >= 0);
+["shark_baby.png", "shark_adult.png", "shark_elder.png", "shark_elder_stalk.png"].forEach(function (name) {
+  const p = path.join(root, "assets", "fish", name);
+  const st = fs.existsSync(p) ? fs.statSync(p) : null;
+  must(name + " is a real sprite", !!(st && st.size > 8000));
+});
+["pump.wav", "death.wav", "chase.wav", "omen.wav", "bite.wav", "battle.wav", "feed.wav"].forEach(function (name) {
+  const p = path.join(root, "assets", "sfx", name);
+  const st = fs.existsSync(p) ? fs.statSync(p) : null;
+  must(name + " is a sound", !!(st && st.size > 4000));
+});
+must("pairs court in good water", js.indexOf("function breedCheck(now)") >= 0 && js.indexOf('grown === "adult" || grown === "elder"') >= 0);
 must("eggs hatch into fry with parents", js.indexOf("function tickEggs(now)") >= 0 && js.indexOf("fry.parents = (e.parents || []).slice();") >= 0);
 must("fry inherit traits with a mutation", js.indexOf("traits: makeTraits(traits(a), traits(b))") >= 0);
 must("clutch size is capped", js.indexOf("const EGG_CAP = 6;") >= 0 && js.indexOf("const n = Math.min(room, Math.random() < 0.35 ? 3 : 2);") >= 0);
