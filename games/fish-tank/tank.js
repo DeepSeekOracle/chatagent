@@ -424,7 +424,7 @@
     if (sfxReady) return;
     sfxReady = true;
     ["pump", "death", "chase", "omen", "bite", "battle", "feed"].forEach(function (name) {
-      const a = new Audio("./assets/sfx/" + name + ".wav");
+      const a = new Audio("./assets/sfx/" + name + ".wav?v=2");
       a.preload = "auto";
       if (name === "pump" || name === "omen") a.loop = true;
       SFX[name] = a;
