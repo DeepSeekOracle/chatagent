@@ -32,7 +32,7 @@
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
     { id: "cory", name: "Cory", cost: 28, blurb: "Bottom feeder. Lifts the waste." },
-    { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses when the water is kind." },
+    { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses in the top and middle water only." },
     { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Stays on the sand. Naps in its shell." }
   ];
   const CREW_LIFE = 30 * DAY;
@@ -732,7 +732,10 @@
     const slow = c.role === "snail" ? 0.35 : c.role === "jelly" ? 0.45 : 1;
     if (Math.random() < dt * 0.2) c.vx = (Math.random() < 0.5 ? -1 : 1) * 0.025 * slow;
     c.x += c.vx * dt;
-    if (c.role === "jelly") c.y = 0.26 + Math.sin(Date.now() / 1400 + c.wobble) * 0.06;
+    if (c.role === "jelly") {
+      const wave = Math.sin(Date.now() / 3200 + c.wobble);
+      c.y = Math.max(0.17, Math.min(0.5, 0.33 + wave * 0.15));
+    }
     else if (c.role === "otto") c.y = 0.34 + Math.sin(Date.now() / 2200 + c.wobble) * 0.18;
     else c.y = 0.8 + Math.sin(Date.now() / 900 + c.wobble) * 0.03;
     if (c.x < 0.08) { c.x = 0.08; c.vx = Math.abs(c.vx); }
