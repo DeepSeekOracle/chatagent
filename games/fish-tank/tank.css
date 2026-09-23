@@ -40,7 +40,28 @@ button, input { font:inherit; color:inherit; }
 .title-screen { min-height:100%; display:grid; grid-template-columns:1.15fr minmax(320px, 480px); }
 .title-art { position:relative; min-height:42vh; background:#041018; }
 .title-art img { width:100%; height:100%; object-fit:cover; display:block; }
-.title-panel { padding:1.1rem 1.15rem 1.6rem; overflow:auto; border-left:1px solid var(--line); }
+.title-panel { padding:1.1rem 1.15rem 1.6rem; overflow:auto; border-left:1px solid var(--line); max-height:100vh; }
+.menu-tabs { display:flex; gap:.35rem; margin:.2rem 0 .7rem; flex-wrap:wrap; position:sticky; top:0; background:#071018; padding:.15rem 0 .45rem; z-index:2; }
+.menu-tabs .tab {
+  background:#101c28; color:var(--text); border:1px solid #3a4e64; border-radius:999px;
+  padding:.32rem .7rem; cursor:pointer; font:700 .75rem Syne,sans-serif;
+}
+.menu-tabs .tab.on { border-color:var(--gold); color:var(--gold); }
+.cast-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:.4rem; margin:.35rem 0 .6rem; }
+.cast-grid .keeper-card { text-align:center; padding:.28rem .28rem .4rem; }
+.cast-grid .keeper-card img { height:104px; object-fit:cover; object-position:center 16%; }
+.cast-grid .keeper-card.on { box-shadow:0 0 0 1px var(--gold), 0 8px 22px #fbbf2422; background:#16301d; }
+.rpg-sheet {
+  display:grid; grid-template-columns:132px 1fr; gap:.7rem; align-items:start;
+  background:#101c28; border:1px solid var(--gold); border-radius:14px; padding:.55rem;
+  margin:0 0 .7rem;
+}
+.rpg-sheet img { width:132px; height:168px; object-fit:cover; object-position:center 18%; border-radius:10px; background:#071018; }
+.rpg-sheet h2 { font-family:Syne,sans-serif; margin:.05rem 0 .15rem; font-size:1.25rem; }
+.rpg-tag { color:var(--cyan); letter-spacing:.12em; text-transform:uppercase; font-size:.68rem; margin:0; }
+.rpg-sheet .char-bio { margin:.35rem 0 .4rem; }
+.rpg-gifts { margin:0; padding-left:1rem; color:var(--mute); font-size:.78rem; }
+.rpg-gifts b { color:var(--text); }
 .title-panel h1 { font-size:clamp(1.8rem, 4vw, 2.6rem); margin:.15rem 0 .4rem; }
 .modes { display:grid; gap:.4rem; margin:.5rem 0 .7rem; }
 .mode-card {
@@ -128,7 +149,9 @@ h1 { font-family:Syne,sans-serif; font-size:1.05rem; margin:0; letter-spacing:.0
 .keeper-bubble.hidden { display:none; }
 @keyframes keeper-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
 @media (max-width:700px) {
-  .keeper-pick { grid-template-columns:1fr 1fr; }
+  .keeper-pick, .cast-grid { grid-template-columns:1fr 1fr; }
+  .rpg-sheet { grid-template-columns:96px 1fr; }
+  .rpg-sheet img { width:96px; height:128px; }
   .keeper-box { width:96px; }
   .keeper-box img { width:84px; height:84px; }
 }

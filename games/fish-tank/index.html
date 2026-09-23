@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=7">
+<link rel="stylesheet" href="./tank.css?v=8">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -62,7 +62,12 @@
     <div class="title-panel">
       <p class="kicker">Δ9Φ963 · chatagent.ca</p>
       <h1>Fish Tank</h1>
-      <p class="lore">A real-time aquarium. You name them. They grow, play, and keep the water. The longest lives go on the cemetery hall.</p>
+      <nav class="menu-tabs" aria-label="Menu">
+        <button type="button" class="tab on" data-tab="panelHome">Home</button>
+        <button type="button" class="tab" data-tab="panelKeep">Caretaker</button>
+        <button type="button" class="tab" data-tab="panelTank">Tank</button>
+        <button type="button" class="tab" data-tab="panelHow">Guide</button>
+      </nav>
       <div id="panelHome">
         <div class="modes">
           <button type="button" class="mode-card" id="menuContinue"><b>Continue</b><span>Open the tank already in this browser.</span></button>
@@ -76,15 +81,20 @@
           <a class="btn" href="/games/">All games</a>
         </div>
       </div>
-      <div id="panelNew" class="hidden">
+      <div id="panelKeep" class="hidden">
         <p class="kicker">Caretaker</p>
-        <div class="keeper-pick" id="menuKeepers"></div>
         <label>Your name</label>
         <input class="name" id="menuOwner" maxlength="18" value="" placeholder="What should we call you?" aria-label="Your name">
-        <p class="lore" id="keeperBio"></p>
+        <div class="cast-grid" id="menuKeepers"></div>
+        <article class="rpg-sheet" id="keeperSheet"></article>
         <p class="kicker">Three gifts</p>
         <div class="keeper-pick" id="menuPerks"></div>
         <p class="lore" id="perkNote">Choose three gifts.</p>
+        <div class="row">
+          <button type="button" class="btn gold" id="menuToTank">Next · the tank</button>
+        </div>
+      </div>
+      <div id="panelTank" class="hidden">
         <p class="kicker">Tank</p>
         <div class="modes" id="themePick">
           <button type="button" class="mode-card on" data-theme="river"><b>River garden</b><span>Clear water, plants, and a stone arch. 25°.</span></button>
@@ -261,6 +271,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=1"></script>
-<script src="./tank.js?v=33"></script>
+<script src="./tank.js?v=34"></script>
 </body>
 </html>

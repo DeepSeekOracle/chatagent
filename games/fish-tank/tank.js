@@ -210,12 +210,12 @@
   const FISH_CAP = 50;
   const HUNTER_CAP = 10;
   const KEEPERS = {
-    mara: { id: "mara", name: "Mara", pitch: 1.05, bio: "Mara has kept glass boxes for twenty years. She talks softly and notices the water before anyone else." },
-    ellis: { id: "ellis", name: "Ellis", pitch: 0.96, bio: "Ellis names every fish and remembers who ate. He thinks a happy tank is a noisy one, in a quiet way." },
-    ren: { id: "ren", name: "Ren", pitch: 0.9, bio: "Ren likes the long watch. Hunters do not surprise Ren. Ren just says when one is coming." },
-    june: { id: "june", name: "June", pitch: 1.08, bio: "June keeps a peaceful room. She would rather have more fish and no hunters at all." },
-    mateo: { id: "mateo", name: "Mateo", pitch: 0.93, bio: "Mateo feeds by hand and hates a wasted flake. Meals last longer when he is on the glass." },
-    nia: { id: "nia", name: "Nia", pitch: 1.1, bio: "Nia likes a mixed tank. One kind of fish makes her nervous. A crowd of different kinds makes her relax." }
+    mara: { id: "mara", name: "Mara", tag: "Water", pitch: 1.05, bio: "Mara has kept glass boxes for twenty years. She talks softly and notices the water before anyone else." },
+    ellis: { id: "ellis", name: "Ellis", tag: "Mood", pitch: 0.96, bio: "Ellis names every fish and remembers who ate. He thinks a happy tank is a noisy one, in a quiet way." },
+    ren: { id: "ren", name: "Ren", tag: "Watch", pitch: 0.9, bio: "Ren likes the long watch. Hunters do not surprise Ren. Ren just says when one is coming." },
+    june: { id: "june", name: "June", tag: "Sanctuary", pitch: 1.08, bio: "June keeps a peaceful room. She would rather have more fish and no hunters at all." },
+    mateo: { id: "mateo", name: "Mateo", tag: "Meals", pitch: 0.93, bio: "Mateo feeds by hand and hates a wasted flake. Meals last longer when he is on the glass." },
+    nia: { id: "nia", name: "Nia", tag: "Mix", pitch: 1.1, bio: "Nia likes a mixed tank. One kind of fish makes her nervous. A crowd of different kinds makes her relax." }
   };
   const PERKS = [
     { id: "clear", name: "Clear glass", text: "Algae grows slower and the water holds its quality." },
@@ -2985,20 +2985,29 @@
   function paintKeeperMenu() {
     const box = document.getElementById("menuKeepers");
     const perks = document.getElementById("menuPerks");
-    const bio = document.getElementById("keeperBio");
+    const sheet = document.getElementById("keeperSheet");
     if (!box || !perks) return;
     box.innerHTML = Object.keys(KEEPERS).map(function (id) {
       const k = KEEPERS[id];
-      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img src='./assets/keepers/" + id + ".png' alt=''><b>" + k.name + "</b><span>" + k.bio + "</span></button>";
+      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img src='./assets/keepers/" + id + ".png' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
     }).join("");
     perks.innerHTML = PERKS.map(function (p) {
       const on = menuPerks.indexOf(p.id) >= 0;
       return "<button type='button' class='perk-card" + (on ? " on" : "") + "' data-perk='" + p.id + "'><b>" + p.name + "</b><span>" + p.text + "</span></button>";
     }).join("");
     const face = KEEPERS[menuKeeper] || KEEPERS.mara;
-    if (bio) bio.textContent = face.bio;
+    const gifts = menuPerks.map(function (id) {
+      const p = PERKS.filter(function (x) { return x.id === id; })[0];
+      return p ? "<li><b>" + p.name + "</b> — " + p.text + "</li>" : "";
+    }).join("");
+    if (sheet) {
+      sheet.innerHTML = "<img src='./assets/keepers/" + face.id + ".png' alt='" + face.name + "'>" +
+        "<div><p class='rpg-tag'>" + face.tag + "</p><h2>" + face.name + "</h2>" +
+        "<p class='char-bio'>" + face.bio + "</p>" +
+        "<ul class='rpg-gifts'>" + (gifts || "<li>No gifts yet. Choose three below.</li>") + "</ul></div>";
+    }
     const note = document.getElementById("perkNote");
-    if (note) note.textContent = menuPerks.length === 3 ? "Three gifts chosen." : ("Choose " + (3 - menuPerks.length) + " more.");
+    if (note) note.textContent = menuPerks.length === 3 ? "Three gifts on the card." : ("Choose " + (3 - menuPerks.length) + " more.");
   }
   function loop(t) {
     if (!playing || !state) { syncLoops(); requestAnimationFrame(loop); return; }
@@ -3210,17 +3219,38 @@
     }).join("");
   }
   function showPanel(which) {
-    ["panelHome", "panelNew", "panelHow"].forEach(function (id) {
-      document.getElementById(id).classList.toggle("hidden", id !== which);
+    ["panelHome", "panelKeep", "panelTank", "panelHow"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("hidden", id !== which);
+    });
+    document.querySelectorAll(".menu-tabs .tab").forEach(function (tab) {
+      tab.classList.toggle("on", tab.getAttribute("data-tab") === which);
     });
   }
   document.getElementById("menuContinue").onclick = function () {
     if (!hasSave || !state) return;
     enterTank();
   };
-  document.getElementById("menuNew").onclick = function () { showPanel("panelNew"); paintCast(); paintKeeperMenu(); };
+  document.getElementById("menuNew").onclick = function () { showPanel("panelKeep"); paintKeeperMenu(); };
+  document.querySelectorAll(".menu-tabs .tab").forEach(function (tab) {
+    tab.onclick = function () {
+      const id = tab.getAttribute("data-tab");
+      if (id === "panelKeep") paintKeeperMenu();
+      if (id === "panelTank") paintCast();
+      showPanel(id);
+    };
+  });
+  const toTank = document.getElementById("menuToTank");
+  if (toTank) toTank.onclick = function () {
+    if (menuPerks.length !== 3) {
+      document.getElementById("perkNote").textContent = "Pick exactly three gifts.";
+      return;
+    }
+    paintCast();
+    showPanel("panelTank");
+  };
   document.getElementById("menuHow").onclick = function () { showPanel("panelHow"); };
-  document.getElementById("menuBack").onclick = function () { showPanel("panelHome"); };
+  document.getElementById("menuBack").onclick = function () { showPanel("panelKeep"); paintKeeperMenu(); };
   document.getElementById("howBack").onclick = function () { showPanel("panelHome"); };
   document.getElementById("menuOpt").onclick = function () {
     if (!state) {
