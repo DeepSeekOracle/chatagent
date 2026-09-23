@@ -339,6 +339,26 @@
   function hours(ms) { return Math.round(ms / HOUR * 10) / 10; }
   function price() { return 30 + state.fish.length * 18; }
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+  function depthOf(o) {
+    if (!o) return 0.7;
+    if (o.kind && o.depth != null) return o.depth;
+    if (o.z != null) return o.z;
+    return 0.86;
+  }
+  function span3(ax, ay, az, bx, by, bz) {
+    return Math.hypot(ax - bx, (ay - by) * AR, (az - bz) * 0.82);
+  }
+  function apart(a, b) {
+    return span3(a.x, a.y, depthOf(a), b.x, b.y, depthOf(b));
+  }
+  function depthBand(f) {
+    const m = motionOf(f);
+    if (m.walk) return [0.7, 0.94];
+    if (f.species === "dragon" || f.species === "mandarin") return [0.18, 0.52];
+    if (f.species === "pepper") return [0.24, 0.58];
+    if (m.band && m.band[1] < 0.55) return [0.4, 0.88];
+    return [0.16, 0.92];
+  }
   function crewOf(id) { return CREW.filter(function (c) { return c.id === id; })[0]; }
   function uid() { return "f" + Math.random().toString(36).slice(2, 8); }
   function log(t) {
@@ -1073,7 +1093,7 @@
     const reach = p.pending ? 0.3 : 0.18;
     let hit = 0;
     state.fish.forEach(function (f) {
-      const d = Math.hypot(f.x - p.x, (f.y - p.y) * AR);
+      const d = span3(f.x, f.y, depthOf(f), p.x, p.y, depthOf(p));
       if (d > reach) return;
       f.startleT = Math.max(f.startleT || 0, 1.6);
       f.hp = Math.max(1, (f.hp || 1) - (p.pending ? 5 : 2));
@@ -1557,7 +1577,7 @@
     let best = null, bestScore = 1e9;
     flakes.forEach(function (fl) {
       if (fl.gone) return;
-      const d = Math.hypot(fl.x - f.x, (fl.y - f.y) * AR);
+      const d = span3(fl.x, fl.y, 0.86, f.x, f.y, depthOf(f));
       let score = d / mine * (1 + Math.abs(fl.y - mid) * 1.5);
       if (band[0] > 0.5 && fl.y < 0.52) score += 0.9;
       if ((f.species === "mandarin" || f.species === "dragon") && !starving) score += 1.35;
@@ -1566,7 +1586,7 @@
       if (!starving) {
         state.fish.forEach(function (o) {
           if (o === f) return;
-          const od = Math.hypot(fl.x - o.x, (fl.y - o.y) * AR);
+          const od = span3(fl.x, fl.y, 0.86, o.x, o.y, depthOf(o));
           if (od / Math.max(0.02, fishSprint(o)) + 0.05 < d / mine) score += 0.5;
         });
       }
@@ -1610,7 +1630,7 @@
     state.fish.forEach(function (o) {
       if (o === f) return;
       const dx = o.x - f.x, dy = (o.y - f.y) * AR;
-      const d = Math.hypot(dx, dy);
+      const d = apart(f, o);
       if (d > vision || d < 0.0001) return;
       const kin = f.species !== "mask" || o.species === "mask";
       if (kin && (socialOf(o) === "school" || o.species === f.species || d < sepR)) { n += 1; cx += o.x; cy += o.y; vx += o.vx; vy += o.vy / AR; }
@@ -1635,6 +1655,13 @@
       const av = Math.hypot(avx, avy) || 1;
       ax += avx / av * social * 0.65;
       ay += avy / av * social * 0.65;
+      if (socialOf(f) === "school" && f.z != null) {
+        let zs = 0, zn = 0;
+        state.fish.forEach(function (o) {
+          if (o !== f && o.species === f.species && o.z != null && apart(f, o) < vision) { zs += o.z; zn += 1; }
+        });
+        if (zn) f.z += ((zs / zn) - f.z) * 0.04;
+      }
     }
     out.x += ax * 1.5;
     out.y += ay * 1.5;
@@ -1644,7 +1671,7 @@
     state.fish.forEach(function (o) {
       if (o === f) return;
       const dx = o.x - f.x, dy = (o.y - f.y) * AR;
-      const d = Math.hypot(dx, dy);
+      const d = apart(f, o);
       if (d > 0.32 || d < 0.0001) return;
       if (id === "mandarin" && o.species === "mandarin") {
         out.x += dx / d * 0.35;
@@ -1719,7 +1746,7 @@
       if (!p.adult) return;
       if ((p.away || 0) > 0.45) return;
       if (!p.pending && (p.depth || 0) < 0.55) return;
-      const d = Math.hypot(p.x - f.x, (p.y - f.y) * AR);
+      const d = span3(p.x, p.y, depthOf(p), f.x, f.y, depthOf(f));
       const reach = p.pending ? 0.46 : 0.30;
       if (d >= reach) return;
       const w = (1 - d / reach) * (p.pending ? 1.7 : 1);
@@ -1869,7 +1896,13 @@
     f.phase = (f.phase || 0) + dt * beat;
     f.face = Math.cos(f.heading || 0) >= 0 ? 1 : -1;
     if (f.zTarget == null) f.zTarget = 0.25 + Math.random() * 0.6;
-    f.z = f.z == null ? f.zTarget : f.z + (f.zTarget - f.z) * Math.min(1, dt * 0.1);
+    if (!f.zUntil || Date.now() > f.zUntil) {
+      const band = depthBand(f);
+      f.zTarget = band[0] + Math.random() * (band[1] - band[0]);
+      f.zUntil = Date.now() + 5000 + Math.random() * 8000;
+    }
+    f.zTarget = clamp(f.zTarget, 0.08, 0.96);
+    f.z = f.z == null ? f.zTarget : f.z + (f.zTarget - f.z) * Math.min(1, dt * 0.35);
     if (m.walk) {
       f.pitch = (f.pitch || 0) * 0.15;
       f.bank = (f.bank || 0) * 0.25;
@@ -1894,6 +1927,14 @@
     const mood = moodOf(f, now);
     const mind = fishMind(f, now, dt, mood);
     const cap = Math.max(0.01, mind.cap || 0.05);
+    if (mind.mode === "flee") {
+      const z = f.z == null ? 0.5 : f.z;
+      f.zTarget = clamp(z < 0.5 ? z + 0.42 : z - 0.42, 0.08, 0.95);
+      f.zUntil = now + 2200;
+    } else if (mind.mode === "eat" && !motionOf(f).walk) {
+      f.zTarget = 0.86;
+      f.zUntil = now + 1600;
+    }
     const out = { x: 0, y: 0 };
     let glide = false;
     if (mind.mode === "flee") {
@@ -1924,7 +1965,7 @@
       if (temperOf(f) === "lively" || STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR) {
         state.fish.forEach(function (o) {
           if (o === f) return;
-          if (Math.hypot(o.x - f.x, (o.y - f.y) * AR) < 0.085 && Math.hypot(o.x - mind.tx, (o.y - mind.ty) * AR) < 0.17) {
+          if (apart(f, o) < 0.09 && span3(o.x, o.y, depthOf(o), mind.tx, mind.ty, 0.86) < 0.18) {
             const back = unitDir(o, f.x, f.y);
             out.x += back.x * 1.2;
             out.y += back.y * 1.2;
@@ -2113,9 +2154,9 @@
     flakes.forEach(function (fl) {
       if (fl.gone) return;
       const near = state.fish.filter(function (f) {
-        return Math.hypot(f.x - fl.x, f.y - fl.y) < 0.06;
+        return span3(f.x, f.y, depthOf(f), fl.x, fl.y, 0.86) < 0.07;
       }).sort(function (a, b) {
-        return Math.hypot(a.x - fl.x, a.y - fl.y) - Math.hypot(b.x - fl.x, b.y - fl.y);
+        return span3(a.x, a.y, depthOf(a), fl.x, fl.y, 0.86) - span3(b.x, b.y, depthOf(b), fl.x, fl.y, 0.86);
       });
       if (!near.length) {
         if (fl.age > 8) {
@@ -2220,13 +2261,13 @@
       if (turned) { img = turned; useTurn = true; }
     }
     const flare = f.action === "flare" ? 1.16 : 1;
-    const sc = STAGE_DRAW[stage] * specOf(f.species).bulk * (0.8 + z * 0.28) * flare;
+    const sc = STAGE_DRAW[stage] * specOf(f.species).bulk * (0.5 + z * 0.68) * flare;
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     if ((f.species === "octo" || f.species === "mandarin" || f.species === "pepper" || f.species === "tusk" || f.species === "dragon" || f.species === "mask") && img && img.complete && img.naturalWidth) {
       const wide = f.species === "dragon" ? 0.4 : (f.species === "octo" ? 0.32 : 0.26);
-      bw = Math.min(w * wide, f.species === "dragon" ? 420 : 320) * STAGE_DRAW[stage] * (0.85 + z * 0.2);
+      bw = Math.min(w * wide, f.species === "dragon" ? 420 : 320) * STAGE_DRAW[stage] * (0.5 + z * 0.7);
       bh = bw * (img.naturalHeight / img.naturalWidth);
     }
     const breathe = state.opts.motion === false ? 0 : Math.sin(now / (f.state === "rest" ? 1700 : 900) + f.x * 10) * (f.state === "rest" ? 2.4 : 1.1);
@@ -2256,7 +2297,8 @@
     ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.globalAlpha = 0.55 + z * 0.45;
+    ctx.globalAlpha = 0.38 + z * 0.62;
+    if (z < 0.42) ctx.filter = "saturate(0.72) brightness(0.86)";
     ctx.translate(x, y);
     const artRight = FACE_RIGHT[f.species] !== false;
     const face = useTurn ? 1 : ((goingRight === artRight) ? 1 : -1);
@@ -2742,7 +2784,8 @@
       ["Water", tempNote(f) || "comfortable"],
       ["Temper", spec.temper === "chill" ? "Relaxed" : "Swims a lot"],
       ["With others", spec.social === "loner" ? "Loner" : "School"],
-      ["Line", "gen " + (f.gen || 1)]
+      ["Line", "gen " + (f.gen || 1)],
+      ["Depth", (f.z == null ? 0.5 : f.z) > 0.66 ? "near the glass" : ((f.z == null ? 0.5 : f.z) < 0.38 ? "far water" : "mid water")]
     ];
     stats.innerHTML = rows.map(function (row) {
       return "<div><dt>" + esc(row[0]) + "</dt><dd>" + esc(row[1]) + "</dd></div>";
@@ -2836,7 +2879,7 @@
     const y = (e.clientY - r.top) / r.height;
     let best = null, bd = 0.08;
     state.fish.forEach(function (f) {
-      const d = Math.hypot(f.x - x, f.y - y);
+      const d = Math.hypot(f.x - x, f.y - y) + (1 - depthOf(f)) * 0.045;
       if (d < bd) { bd = d; best = f; }
     });
     if (best) pick(best.id);

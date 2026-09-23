@@ -109,7 +109,7 @@ must("motes drift with depth", js.indexOf("function drawMotes(w, h, front)") >= 
 must("ripples", js.indexOf("function addRipple(x, y)") >= 0);
 must("glass vignette", js.indexOf("function drawGlass(w, h)") >= 0);
 must("ground shadow under each fish", js.indexOf("ctx.ellipse(x, h * 0.9, bw * 0.32, bh * 0.09, 0, 0, Math.PI * 2);") >= 0);
-must("depth scales and fades the fish", js.indexOf("ctx.globalAlpha = 0.55 + z * 0.45;") >= 0);
+must("depth scales and fades the fish", js.indexOf("ctx.globalAlpha = 0.38 + z * 0.62;") >= 0 && js.indexOf("function apart(a, b)") >= 0);
 must("reduced motion still respected", js.indexOf("state.opts.motion !== false") >= 0 && js.indexOf("state.opts.motion === false") >= 0);
 must("lantern glows at night only", js.indexOf('motionOf(f).glow === true && phase() !== "day"') >= 0);
 
