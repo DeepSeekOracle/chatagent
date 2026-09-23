@@ -1038,6 +1038,10 @@
       points: 0,
       keeper: menuKeeperPick(ownerName),
       mode: mode || "standard",
+      /* an RPG run is a run: it is timed from the first fish and it can be lost */
+      run: (mode === "rpg")
+        ? { start: now || Date.now(), added: 0, lost: 0, seen: 0, collapsed: false, ended: 0 }
+        : null,
       theme: theme.id,
       openedAt: now,
       fish: ids.map(function (id) { return makeFish(id, STARTER_NAMES[id] || specOf(id).name); }),
@@ -3251,8 +3255,8 @@
         winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + 10 * HOUR);
         if (near.length > 1 && Math.random() < 0.45) log(winner.name + " snatches a flake from " + near[1].name + " and grows.");
       }
-      /* the only thing that pays: a fish actually taking the food */
-      state.points += fl.pellet ? 2 : 1;
+      /* the only thing that pays - and in an RPG run nothing pays at all */
+      if (!RPG()) state.points += fl.pellet ? 2 : 1;
       /* and it comes back later, over the hours it takes to work through */
       winner.digest = (winner.digest || 0) + (fl.pellet ? WASTE.meal * 1.6 : WASTE.meal) * LOOP.digest;
       playSfx("nibble");
@@ -3838,10 +3842,110 @@
     renderRail();
     hideFishCard();
   }
+  /* ---- spawning, the RPG way ----
+     Any fish may be put in the water and none of them cost anything, but the shelf holds two
+     of each kind and that is the whole point of the mode: past your two, the only route to a
+     bigger tank is a pair of them breeding in the water. */
+  function spawnFish(id) {
+    if (!RPG() || !state) return;
+    const spec = specOf(id);
+    if (!spec) return;
+    const mine = state.fish.filter(function (f) { return f.species === id; });
+    if (mine.length >= 2) {
+      log("Two " + spec.name + " is the shelf. What is in the water has to breed.");
+      keeperNote("Two of each kind is all the RPG gives you. Leave a male and a female and wait - the pair does the rest.");
+      return;
+    }
+    if (state.fish.length >= FISH_CAP) { log("The water is full at " + FISH_CAP + "."); return; }
+    const fish = makeFish(id, null);
+    state.fish.push(fish);
+    if (state.run) state.run.added += 1;
+    log(spec.name + " goes in free. " + (mine.length + 1) + "/2 of its kind in the water.");
+    save();
+  }
+  /* the panel: the shelf, the pairs, and the state of the run */
+  function paintRpg() {
+    if (!RPG() || !state) return;
+    let box = document.getElementById("rpgPanel");
+    if (!box) {
+      const anchor = document.getElementById("crewShop");
+      if (!anchor || !anchor.parentNode) return;
+      box = document.createElement("div");
+      box.id = "rpgPanel";
+      box.className = "rpg-panel";
+      anchor.parentNode.insertBefore(box, anchor);
+    }
+    const run = state.run || {};
+    const k = state.fish.length;
+    const kinds = {};
+    state.fish.forEach(function (f) { kinds[f.species] = (kinds[f.species] || 0) + 1; });
+    const rows = SPECIES.map(function (s) {
+      const n = kinds[s.id] || 0;
+      const hasM = state.fish.some(function (f) { return f.species === s.id && f.sex !== "f"; });
+      const hasF = state.fish.some(function (f) { return f.species === s.id && f.sex === "f"; });
+      const pair = hasM && hasF ? "a pair in the water" : n ? "needs a mate" : "not in the tank";
+      return "<div class='rpgrow'><b>" + esc(s.name) + "</b><span class='lore'>" + n + "/2 · " + pair + "</span>" +
+        "<button type='button' class='btn' data-spawn='" + s.id + "'" + (n >= 2 ? " disabled" : "") + ">" +
+        (n >= 2 ? "full" : "spawn") + "</button></div>";
+    }).join("");
+    box.innerHTML =
+      "<p class='kicker'>Fish Tank RPG</p>" +
+      "<p class='lore'>No points, no shop. Two of each kind from the shelf, everything else from a pair breeding." +
+      " A run that empties is over.</p>" +
+      "<div class='rpgrow'><b>run " + hours(Date.now() - (run.start || Date.now())) + "h</b>" +
+      "<span class='lore'>" + k + " fish · " + Object.keys(kinds).length + " kinds · came " + (run.added || 0) +
+      " · lost " + (run.lost || 0) + (run.collapsed ? " · this run is over" : "") + "</span></div>" +
+      rows;
+  }
+  /* the run, watched from the outside -
+     Nothing here reaches into the simulation: it counts what appears and what is lost, and
+     when the last fish is gone it calls the run, because a tank with nothing in it is over
+     however good the water looks. */
+  /* a run flagged at the menu becomes a run as soon as the water does */
+  let menuRpg = false;
+  function applyRpgRun() {
+    if (!menuRpg || !state) return;
+    menuRpg = false;
+    state.opts = state.opts || {};
+    state.opts.mode = "rpg";
+    state.points = 0;
+    if (!state.run) {
+      state.run = { start: Date.now(), added: 0, lost: 0, seen: state.fish.length, collapsed: false, ended: 0 };
+    }
+    log("Fish Tank RPG. Three of your pick, two of a kind from the shelf, and the rest has to breed. Nothing can be bought.");
+    keeperNote("Fish Tank RPG: feed them, watch the water, and let the pairs breed. There is no shop to fall back on, and an empty tank ends the run.");
+    save();
+  }
+  function stepRpg(now) {
+    if (!RPG() || !state.run || state.run.collapsed) return;
+    /* nothing can be bought, so nothing can be saved up */
+    if (state.points) state.points = 0;
+    if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
+    if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
+    const n = state.fish.length;
+    if (n > (state.run.seen || 0)) state.run.added += n - (state.run.seen || 0);
+    if (n < (state.run.seen || 0)) state.run.lost += (state.run.seen || 0) - n;
+    state.run.seen = n;
+    if (!n) {
+      state.run.collapsed = true;
+      state.run.ended = Date.now();
+      const h = hours(state.run.ended - state.run.start);
+      log("The tank is empty after " + h + "h. " + state.run.added + " fish came, " +
+        state.run.lost + " went. The ecology did not hold.");
+      keeperNote("Fish Tank RPG: that run is over. Three of your pick, two of a kind, and the rest has to breed - start another and see if the maths holds next time.");
+      save();
+    }
+  }
   /* the octopus and the algae eater are the two that dispel nothing */
   const CLEAN_SPECIES = { octo: true };
   /* the crew that expel nothing: they eat the green instead of making it */
   const CLEAN_CREW = { otto: true, snail: true };
+  /* ---- Fish Tank RPG ----
+     The same tank, the same maths, without the shop. Nothing pays points, so nothing can be
+     bought: every fish is free but the shelf only holds two of each kind, and past those two
+     the only way to a bigger tank is a pair breeding in the water. Cleaners work the same
+     way, which is why the algae eaters matter more here than anywhere. */
+  function RPG() { return !!(state && state.opts && state.opts.mode === "rpg"); }
 
   /* ---- one beat of the feeding loop ----
      Flakes nobody took rot where they lie. The algae eater works the sand, because that is
@@ -4021,7 +4125,9 @@
         " · fish " + g.score + "h · tank " + (g.tankHours || 0) + "h · " + esc(g.theme || "") + "</span></div>";
     }).join("") || "<p class='lore'>No stones yet.</p>";
     document.getElementById("log").innerHTML = state.log.slice(0, 10).map(function (t) { return "<div>" + esc(t) + "</div>"; }).join("");
-    document.getElementById("points").textContent = state.points + " pts";
+    document.getElementById("points").textContent = RPG() && state.run
+      ? "run " + hours(Date.now() - state.run.start) + "h"
+      : state.points + " pts";
     const clock = document.getElementById("clock");
     const d = new Date();
     clock.textContent = themeOf(state.theme).name + " · " + phase() + " · " +
@@ -4099,10 +4205,10 @@
       const bought = owned.filter(function (x) { return x.bought !== false; }).length;
       const bred = owned.length - bought;
       /* the final cleaner is the one the shop rations: two from the shop, the rest bred */
-      const rationed = c.id === "otto";
+      const rationed = c.id === "otto" || RPG();
       const soldOut = rationed && bought >= LOOP.ottoBought;
       return "<button type='button' class='btn' data-crew='" + c.id + "'" + (soldOut ? " disabled" : "") + ">" +
-        esc(c.name) + " · " + c.cost + " <span class='lore'>(" + owned.length +
+        esc(c.name) + " · " + (RPG() ? "free" : c.cost) + " <span class='lore'>(" + owned.length +
         (rationed ? " · " + bought + "/" + LOOP.ottoBought + " from the shop" : "") +
         (bred ? " · " + bred + " bred" : "") +
         (soldOut ? " - it has to breed now" : "") + ") " + esc(c.blurb) + "</span></button>";
@@ -4841,6 +4947,9 @@
     resolveBites();
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     stepLoop(dt, now);
+    applyRpgRun();
+    applyRpgRun();
+    stepRpg(now);
     (state.predators || []).forEach(function (p) { stepPredator(p, dt); });
     stepAmbient(dt, now);
     state.fish.forEach(function (f) {
@@ -5014,6 +5123,14 @@
     save();
     renderRail();
   };
+  document.addEventListener("click", function (e) {
+    const b = e.target.closest("[data-spawn]");
+    if (b && !b.disabled) spawnFish(b.getAttribute("data-spawn"));
+  });
+  document.addEventListener("click", function (e) {
+    const b = e.target.closest("[data-spawn]");
+    if (b && !b.disabled) spawnFish(b.getAttribute("data-spawn"));
+  });
   document.getElementById("crewShop").onclick = function (e) {
     const b = e.target.closest("[data-crew]");
     if (!b) return;
@@ -5022,15 +5139,17 @@
     if (!spec) return;
     /* the shelf is only rationed for the final cleaner, and only from the shop: what is
        bred here does not count against the two */
-    if (spec.id === "otto") {
-      const bought = state.crew.filter(function (x) { return x.role === "otto" && x.bought !== false; }).length;
+    if (spec.id === "otto" || RPG()) {
+      const bought = state.crew.filter(function (x) { return x.role === spec.id && x.bought !== false; }).length;
       if (bought >= LOOP.ottoBought) {
         log("The shop will only sell two algae eaters. This tank has to breed the third.");
         keeperNote("Two algae eaters is the shop's limit. Keep the water kind and they will lay a clutch.");
         return;
       }
     }
-    if (state.points < spec.cost) { log(spec.name + " costs " + spec.cost + " points."); return; }
+    if (RPG()) {
+      /* nothing to pay with: the shelf is the limit instead */
+    } else if (state.points < spec.cost) { log(spec.name + " costs " + spec.cost + " points."); return; }
     state.points -= spec.cost;
     state.crew.push(makeCrew(spec.id));
     log(spec.name + " starts work.");
@@ -5133,6 +5252,15 @@
     enterTank();
   };
   document.getElementById("menuNew").onclick = function () { showPanel("panelKeep"); paintKeeperMenu(); };
+
+  const rpgCard = document.getElementById("menuRpg");
+  if (rpgCard) rpgCard.onclick = function () {
+    /* the same road in as a new tank - caretaker, three gifts, then your pick of three
+       fish - and the run begins the moment the water does */
+    menuRpg = true;
+    showPanel("panelKeep");
+    paintKeeperMenu();
+  };
   document.querySelectorAll(".menu-tabs .tab").forEach(function (tab) {
     tab.onclick = function () {
       const id = tab.getAttribute("data-tab");

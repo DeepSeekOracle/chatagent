@@ -124,7 +124,7 @@ must("the algae eater is the only real sink for algae", js.indexOf("- span * alg
   js.indexOf("const algalRate = state.crew.reduce") >= 0 && js.indexOf("scrapers") < 0 &&
   /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 2\.4/.test(js) && (6.5 > 2.4));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
-  js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
+  js.indexOf('if (spec.id === "otto" || RPG())') > js.indexOf('const spec = crewOf(b.getAttribute'));
 must("leftover food stays, and turns green where it settled", js.indexOf("it does not disappear: it turns green where it settled") >= 0 &&
   js.indexOf("algaeBits.push({ x: fl.x, y: 0.88") >= 0 && js.indexOf("settles on the sand and turns green") >= 0 &&
   js.indexOf("rotWaste") < 0);
@@ -321,6 +321,19 @@ must("the api is read-only", api.indexOf(".push(") < 0 && api.indexOf("state.fis
 must("board shows eggs and lineage", html.indexOf('id="mEggs"') >= 0 && html.indexOf('id="mGen"') >= 0);
 must("instructions mention generations", html.indexOf("leave eggs on the rockwork") >= 0);
 must("css styles the goal list", css.indexOf(".goal.done") >= 0 && css.indexOf(".fishline .gen") >= 0);
+
+/* Fish Tank RPG: no points, a two of a kind shelf, and a run that can be lost */
+must("an RPG run has no points at all", js.indexOf("if (!RPG()) state.points += fl.pellet ? 2 : 1;") >= 0 &&
+  js.indexOf("if (state.points) state.points = 0;") >= 0 && js.indexOf("function RPG() {") >= 0 &&
+  js.indexOf("hours(Date.now() - state.run.start)") >= 0);
+must("the shelf is two of each kind, and spawning is free", js.indexOf("if (mine.length >= 2) {") >= 0 &&
+  js.indexOf("is the shelf.") >= 0 && js.indexOf('(RPG() ? "free" : c.cost)') >= 0 &&
+  js.indexOf('if (spec.id === "otto" || RPG())') >= 0 && js.indexOf("data-spawn=") >= 0);
+must("an empty tank ends the run", js.indexOf("state.run.collapsed = true;") >= 0 &&
+  js.indexOf("The ecology did not hold.") >= 0 && js.indexOf("function stepRpg(now)") >= 0 &&
+  js.indexOf("applyRpgRun();") >= 0 && js.indexOf("menuRpg = true;") >= 0 && html.indexOf('id="menuRpg"') >= 0);
+must("the mode is offered on the menu", html.indexOf('id="menuRpg"') >= 0 &&
+  html.indexOf("Fish Tank RPG") >= 0 && js.indexOf("rpgCard.onclick") >= 0);
 
 console.log("");
 if (fails) {
