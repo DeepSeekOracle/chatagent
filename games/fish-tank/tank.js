@@ -483,6 +483,11 @@
   const ctx = canvas.getContext("2d");
   let state = null;
   let selected = null;
+  /* which cleaner the card is showing, if any - the rail manages both */
+  let selectedCrew = null;
+  /* the management list is rebuilt only when its contents actually change, so a tank with
+     a hundred names does not rebuild a hundred rows on every rail render */
+  let railSig = "";
   /* where each fish was actually drawn, in canvas pixels - the click test reads this */
   const hitBoxes = {};
   const HIT_PAD = 0.008;
@@ -3688,30 +3693,121 @@
     drawHand(w, h);
     drawGlass(w, h);
   }
+  /* What is a cleaner doing right now? Only things the sim actually tracks. */
+  function whatCrewIsDoing(c) {
+    const algae = Math.round(state.algae == null ? 0 : state.algae);
+    const waste = Math.round(state.waste || 0);
+    const oxy = Math.round(state.oxygen == null ? 88 : state.oxygen);
+    if (c.role === "snail" || c.role === "otto") return "Green film is at " + algae + "% right now.";
+    if (c.role === "cory" || c.role === "turtle") return "Waste on the sand reads " + waste + " right now.";
+    if (c.role === "jelly") return "Oxygen is " + oxy + "%, and a jelly only pulses when the water is kind.";
+    return "";
+  }
+  /* A cleaner can be sent back: half its price returns as points, and the berth frees up. */
+  function releaseCrew(id) {
+    const c = (state.crew || []).filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    const cspec = crewOf(c.role) || {};
+    const back = Math.floor((cspec.cost || 0) / 2);
+    state.crew = (state.crew || []).filter(function (x) { return x.id !== id; });
+    state.points = (state.points || 0) + back;
+    if (selectedCrew === id) selectedCrew = null;
+    log(c.name + " the " + (cspec.name || c.role) + " is sent back to the shop. +" + back + " pts.");
+    keeperNote(c.name + " has worked this glass for " + hours(ageOf(c, Date.now())) +
+      " hours. Half the price comes back and the berth is free again.");
+    save();
+    railSig = "";
+    renderRail();
+  }
+  function pickCrew(id) {
+    selectedCrew = id;
+    selected = null;
+    railSig = "";
+    renderRail();
+    hideFishCard();
+  }
   function renderRail() {
     const now = Date.now();
+    /* ---- every fish and every cleaner, in one box that scrolls ----
+       Rows stay dense so the glass can hold a hundred names and the panel still reads.
+       The full portrait - traits, social lines, parents, DNA - is expanded for the one
+       fish that is picked, and always on its card above. */
     const list = document.getElementById("fishList");
-    list.innerHTML = state.fish.map(function (f) {
-      const mood = moodOf(f, now);
-      const tr = traits(f);
-      const word = stateWord(f);
-      const line = [specOf(f.species).name, stageName(bodyAge(f), f.species),
-        Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp",
-        (temperOf(f) === "chill" ? "relaxed" : "swims"),
-        (socialOf(f) === "loner" ? "loner" : "school"),
-        "feed " + hours(Math.max(0, foodLeft(f, now))) + "h"].join(" · ");
-      const mine = [traitWord("bold", tr.bold), traitWord("social", tr.social),
-        traitWord("appetite", tr.appetite), traitWord("vigor", tr.vigor)].join(", ");
-      const social = socialLine(f);
-      const at = tempNote(f) ? " · " + tempNote(f) : "";
-      return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
-        esc(f.name) + "</b>" + (f.gen > 1 ? " <span class='gen'>gen " + f.gen + "</span>" : "") +
-        " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
-        (word ? " · <b class='act'>" + word + "</b>" : "") + at +
-        (social ? "<br><span class='lore'>" + esc(social) + "</span>" : "") + "<br>traits: " + esc(mine) +
-        (f.parentNames && f.parentNames.length ? " · from " + esc(f.parentNames.join(" and ")) : "") +
-        (f.dna ? " · <span class=\"dnabit\">" + esc(f.dna) + "</span>" : "") + "</span></button>";
-    }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
+    const findEl = document.getElementById("manageFind");
+    const q = (findEl && findEl.value ? findEl.value : "").trim().toLowerCase();
+    const matches = function (hay) { return !q || hay.toLowerCase().indexOf(q) >= 0; };
+    const shown = state.fish.filter(function (f) {
+      const spec = specOf(f.species);
+      return matches(String(f.name) + " " + spec.name + " " + (spec.latin || "") +
+        (f.gen > 1 ? " gen " + f.gen : "") + " " + stageName(bodyAge(f), f.species));
+    });
+    const crewAll = state.crew || [];
+    const crewShown = crewAll.filter(function (c) {
+      return matches(String(c.name) + " " + c.role + " " + ((crewOf(c.role) || {}).name || ""));
+    });
+    const fishHtml = (shown.length ? "<p class='group-head'>Fish <span>" + shown.length +
+        (shown.length === state.fish.length ? "" : " of " + state.fish.length) +
+        " · " + Math.round(fishLoad()) + "/" + loadCap() + " load</span></p>" : "") +
+      shown.map(function (f) {
+        const mood = moodOf(f, now);
+        const word = stateWord(f);
+        const spec = specOf(f.species);
+        const rich = f.id === selected;
+        const line = [spec.name, stageName(bodyAge(f), f.species),
+          Math.round(f.hp || 0) + "/" + vitals(f).hp + " hp",
+          "feed " + hours(Math.max(0, foodLeft(f, now))) + "h"].join(" · ");
+        let body = "<b>" + esc(f.name) + "</b>" + (f.gen > 1 ? " <span class='gen'>gen " + f.gen + "</span>" : "") +
+          " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
+          (word ? " · <b class='act'>" + word + "</b>" : "") + "</span>";
+        if (rich) {
+          const tr = traits(f);
+          const mine = [traitWord("bold", tr.bold), traitWord("social", tr.social),
+            traitWord("appetite", tr.appetite), traitWord("vigor", tr.vigor)].join(", ");
+          const social = socialLine(f);
+          body += "<br><span class='lore'>" + esc(mine) +
+            (social ? "<br>" + esc(social) : "") +
+            (tempNote(f) ? "<br>water: " + esc(tempNote(f)) : "") +
+            (f.parentNames && f.parentNames.length ? "<br>from " + esc(f.parentNames.join(" and ")) : "") +
+            (f.dna ? "<br><span class='dnabit'>" + esc(f.dna) + "</span>" : "") + "</span>";
+        }
+        return "<button type='button' class='fishline" + (rich ? " on" : "") + "' data-id='" + f.id + "'>" + body + "</button>";
+      }).join("");
+    const crewHtml = (crewAll.length ? "<p class='group-head'>Cleaners <span>" + crewShown.length + " of " +
+        crewAll.length + " · " + crewAll.length + "/8 berths</span></p>" : "") +
+      crewShown.map(function (c) {
+        const cspec = crewOf(c.role) || { name: c.role, blurb: "" };
+        const on = c.id === selectedCrew;
+        const onJob = ageOf(c, now);
+        return "<button type='button' class='fishline crewline" + (on ? " on" : "") + "' data-crew-id='" + c.id + "'>" +
+          "<b>" + esc(c.name) + "</b> <span class='gen'>cleaner</span><br><span class='lore'>" + esc(cspec.name) +
+          " · on the job " + hours(onJob) + "h · " + Math.round(Math.max(0, CREW_LIFE - onJob) / DAY) + "d left</span>" +
+          (on && cspec.blurb ? "<br><span class='lore'>" + esc(cspec.blurb) + "</span>" : "") + "</button>";
+      }).join("");
+    const sig = [state.fish.length, crewAll.length, selected, selectedCrew, q].join("~") + "|" +
+      shown.map(function (f) {
+        return f.id + moodOf(f, now) + Math.round(f.hp || 0) + hours(Math.max(0, foodLeft(f, now))) +
+          (stateWord(f) || "") + stageName(bodyAge(f), f.species);
+      }).join(",") + "|" + crewShown.map(function (c) {
+        return c.id + hours(ageOf(c, now)) + (c.id === selectedCrew ? "*" : "");
+      }).join(",");
+    if (sig !== railSig) {
+      railSig = sig;
+      const box = document.getElementById("manageScroll");
+      const keep = box ? box.scrollTop : 0;
+      list.innerHTML = fishHtml || (q ? "<p class='lore'>No fish matches that.</p>" : "<p class='lore'>The tank is empty. Buy a fish.</p>");
+      const crewList = document.getElementById("crewList");
+      if (crewList) {
+        crewList.innerHTML = crewHtml || (q && crewAll.length ? "<p class='lore'>No cleaner matches that.</p>" : "");
+      }
+      if (box) box.scrollTop = keep;
+    }
+    const countEl = document.getElementById("manageCount");
+    if (countEl) countEl.textContent = state.fish.length + " fish" + (crewAll.length ? " · " + crewAll.length + " cl" : "");
+    const footEl = document.getElementById("manageFoot");
+    if (footEl) {
+      footEl.textContent = (state.fish.length > 12 ? "The list scrolls — " + state.fish.length + " names in the glass. " : "") +
+        "Click a name for its card.";
+    }
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
       return "<div class='grave'><b>" + esc(g.name) + "</b><br><span class='lore'>" + esc(g.species) +
@@ -3732,7 +3828,11 @@
     }).join("");
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
     const name = document.getElementById("fishName");
-    if (document.activeElement !== name) name.value = f ? f.name : "";
+    if (document.activeElement !== name) {
+      const pickedCrew = selectedCrew ? (state.crew || []).filter(function (x) { return x.id === selectedCrew; })[0] : null;
+      name.value = pickedCrew ? pickedCrew.name : (f ? f.name : "");
+      name.placeholder = pickedCrew ? "Cleaner name" : "Name";
+    }
     paintChar(f, now);
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
@@ -3773,8 +3873,11 @@
     const gn = document.getElementById("mGen");
     if (gn) gn.textContent = "gen " + (state.gen || 1);
     document.getElementById("board").classList.toggle("hidden", state.opts.board === false);
+    const boardTop = ranked.slice(0, 12);
     document.getElementById("boardRows").innerHTML = "<div class='rowline head'><span>Name</span><span>Kind</span><span>Age</span><span>Mood</span></div>" +
-      ranked.map(function (fish) {
+      (ranked.length > boardTop.length ? "<div class='rowline'><span>top " + boardTop.length + " of " + ranked.length +
+        "</span><span>oldest first</span><span></span><span></span></div>" : "") +
+      boardTop.map(function (fish) {
         return "<div class='rowline'><span>" + esc(fish.name) + "</span><span>" + esc(specOf(fish.species).name) +
           "</span><span>" + hours(ageOf(fish, now)) + "h</span><span class='mood-" + moodOf(fish, now) + "'>" + moodOf(fish, now) + "</span></div>";
       }).join("") +
@@ -3871,6 +3974,41 @@
     const stats = document.getElementById("charStats");
     const pic = document.getElementById("charPic");
     if (!title) return;
+    /* a cleaner the keeper is looking at: what it is, what it is doing, and the way out */
+    if (selectedCrew) {
+      const c = (state.crew || []).filter(function (x) { return x.id === selectedCrew; })[0];
+      if (c) {
+        const cspec = crewOf(c.role) || { name: c.role, blurb: "" };
+        const onJob = ageOf(c, now);
+        const card = document.getElementById("charCard");
+        if (card) card.className = "char-card card-crew";
+        title.textContent = c.name;
+        latin.textContent = cspec.name + " · cleaner";
+        niche.textContent = "Cleaners";
+        bio.textContent = (cspec.blurb || "") + " " + whatCrewIsDoing(c);
+        pic.removeAttribute("src");
+        pic.alt = "";
+        const acts = document.getElementById("charActions");
+        if (acts) {
+          acts.innerHTML = "<button type='button' class='btn' data-release='" + c.id + "'>Release · +" +
+            Math.floor((cspec.cost || 0) / 2) + " pts</button>";
+        }
+        stats.innerHTML = [
+          ["On the job", hours(onJob) + " h"],
+          ["Service left", Math.round(Math.max(0, CREW_LIFE - onJob) / DAY) + " days"],
+          ["Berths taken", ((state.crew || []).length) + " / 8"],
+          ["Wage", (cspec.cost || 0) + " pts"]
+        ].map(function (r) {
+          return "<div><dt>" + esc(r[0]) + "</dt><dd>" + esc(String(r[1])) + "</dd></div>";
+        }).join("");
+        return;
+      }
+      selectedCrew = null;
+    }
+    const plainCard = document.getElementById("charCard");
+    if (plainCard) plainCard.className = "char-card";
+    const noActs = document.getElementById("charActions");
+    if (noActs) noActs.innerHTML = "";
     if (!f) {
       title.textContent = "Choose a fish";
       latin.textContent = "";
@@ -4543,14 +4681,32 @@
   }
   function pick(id) {
     selected = id;
+    selectedCrew = null;
     renderRail();
     const f = state.fish.filter(function (x) { return x.id === id; })[0];
     if (f) showFishCard(f); else hideFishCard();
   }
-  document.getElementById("fishList").onclick = function (e) {
-    const b = e.target.closest("[data-id]");
-    if (b) pick(b.getAttribute("data-id"));
+  const manageScrollEl = document.getElementById("manageScroll");
+  if (manageScrollEl) manageScrollEl.onclick = function (e) {
+    const crewBtn = e.target.closest("[data-crew-id]");
+    if (crewBtn) { pickCrew(crewBtn.getAttribute("data-crew-id")); return; }
+    const fishBtn = e.target.closest("[data-id]");
+    if (fishBtn) pick(fishBtn.getAttribute("data-id"));
   };
+  const findInput = document.getElementById("manageFind");
+  if (findInput) findInput.addEventListener("input", function () { railSig = ""; renderRail(); });
+  const charActionsEl = document.getElementById("charActions");
+  if (charActionsEl) charActionsEl.onclick = function (e) {
+    const b = e.target.closest("[data-release]");
+    if (b) releaseCrew(b.getAttribute("data-release"));
+  };
+  /* The rail keeps itself current while the tank runs. This used to happen only when the
+     keeper touched something, so a fish could sit at the wrong hunger number on the list.
+     The management list rebuilds only when its contents actually changed, which is what
+     makes a five second beat affordable with a hundred fish in the glass. */
+  setInterval(function () {
+    if (playing && state) renderRail();
+  }, 5000);
   canvas.addEventListener("click", function (e) {
     if (!state || !state.fish) return;
     const r = canvas.getBoundingClientRect();
@@ -4560,6 +4716,8 @@
     if (hit) pick(hit.id); else hideFishCard();
   });
   document.getElementById("fishName").addEventListener("change", function (e) {
+    const c = selectedCrew ? (state.crew || []).filter(function (x) { return x.id === selectedCrew; })[0] : null;
+    if (c) { c.name = String(e.target.value || c.name).slice(0, 16); save(); renderRail(); return; }
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
     if (!f) return;
     f.name = String(e.target.value || f.name).slice(0, 16);

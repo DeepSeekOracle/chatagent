@@ -107,6 +107,20 @@ must("foul water kills eggs", js.indexOf("never hatch. The water is foul.") >= 0
 must("a life that goes on the board carries its whole identity", js.indexOf('name: state.owner || "Keeper",') >= 0 &&
   js.indexOf("fish: row.name,") >= 0 && js.indexOf("dna: row.dna,") >= 0 && js.indexOf("gen: row.gen,") >= 0 &&
   js.indexOf("hours: row.score,") >= 0);
+must("the side panel is a real scroll box", css.indexOf(".manage-scroll") >= 0 &&
+  /max-height:min\(54vh, 30rem\)/.test(css) && css.indexOf("overflow-y:auto") >= 0 &&
+  css.indexOf("::-webkit-scrollbar-thumb") >= 0);
+must("the rail refreshes itself while the tank runs", js.indexOf("if (playing && state) renderRail();") >= 0 &&
+  js.indexOf("}, 5000);") >= 0);
+must("the panel holds cleaners beside the fish", html.indexOf('id="crewList"') >= 0 && html.indexOf('id="manageScroll"') >= 0 &&
+  html.indexOf('id="manageFind"') >= 0 && html.indexOf('id="manageCount"') >= 0 && html.indexOf('id="charActions"') >= 0);
+must("the list is rebuilt only when it changed", js.indexOf("if (sig !== railSig)") >= 0 &&
+  js.indexOf("box.scrollTop = keep") >= 0 && js.indexOf("let railSig = \"\"") >= 0);
+must("a cleaner can be picked, read and released", js.indexOf("function pickCrew(id)") >= 0 &&
+  js.indexOf("function releaseCrew(id)") >= 0 && js.indexOf("function whatCrewIsDoing(c)") >= 0 &&
+  js.indexOf('data-crew-id') >= 0 && js.indexOf("card-crew") >= 0);
+must("the scoreboard does not print an unbounded table", js.indexOf('boardTop.length + " of " + ranked.length') >= 0 &&
+  js.indexOf("ranked.slice(0, 12)") >= 0);
 must("the local cemetery row names its keeper too", js.indexOf('keeper: state.owner || "Keeper"') >= 0);
 must("only a real life is inscribed, never a fish that never lived an hour", js.indexOf("ArcadeLedger.fish && row.score >= 1") >= 0 &&
   js.indexOf("ArcadeLedger.fish && leadHours >= 1") >= 0);

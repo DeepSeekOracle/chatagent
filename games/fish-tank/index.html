@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=13">
+<link rel="stylesheet" href="./tank.css?v=14">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -219,14 +219,25 @@
         <p id="charBio" class="char-bio">Click a fish in the glass or the list.</p>
         <p id="charSocial" class="char-social"></p>
         <dl id="charStats" class="char-stats"></dl>
+        <div class="char-actions" id="charActions"></div>
       </article>
       <input class="name" id="fishName" maxlength="16" placeholder="Name" aria-label="Fish name">
       <h2>Living</h2>
-      <div id="fishList"></div>
+      <div class="manage" id="manageBox">
+        <div class="manage-head">
+          <input id="manageFind" class="manage-find" type="search" placeholder="Find a fish or a cleaner" aria-label="Find a fish or a cleaner">
+          <span class="manage-count" id="manageCount">—</span>
+        </div>
+        <div class="manage-scroll" id="manageScroll">
+          <div id="fishList"></div>
+          <div id="crewList"></div>
+        </div>
+        <p class="manage-foot" id="manageFoot">Click a name to open its card.</p>
+      </div>
       <h2>Bring a baby</h2>
       <div class="row" id="shop"></div>
       <h2>Cleaners</h2>
-      <p class="lore">Snails and algae eaters scrape the green. Corys and the turtle lift waste. Jellies pulse when the water is kind.</p>
+      <p class="lore">Snails and algae eaters scrape the green. Corys and the turtle lift waste. Jellies pulse when the water is kind. Buy one here, then pick it in the list above to look at it, rename it, or release it.</p>
       <div class="row" id="crewShop"></div>
       <h2>Cemetery</h2>
       <div id="graves"></div>
@@ -297,6 +308,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=5"></script>
 <script src="./radio.js?v=2"></script>
-<script src="./tank.js?v=42"></script>
+<script src="./tank.js?v=43"></script>
 </body>
 </html>
