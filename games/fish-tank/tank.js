@@ -423,27 +423,34 @@
   function ensureSfx() {
     if (sfxReady) return;
     sfxReady = true;
-    ["pump", "death", "chase", "omen", "bite", "battle", "feed"].forEach(function (name) {
-      const a = new Audio("./assets/sfx/" + name + ".wav?v=2");
+    ["pump", "death", "chase", "omen", "bite", "battle", "feed", "nibble"].forEach(function (name) {
+      const a = new Audio("./assets/sfx/" + name + ".wav?v=3");
       a.preload = "auto";
       if (name === "pump" || name === "omen") a.loop = true;
       SFX[name] = a;
     });
   }
-  function sfxOn() { return !!(state && state.opts && state.opts.sound !== false); }
+  const SFX_KIND = { pump: "ambient", omen: "ambient", death: "fx", chase: "fx", bite: "fx", battle: "fx", feed: "fx", nibble: "fish" };
+  function channelOn(kind) {
+    const o = (state && state.opts) || {};
+    const key = { talk: "soundTalk", ambient: "soundAmbient", fx: "soundFx", fish: "soundFish" }[kind];
+    if (o[key] != null) return !!o[key];
+    return o.sound !== false;
+  }
   function sfxVol() {
     const v = state && state.opts ? state.opts.soundVol : null;
     return v == null ? 0.4 : clamp(v, 0, 1);
   }
   function playSfx(name) {
-    if (!sfxOn() || sfxVol() < 0.02) return;
+    const kind = SFX_KIND[name] || "fx";
+    if (!channelOn(kind) || sfxVol() < 0.02) return;
     ensureSfx();
     const a = SFX[name];
     if (!a || a.loop) return;
     try {
       a.pause();
       a.currentTime = 0;
-      a.volume = sfxVol() * (name === "death" || name === "bite" ? 0.5 : 0.7);
+      a.volume = sfxVol() * (name === "nibble" ? 0.28 : (name === "death" || name === "bite" ? 0.45 : 0.62));
       const go = a.play();
       if (go && go.catch) go.catch(function () {});
     } catch (_) {}
@@ -459,12 +466,19 @@
     }
   }
   function syncLoops() {
-    if (!sfxReady && !(playing && sfxOn())) return;
+    const ambient = !!(playing && state && channelOn("ambient") && sfxVol() >= 0.02);
+    if (!sfxReady && !ambient) return;
     ensureSfx();
-    const on = !!(playing && sfxOn() && sfxVol() >= 0.02);
-    const jaws = on && (state.predators || []).some(function (p) { return p.elder; });
-    tuneLoop(SFX.pump, on, sfxVol() * 0.36);
-    tuneLoop(SFX.omen, jaws, sfxVol() * 0.48);
+    const jaws = ambient && (state.predators || []).some(function (p) { return p.elder; });
+    tuneLoop(SFX.pump, ambient, sfxVol() * 0.42);
+    tuneLoop(SFX.omen, jaws, sfxVol() * 0.4);
+    if (!channelOn("talk") && typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+  }
+  function tickFishNoise(now) {
+    if (!playing || !state || !channelOn("fish") || !state.fish.length) return;
+    if (now < (state._fishNoise || 0)) return;
+    state._fishNoise = now + (14000 + Math.random() * 12000);
+    playSfx("nibble");
   }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(state)); } catch (_) {}
@@ -601,7 +615,8 @@
     }
     if (!state.predators.length && !state.clearSince) state.clearSince = state.openedAt || Date.now();
     state.opts = Object.assign({
-      names: true, board: true, motion: true, heater: true, temp: 25, clock: "real", sound: true, soundVol: 0.4
+      names: true, board: true, motion: true, heater: true, temp: 25, clock: "real",
+      sound: true, soundVol: 0.4, soundTalk: true, soundAmbient: true, soundFx: true, soundFish: true
     }, state.opts || {});
   }
   function load() {
@@ -2939,7 +2954,7 @@
       clearTimeout(keeperHide);
       keeperHide = setTimeout(function () { bubble.classList.add("hidden"); }, 8500);
     }
-    if (!sfxOn() || typeof speechSynthesis === "undefined") return;
+    if (!channelOn("talk") || typeof speechSynthesis === "undefined") return;
     try {
       const face = KEEPERS[keeperInfo().id] || KEEPERS.mara;
       const u = new SpeechSynthesisUtterance(text);
@@ -3098,6 +3113,7 @@
     syncLoops();
     keeperAnim(now);
     keeperPulse(now);
+    tickFishNoise(now);
     requestAnimationFrame(loop);
   }
   function pick(id) { selected = id; renderRail(); }
@@ -3184,7 +3200,10 @@
     document.getElementById("optBoard").checked = o.board !== false;
     document.getElementById("optMotion").checked = o.motion !== false;
     document.getElementById("optHeater").checked = !!o.heater;
-    document.getElementById("optSound").checked = o.sound !== false;
+    document.getElementById("optSoundTalk").checked = o.soundTalk !== false && o.sound !== false;
+    document.getElementById("optSoundAmbient").checked = o.soundAmbient !== false && o.sound !== false;
+    document.getElementById("optSoundFx").checked = o.soundFx !== false && o.sound !== false;
+    document.getElementById("optSoundFish").checked = o.soundFish !== false && o.sound !== false;
     document.getElementById("optSoundVol").value = String(Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100));
     document.getElementById("optSoundVal").textContent = Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100) + "%";
     document.getElementById("optClock").value = o.clock || "real";
@@ -3197,7 +3216,11 @@
     o.board = document.getElementById("optBoard").checked;
     o.motion = document.getElementById("optMotion").checked;
     o.heater = document.getElementById("optHeater").checked;
-    o.sound = document.getElementById("optSound").checked;
+    o.sound = true;
+    o.soundTalk = document.getElementById("optSoundTalk").checked;
+    o.soundAmbient = document.getElementById("optSoundAmbient").checked;
+    o.soundFx = document.getElementById("optSoundFx").checked;
+    o.soundFish = document.getElementById("optSoundFish").checked;
     o.soundVol = (Number(document.getElementById("optSoundVol").value) || 0) / 100;
     document.getElementById("optSoundVal").textContent = Math.round(o.soundVol * 100) + "%";
     syncLoops();
@@ -3362,7 +3385,7 @@
     readOpt();
     document.getElementById("optLayer").classList.add("hidden");
   };
-  ["optNames", "optBoard", "optMotion", "optHeater", "optClock", "optSound", "optSoundVol"].forEach(function (id) {
+  ["optNames", "optBoard", "optMotion", "optHeater", "optClock", "optSoundTalk", "optSoundAmbient", "optSoundFx", "optSoundFish", "optSoundVol"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", readOpt);
   });
   document.getElementById("optTemp").addEventListener("input", readOpt);

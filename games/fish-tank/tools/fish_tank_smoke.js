@@ -75,7 +75,7 @@ must("the shoal shelters in the weeds", js.indexOf('f.state = "shelter"') >= 0 &
 must("a bite can miss at the last moment", js.indexOf('reason === "contact"') >= 0 && js.indexOf('state.dodge = (state.dodge || 0) + 1;') >= 0);
 must("tank hour grows each species on its own clock", js.indexOf("const LIFE_CYCLE = {") >= 0 && js.indexOf("addGrowthHours(f, fed ? 2 : 1)") >= 0);
 must("JAWS is the shark elder and battles once an hour", js.indexOf('p.name = "JAWS"') >= 0 && js.indexOf("function predatorBattle(a, b)") >= 0 && js.indexOf("One predator battle this tank hour.") >= 0);
-must("tank sounds can be turned off", js.indexOf('getElementById("optSound")') >= 0 && html.indexOf('id="optSound"') >= 0 && js.indexOf("function syncLoops()") >= 0);
+must("tank sounds can be turned off", js.indexOf('getElementById("optSoundAmbient")') >= 0 && html.indexOf('id="optSoundTalk"') >= 0 && js.indexOf("function syncLoops()") >= 0);
 ["shark_baby.png", "shark_adult.png", "shark_elder.png", "shark_elder_stalk.png"].forEach(function (name) {
   const p = path.join(root, "assets", "fish", name);
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
