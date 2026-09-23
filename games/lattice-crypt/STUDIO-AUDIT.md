@@ -83,4 +83,11 @@ Copy: Jobs of the Accord. Lightfather playable. PayPal.me/ExcavationPro + Patreo
 
 **Cache: `game.js?v=53` `game.css?v=20`.**
 
+## Phase 10 — Door pad, sidestep, Accord rites
+- **On-screen pad** (`#cryptPad`): stick, Fire, Vial, Dash, Map. Auto on a coarse pointer or a window under 900px. Options `persist.touchPad`: auto / always / off. Hidden on title, sheet, and pause. Feeds slot 0 through `touchIn` inside `inputFor`.
+- **Sidestep**: KeyC, pad RB (button 5), or the Dash button. 0.15s at 2.7× walk, 1.2s cooldown, one contact shove and a 0.16s stun. No immunity. Emits `onDash` and `feel("dash")`.
+- **Accord rites**: seals on a closed run (`grantSeals`, 1–4). One equipped rite at the door (Swift, +40 well, +1 vial, pierce, lantern, or +12% kill score). Threshold unlocks, not a spend.
+
+**Cache: `game.js?v=70` `game.css?v=22`.**
+
 **Confidence: 94/100.** 60 FPS @ dense Survival is engineered (grid + LOD + 60Hz + tile cache + cap 380).

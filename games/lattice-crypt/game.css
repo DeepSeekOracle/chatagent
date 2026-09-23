@@ -568,6 +568,45 @@ html[data-cb="deut"] .stage { filter: saturate(.8) hue-rotate(-8deg); }
   font: 600 .72rem "IBM Plex Mono", monospace; color: var(--gold);
   letter-spacing: .04em; margin: .45rem 0 0; min-height: 1.2em;
 }
+.cast-grid.rites { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rites .cast { min-height: 4.6rem; }
+.rites .cast b { font-size: .72rem; }
+.crypt-pad {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+  pointer-events: none; touch-action: none;
+}
+.crypt-pad > * { pointer-events: auto; }
+.pad-stick {
+  width: 128px; height: 128px; border-radius: 50%;
+  background: #07080ee0; border: 1px solid #1e3a4a;
+  position: relative; touch-action: none;
+}
+.pad-knob {
+  width: 48px; height: 48px; margin: -24px 0 0 -24px;
+  left: 50%; top: 50%; position: absolute; border-radius: 50%;
+  background: #fbbf24d0; box-shadow: 0 2px 0 #0008; pointer-events: none;
+}
+.pad-actions { display: grid; grid-template-columns: 76px 92px; gap: 8px; }
+.pad-actions button {
+  min-height: 64px; border-radius: 16px; border: 1px solid #1e3a4a;
+  background: #07080ee8; color: var(--text);
+  font: 800 .78rem Syne, sans-serif; touch-action: none;
+}
+#padFire {
+  grid-column: 2; grid-row: 1 / span 2; min-height: 136px;
+  background: #7f1d1dcc; border-color: #ef4444; font-size: .95rem;
+}
+#padVial { background: #3b0764cc; border-color: #c4b5fd; color: #e9d5ff; }
+#padDash { border-color: #4ade80; color: #bbf7d0; }
+body.pad-live .coach { bottom: 168px; }
+body.pad-live .pips { bottom: 154px; }
+@media (max-width: 520px) {
+  .pad-stick { width: 112px; height: 112px; }
+  .pad-actions { grid-template-columns: 68px 84px; }
+  .cast-grid.rites { grid-template-columns: 1fr 1fr; }
+}
 .donate-paypal { background: #0070ba; color: #fff !important; }
 .donate-patreon { background: #f96854; color: #111 !important; }
 .lore { font-size: .82rem; color: var(--mute); line-height: 1.5; }

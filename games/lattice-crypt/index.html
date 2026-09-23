@@ -19,7 +19,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./game.css?v=21">
+<link rel="stylesheet" href="./game.css?v=22">
+<link rel="stylesheet" href="./tale.css?v=3">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 </head>
 <body>
@@ -68,12 +69,23 @@
           <div class="hud-pills" id="hudStats"></div>
         </div>
       </div>
+      <div id="cryptPad" class="crypt-pad hidden" aria-hidden="true">
+        <div class="pad-stick" id="padStick" role="application" aria-label="Move stick">
+          <i id="padKnob" class="pad-knob"></i>
+        </div>
+        <div class="pad-actions">
+          <button type="button" id="padMap">Map</button>
+          <button type="button" id="padDash">Dash</button>
+          <button type="button" id="padVial">Vial</button>
+          <button type="button" id="padFire">Fire</button>
+        </div>
+      </div>
     </div>
     <aside class="rail">
       <div class="panel" id="holeCard"></div>
       <div class="panel">
         <h3>How</h3>
-        <p class="lore">Campaign, Endless, or Survival. Survival is a vast crypt: fog-band hordes that grow with your level, stacking arms, bosses every five waves. Auto-shot (L). Don't shoot the flask.</p>
+        <p class="lore">Campaign, Endless, Survival, or Complete. Complete is a living realm: your company, no classes, turn-based clashes, towns that remember. Survival is a vast crypt. Sidestep with C. Phones get a stick. Don't shoot the flask.</p>
       </div>
       <div class="panel">
         <h3>Log</h3>
@@ -113,10 +125,12 @@
   </div>
 </div>
 <div id="overlay" class="overlay"></div>
+<div id="tale" class="tale hidden"></div>
 <script src="./radio.js?v=3"></script>
 <script src="/games/arcade-ledger.js?v=3"></script>
 <script src="./campaign.js?v=10"></script>
 <script src="./studio.js?v=8"></script>
-<script src="./game.js?v=69"></script>
+<script src="./tale.js?v=3"></script>
+<script src="./game.js?v=71"></script>
 </body>
 </html>

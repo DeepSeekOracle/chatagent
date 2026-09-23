@@ -96,8 +96,18 @@
     "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Semicolon", "Quote",
     "KeyT", "KeyG", "KeyF", "KeyH", "KeyR", "KeyY",
     "Numpad8", "Numpad5", "Numpad4", "Numpad6", "Numpad0", "Numpad1", "Numpad2", "NumpadEnter", "Enter", "KeyL",
-    "KeyQ", "Period", "KeyU", "Numpad7"
+    "KeyQ", "Period", "KeyU", "Numpad7", "KeyC"
   ]);
+  const RITES = [
+    { id: "", name: "Open door", need: 0, line: "No rite. The crypt as it stands." },
+    { id: "ember", name: "Ember Step", need: 2, line: "Start with Swift and one stride." },
+    { id: "well", name: "Deeper Well", need: 3, line: "+40 max health at the door." },
+    { id: "glass", name: "Second Glass", need: 3, line: "One extra vial in hand." },
+    { id: "lens", name: "Keen Lens", need: 5, line: "Bolts pierce one body deeper." },
+    { id: "lantern", name: "Quiet Lantern", need: 5, line: "The fog starts a step thinner." },
+    { id: "tithe", name: "Tithe Pocket", need: 8, line: "Kills score 12% more." }
+  ];
+  const touchIn = { x: 0, y: 0, fire: false, mag: false, dash: false };
   const PICK = {
     food: { heal: 85, score: 100, say: "rations.", glow: "rgba(196,70,50,0.5)" },
     flask: { heal: 165, score: 100, say: "flask.", glow: "rgba(56,189,248,0.5)", smash: "flask" },
@@ -381,6 +391,10 @@
     if (persist.comp == null) persist.comp = "";
     if (persist.pet == null) persist.pet = "";
     if (persist.autoUp == null) persist.autoUp = false;
+    if (persist.seals == null) persist.seals = 0;
+    if (persist.rite == null) persist.rite = "";
+    if (persist.touchPad == null) persist.touchPad = "auto";
+    if (!riteOwned(riteDef(persist.rite))) persist.rite = "";
   }
   function savePersist() { localStorage.setItem(SAVE, JSON.stringify(persist)); }
 
@@ -2781,8 +2795,58 @@
   }
   function scoreKill(base) {
     const m = bumpCombo();
-    G.score += Math.round(base * m);
+    let tithe = 0;
+    if (G && G.players) G.players.forEach(function (p) { if (p.tithe) tithe = Math.max(tithe, p.tithe); });
+    G.score += Math.round(base * m * (1 + tithe));
     return m;
+  }
+  function riteDef(id) {
+    for (let i = 0; i < RITES.length; i++) if (RITES[i].id === (id || "")) return RITES[i];
+    return RITES[0];
+  }
+  function riteOwned(r) { return !r || !r.need || (persist.seals || 0) >= r.need; }
+  function grantSeals() {
+    if (!G || G._sealed) return 0;
+    G._sealed = true;
+    const depth = G.mode === "survive" ? Math.max(0, surviveWave() - 1) : (G.floor | 0);
+    const gain = Math.min(4, 1 + ((depth / 4) | 0));
+    persist.seals = (persist.seals || 0) + gain;
+    return gain;
+  }
+  function applyRite(p) {
+    if (!p || p.ai || p._rited) return;
+    const def = riteDef(persist.rite);
+    if (!riteOwned(def)) return;
+    p._rited = 1;
+    if (def.id === "ember") { p.swift = Math.max(p.swift || 0, 4); p.stride = (p.stride || 0) + 1; }
+    else if (def.id === "well") { p.max += 40; p.hp += 40; }
+    else if (def.id === "glass") p.vials = (p.vials || 0) + 1;
+    else if (def.id === "lens") p.pierce = (p.pierce || 0) + 1;
+    else if (def.id === "lantern") p.lamp = (p.lamp || 0) + 1;
+    else if (def.id === "tithe") p.tithe = 0.12;
+  }
+  function wantTouchPad() {
+    const mode = persist.touchPad || "auto";
+    if (mode === "off") return false;
+    if (mode === "on") return true;
+    const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    return !!(coarse || window.innerWidth < 900);
+  }
+  function touchPadLive() {
+    return !!(G && !G.over && overlayMode == null && wantTouchPad());
+  }
+  function syncTouchPad() {
+    const el = $("cryptPad");
+    if (!el) return;
+    const live = touchPadLive();
+    el.classList.toggle("hidden", !live);
+    el.setAttribute("aria-hidden", live ? "false" : "true");
+    document.body.classList.toggle("pad-live", live);
+    if (!live) {
+      touchIn.x = 0; touchIn.y = 0; touchIn.fire = false; touchIn.mag = false; touchIn.dash = false;
+      const knob = $("padKnob");
+      if (knob) knob.style.transform = "translate(0,0)";
+    }
   }
   function streakHtml() {
     if (!G || (G.combo || 0) < 4) return "";
@@ -3007,9 +3071,12 @@
     const el = $("coach");
     if (!el) return;
     el.classList.remove("hidden");
-    el.innerHTML = mode === "survive"
-      ? "<b>WASD</b> move · auto-fire on · <b>K</b> vial · <b>N</b> map · grab relics · <b>P</b> pause"
-            : "<b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · <b>N</b> map · smash nexuses · cyan exit";
+    const pad = wantTouchPad();
+    el.innerHTML = pad
+      ? "<b>Stick</b> move · <b>Fire</b> · <b>Vial</b> · <b>Dash</b> slips through · <b>Map</b>"
+      : (mode === "survive"
+        ? "<b>WASD</b> move · auto-fire on · <b>K</b> vial · <b>C</b> dash · <b>N</b> map · <b>P</b> pause"
+        : "<b>WASD</b> move · <b>J</b> fire · <b>K</b> vial · <b>C</b> dash · <b>N</b> map · cyan exit");
     if (G) G._coach = 10;
   }
   function hideCoach() {
@@ -3085,6 +3152,9 @@
       credit();
       say("Cabinet co-op — P2 arrows · ; fire · ' vial.");
     }
+    G.players.forEach(function (p) { if (!p.ai) applyRite(p); });
+    const rite = riteDef(persist.rite);
+    if (rite.id) say(rite.name + " — " + rite.line);
     paintUI();
   }
 
@@ -3199,6 +3269,7 @@
     let fire = persist.autoShot || G.surviveAuto || map.fire.some((k) => keys[k] || keyEdge[k]);
     let mag = map.mag.some((k) => keyEdge[k]);
     let cycle = (map.cycle || []).some((k) => keyEdge[k]);
+    let dash = p.slot === 0 && !!keyEdge.KeyC;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const pad = p.pad >= 0 ? pads[p.pad] : null;
     if (pad) {
@@ -3216,6 +3287,14 @@
       if (!magBtn) p._magLatch = false;
       if (pad.buttons[4] && pad.buttons[4].pressed && !p._lbLatch) { cycle = true; p._lbLatch = true; }
       if (pad.buttons[4] && !pad.buttons[4].pressed) p._lbLatch = false;
+      if (pad.buttons[5] && pad.buttons[5].pressed && !p._rbLatch) { dash = true; p._rbLatch = true; }
+      if (!(pad.buttons[5] && pad.buttons[5].pressed)) p._rbLatch = false;
+    }
+    if (p.slot === 0) {
+      if (touchIn.x || touchIn.y) { dx += touchIn.x; dy += touchIn.y; }
+      if (touchIn.fire) fire = true;
+      if (touchIn.mag) { mag = true; touchIn.mag = false; }
+      if (touchIn.dash) { dash = true; touchIn.dash = false; }
     }
     if (dx || dy) {
       const l = Math.hypot(dx, dy) || 1;
@@ -3223,7 +3302,31 @@
       p.facing = dirFrom(dx, dy);
       p.aimX = dx; p.aimY = dy;
     }
-    return { dx, dy, fire, mag, cycle };
+    return { dx, dy, fire, mag, cycle, dash };
+  }
+  function beginDash(p, inn) {
+    if ((p.dashCd || 0) > 0 || (p.dashT || 0) > 0) return;
+    let dx = inn.dx, dy = inn.dy;
+    if (!dx && !dy) { dx = p.aimX || 1; dy = p.aimY || 0; }
+    const len = Math.hypot(dx, dy) || 1;
+    p.dashX = dx / len;
+    p.dashY = dy / len;
+    p.dashT = 0.15;
+    p.dashCd = 1.2;
+    p._dashBump = true;
+    p.facing = dirFrom(p.dashX, p.dashY);
+    emit("onDash", { p: p });
+    feel("dash", p.x, p.y);
+  }
+  function bumpDash(p) {
+    const foes = G.level.foes;
+    for (let i = 0; i < foes.length; i++) {
+      const f = foes[i];
+      if (Math.hypot(f.x - p.x, f.y - p.y) > 0.62) continue;
+      f.stun = Math.max(f.stun || 0, 0.16);
+      f.x += p.dashX * 0.28;
+      f.y += p.dashY * 0.28;
+    }
   }
 
   function resolveCircle(lv, x, y, r) {
@@ -3877,10 +3980,19 @@
         return;
       }
       const inn = inputFor(p);
+      p.dashCd = Math.max(0, (p.dashCd || 0) - dt);
+      if ((p.dashT || 0) > 0) p.dashT = Math.max(0, p.dashT - dt);
       if (p.stun <= 0 && (p.rootT || 0) <= 0) {
-        const spd = (2.55 + p.hero.speed * 0.6) * (p.swift > 0 ? 1.32 : 1) * (1 + (p.stride || 0) * 0.08) * ((p.slowT || 0) > 0 ? 0.52 : 1);
-        tryMove(p, inn.dx, inn.dy, spd, dt, false);
-        if (inn.dx || inn.dy) p.walk += dt * 8;
+        if (inn.dash) beginDash(p, inn);
+        let mdx = inn.dx, mdy = inn.dy;
+        let spd = (2.55 + p.hero.speed * 0.6) * (p.swift > 0 ? 1.32 : 1) * (1 + (p.stride || 0) * 0.08) * ((p.slowT || 0) > 0 ? 0.52 : 1);
+        if ((p.dashT || 0) > 0) {
+          mdx = p.dashX; mdy = p.dashY;
+          spd *= 2.7;
+          if (p._dashBump) { p._dashBump = false; bumpDash(p); }
+        }
+        tryMove(p, mdx, mdy, spd, dt, false);
+        if (mdx || mdy) p.walk += dt * 8;
       }
       if (inn.fire) fireArsenal(p);
       tickMelee(p, dt);
@@ -3907,6 +4019,7 @@
     const humans = G.players.filter((p) => !p.ai);
     if ((humans.length ? humans : G.players).every((p) => p.dead)) {
       G.over = true;
+      const gained = grantSeals();
       persist.runs++;
       persist.best = Math.max(persist.best, G.score);
       if (G.mode === "survive") persist.surviveBest = Math.max(persist.surviveBest || 0, G.score);
@@ -3920,7 +4033,7 @@
       const hook = G.score >= pb ? "New mark on the hall. The door is still open." : "The crypt remembers. One more descent.";
       showSheet(
         "<p class='kicker'>Run closed</p><h2>" + G.score + (G.mode === "survive" ? " · wave " + surviveWave() : " · floor " + (G.floor + 1)) + "</h2>" +
-        "<p class='lore'>" + rec + " · Best " + persist.best + " · credits " + G.credits + "</p>" +
+        "<p class='lore'>" + rec + " · Best " + persist.best + " · credits " + G.credits + " · +" + gained + " seals (" + (persist.seals || 0) + ")</p>" +
         "<p class='lore'>" + hook + "</p>" +
         "<div class='modes'><button class='btn gold' id='again'>Descend again</button><button class='btn' id='mm'>Menu</button></div>"
       );
@@ -4356,6 +4469,7 @@
 
   function winCampaign() {
     G.over = true;
+    const gained = grantSeals();
     persist.runs++;
     persist.best = Math.max(persist.best, G.score);
     persist.campaignBest = Math.max(persist.campaignBest || 0, G.score);
@@ -4364,7 +4478,7 @@
     hallMark("win");
     showSheet(
       "<p class='kicker'>The lock opens</p><h2>First Descent complete</h2>" +
-      "<p class='lore'>Four names held the door. Score " + G.score + " · hall " + posted + " · credits " + G.credits + ".</p>" +
+      "<p class='lore'>Four names held the door. Score " + G.score + " · hall " + posted + " · credits " + G.credits + " · +" + gained + " seals (" + (persist.seals || 0) + ").</p>" +
       "<p class='lore'>The crypt still goes down. Endless does not keep a last floor.</p>" +
       "<div class='modes'><button class='btn gold' id='toEndless'>Enter endless</button><button class='btn' id='mm'>Menu</button></div>"
     );
@@ -4406,6 +4520,7 @@
         const next = pool.find((h) => !used.includes(h.id)) || pool[G.players.length % pool.length];
         const p = joinHero(next.id);
         if (!p) return;
+        applyRite(p);
         const st = G.level.start;
         p.x = st.x + 0.5; p.y = st.y + 0.5;
         G.credits++;
@@ -4414,6 +4529,7 @@
       return;
     }
     down.dead = false; down.hp = down.max; G.credits++;
+    if (!down._rited) applyRite(down);
     say(down.hero.name + " rises.");
   }
 
@@ -5051,6 +5167,17 @@
     };
     stop($("autoBox"), () => { persist.autoShot = !!$("autoBox").checked; savePersist(); });
     stop($("autoUpBox"), () => { persist.autoUp = !!$("autoUpBox").checked; savePersist(); });
+    const padSel = $("padSel");
+    if (padSel) {
+      padSel.value = persist.touchPad || "auto";
+      padSel.onclick = (e) => e.stopPropagation();
+      padSel.onchange = (e) => {
+        e.stopPropagation();
+        persist.touchPad = padSel.value || "auto";
+        savePersist();
+        syncTouchPad();
+      };
+    }
     stop($("redBox"), () => { if (window.CryptStudio) CryptStudio.setReduced($("redBox").checked); });
     stop($("musBox"), () => { if (window.CryptStudio) CryptStudio.setMusic($("musBox").checked); });
     const sv = $("sfxVol");
@@ -5102,6 +5229,7 @@
       "<p class='kicker'>Play</p>" +
       "<label class='auto-lab'><input type='checkbox' id='autoBox'" + (persist.autoShot ? " checked" : "") + "> Auto-shoot — always fire</label>" +
       "<label class='auto-lab'><input type='checkbox' id='autoUpBox'" + (persist.autoUp ? " checked" : "") + "> Auto-pick upgrades — Survival cards take themselves</label>" +
+      "<label class='auto-lab'>On-screen pad <select id='padSel'><option value='auto'>auto</option><option value='on'>always</option><option value='off'>off</option></select></label>" +
       "<p class='kicker'>Audio</p>" +
       "<label class='auto-lab'><input type='checkbox' id='musBox'" + (window.CryptStudio && CryptStudio.music === false ? "" : " checked") + "> Synth bed (in-run only)</label>" +
       "<label class='auto-lab'>SFX <input type='range' id='sfxVol' min='0' max='100' value='" + Math.round((window.CryptStudio ? CryptStudio.sfxVol : 1) * 100) + "'></label>" +
@@ -5158,6 +5286,17 @@
     });
     return h + "</div>";
   }
+  function riteHtml() {
+    const seals = persist.seals || 0;
+    let h = "<p class='kicker' style='margin-top:.55rem'>Accord rite — one blessing (" + seals + " seals)</p><div class='cast-grid rites'>";
+    RITES.forEach(function (r) {
+      const owned = riteOwned(r);
+      const on = (persist.rite || "") === r.id;
+      h += "<button type='button' class='cast rite" + (on ? " on" : "") + (owned ? "" : " locked") + "' data-rite='" + r.id + "' data-own='" + (owned ? "1" : "0") + "'>" +
+        "<b>" + r.name + "</b><span>" + (r.need ? (r.need + " seals") : "free") + "</span><span class='spec-tag'>" + r.line + "</span></button>";
+    });
+    return h + "</div>";
+  }
   function menu() {
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
@@ -5165,6 +5304,9 @@
     if (window.CryptStudio && CryptStudio.stopBed) CryptStudio.stopBed();
     if (window.LatticeRadio) LatticeRadio.play();
     $("app").classList.add("hidden");
+    const taleEl = $("tale");
+    if (taleEl) taleEl.classList.add("hidden");
+    document.body.classList.remove("tale-on");
     $("app").classList.remove("survive-mode");
     $("app").classList.remove("hud-all");
     const sh = $("studioHud");
@@ -5181,17 +5323,18 @@
         return "<button type='button' class='cast" + (x.id === persist.hero ? " on" : "") + (open ? "" : " locked") + "' data-h='" + x.id + "' data-open='" + (open ? "1" : "0") + "'>" +
           "<span class='cast-art'><img src='" + ASSET + x.file + "' alt='" + x.name + "'></span><b>" + x.name + "</b><span>" + x.tag + "</span><span class='spec-tag'>" + x.special + "</span>" + (open ? "" : "<i>Seal " + x.unlock + "</i>") + "</button>";
       }).join("") +
-      "</div>" + heroSheet(heroOf(persist.hero)) + bondPickHtml() +
+      "</div>" + heroSheet(heroOf(persist.hero)) + bondPickHtml() + riteHtml() +
       "<div class='mode-grid'>" +
       "<button type='button' class='mode-card' data-go='campaign'><b>Campaign</b><span>First Descent. 24 authored floors, eight seals, rising heat.</span></button>" +
       "<button type='button' class='mode-card' data-go='endless'><b>Endless</b><span>No last floor. Rank climbs. The hall wants score.</span></button>" +
       "<button type='button' class='mode-card' data-go='survive'><b>Survival</b><span>A continent of stone. Start small — the lattice grows with you. Stack arms or drown.</span></button>" +
       "<button type='button' class='mode-card' data-go='coop'><b>Cabinet co-op</b><span>Campaign with a second warden. Pads and keyboards, up to four.</span></button>" +
+      "<button type='button' class='mode-card' data-go='tale'><b>Complete</b><span>A living realm. Company of wardens, no classes, stance battles, towns that war and ally.</span></button>" +
       "</div><div class='modes' style='margin-top:.6rem'><button class='btn gold' id='menuOpt'>Options</button>" +
       "<button class='btn' id='menuRadio'>Radio</button></div>" +
       "<div class='donate-row'><a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
       "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener'>Patreon</a></div>" +
-      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · <a href='./ledger.html'>Live hall</a> · <a href='/games/'>Hub</a></p>" +
+      "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · Seals " + (persist.seals || 0) + " · <a href='./ledger.html'>Live hall</a> · <a href='/games/'>Hub</a></p>" +
       "<p class='hall-peek' id='hallPeek'>Hall loading…</p></div></div>",
       true
     );
@@ -5215,6 +5358,16 @@
         });
         return;
       }
+      const rt = e.target.closest("[data-rite]");
+      if (rt) {
+        if (rt.getAttribute("data-own") !== "1") return;
+        persist.rite = rt.getAttribute("data-rite") || "";
+        savePersist();
+        document.querySelectorAll("[data-rite]").forEach(function (el) {
+          el.classList.toggle("on", (el.getAttribute("data-rite") || "") === (persist.rite || ""));
+        });
+        return;
+      }
       const pt = e.target.closest("[data-pet]");
       if (pt) {
         persist.pet = pt.getAttribute("data-pet") || "";
@@ -5229,6 +5382,10 @@
       persist.name = ($("nm").value || "Warden").slice(0, 18);
       savePersist();
       const go = b.getAttribute("data-go");
+      if (go === "tale") {
+        if (window.LatticeTale) LatticeTale.open();
+        return;
+      }
       newRun({ hero: persist.hero, mode: go === "survive" ? "survive" : (go === "endless" ? "endless" : "campaign"), coop: go === "coop" });
     };
     const mo = $("menuOpt");
@@ -5277,6 +5434,9 @@
       "<li>Every armed weapon fires at once and can stack. Q only changes focus. Cleave / Orbit / Aura are short-range auto melee. Relics bob and glow — rations, coins, fury, moss, bombs, tomes, and more. Chests can spill rare arms.</li>" +
       "<li>Each job has a named special on vial (K). Super bosses drop rare–legendary arms. Brave scales bump damage. Faith scales vial power.</li>" +
       "<li>Title: pick an <b>AI companion</b> (unlocked job follows and auto-fires) and a <b>mythic pet</b> (Ashmane dash-bite, Solstride jump-roar-claw, Ironhide swipe-maul, Tuskward stomp, Glassbarb clamp-tail poison). Pets draw no agro and sleep 20s if downed. AI helpers sleep if they fall — they do not end the run.</li>" +
+      "<li><b>Complete</b> is the living realm. Build a company of up to four wardens, any skills, any look. The map has day, night, seasons, weather, towns, ruins, obelisks, Evil Centers, and caves that do not end. Battles are turn-based: Strike beats Weave, Weave beats Ward, Ward beats Strike.</li>" +
+      "<li><b>C</b> or pad <b>RB</b> sidesteps. A short dash shoves whoever you clip. It does not grant immunity. Phones get a stick, Fire, Vial, Dash, and Map. Options can force the pad on or off.</li>" +
+      "<li><b>Accord rites</b> on the title spend nothing: seals from a closed run unlock one blessing (Swift, a deeper well, a vial, pierce, lantern, or a score tithe). One rite at the door.</li>" +
       "<li><b>Tab</b> or pad <b>Select / Back / View</b> — character sheet (model, stats, arms, spell, bag). Click bag to use/equip. Auto-shoot (Options or L). Options: auto-pick Survival upgrades. <b>P</b> pause. <b>F3</b> FPS. <b>N</b> map (radar / full / off). <b>M</b> mute. <b>F11</b> fullscreen.</li>" +
       "<li><b>Streak</b> — chained kills raise a score multiplier up to ×5; it breaks after three seconds with no kill. The map (N) paints only stone you have walked: nexuses, doors, gates, chests, and named bosses. Edge arrows point to the nearest known nexus, the exit, and any boss you have seen.</li></ol>" +
       "<button class='btn gold' id='hk'>Close</button>");
@@ -5287,6 +5447,7 @@
   let last = performance.now();
   let acc = 0;
   function loop(now) {
+    syncTouchPad();
     const raw = Math.min(0.08, (now - last) / 1000);
     last = now;
     if (window.CryptStudio) CryptStudio.fpsTick(raw);
@@ -5335,6 +5496,10 @@
     }
     if (!keys[e.code]) keyEdge[e.code] = true;
     keys[e.code] = true;
+    if (document.body.classList.contains("tale-on")) {
+      if (e.code === "Escape" && keyEdge.Escape && window.LatticeTale) LatticeTale.back();
+      return;
+    }
     if (e.code === "F3") {
       if (keyEdge.F3 && window.CryptStudio) CryptStudio.fps.show = !CryptStudio.fps.show;
       return;
@@ -5436,6 +5601,7 @@
     fire: (i) => { if (G && G.players[i || 0]) fireArsenal(G.players[i || 0]); },
     nextFloor: () => { if (G) nextFloor(); },
     cleanup: cleanupGameState,
+    menu: menu,
     debug: () => ({
       over: !!(G && G.over),
       mode: G && G.mode,
@@ -5505,5 +5671,54 @@
     menu();
     requestAnimationFrame(loop);
   }
+  function bindCryptPad() {
+    const stick = $("padStick");
+    if (!stick) return;
+    let pid = null;
+    function setStick(ev) {
+      const r = stick.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      let x = ev.clientX - cx, y = ev.clientY - cy;
+      const max = r.width * 0.36;
+      const d = Math.hypot(x, y) || 1;
+      const cl = Math.min(d, max);
+      const knob = $("padKnob");
+      if (knob) knob.style.transform = "translate(" + (x / d * cl).toFixed(1) + "px," + (y / d * cl).toFixed(1) + "px)";
+      if (d < 14) { touchIn.x = 0; touchIn.y = 0; return; }
+      touchIn.x = x / d;
+      touchIn.y = y / d;
+    }
+    function clearStick() {
+      pid = null;
+      touchIn.x = 0; touchIn.y = 0;
+      const knob = $("padKnob");
+      if (knob) knob.style.transform = "translate(0,0)";
+    }
+    stick.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      pid = e.pointerId;
+      try { stick.setPointerCapture(e.pointerId); } catch (_) {}
+      setStick(e);
+    });
+    stick.addEventListener("pointermove", function (e) { if (pid === e.pointerId) setStick(e); });
+    stick.addEventListener("pointerup", function (e) { if (pid === e.pointerId) clearStick(); });
+    stick.addEventListener("pointercancel", clearStick);
+    function hold(btn, down, up) {
+      if (!btn) return;
+      btn.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+        down();
+      });
+      const end = function () { if (up) up(); };
+      btn.addEventListener("pointerup", end);
+      btn.addEventListener("pointercancel", end);
+    }
+    hold($("padFire"), function () { touchIn.fire = true; }, function () { touchIn.fire = false; });
+    hold($("padVial"), function () { touchIn.mag = true; });
+    hold($("padDash"), function () { touchIn.dash = true; });
+    hold($("padMap"), function () { if (G && !G.over) cycleMapMode(); });
+  }
+  bindCryptPad();
   boot();
 })();

@@ -114,4 +114,14 @@ must(camp.indexOf("--- door triage") >= 0 && camp.indexOf("keysOpen") >= 0, "a c
 must(camp.indexOf("A wing that holds an authored door is a designed vault") >= 0, "the repair pass must not unseal a designed vault");
 must(camp.indexOf("gauntlets.forEach(coverLane)") >= 0 && camp.indexOf("inVaultRect") >= 0, "campaign gauntlets keep a clear channel and leave vaults standing as islands");
 must(camp.indexOf("Doors are the one thing here that is not decoration") >= 0, "the door doctrine is stated where it is enforced");
+must(html.indexOf("cryptPad") >= 0 && html.indexOf("padStick") >= 0 && game.indexOf("function syncTouchPad") >= 0 && game.indexOf("function bindCryptPad") >= 0, "on-screen door pad");
+must(game.indexOf("function beginDash") >= 0 && game.indexOf("function bumpDash") >= 0 && game.indexOf("keyEdge.KeyC") >= 0 && game.indexOf("buttons[5]") >= 0, "sidestep on C and RB");
+must(game.indexOf("const RITES = [") >= 0 && game.indexOf("function grantSeals") >= 0 && game.indexOf("function applyRite") >= 0 && game.indexOf("Tithe Pocket") >= 0, "accord rites");
+must(game.indexOf("touchPad") >= 0 && game.indexOf("padSel") >= 0, "pad option persisted");
+must(html.indexOf("tale.js") >= 0 && html.indexOf("id=\"tale\"") >= 0 && game.indexOf("data-go='tale'") >= 0 && game.indexOf("LatticeTale.open") >= 0, "complete mode wired");
+const taleSmoke = spawnSync(process.execPath, [path.join(__dirname, "crypt_tale_smoke.js")], { encoding: "utf8" });
+if (taleSmoke.status !== 0) {
+  process.stderr.write(taleSmoke.stdout + taleSmoke.stderr);
+  throw new Error("tale smoke");
+}
 console.log("crypt_studio_qa ok", { smoke: "pass", layers: 4, events: 14, remap: true, spatial: true });
