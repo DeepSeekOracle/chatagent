@@ -605,6 +605,9 @@
       fails: 0,
       streak: 0,
       elder: false,
+      depth: 0.16,
+      away: 0,
+      backAt: now + 45000,
       hp: (PRED_STAT[kind] || PRED_STAT.pike).hp,
       maxHp: (PRED_STAT[kind] || PRED_STAT.pike).hp,
       born: now,
@@ -790,6 +793,7 @@
       addRipple(victim.x, victim.y);
       playSfx("bite");
       playSfx("death");
+      p.forwardUntil = now + 20000;
       p.nextRoll = now + HOUR;
       return true;
     }
@@ -800,12 +804,18 @@
       (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
       (victim.species === "octo" && (victim.inkUntil || 0) > now ? ". The ink takes 10% off the bite" : "") +
       "." + ((p.fails || 0) >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
+    p.forwardUntil = now + 16000;
     p.nextRoll = now + HOUR;
     return false;
   }
   function predatorBattle(a, b) {
     notePredator(a);
     notePredator(b);
+    const until = Date.now() + 22000;
+    a.forwardUntil = until;
+    b.forwardUntil = until;
+    a.goneUntil = 0;
+    b.goneUntil = 0;
     playSfx("battle");
     const bits = [a.name + " and " + b.name + " fight."];
     for (let round = 0; round < 2 && a.hp > 0 && b.hp > 0; round += 1) {
@@ -951,14 +961,39 @@
       if (!state.clearSince) state.clearSince = state.openedAt || now;
     } else state.clearSince = 0;
   }
+  function predClose(p, now) {
+    return !!(p && (p.pending || now < (p.forwardUntil || 0)));
+  }
   function stepPredator(p, dt) {
     const now = Date.now();
     if (p.phase == null) p.phase = Math.random() * 6.28;
+    if (p.depth == null) p.depth = 0.16;
+    if (p.away == null) p.away = 0;
+    if (p.backAt == null) p.backAt = now + 30000;
+    const close = predClose(p, now);
+    if (close) p.goneUntil = 0;
+    else if (!(p.goneUntil > now) && now > p.backAt && Math.random() < dt * 0.01) {
+      p.goneUntil = now + (120 + Math.random() * 180) * 1000;
+      p.leaveX = Math.random() < 0.5 ? -0.28 : 1.28;
+    }
+    const leaving = !close && (p.goneUntil || 0) > now;
+    if (leaving && !p._leftSaid) {
+      p._leftSaid = true;
+      log(p.name + " slips into the far water.");
+    }
+    if (!leaving) p._leftSaid = false;
+    if (!leaving && p.away < 0.08 && p.goneUntil && now >= p.goneUntil) {
+      p.backAt = now + (50 + Math.random() * 80) * 1000;
+      p.goneUntil = 0;
+    }
+    p.depth += ((close ? 1 : 0.16) - p.depth) * Math.min(1, dt * (close ? 1.15 : 0.4));
+    p.away += ((leaving ? 1 : 0) - p.away) * Math.min(1, dt * 0.35);
     const prey = p.pending ? stalkTarget(p) : null;
     if (p.pending && !prey) { p.pending = false; p.victim = null; }
     let sp = p.adult ? 0.13 : 0.07;
     let dx = 0, dy = 0;
-    if (prey) {
+    const leavingNow = !predClose(p, now) && (p.goneUntil || 0) > now;
+    if (prey && !leavingNow) {
       const to = unitDir(p, prey.x, prey.y);
       dx = to.x * 2.2;
       dy = to.y * 2.2;
@@ -966,6 +1001,14 @@
       if (to.d < 0.3) sp *= 1.25;
       p.lunge = to.d < 0.16 ? 1 : 0;
       if (to.d < (p.elder ? 0.16 : (p.adult ? 0.11 : 0.05))) p.lunge = 1;
+    } else if (leavingNow) {
+      dx = (p.leaveX || 1.2) - p.x;
+      dy = (0.42 - p.y) * 0.4;
+      sp = 0.16;
+    } else if ((p.away || 0) > 0.2) {
+      dx = 0.5 - p.x;
+      dy = 0.4 - p.y;
+      sp = 0.1;
     } else if (Math.random() < dt * 0.4) {
       p.wanderA = (p.wanderA || 0) + (Math.random() - 0.5) * 1.6;
       dx = Math.cos(p.wanderA);
@@ -975,8 +1018,10 @@
       dy = Math.sin(p.wanderA == null ? 0 : p.wanderA) * 0.5;
     }
     const out = { x: dx, y: dy };
-    decorSteer(p, out);
-    wallSteer(p, out);
+    if (!leavingNow && (p.away || 0) < 0.35) {
+      decorSteer(p, out);
+      wallSteer(p, out);
+    }
     const mag = Math.hypot(out.x, out.y) || 1;
     const vx = out.x / mag * sp, vy = out.y / mag * sp * AR;
     const step = (sp * 3 + 0.05) * dt;
@@ -984,8 +1029,12 @@
     p.vy += clamp(vy - (p.vy || 0), -step, step);
     p.x += p.vx * dt;
     p.y += p.vy * dt;
+    if ((p.away || 0) < 0.45) {
     if (p.x < 0.05) { p.x = 0.05; p.vx = Math.abs(p.vx) * 0.4; }
     if (p.x > 0.95) { p.x = 0.95; p.vx = -Math.abs(p.vx) * 0.4; }
+    } else {
+      p.x = clamp(p.x, -0.35, 1.35);
+    }
     if (p.y < 0.1) { p.y = 0.1; p.vy = Math.abs(p.vy) * 0.4; }
     if (p.y > 0.86) { p.y = 0.86; p.vy = -Math.abs(p.vy) * 0.4; }
     const want = Math.atan2(p.vy / AR, p.vx);
@@ -1036,17 +1085,21 @@
       key = alt ? "eel_adult_zap2" : (key + "_zap");
     }
     const img = PRED_SPRITES[key] || PRED_SPRITES[p.kind + "_" + age];
-    const sc = p.elder ? 1.9 : (p.kind === "eel" ? (p.adult ? 0.72 : 0.4) : (p.adult ? 1.35 : 0.55));
+    if ((p.away || 0) > 0.97) return;
+    const depth = p.depth == null ? 0.2 : p.depth;
+    const far = 0.36 + depth * 0.64;
+    const sc = (p.elder ? 1.9 : (p.kind === "eel" ? (p.adult ? 0.72 : 0.4) : (p.adult ? 1.35 : 0.55))) * far;
     const bh = Math.min(h * (p.kind === "eel" ? 0.13 : 0.2), p.kind === "eel" ? 86 : 140) * sc;
     let bw = bh * 2.2;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     if (p.kind === "eel") {
-      bw = Math.min(w * 0.46, 520) * (p.adult ? 1 : 0.52);
+      bw = Math.min(w * 0.46, 520) * (p.adult ? 1 : 0.52) * far;
       bh = img && img.complete && img.naturalWidth ? bw * (img.naturalHeight / img.naturalWidth) : bw * 0.22;
     }
     const x = p.x * w;
-    const y = p.y * h;
-    const alpha = p.pending ? 1 : 0.88;
+    const y = (p.y * depth + 0.4 * (1 - depth)) * h;
+    const alpha = (0.32 + depth * 0.68) * (1 - (p.away || 0) * 0.9);
+    if (depth > 0.62) {
     ctx.save();
     ctx.globalAlpha = 0.1;
     ctx.fillStyle = "#240608";
@@ -1054,7 +1107,8 @@
     ctx.ellipse(x, h * 0.92, bw * 0.3, bh * 0.1, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    if (p.pending) {
+    }
+    if (p.pending && depth > 0.55) {
       const pulse = state.opts.motion === false ? 0.5 : 0.45 + Math.sin(now / 300) * 0.35;
       const g = ctx.createRadialGradient(x, y, 2, x, y, bh * 1.6);
       g.addColorStop(0, "rgba(251,113,133," + (0.22 * pulse).toFixed(3) + ")");
@@ -1064,6 +1118,7 @@
     }
     ctx.save();
     ctx.globalAlpha = alpha;
+    if (depth < 0.82) ctx.filter = "saturate(0.62) brightness(0.78)";
     ctx.translate(x, y);
     ctx.scale(p.face === -1 ? -1 : 1, 1);
     const wag = state.opts.motion === false ? 0 : Math.sin(p.phase || 0) * (p.kind === "eel" && p.zapT > 0 ? 0.02 : (p.pending ? 0.09 : 0.045));
@@ -1096,7 +1151,7 @@
       }
       ctx.restore();
     }
-    if (state.opts.names !== false) {
+    if (state.opts.names !== false && depth > 0.62 && (p.away || 0) < 0.35) {
       ctx.fillStyle = "#fb7185";
       ctx.font = "700 13px Syne, sans-serif";
       ctx.textAlign = "center";
@@ -1649,6 +1704,8 @@
     let flee = null;
     (state.predators || []).forEach(function (p) {
       if (!p.adult) return;
+      if ((p.away || 0) > 0.45) return;
+      if (!p.pending && (p.depth || 0) < 0.55) return;
       const d = Math.hypot(p.x - f.x, (p.y - f.y) * AR);
       const reach = p.pending ? 0.46 : 0.30;
       if (d >= reach) return;
@@ -2453,10 +2510,15 @@
       if (az !== bz) return az - bz;
       return a.y - b.y;
     });
+    (state.predators || []).forEach(function (p) {
+      if (!predClose(p, now)) drawPredator(p, w, h, now);
+    });
     order.forEach(function (f) { drawFish(f, w, h, now); });
     drawInks(w, h, now);
     (state.crew || []).forEach(function (c) { drawCrew(c, w, h, now); });
-    (state.predators || []).forEach(function (p) { drawPredator(p, w, h, now); });
+    (state.predators || []).forEach(function (p) {
+      if (predClose(p, now)) drawPredator(p, w, h, now);
+    });
     (state.predators || []).forEach(function (p) {
       if (!p.pending || !p.victim) return;
       const v = state.fish.filter(function (f) { return f.id === p.victim; })[0];
