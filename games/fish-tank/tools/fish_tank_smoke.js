@@ -120,8 +120,9 @@ must("uneaten food times out where it lies", js.indexOf("fl.rot = (fl.rot || 0) 
   js.indexOf("LOOP.flakeRot") >= 0 && js.indexOf("turns green") >= 0);
 must("cleaners lift waste and pay in algae", js.indexOf("lifted * LOOP.algaePerLift") >= 0 &&
   js.indexOf("LOOP.cleanPerHour") >= 0);
-must("the algae eater is the only real sink for algae", js.indexOf("- span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae)") >= 0 &&
-  /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 0\.6/.test(js) && (6.5 > 0.6 * 5));
+must("the algae eater is the only real sink for algae", js.indexOf("- span * algalRate, 0, 100);") >= 0 &&
+  js.indexOf("const algalRate = state.crew.reduce") >= 0 && js.indexOf("scrapers") < 0 &&
+  /ottoAlgae: 6\.5/.test(js) && /snailAlgae: 2\.4/.test(js) && (6.5 > 2.4));
 must("the algae eater shelf is checked after its spec is read", js.indexOf('const spec = crewOf(b.getAttribute') >= 0 &&
   js.indexOf('if (spec.id === "otto")') > js.indexOf('const spec = crewOf(b.getAttribute'));
 must("leftover food stays, and turns green where it settled", js.indexOf("it does not disappear: it turns green where it settled") >= 0 &&
@@ -150,7 +151,7 @@ must("the stalk leads the drawn moment, not the hour stroke", js.indexOf("const 
 must("the nerite walks the sand and never floats", js.indexOf('if (c.role === "snail")') >= 0 &&
   js.indexOf("c.y = clamp(0.88 + Math.sin(now / 9000 + c.wobble) * 0.015, 0.85, 0.92);") >= 0 &&
   js.indexOf("c.vy = 0;") >= 0 && /const step = Math\.sin\(now \/ 2800/.test(js) &&
-  js.indexOf("Walks the sand and scrapes the green.") >= 0);
+  js.indexOf("Walks the sand and eats the green.") >= 0);
 must("the menu opens the merged pair, not the markup's classes", js.indexOf('showPanel(litTab ? litTab.getAttribute("data-tab") : "panelHome");') >= 0);
 must("home and the caretaker are one menu tab", html.indexOf(">Caretaker</button>") < 0 &&
   html.indexOf('data-tab="panelHome"') >= 0 && html.indexOf('data-tab="panelTank"') >= 0 &&

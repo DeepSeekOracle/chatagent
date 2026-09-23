@@ -242,7 +242,7 @@
     algaePerLift: 0.22,  // algae a cleaner makes per unit of waste it lifts
     bloomPerHour: 0.9,   // the water's own slow bloom, per hour
     ottoAlgae: 6.5,      // algae one algae eater clears an hour - the only real sink
-    snailAlgae: 0.6,     // a nerite scrapes the glass, but cannot keep up
+    snailAlgae: 2.4,     // a nerite eats the green too - slower than an otto, but it counts
     ottoBought: 2,       // algae eaters the shop will sell at a time
     ottoClutch: 5,       // hours between clutches for a settled algae eater
     ottoHatch: 0.35      // hours in the egg before an otto hatches
@@ -425,7 +425,7 @@
     { id: "quickfry", name: "Quick fry", text: "Eggs hatch sooner." }
   ];
   const CREW = [
-    { id: "snail", name: "Nerite", cost: 20, blurb: "Walks the sand and scrapes the green." },
+    { id: "snail", name: "Nerite", cost: 20, blurb: "Walks the sand and eats the green. Expels nothing." },
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
     { id: "cory", name: "Cory", cost: 28, blurb: "Bottom feeder. Lifts the waste." },
     { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses in the top and middle water only." },
@@ -3600,8 +3600,14 @@
     let digestOut = 0;
     state.fish.forEach(function (f) { digestOut += shed(f, span); });
     const fishN = state.fish.length;
-    const algalEaters = state.crew.filter(function (c) { return c.role === "otto"; }).length;
-    const scrapers = state.crew.filter(function (c) { return c.role === "snail"; }).length;
+    /* the algae eaters: the otto, and the nerite, which is one too, only slower */
+    const algalEaters = state.crew.filter(function (c) { return CLEAN_CREW[c.role]; }).length;
+    const algalRate = state.crew.reduce(function (n, c) {
+      return n + (c.role === "otto" ? LOOP.ottoAlgae : c.role === "snail" ? LOOP.snailAlgae : 0);
+    }, 0);
+    /* every other cleaner lifts waste and pays for it in algae. The algae eaters expel
+       nothing at all, so they are not counted among the ones making the green. */
+    const lifters = state.crew.filter(function (c) { return !CLEAN_CREW[c.role]; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
     const night = rhythm() === "night";
     const day = night ? 0.35 : 1;
@@ -3616,12 +3622,12 @@
     /* the chain, in one place: cleaners lift waste out of the water and pay for it in
        algae; the water makes a little green of its own; and the only thing that eats that
        green is an algae eater. A tank with cleaners and no otto blooms, every time. */
-    const lifted = Math.min(state.waste || 0, (state.crew || []).length * LOOP.cleanPerHour * span);
+    const lifted = Math.min(state.waste || 0, lifters * LOOP.cleanPerHour * span);
     wasteLifted = lifted;
     state.algae = clamp((state.algae || 0)
       + span * pace * bloom * LOOP.bloomPerHour * (0.35 + load)
       + lifted * LOOP.algaePerLift
-      - span * (algalEaters * LOOP.ottoAlgae + scrapers * LOOP.snailAlgae), 0, 100);
+      - span * algalRate, 0, 100);
     /* fish waste, the water's own die-off, what the fish are still digesting, and the
        flakes that rotted - less what the cleaners lifted out. The octopus dispels
        nothing, and neither does an algae eater, so they are not counted as dirty fish. */
@@ -3636,7 +3642,7 @@
     const spent = fishN * OX.fish * (0.55 + load * 0.25) + (state.waste || 0) * OX.waste
       + (night ? (state.algae || 0) * OX.algaeNight * 0.008 : 0);
     state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + span * (made + OX.exchange * warm - spent), 0, 100);
-    state.quality = clamp(state.quality + span * (bottoms * 1.8 + (algalEaters + scrapers) * 0.4 + 1.6 - fishN * 0.3 * (0.55 + mix.dirt * 0.4) * clear
+    state.quality = clamp(state.quality + span * (bottoms * 1.8 + algalEaters * 0.4 + 1.6 - fishN * 0.3 * (0.55 + mix.dirt * 0.4) * clear
       - (state.waste || 0) * 0.03 - (state.algae || 0) * 0.02
       - Math.max(0, OX.thin - (state.oxygen || 100)) * 0.05), 0, 100);
     const dir = function (d) { return d > 0.06 ? 1 : d < -0.06 ? -1 : 0; };
@@ -3834,6 +3840,8 @@
   }
   /* the octopus and the algae eater are the two that dispel nothing */
   const CLEAN_SPECIES = { octo: true };
+  /* the crew that expel nothing: they eat the green instead of making it */
+  const CLEAN_CREW = { otto: true, snail: true };
 
   /* ---- one beat of the feeding loop ----
      Flakes nobody took rot where they lie. The algae eater works the sand, because that is
@@ -3875,7 +3883,7 @@
     if (algaeBits.length) {
       state.crew.forEach(function (c) {
         if (c.role !== "otto" && c.role !== "snail") return;
-        const reach = c.role === "otto" ? 0.055 : 0.028;
+        const reach = c.role === "otto" ? 0.055 : 0.036;
         for (let i = algaeBits.length - 1; i >= 0; i -= 1) {
           const b = algaeBits[i];
           if (Math.abs(b.x - c.x) > reach || Math.abs(b.y - c.y) > 0.12) continue;
@@ -4104,6 +4112,12 @@
       const oxy = Math.round(state.oxygen == null ? 88 : state.oxygen);
       const waste = Math.round(state.waste || 0);
       const trend = state.trend || { algae: 0, oxygen: 0, waste: 0 };
+      /* what the tank makes in an hour against what the algae eaters can clear: a tank of
+         cleaners with nothing eating the green is an open loop, however many are on it */
+      const loadNow = loadCap() ? fishLoad() / loadCap() : 0;
+      const madeRate = LOOP.bloomPerHour * (0.35 + loadNow) +
+        (state.crew || []).filter(function (c) { return !CLEAN_CREW[c.role]; }).length *
+          LOOP.cleanPerHour * LOOP.algaePerLift;
       const arrow = function (d) { return d > 0 ? "▲" : d < 0 ? "▼" : "·"; };
       const band = function (v, good, fair) { return v >= good ? "q-good" : v >= fair ? "q-fair" : "q-poor"; };
       let warm = 0, cold = 0, ok = 0;
@@ -4113,19 +4127,26 @@
         else if (t === "too cold") cold += 1;
         else ok += 1;
       });
-      const algalEaters = state.crew.filter(function (c) { return c.role === "otto"; }).length;
-    const scrapers = state.crew.filter(function (c) { return c.role === "snail"; }).length;
+      /* the algae eaters: the otto, and the nerite, which is one too, only slower */
+    const algalEaters = state.crew.filter(function (c) { return CLEAN_CREW[c.role]; }).length;
+    const algalRate = state.crew.reduce(function (n, c) {
+      return n + (c.role === "otto" ? LOOP.ottoAlgae : c.role === "snail" ? LOOP.snailAlgae : 0);
+    }, 0);
+    /* every other cleaner lifts waste and pays for it in algae. The algae eaters expel
+       nothing at all, so they are not counted among the ones making the green. */
+    const lifters = state.crew.filter(function (c) { return !CLEAN_CREW[c.role]; }).length;
       const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
       const load = crowdLoad();
       const rows = [
         ["oxygen", oxy + "% " + arrow(-trend.oxygen), band(oxy, OX.thin + 12, OX.thin), oxy / 100, oxy < OX.thin ? "thin for " + elapsedWord(state._oxyAt) : "fine"],
         ["waste", waste + "% " + arrow(trend.waste), band(100 - waste, 55, 30), waste / 100, bottoms ? bottoms + " lifting" : "nobody lifting"],
         ["algae", Math.round(state.algae) + "% " + arrow(trend.algae), band(100 - state.algae, 55, 32), state.algae / 100,
-          (algalEaters ? algalEaters + " algae eater" + (algalEaters === 1 ? "" : "s") + " clearing" : "no algae eater") +
-          (scrapers ? " · " + scrapers + " scraping" : "")],
-        ["the loop", algalEaters ? "closed" : "open - add an algae eater", band(algalEaters ? 70 : 18, 55, 32),
-          Math.min(1, algalEaters / 2),
-          (state.crew || []).length + " cleaners lifting · " +
+          algalEaters
+            ? algalEaters + " algae eater" + (algalEaters === 1 ? "" : "s") + " · " + algalRate.toFixed(1) + " algae/h"
+            : "no algae eater"],
+        ["the loop", algalRate >= madeRate ? "closed" : "open - add an algae eater",
+          band(algalRate >= madeRate ? 70 : 18, 55, 32), Math.min(1, algalRate / Math.max(0.1, madeRate)),
+          "makes " + madeRate.toFixed(1) + "/h · eats " + algalRate.toFixed(1) + "/h · " +
           state.crew.filter(function (x) { return x.role === "otto" && x.bought !== false; }).length + "/" + LOOP.ottoBought + " bought"],
         ["space used", Math.round(fishLoad()) + "/" + loadCap(), band(100 - load * 55, 60, 40), Math.min(1, load), load > 0.95 ? "healing slower" : "water is keeping up"],
         ["public hall", state.hallPublic
@@ -4203,7 +4224,9 @@
         bio.textContent = (cspec.blurb || "") + " " + whatCrewIsDoing(c) +
           (c.role === "otto"
             ? " Algae eaters are the last link in the chain: the shop sells two and no more, so the rest have to be bred."
-            : "");
+            : c.role === "snail"
+              ? " A nerite is an algae eater too, only slower, and it expels nothing. The shop never runs out of them."
+              : "");
         pic.removeAttribute("src");
         pic.alt = "";
         const acts = document.getElementById("charActions");
