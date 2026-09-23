@@ -17,16 +17,16 @@
   const STARVE = 36 * HOUR;
   const FED_FAST = 6 * HOUR;
   const SPECIES = [
-    { id: "glimmer", name: "Glimmer", play: "jump", bulk: 1, blurb: "Jumps the surface." },
-    { id: "azure", name: "Azure", play: "flare", bulk: 0.92, blurb: "Flares and turns." },
-    { id: "dart", name: "Dart", play: "race", bulk: 0.78, blurb: "Races the glass." },
-    { id: "puff", name: "Puff", play: "boop", bulk: 0.88, blurb: "Play-bumps friends." },
-    { id: "lantern", name: "Lantern", play: "glow", bulk: 0.74, blurb: "Shines after dusk." },
-    { id: "moss", name: "Moss", play: "clean", bulk: 0.96, blurb: "Works the gravel." },
-    { id: "ruby", name: "Ruby", play: "school", bulk: 1, blurb: "Stays with the school." },
-    { id: "veil", name: "Veil", play: "dance", bulk: 1.05, blurb: "Drifts in long arcs." },
-    { id: "sunscale", name: "Sunscale", play: "lap", bulk: 1.12, blurb: "Slow laps, larger tips." },
-    { id: "pearl", name: "Pearl", play: "flash", bulk: 0.7, blurb: "Flashes a fan tail." }
+    { id: "glimmer", name: "Glimmer", play: "jump", temper: "lively", bulk: 1, blurb: "Happy. Swims a lot and jumps." },
+    { id: "azure", name: "Azure", play: "flare", temper: "lively", bulk: 0.92, blurb: "Happy. Turns and covers the tank." },
+    { id: "dart", name: "Dart", play: "race", temper: "lively", bulk: 0.78, blurb: "Happy. Rarely stops swimming." },
+    { id: "puff", name: "Puff", play: "boop", temper: "chill", bulk: 0.88, blurb: "Relaxed. Hovers, then a soft bump." },
+    { id: "lantern", name: "Lantern", play: "glow", temper: "lively", bulk: 0.74, blurb: "Happy. Cruises, and glows at dusk." },
+    { id: "moss", name: "Moss", play: "clean", temper: "chill", bulk: 0.96, blurb: "Relaxed. Stays low and unhurried." },
+    { id: "ruby", name: "Ruby", play: "school", temper: "chill", bulk: 1, blurb: "Relaxed. Drifts with the school." },
+    { id: "veil", name: "Veil", play: "dance", temper: "chill", bulk: 1.05, blurb: "Relaxed. Long, slow arcs." },
+    { id: "sunscale", name: "Sunscale", play: "lap", temper: "chill", bulk: 1.12, blurb: "Relaxed. One slow lap at a time." },
+    { id: "pearl", name: "Pearl", play: "flash", temper: "lively", bulk: 0.7, blurb: "Happy. Darts and flashes." }
   ];
   const CREW = [
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
@@ -354,10 +354,14 @@
     return "night";
   }
 
+  function temperOf(f) { return specOf(f.species).temper === "chill" ? "chill" : "lively"; }
   function fishSprint(f) {
     const hungry = Date.now() - (f.lastFed || f.born) > 3 * HOUR;
     const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
-    return desperate ? 0.78 : hungry ? 0.58 : 0.34;
+    if (temperOf(f) === "chill" && !desperate) return hungry ? 0.2 : 0.12;
+    if (desperate) return 0.78;
+    if (temperOf(f) === "lively") return hungry ? 0.66 : 0.5;
+    return hungry ? 0.58 : 0.34;
   }
   function nearestFlake(f) {
     if (!flakes.length) return null;
@@ -517,7 +521,8 @@
       const mag = Math.hypot(vx, vy) || 1;
       f.vx = vx / mag * cap;
       f.vy = vy / mag * cap;
-      state.fish.forEach(function (o) {
+      const pushy = temperOf(f) === "lively" || STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
+      if (pushy) state.fish.forEach(function (o) {
         if (o === f) return;
         if (Math.hypot(o.x - f.x, o.y - f.y) < 0.08 && Math.hypot(o.x - bite.x, o.y - bite.y) < 0.16) {
           f.vx += (f.x - o.x) * 1.1;
@@ -537,12 +542,35 @@
         f.vy = ((f.ty || f.y) - f.y) * 0.8;
       }
       if (f.actionT <= 0) f.action = "";
-    } else {
-      if (Math.random() < dt * 0.35) f.vx = (Math.random() < 0.5 ? -1 : 1) * (0.03 + Math.random() * 0.05) * slow;
-      if (Math.random() < dt * 0.25) f.vy = (Math.random() - 0.5) * 0.04 * slow;
-      if (!f.nextPlay) f.nextPlay = Date.now() + 6000 + Math.random() * 14000;
+    } else if (temperOf(f) === "chill") {
+      if (!f.hold || f.hold < Date.now()) {
+        f.hold = Date.now() + 4000 + Math.random() * 7000;
+        f.vx = (Math.random() < 0.5 ? -1 : 1) * (0.012 + Math.random() * 0.018) * slow;
+        f.vy = (Math.random() - 0.5) * 0.012;
+      }
+      if (f.y < 0.45) f.vy += 0.01;
+      if (f.y > 0.78) f.vy -= 0.01;
+      if (!f.nextPlay) f.nextPlay = Date.now() + 18000 + Math.random() * 24000;
       if (Date.now() > f.nextPlay) {
-        f.nextPlay = Date.now() + 14000 + Math.random() * 22000;
+        f.nextPlay = Date.now() + 20000 + Math.random() * 30000;
+        startPlay(f);
+      }
+    } else {
+      if (!f.cruise || Math.hypot(f.cruise.x - f.x, f.cruise.y - f.y) < 0.06) {
+        f.cruise = { x: 0.12 + Math.random() * 0.76, y: 0.24 + Math.random() * 0.55 };
+      }
+      const happy = mood === "happy" ? 1.25 : 1;
+      const dx = f.cruise.x - f.x;
+      const dy = f.cruise.y - f.y;
+      const mag = Math.hypot(dx, dy) || 1;
+      const cap = (0.055 + Math.random() * 0.01) * happy * slow;
+      f.vx = dx / mag * cap * 8;
+      f.vy = dy / mag * cap * 4;
+      const spd = Math.hypot(f.vx, f.vy) || 1;
+      if (spd > cap) { f.vx = f.vx / spd * cap; f.vy = f.vy / spd * cap; }
+      if (!f.nextPlay) f.nextPlay = Date.now() + 5000 + Math.random() * 8000;
+      if (Date.now() > f.nextPlay) {
+        f.nextPlay = Date.now() + 7000 + Math.random() * 10000;
         startPlay(f);
       }
     }
@@ -591,7 +619,8 @@
     const artRight = FACE_RIGHT[f.species] !== false;
     const face = useTurn ? 1 : (((goingRight) === artRight) ? 1 : -1);
     ctx.scale(face, 1);
-    const wag = state.opts.motion === false ? 0 : Math.sin(now / 180 + f.y * 20) * 0.12;
+    const wagAmp = temperOf(f) === "chill" ? 0.05 : 0.14;
+    const wag = state.opts.motion === false ? 0 : Math.sin(now / (temperOf(f) === "chill" ? 320 : 160) + f.y * 20) * wagAmp;
     ctx.rotate(wag * (f.action === "flare" ? 2.2 : 1));
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     else {
@@ -719,7 +748,7 @@
       const starveIn = Math.max(0, STARVE - (now - (f.lastFed || f.born)));
       return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
         esc(f.name) + "</b> <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" +
-        esc(specOf(f.species).name) + " · " + stageName(bodyAge(f)) + " · lived " + hours(ageOf(f, now)) + "h · unfed dies in " + hours(starveIn) + "h</span></button>";
+        esc(specOf(f.species).name) + " · " + (temperOf(f) === "chill" ? "relaxed" : "swims a lot") + " · " + stageName(bodyAge(f)) + " · lived " + hours(ageOf(f, now)) + "h · unfed dies in " + hours(starveIn) + "h</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
@@ -947,7 +976,7 @@
     if (!box) return;
     box.innerHTML = SPECIES.map(function (s) {
       const on = menuPicks.indexOf(s.id) >= 0;
-      return "<button type='button' data-pick='" + s.id + "' class='" + (on ? "on" : "") + "'>" + esc(s.name) + "</button>";
+      return "<button type='button' data-pick='" + s.id + "' class='" + (on ? "on" : "") + "'>" + esc(s.name) + "<br><span class='lore'>" + (s.temper === "chill" ? "Relaxed" : "Swims a lot") + "</span></button>";
     }).join("");
   }
   function showPanel(which) {
