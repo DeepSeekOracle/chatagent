@@ -68,6 +68,16 @@ const tables = [
   grabConst("ANNOUNCE", "\n  const KEEPER_SAY"),
   grabConst("KEEPER_SAY", "\n  let keeperTag"),
   grabConst("FISH_VOICE", "\n  function fishVoice"),
+  grabConst("BIOMASS", "\n  const LOAD_BASE"),
+  grabConst("DEFENSE", "\n  function defenseOf"),
+  "const LOAD_BASE = 56;",
+  "const LOAD_PERK = 8;",
+  "const LOAD_SANCTUARY = 16;",
+  "const EGG_LOAD = 0.5;",
+  "const HARD_CAP = 84;",
+  grabConst("BREED", "\n  function breedOf"),
+  grabConst("DNA_SALT", "\n  const DNA_BANK_CAP"),
+  grabConst("DNA_BANK_CAP", "\n  function fnv1a"),
   grabConst("KEEPERS", "\n  const CAST_ORDER"),
   'const CAST_ORDER = ["mara", "ellis", "ren", "june", "mateo", "nia", "mira", "sancora", "lyra", "reed", "calder", "kai"];'
 ].join("\n");
@@ -100,8 +110,14 @@ const helpers = [
   grab("bandOf"),
   grab("temperOf"),
   grab("socialOf"),
-  grab("crowdLimit"),
   grab("crowdLoad"),
+  grab("biomassOf"),
+  grab("loadCap"),
+  grab("fishLoad"),
+  grab("canAdd"),
+  grab("loadRatio"),
+  grab("breedOf"),
+  grab("breedReady"),
   grab("stratNow"),
   grab("tempAt"),
   grab("rhythm"),
@@ -111,6 +127,11 @@ const helpers = [
   grab("speedOf"),
   grab("huntChance"),
   grab("weakestPrey"),
+  grab("preyScore"),
+  grab("defenseOf"),
+  grab("dval"),
+  grab("schoolMates"),
+  grab("schoolSafety"),
   grab("bandSteer"),
   grab("wallSteer"),
   grab("decorSteer"),
@@ -135,19 +156,37 @@ const helpers = [
   grab("homeOf"),
   grab("territorySteer"),
   grab("crewSteer"),
-  grab("readEvent")
+  grab("readEvent"),
+  "function uid() { return 'z' + Math.random().toString(36).slice(2, 8); }",
+  grab("fnv1a"),
+  grab("dnaCode"),
+  grab("traitCode"),
+  grab("genomeOf"),
+  grab("dnaFor"),
+  grab("dnaSalt"),
+  grab("isDna"),
+  grab("bankFish"),
+  grab("geneTraits"),
+  grab("giveDna"),
+  grab("verifyDna"),
+  grab("lineageOf")
 ].join("\n");
 
 const probe = `({
   OX: OX, WASTE: WASTE, MOTION: MOTION, DECOR: DECOR, TEMP_BAND: TEMP_BAND, SPECIES: SPECIES, VITALS: VITALS,
   THEMES: THEMES, CREW: CREW, LOG_EVENTS: LOG_EVENTS, ANNOUNCE: ANNOUNCE, KEEPER_SAY: KEEPER_SAY,
   clamp: clamp, comfort: comfort, tempNote: tempNote, tempAt: tempAt, stratNow: stratNow, crowdLoad: crowdLoad,
-  crowdLimit: crowdLimit, rhythm: rhythm, speedOf: speedOf, huntChance: huntChance, weakestPrey: weakestPrey,
+  BIOMASS: BIOMASS, BREED: BREED, biomassOf: biomassOf, loadCap: loadCap, fishLoad: fishLoad,
+  canAdd: canAdd, loadRatio: loadRatio, breedOf: breedOf, breedReady: breedReady, HARD_CAP: HARD_CAP,
+  rhythm: rhythm, speedOf: speedOf, huntChance: huntChance, weakestPrey: weakestPrey, preyScore: preyScore, DEFENSE: DEFENSE,
+  defenseOf: defenseOf, dval: dval, schoolMates: schoolMates, schoolSafety: schoolSafety, cycleOf: cycleOf,
   bandSteer: bandSteer, wallSteer: wallSteer, decorSteer: decorSteer, nearestShelter: nearestShelter,
   simWater: simWater, tickHealth: tickHealth, makeTraits: makeTraits, bandOf: bandOf, motionOf: motionOf,
   bond: bond, bondPick: bondPick, pruneBonds: pruneBonds, mem: mem, hidingSpot: hidingSpot, wary: wary,
   anchorOf: anchorOf, isAnchor: isAnchor, slotFor: slotFor, schoolSpread: schoolSpread, homeOf: homeOf,
   territorySteer: territorySteer, crewSteer: crewSteer, readEvent: readEvent, foodLeft: foodLeft,
+  dnaFor: dnaFor, genomeOf: genomeOf, traitCode: traitCode, isDna: isDna, dnaSalt: dnaSalt,
+  giveDna: giveDna, geneTraits: geneTraits, verifyDna: verifyDna, lineageOf: lineageOf, bankFish: bankFish, DNA_BANK_CAP: DNA_BANK_CAP,
   BOND_KEEP: BOND_KEEP, FISH_VOICE: FISH_VOICE, KEEPERS: KEEPERS, CAST_ORDER: CAST_ORDER, state: state, setPerks: function (list) { _perks = list; }, bumpFrame: function () { frameId += 1; } })`;
 
 const sandbox = {
@@ -199,15 +238,63 @@ must("a cold-water fish feels the warm surface more than the sand", api.comfort(
 api.state.fish = [];
 must("an empty tank has no crowd load", api.crowdLoad() === 0);
 api.state.fish = new Array(30).fill(0).map(function () { return mkFish("ruby", 30); });
-must("thirty fish is exactly a full glass", Math.abs(api.crowdLoad() - 1) < 1e-9);
-must("the default limit is thirty", api.crowdLimit() === 30);
-api.setPerks(["crowd"]);
-must("the roomy-glass perk raises the limit", api.crowdLimit() === 42 && api.crowdLoad() < 1);
-api.setPerks([]);
+must("thirty mid-size fish is a bit over half the glass", Math.abs(api.crowdLoad() - 0.54) < 0.04,
+  "load " + api.fishLoad() + " of " + api.loadCap());
+must("a school of small fish is easier on the water than the same count of giants", (function () {
+  api.state.fish = new Array(30).fill(0).map(function () { return mkFish("glimmer", 30); });
+  const school = api.crowdLoad();
+  api.state.fish = new Array(30).fill(0).map(function () { return mkFish("octo", 30); });
+  return school < api.crowdLoad() - 0.2;
+})(), "glimmers " + api.crowdLoad());
+must("small schoolers are the cheap ones", api.biomassOf("glimmer") < api.biomassOf("ruby") &&
+  api.biomassOf("ruby") < api.biomassOf("octo"));
+must("the glass refuses a giant with no room left", (function () {
+  api.state.fish = new Array(26).fill(0).map(function () { return mkFish("octo", 30); });
+  return api.canAdd("tusk") === false;
+})());
+must("and still takes a schooler in the same water", (function () {
+  api.state.fish = new Array(78).fill(0).map(function () { return mkFish("glimmer", 30); });
+  return api.canAdd("glimmer") === true && api.canAdd("octo") === false;
+})(), "load " + api.fishLoad() + " of " + api.loadCap());
+must("the roomy-glass perk buys more room", (function () {
+  api.state.fish = [];
+  const before = api.loadCap();
+  api.setPerks(["crowd"]);
+  const after = api.loadCap();
+  api.setPerks([]);
+  return after > before;
+})());
+api.state.fish = [];
+
+/* ---- breeding: each species on its own clock ---- */
+must("every species that breeds carries a cadence, a clutch and a water bar",
+  Object.keys(api.BREED).every(function (id) {
+    const b = api.BREED[id];
+    if (!b) return true;
+    return b.cd > 0 && b.min > 0 && b.eggs[1] >= b.eggs[0] && b.roll > 0 && b.roll <= 1 && !!b.mature;
+  }));
+must("the fast schoolers come round sooner than the slow ones",
+  api.BREED.glimmer.cd < api.BREED.sunscale.cd && api.BREED.dart.cd < api.BREED.tusk.cd &&
+  api.BREED.glimmer.cd < api.BREED.claw.cd);
+must("the slow breeders are the consistent ones",
+  api.BREED.sunscale.roll > api.BREED.glimmer.roll && api.BREED.claw.roll >= api.BREED.dart.roll);
+must("the fast schoolers lay bigger clutches", api.BREED.glimmer.eggs[1] >= api.BREED.tusk.eggs[1]);
+must("the slow ones insist on better water", api.BREED.claw.min > api.BREED.glimmer.min);
+must("the octopus and the seadragon do not breed in the glass", api.BREED.octo == null && api.BREED.dragon == null);
+must("every species in the tank has a breeding answer", api.SPECIES.every(function (sp) {
+  return Object.prototype.hasOwnProperty.call(api.BREED, sp.id);
+}), "missing: " + api.SPECIES.filter(function (sp) {
+  return !Object.prototype.hasOwnProperty.call(api.BREED, sp.id);
+}).map(function (sp) { return sp.id; }).join(","));
+must("a slow breeder waits for the elder stage", api.breedReady("adult", api.BREED.sunscale) === false ||
+  api.breedReady("elder", api.BREED.sunscale) === true);
 
 /* ---- oxygen: a balanced tank holds, a crowded one falls ---- */
-function runWater(fishN, spanHours, crew) {
-  api.state.fish = new Array(fishN).fill(0).map(function () { return mkFish("ruby", 30); });
+
+/* ---- oxygen: a balanced tank holds, a crowded one falls ---- */
+function runWater(fishN, spanHours, crew, species) {
+  const sp = species || "ruby";
+  api.state.fish = new Array(fishN).fill(0).map(function () { return mkFish(sp, 30); });
   api.state.crew = (crew || []).map(function (role) { return { role: role }; });
   api.state.algae = 10; api.state.waste = 10; api.state.oxygen = 92; api.state.quality = 86;
   for (let h = 0; h < spanHours; h += 1) {
@@ -218,7 +305,7 @@ function runWater(fishN, spanHours, crew) {
 }
 const ox12 = runWater(12, 6);
 must("a balanced tank holds its oxygen", ox12 > api.OX.thin, Math.round(ox12));
-const ox30 = runWater(30, 6);
+const ox30 = runWater(60, 6);
 must("a crowded tank loses it", ox30 < ox12 - 10, Math.round(ox30));
 must("gasping comes before thin water", api.OX.gasp < api.OX.thin);
 const oxEmpty = runWater(0, 3);
@@ -269,11 +356,19 @@ api.state.oxygen = 90;
 api.tickHealth(api.state.fish[0], now);
 must("and it heals again once the air is back", api.state.fish[0].hp > 100);
 api.state.fish[0].hp = 100; api.state.fish[0].hpAt = now - 3600000;
-api.state.fish = new Array(34).fill(0).map(function () { return mkFish("ruby", 30, 100); });
+api.state.fish = new Array(60).fill(0).map(function () { return mkFish("ruby", 30, 100); });
 api.state.fish[0].hpAt = now - 3600000;
 api.state.oxygen = 90; api.state.quality = 90; api.state.algae = 5;
 api.tickHealth(api.state.fish[0], now);
-must("crowding drains the ones that are already tight", api.state.fish[0].hp < 100, api.state.fish[0].hp.toFixed(1));
+must("a glass past its load drains the ones already tight", api.state.fish[0].hp < 100,
+  "load " + api.fishLoad() + "/" + api.loadCap() + ", hp " + api.state.fish[0].hp.toFixed(1));
+must("but the same headcount of small schoolers is not crowded at all", (function () {
+  api.state.fish = new Array(60).fill(0).map(function () { return mkFish("glimmer", 30, 100); });
+  api.state.fish[0].hp = 100; api.state.fish[0].hpAt = now - 3600000;
+  api.state.oxygen = 92; api.state.quality = 92; api.state.algae = 5;
+  api.tickHealth(api.state.fish[0], now);
+  return api.state.fish[0].hp >= 100;
+})(), "load " + api.fishLoad() + "/" + api.loadCap());
 
 /* ---- bonds: they build near, decay apart, and stay small in the save ---- */
 const a = mkFish("glimmer", 30), b = mkFish("glimmer", 30);
@@ -486,11 +581,14 @@ LINES.forEach(function (row) {
 must("the announcer catches every real log line", unmatched.length === 0, unmatched.join(" | "));
 
 /* ---- the rules the title still promises ---- */
-must("a full fed fish is still a 25% bite", (function () {
+must("a full fed fish is the baseline bite, less its own armour", (function () {
   const full = mkFish("ruby", 30);
   full.lastFed = now;
-  return api.huntChance(full, now) === 0.25;
-})());
+  full.x = 0.5; full.y = 0.5;
+  api.state.fish = [full];
+  const bare = 0.25 - api.dval("ruby", "armor") * 0.12;
+  return Math.abs(api.huntChance(full, now) - bare) < 1e-9;
+})(), "ruby alone: " + api.huntChance(mkFish("ruby", 30), now).toFixed(3));
 must("the bite still caps at 85%", (function () {
   const f = mkFish("ruby", 30, api.VITALS.ruby.hp * 0.1);
   f.lastFed = now - 40 * 3600000;
@@ -507,8 +605,9 @@ must("every species has a temperature band and a motion profile", Object.keys(ap
 must("every theme has plants that make oxygen", Object.keys(api.THEMES).every(function (id) { return api.OX.plant[id] > 0; }));
 
 /* ---- a day in the life: does the water hold for 24 tank hours? ---- */
-function dayRun(fishN, hours, crew, waterChangeAt) {
-  api.state.fish = new Array(fishN).fill(0).map(function () { return mkFish("ruby", 30, 100); });
+function dayRun(fishN, hours, crew, waterChangeAt, species) {
+  const sp = species || "ruby";
+  api.state.fish = new Array(fishN).fill(0).map(function () { return mkFish(sp, 30, 100); });
   api.state.crew = (crew || []).map(function (role) { return { role: role }; });
   api.state.theme = "river";
   api.state.algae = 12; api.state.waste = 12; api.state.oxygen = 92; api.state.quality = 88;
@@ -543,15 +642,150 @@ const keptEvery = (function () {
 const keptEnd = keptEvery[keptEvery.length - 1];
 must("a kept tank holds its quality for a day", keptEnd.quality > 25 && keptEnd.oxy > 85 && keptEnd.waste < 30,
   "end of day with a change at hour 6: oxy " + keptEnd.oxy + ", waste " + keptEnd.waste + ", quality " + keptEnd.quality);
-const crowdDay = dayRun(30, 24, []);
+const crowdDay = dayRun(60, 24, []);
 const crow = crowdDay[crowdDay.length - 1];
 must("a crowded tank goes thin inside a day", crow.oxy < api.OX.thin,
-  "crowded end of day: oxy " + crow.oxy + ", quality " + crow.quality);
+  "sixty fish end of day: oxy " + crow.oxy + ", quality " + crow.quality + ", load " + api.fishLoad() + "/" + api.loadCap());
 must("and a light tank does not just sit on the ceiling", mild[mild.length - 1].oxy < 100,
   "twelve fish end of day: oxy " + mild[mild.length - 1].oxy);
 console.log("      twelve fish, 24h, untouched:  " + JSON.stringify(mild.filter(function (r) { return r.h % 6 === 0; })));
 console.log("      twelve fish, 24h, water at 6: " + JSON.stringify(keptEvery.filter(function (r) { return r.h % 6 === 0; })));
 console.log("      thirty fish, 24h, untouched:  " + JSON.stringify(crowdDay.filter(function (r) { return r.h % 6 === 0; })));
+
+/* ---- DNA: unique, deterministic, inherited, tamper evident ---- */
+const nowD = Date.now();
+const mkGenome = function (species, gen, sex, t, parents, born, salt) {
+  return api.dnaFor(species, gen, sex, t, parents, born, salt);
+};
+const t4 = function (b, s, a, v) { return { bold: b, social: s, appetite: a, vigor: v }; };
+must("the same genome always hashes the same", mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.5), [], 1000, "aa") ===
+  mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.5), [], 1000, "aa"));
+must("a different salt is a different fish", mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.5), [], 1000, "aa") !==
+  mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.5), [], 1000, "ab"));
+must("one trait point changes the hash", mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.5), [], 1000, "aa") !==
+  mkGenome("glimmer", 1, "f", t4(0.5, 0.5, 0.5, 0.56), [], 1000, "aa"));
+must("changing a parent's hash changes the child", mkGenome("glimmer", 2, "m", t4(0.4, 0.4, 0.4, 0.4), ["LG1-GLIM-AAAA11112222"], 2000, "cc") !==
+  mkGenome("glimmer", 2, "m", t4(0.4, 0.4, 0.4, 0.4), ["LG1-GLIM-AAAA11113333"], 2000, "cc"));
+const hashes = {};
+let dupes = 0, badFormat = 0;
+for (let i = 0; i < 500; i += 1) {
+  const h = mkGenome("dart", 1 + (i % 3), i % 2 ? "f" : "m",
+    t4(Math.random(), Math.random(), Math.random(), Math.random()), [], 1000 + i, api.dnaSalt());
+  if (hashes[h]) dupes += 1;
+  hashes[h] = 1;
+  if (!/^LG1-[A-Z0-9]{4}-[0-9A-F]{12}$/.test(h)) badFormat += 1;
+}
+must("five hundred fish, no collisions", dupes === 0, dupes + " duplicates");
+must("every hash is the documented shape", badFormat === 0, badFormat + " malformed");
+const founders = [0, 1].map(function (i) {
+  const t = t4(0.5 + i * 0.1, 0.4, 0.6, 0.5);
+  return { species: "glimmer", gen: 1, sex: i ? "f" : "m", traits: t, parents: [], genes: { born: 5000 + i, salt: "s" + i }, name: "F" + i };
+});
+founders.forEach(function (f) { f.dna = mkGenome(f.species, f.gen, f.sex, f.traits, f.parents, f.genes.born, f.genes.salt); });
+const child = { species: "glimmer", gen: 2, sex: "m", traits: t4(0.5, 0.4, 0.6, 0.52), parents: [founders[0].dna, founders[1].dna], genes: { born: 9000, salt: "kid" }, name: "Kid" };
+child.dna = mkGenome(child.species, child.gen, child.sex, child.traits, child.parents, child.genes.born, child.genes.salt);
+const grand = { species: "glimmer", gen: 3, sex: "f", traits: t4(0.45, 0.42, 0.6, 0.51), parents: [child.dna, founders[1].dna], genes: { born: 12000, salt: "gkid" }, name: "Grand" };
+grand.dna = mkGenome(grand.species, grand.gen, grand.sex, grand.traits, grand.parents, grand.genes.born, grand.genes.salt);
+[founders[0], founders[1], child, grand].forEach(function (f) { api.bankFish(f); });
+must("a fish's own DNA verifies", api.verifyDna(child).ok === true, api.verifyDna(child).reason);
+must("a tampered fish fails its own check", (function () {
+  const bad = JSON.parse(JSON.stringify(child));
+  bad.dna = "LG1-GLIM-000000000000";
+  return api.verifyDna(bad).ok === false;
+})());
+must("a tampered trait fails its own check", (function () {
+  const bad = JSON.parse(JSON.stringify(child));
+  bad.traits.vigor = 0.99;
+  return api.verifyDna(bad).ok === false;
+})());
+const lin = api.lineageOf(grand);
+must("the chain walks back three ancestors deep", lin.found >= 3 && lin.deepest >= 2,
+  "found " + lin.found + ", deepest " + lin.deepest + ", chain " + lin.chain.map(function (c) { return c.name + "@" + c.depth; }).join(" < "));
+must("an unknown parent is reported missing, never invented", api.lineageOf({ parents: ["LG1-NOPE-000000000000"] }).missing === 1);
+must("a founder has no ancestors to claim", api.lineageOf(founders[0]).found === 0);
+
+
+/* ---- the hunt maths: prey choice, defences, the shoal ---- */
+api.state.fish = [];
+const prey = function (species, opts) {
+  /* same health (its own maximum) and same stage (mid-life adult) so the only thing
+     that differs between two test fish is the defence under test */
+  const v = api.VITALS[species] || { hp: 100 };
+  const f = mkFish(species, 40, v.hp);
+  f.x = (opts && opts.x != null) ? opts.x : 0.5;
+  f.y = 0.5; f.z = 0.5;
+  if (opts && opts.baby) f.growth = 0;
+  else f.growth = (api.cycleOf(species)[5] || 168) * 0.5 * 3600000;
+  if (opts && opts.starving) f.lastFed = now - 30 * 3600000;
+  if (opts && opts.hp != null) f.hp = opts.hp;
+  return f;
+};
+const lone = prey("glimmer", { x: 0.12 });
+api.state.fish = [lone];
+const loneScore = api.preyScore(lone, now);
+const aloneChance = api.huntChance(lone, now);
+must("a fish with nobody of its kind near it has no shoal to hide in", api.schoolSafety(lone) === 0);
+const plenty = prey("glimmer", { x: 0.8 });
+const mates = [prey("glimmer", { x: 0.82 }), prey("glimmer", { x: 0.85 }), prey("glimmer", { x: 0.88 }), prey("glimmer", { x: 0.91 })];
+api.state.fish = [plenty].concat(mates);
+must("a fish inside its own shoal is harder to pick out", api.preyScore(plenty, now) < loneScore,
+  "shoal " + api.preyScore(plenty, now) + " vs alone " + loneScore);
+must("and the same shoal blunts the bite", api.huntChance(plenty, now) < aloneChance,
+  "shoal " + Math.round(api.huntChance(plenty, now) * 100) + "% vs alone " + Math.round(aloneChance * 100) + "%");
+must("the shoal count is the count of its own kind, not everyone", (function () {
+  const d1 = mkFish("dart", 40), d2 = mkFish("dart", 40);
+  d1.x = 0.81; d1.y = 0.5; d2.x = 0.83; d2.y = 0.5;
+  api.state.fish = [plenty, mates[0], d1, d2];
+  return api.schoolMates(plenty, 0.13) === 1;
+})());
+must("a starving fish is the better target", (function () {
+  const fed = prey("dart", { hp: 100, x: 0.2 });
+  const starving = prey("dart", { starving: true, hp: 100, x: 0.8 });
+  api.state.fish = [fed, starving];
+  return api.preyScore(starving, now) > api.preyScore(fed, now);
+})());
+must("spines and armour make a fish a worse target than a soft one", (function () {
+  const soft = prey("glimmer", { x: 0.15 });
+  const spiky = prey("tusk", { x: 0.5 });
+  const armed = prey("crab", { x: 0.85 });
+  api.state.fish = [soft, spiky, armed];
+  return api.preyScore(spiky, now) < api.preyScore(soft, now) && api.preyScore(armed, now) < api.preyScore(soft, now);
+})(), "soft " + api.preyScore(prey("glimmer", { x: 0.15 }), now) + " tusk " + api.preyScore(prey("tusk", { x: 0.5 }), now));
+must("a defended fish is harder to bite", (function () {
+  const soft = prey("glimmer", { x: 0.15 });
+  const spiky = prey("tusk", { x: 0.5 });
+  const fast = prey("dart", { x: 0.85 });
+  api.state.fish = [soft, spiky, fast];
+  return api.huntChance(spiky, now) < api.huntChance(soft, now) && api.huntChance(fast, now) < api.huntChance(soft, now);
+})(), "glimmer " + Math.round(api.huntChance(prey("glimmer", { x: 0.15 }), now) * 100) + "% tusk " +
+  Math.round(api.huntChance(prey("tusk", { x: 0.5 }), now) * 100) + "% dart " +
+  Math.round(api.huntChance(prey("dart", { x: 0.85 }), now) * 100) + "%");
+must("the picker takes the worst-off fish when the water is clear", (function () {
+  const fine = prey("glimmer", { hp: 100, x: 0.2 });
+  const sick = prey("glimmer", { hp: 20, starving: true, x: 0.8 });
+  api.state.fish = [fine, sick];
+  return api.weakestPrey(now, true) === sick;
+})());
+must("an inked octopus drops down the list", (function () {
+  const octo = prey("octo", { x: 0.2 });
+  octo.inkUntil = now + 10000;
+  const other = prey("octo", { x: 0.8 });
+  api.state.fish = [octo, other];
+  return api.preyScore(octo, now) < api.preyScore(other, now);
+})());
+must("and a baby is the easiest thing in the water", (function () {
+  const baby = prey("glimmer", { x: 0.2, baby: true });
+  const grown = prey("glimmer", { x: 0.8 });
+  api.state.fish = [baby, grown];
+  return api.preyScore(baby, now) > api.preyScore(grown, now);
+})());
+must("every species in the tank has an answer for a hunter", api.SPECIES.every(function (sp) {
+  return Object.keys(api.defenseOf(sp.id)).length > 0;
+}), "bare: " + api.SPECIES.filter(function (sp) { return !Object.keys(api.defenseOf(sp.id)).length; })
+  .map(function (sp) { return sp.id; }).join(","));
+must("the slow heavy species carry the real armour", api.dval("crab", "armor") > api.dval("glimmer", "armor") &&
+  api.dval("tusk", "spines") > api.dval("dart", "spines") && api.dval("claw", "venom") > api.dval("ruby", "venom"));
+api.state.fish = [];
 
 console.log("");
 if (fails) {

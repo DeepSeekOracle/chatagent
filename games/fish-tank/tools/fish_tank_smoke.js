@@ -44,7 +44,8 @@ must("version is a number", jsV && Number(jsV[1]) >= 21);
 must("tank holds 50 fish", js.indexOf("const FISH_CAP = 50;") >= 0);
 must("hunters have their own cap of 10", js.indexOf("const HUNTER_CAP = 10;") >= 0 && js.indexOf("state.predators.length < HUNTER_CAP") >= 0);
 must("a bite starts at 25%", js.indexOf("clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85)") >= 0);
-must("hunter takes the weakest", js.indexOf("function weakestPrey(now)") >= 0);
+must("hunter takes the weakest, alone and soft over weak but guarded", js.indexOf("function weakestPrey(now, exact)") >= 0 &&
+  js.indexOf("function preyScore(f, now)") >= 0 && js.indexOf("s += (1 - schoolSafety(f)) * 0.5;") >= 0);
 must("two misses kill the hunter", js.indexOf("(p.fails || 0) < 2") >= 0);
 must("a boss enters after an hour of quiet", js.indexOf("now - state.clearSince >= quietNeed()") >= 0 && js.indexOf("HOUR / 2") >= 0);
 must("a bite leaves a baby hunter", js.indexOf("state.predators.push(makePredator(p.kind, false))") >= 0);
@@ -91,17 +92,33 @@ must("tank sounds can be turned off", js.indexOf('getElementById("optSoundAmbien
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
   must(name + " is a sound", !!(st && st.size > 4000));
 });
-must("pairs court in good water", js.indexOf("function breedCheck(now)") >= 0 && js.indexOf('grown === "adult" || grown === "elder"') >= 0);
-must("eggs hatch into fry with parents", js.indexOf("function tickEggs(now)") >= 0 && js.indexOf("fry.parents = (e.parents || []).slice();") >= 0);
+must("pairs court in good water", js.indexOf("function breedCheck(now)") >= 0 &&
+  js.indexOf("function breedReady(stage, b)") >= 0 && js.indexOf("if ((state.quality || 0) < b.min) continue;") >= 0 &&
+  js.indexOf("if (Math.random() > b.roll) { state._breedTry[id] = now; continue; }") >= 0 &&
+  js.indexOf("const BREED_RETRY = 4 * 60000;") >= 0);
+must("eggs hatch into fry with parents", js.indexOf("function tickEggs(now)") >= 0 &&
+  js.indexOf("fry.parents = (e.parents || []).filter(isDna).slice(0, 2);") >= 0 &&
+  js.indexOf("fry.parentNames = (e.parentNames || []).slice(0, 2);") >= 0);
 must("fry inherit traits with a mutation", js.indexOf("traits: makeTraits(traits(a), traits(b))") >= 0);
-must("clutch size is capped", js.indexOf("const EGG_CAP = 6;") >= 0 && js.indexOf("const n = Math.min(room, Math.random() < 0.35 ? 3 : 2);") >= 0);
+must("clutch size is capped", js.indexOf("const EGG_CAP = 6;") >= 0 &&
+  js.indexOf("const clutch = (breedOf(a.species) || { eggs: [2, 3] }).eggs;") >= 0 &&
+  js.indexOf("const n = Math.min(room, clutch[0] + Math.round(Math.random() * span));") >= 0);
 must("foul water kills eggs", js.indexOf("never hatch. The water is foul.") >= 0);
+must("a life that goes on the board carries its whole identity", js.indexOf('name: state.owner || "Keeper",') >= 0 &&
+  js.indexOf("fish: row.name,") >= 0 && js.indexOf("dna: row.dna,") >= 0 && js.indexOf("gen: row.gen,") >= 0 &&
+  js.indexOf("hours: row.score,") >= 0);
+must("the local cemetery row names its keeper too", js.indexOf('keeper: state.owner || "Keeper"') >= 0);
+must("only a real life is inscribed, never a fish that never lived an hour", js.indexOf("ArcadeLedger.fish && row.score >= 1") >= 0 &&
+  js.indexOf("ArcadeLedger.fish && leadHours >= 1") >= 0);
+must("the tank reads the public hall back", js.indexOf("const HALL_URL = ") >= 0 && js.indexOf("function fetchHall(force)") >= 0 &&
+  js.indexOf("state.hallPublic = {") >= 0 && js.indexOf('["public hall", state.hallPublic') >= 0);
 must("firsts pay points", js.indexOf("const GOALS = [") >= 0 && js.indexOf("function checkGoals(now)") >= 0);
 must("traits are named in the rail", js.indexOf("TRAIT_WORDS") >= 0 && html.indexOf('id="goals"') >= 0);
 must("water trouble is reported", html.indexOf('id="waterNote"') >= 0 && js.indexOf("gulp at the surface") >= 0);
 must("LYGO Claw and the crab walk the sand", js.indexOf('id: "claw"') >= 0 && js.indexOf('id: "crab"') >= 0 && js.indexOf("walk: true") >= 0 && js.indexOf("under the rockwork") >= 0);
 must("Volt the eel can spawn as a boss", js.indexOf('eel: { id: "eel"') >= 0 && js.indexOf('"pike", "cinder", "gar", "eel"') >= 0 && js.indexOf("function shockFish(p)") >= 0);
-must("one octopus inks when chased", js.indexOf('id: "octo"') >= 0 && js.indexOf("chance - 0.10") >= 0 && js.indexOf("function releaseInk(f, now)") >= 0 && js.indexOf("One octopus already keeps this glass.") >= 0);
+must("one octopus inks when chased", js.indexOf('id: "octo"') >= 0 && js.indexOf("chance -= 0.10") >= 0 &&
+  js.indexOf("function releaseInk(f, now)") >= 0 && js.indexOf("One octopus already keeps this glass.") >= 0);
 ["claw_l.png", "claw_r.png", "claw_l_walk.png", "claw_r_walk.png", "crab_l.png", "crab_r.png", "crab_l_walk.png", "crab_r_walk.png", "eel_adult.png", "eel_baby.png", "eel_adult_zap.png", "eel_adult_zap2.png", "eel_baby_zap.png", "octo_r.png", "octo_r_swim.png", "ink_1.png", "ink_2.png", "ink_3.png"].forEach(function (name) {
   const p = path.join(root, "assets", "fish", name);
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
@@ -116,7 +133,8 @@ must("algae blooms with momentum and breathes at night", js.indexOf("const bloom
 must("thin water sends fish up for air", js.indexOf("state.oxygen == null ? 100 : state.oxygen) < OX.gasp") >= 0 && js.indexOf("function oxygenNote()") >= 0);
 must("waste comes off the fish and the meals", js.indexOf("WASTE.meal") >= 0 && js.indexOf("function wasteNote()") >= 0);
 must("the tank is warmer at the top than the sand", js.indexOf("function tempAt(y)") >= 0 && js.indexOf("function stratNow()") >= 0 && js.indexOf("const t = tempAt(f ? f.y : null);") >= 0);
-must("crowding is a slope, not a cliff", js.indexOf("function crowdLoad()") >= 0 && js.indexOf("function crowdLimit()") >= 0 && js.indexOf("if (load > 0.85) delta -=") >= 0);
+must("crowding is a slope, not a cliff", js.indexOf("function crowdLoad()") >= 0 &&
+  js.indexOf("function loadRatio()") >= 0 && js.indexOf("if (load > 0.85) delta -=") >= 0);
 must("dawn and dusk are real hours", js.indexOf("function rhythm()") >= 0 && js.indexOf('hour === "dawn"') >= 0 && js.indexOf('hour === "dusk"') >= 0);
 must("a water change adds air", js.indexOf("state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + 18") >= 0);
 must("the water panel is on the rail", html.indexOf('id="waterPanel"') >= 0 && js.indexOf('getElementById("waterPanel")') >= 0 && js.indexOf("wgrid") >= 0);
@@ -185,6 +203,25 @@ must("stale boxes are dropped each frame", js.indexOf("if (hitBoxes[k].at !== no
 must("the canvas click is guarded when no tank is loaded", js.indexOf('canvas.addEventListener("click", function (e) {\n    if (!state || !state.fish) return;') >= 0);
 must("the fish card never swallows a click meant for a fish", /\.fish-card \{[^}]*pointer-events: none/.test(css));
 must("and neither does the keeper box", /\.keeper-box \{[^}]*pointer-events:none/.test(css) || /\.keeper-box \{[^}]*pointer-events: none/.test(css));
+
+/* 4g. DNA: a fingerprint per fish, a chain per lineage, and a way to check it */
+must("every fish is hashed from its own genome", js.indexOf("function dnaFor(species, gen, sex, traits, parents, born, salt)") >= 0 &&
+  js.indexOf('return "LG1-" + dnaCode(species) + "-" + hex.slice(0, 12);') >= 0 && js.indexOf("const f = {") >= 0 &&
+  js.indexOf("return giveDna(f);") >= 0);
+must("the hash covers species, generation, sex, traits, both parents and a birth salt",
+  js.indexOf("return [DNA_SALT, species, gen || 1, sex || \"?\",") >= 0 && js.indexOf("function traitCode(t)") >= 0 &&
+  js.indexOf("(parents || []).slice(0, 2).join(\"+\")") >= 0);
+must("a fish's DNA can be recomputed and checked", js.indexOf("function verifyDna(f)") >= 0 &&
+  js.indexOf('reason: want === f.dna ? "genome matches the hash" : "hash does not match the genome"') >= 0);
+must("offspring inherit both parents' hashes, not their names", js.indexOf("parents: [a.dna, b.dna].filter(isDna)") >= 0 &&
+  js.indexOf("fry.parents = (e.parents || []).filter(isDna).slice(0, 2);") >= 0 && js.indexOf("giveDna(fry, true);") >= 0);
+must("the chain can be walked through the gene bank", js.indexOf("function lineageOf(f)") >= 0 &&
+  js.indexOf("function bankFish(f)") >= 0 && js.indexOf("const DNA_BANK_CAP = 260;") >= 0);
+must("old saves get DNA without hashing their legacy name-parents", js.indexOf("f.parentNames = (f.parentNames || []).concat(f.parents.filter(function (q) { return !isDna(q); })).slice(0, 2);") >= 0);
+must("the fish card and the rail line show the DNA", js.indexOf('["DNA", f.dna || "—"],') >= 0 &&
+  js.indexOf('["Genome", dnaLine(f)]') >= 0 && js.indexOf('"<span>dna ok</span>"') >= 0);
+must("the tank exposes a verifier", js.indexOf("verify: function (id) {") >= 0 && js.indexOf("window.FishTank.verify") < 0 &&
+  js.indexOf("dnaOk: state ? state.fish.filter(function (f) { return verifyDna(f).ok; }).length : 0,") >= 0);
 
 /* 5. ambient water, and the reduced-motion contract */
 must("light shafts", js.indexOf('ctx.globalCompositeOperation = "lighter"') >= 0);

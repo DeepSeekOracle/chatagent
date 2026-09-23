@@ -12,7 +12,10 @@
     return [
       rec.game, rec.event, rec.name, rec.score, rec.ms, rec.total, rec.vsPar,
       rec.rating, rec.wins, rec.date, rec.floor || "", rec.mark || "", rec.mode || "",
-      rec.trackId || rec.courseId || ""
+      rec.trackId || rec.courseId || "",
+      /* a fish is not only a name and a number: two keepers can keep a Sunny, and the
+         same fish over two lives is two records */
+      rec.fish || "", rec.dna || "", rec.gen || "", rec.species || ""
     ].join("|");
   }
   function enqueue(qk, rec) {
@@ -86,8 +89,9 @@
     fish: function (rec) {
       rec.game = "fish-tank";
       rec.event = rec.event || "life";
-      return post("lygo-fish-tank-ledger-q", rec, SPACE + "/arcade/submit");
+      return post("lygo-fish-tank-ledger-q", rec, SPACE + "/fish/submit");
     },
+    fishUrl: function () { return SPACE + "/fish/submit"; },
     boot: function () {
       var url = SPACE + "/arcade/submit";
       function pulse() {
@@ -96,7 +100,7 @@
         flush("lygo-swarm-ledger-q", url);
         flush("lygo-eternal-ledger-q", url);
         flush("lygo-lattice-crypt-ledger-q", url);
-        flush("lygo-fish-tank-ledger-q", url);
+        flush("lygo-fish-tank-ledger-q", SPACE + "/fish/submit");
       }
       pulse();
       if (!w._arcadeLedgerPulse) {

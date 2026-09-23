@@ -531,12 +531,48 @@
     const k = state && state.keeper;
     return !!(k && k.perks && k.perks.indexOf(id) >= 0);
   }
-  function fishCap() { return hasPerk("sanctuary") ? 70 : FISH_CAP; }
+  /* ---- room in the glass ----
+     A tank is not a count of bodies. A school of glimmers costs the water far less than
+     a tusk and an octopus, so every species carries a biomass and the glass carries a
+     load budget. That budget gates the shop, the hatchery and the crowding slope, which
+     is what lets a community tank of small schooling fish hold far more bodies than a
+     tank of giants - and what stops the giants from being free. */
+  const BIOMASS = {
+    glimmer: 0.7, dart: 0.7, moss: 0.7, azure: 0.8, pearl: 0.8, lantern: 0.9,
+    ruby: 1.0, veil: 1.0, sunscale: 1.1, mask: 1.2, mandarin: 1.2, pepper: 1.2,
+    crab: 1.2, claw: 1.3, tusk: 1.35, dragon: 1.6, octo: 2.2
+  };
+  const LOAD_BASE = 56;
+  const LOAD_PERK = 8;
+  const LOAD_SANCTUARY = 16;
+  const EGG_LOAD = 0.5;
+  const HARD_CAP = 84;
+  function biomassOf(species) {
+    const b = BIOMASS[species];
+    return b == null ? 1 : b;
+  }
+  function loadCap() {
+    return LOAD_BASE + (hasPerk("crowd") ? LOAD_PERK : 0) + (hasPerk("sanctuary") ? LOAD_SANCTUARY : 0);
+  }
+  function fishLoad(list) {
+    const fish = list || (state && state.fish) || [];
+    let n = 0;
+    fish.forEach(function (f) { n += biomassOf(f.species); });
+    n += ((state && state.eggs ? state.eggs.length : 0)) * EGG_LOAD;
+    return Math.round(n * 10) / 10;
+  }
+  /* is there room for one more of this species? small schoolers fit long after giants do not */
+  function canAdd(species, list) {
+    const fish = list || (state && state.fish) || [];
+    if (fish.length >= HARD_CAP) return false;
+    return fishLoad() + biomassOf(species) <= loadCap() + 0.001;
+  }
+  function loadRatio() { return clamp(fishLoad() / loadCap(), 0, 2.6); }
+  /* Crowding is a slope, not a cliff, and it follows the load: the water cares about
+     what is in it, not how many noses are pressed against the glass. */
+  function crowdLoad() { return clamp(loadRatio(), 0, 2.4); }
+  function fishCap() { return HARD_CAP; }
   function quietNeed() { return hasPerk("shortwatch") && !hasPerk("sanctuary") ? HOUR / 2 : HOUR; }
-  function crowdLimit() { return hasPerk("crowd") ? 42 : 30; }
-  /* Crowding is a slope, not a cliff: 20 fish already work the water harder
-     than 10, and 30 is a tank that needs a water change. */
-  function crowdLoad() { return clamp(((state && state.fish ? state.fish.length : 0)) / crowdLimit(), 0, 2.4); }
   /* Warm water rides the surface, cold sits on the sand. */
   function stratNow() {
     const heater = !state || !state.opts || state.opts.heater !== false;
@@ -639,6 +675,10 @@
     { key: "death", re: /^(.+) dies in a dirty tank after (\d+) hours\./ },
     { key: "death", re: /^(.+) rests of old age after (\d+) hours\./ },
     { key: "bite", re: /^(.+) rolls (\d+) against \d+% and eats ([^.]+)\./, pick: function (m) { return { hunter: m[1], roll: m[2], name: m[3] }; } },
+    { key: "repel", re: /(spines draw blood|venom burns|scales turn the bite)/,
+      pick: function (m) { return { how: m[1], name: "" }; } },
+    { key: "contest", re: /^(.+) and (.+) both want (.+)\./,
+      pick: function (m) { return { name: m[1], other: m[2], fish: m[3] }; } },
     { key: "dodge", re: /^(.+) rolls (\d+) against (\d+)% and misses (.+) at the last moment/, pick: function (m) { return { hunter: m[1], roll: m[2], chance: m[3], name: m[4] }; } },
     { key: "stalk", re: /^(.+) turns toward (.+), the weakest/, pick: function (m) { return { hunter: m[1], name: m[2] }; } },
     { key: "hunt", re: /^Boss (.+) enters\./ },
@@ -748,10 +788,146 @@
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(state)); } catch (_) {}
   }
+  /* ---------------- DNA ----------------
+     Every fish carries a short hash of its own genome: species, generation, sex, the four
+     traits, the hashes of both parents, and a birth salt. Offspring inherit their parents'
+     hashes, so the lineage is a chain anyone can walk again and re-check. It is a
+     fingerprint, not a security primitive - the point is that a fish's identity and its
+     parentage can be recomputed from what the tank recorded, and a tampered one fails. */
+  const DNA_SALT = "lygo-fish-tank-v1";
+  const DNA_BANK_CAP = 260;
+  function fnv1a(str, seed) {
+    let h = seed >>> 0;
+    for (let i = 0; i < str.length; i += 1) {
+      h ^= str.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function dnaCode(species) {
+    return String(species || "fish").replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase();
+  }
+  function traitCode(t) {
+    t = t || {};
+    return [t.bold, t.social, t.appetite, t.vigor].map(function (q) {
+      return String(Math.round(clamp(q == null ? 0.5 : q, 0, 1) * 99)).padStart(2, "0");
+    }).join("");
+  }
+  function genomeOf(species, gen, sex, traits, parents, born, salt) {
+    return [DNA_SALT, species, gen || 1, sex || "?",
+      traitCode(traits), (parents || []).slice(0, 2).join("+"),
+      Math.round(born || 0), salt || ""].join("|");
+  }
+  function dnaFor(species, gen, sex, traits, parents, born, salt) {
+    const g = genomeOf(species, gen, sex, traits, parents, born, salt);
+    const hex = (fnv1a(g, 0x811c9dc5).toString(16).padStart(8, "0") +
+      fnv1a(g, 0x1b873593).toString(16).padStart(8, "0")).toUpperCase();
+    return "LG1-" + dnaCode(species) + "-" + hex.slice(0, 12);
+  }
+  function dnaSalt() {
+    return fnv1a(String(Date.now()) + ":" + String(Math.random()) + ":" + String(uid()), 0x9e3779b9)
+      .toString(16).padStart(8, "0");
+  }
+  function isDna(v) { return String(v || "").indexOf("LG1-") === 0; }
+  /* the gene bank is the part of the ledger that survives a fish: hashes, parents, names */
+  function bankFish(f) {
+    if (!f || !f.dna) return;
+    if (!state) return;   /* the menu builds starter fish before the tank exists */
+    state.bank = state.bank || {};
+    const cur = state.bank[f.dna];
+    if (!cur) {
+      state.bank[f.dna] = {
+        species: f.species || "", name: f.name || "",
+        gen: (f.genes && f.genes.gen) || f.gen || 1, sex: (f.genes && f.genes.sex) || f.sex || "?",
+        parents: (f.parents || []).filter(isDna).slice(0, 2),
+        born: (f.genes && f.genes.born) || f.born || 0,
+        at: Date.now()
+      };
+      const keys = Object.keys(state.bank);
+      if (keys.length > DNA_BANK_CAP) {
+        keys.sort(function (a, b) { return (state.bank[a].at || 0) - (state.bank[b].at || 0); });
+        keys.slice(0, keys.length - DNA_BANK_CAP).forEach(function (k) { delete state.bank[k]; });
+      }
+    } else {
+      if (f.name) cur.name = f.name;
+      if (f.species) cur.species = f.species;
+    }
+  }
+  /* A fish's DNA is the genome it was BORN with. The four traits, sex and generation are
+     snapshotted into genes at birth, so a later edit to the live fish - by a feature or by
+     someone poking at the save - cannot silently change its identity, and a hash that no
+     longer matches its own birth genome is real evidence of a tamper rather than drift. */
+  function geneTraits(f) {
+    const t = (f.genes && f.genes.traits) || f.traits || {};
+    return {
+      bold: t.bold == null ? 0.5 : t.bold,
+      social: t.social == null ? 0.5 : t.social,
+      appetite: t.appetite == null ? 0.5 : t.appetite,
+      vigor: t.vigor == null ? 0.5 : t.vigor
+    };
+  }
+  function giveDna(f, force) {
+    if (!f || !f.species) return f;
+    f.genes = f.genes || {};
+    if (!f.genes.born) f.genes.born = f.born || f.growthAt || Date.now();
+    if (!f.genes.salt) f.genes.salt = dnaSalt();
+    if (force || !f.genes.traits) {
+      f.genes.traits = geneTraits(f);
+      f.genes.sex = f.sex || "?";
+      f.genes.gen = f.gen || 1;
+    }
+    if (force || !f.dna) {
+      f.dna = dnaFor(f.species, f.genes.gen, f.genes.sex, f.genes.traits, (f.parents || []).filter(isDna),
+        f.genes.born, f.genes.salt);
+    }
+    bankFish(f);
+    return f;
+  }
+  /* recompute the hash from the birth genome the tank is holding */
+  function verifyDna(f) {
+    if (!f || !f.dna) return { ok: false, dna: "", want: "", reason: "no dna on this fish" };
+    const g = f.genes || {};
+    const want = dnaFor(f.species, g.gen || f.gen || 1, g.sex || f.sex, geneTraits(f),
+      (f.parents || []).filter(isDna), g.born || f.born, g.salt);
+    return {
+      ok: want === f.dna, dna: f.dna, want: want,
+      reason: want === f.dna ? "genome matches the hash" : "hash does not match the genome"
+    };
+  }
+  /* walk the chain through the gene bank: how far back the tank can still prove */
+  function lineageOf(f) {
+    const out = { found: 0, missing: 0, chain: [], root: null };
+    if (!f || !state || !state.bank) return out;
+    const seen = {};
+    const walk = function (hash, depth) {
+      if (!hash) return;
+      if (seen[hash]) return;
+      seen[hash] = 1;
+      const rec = state.bank[hash];
+      if (!rec) { out.missing += 1; return; }
+      out.found += 1;
+      out.chain.push({ depth: depth, name: rec.name, gen: rec.gen, species: rec.species, dna: hash });
+      (rec.parents || []).forEach(function (q) { walk(q, depth + 1); });
+    };
+    (f.parents || []).filter(isDna).forEach(function (q) { walk(q, 1); });
+    out.root = out.chain.length ? out.chain[out.chain.length - 1] : null;
+    out.deepest = out.chain.reduce(function (n, c) { return Math.max(n, c.depth); }, 0);
+    return out;
+  }
+  function dnaLine(f) {
+    const v = verifyDna(f);
+    const lin = lineageOf(f);
+    if (!v.ok) return "unverified";
+    const from = (f.parentNames || []).length ? " · from " + f.parentNames.join(" × ")
+      : (f.parents || []).length ? " · bred from " + (f.parents || []).length + " banked parent" + (f.parents.length > 1 ? "s" : "")
+        : " · founder";
+    return "verified" + (lin.found ? " · " + lin.found + " ancestor" + (lin.found > 1 ? "s" : "") : "") + from;
+  }
+
   function makeFish(species, name) {
     const now = Date.now();
     const band = (MOTION[species] || MOTION.glimmer).band;
-    return {
+    const f = {
       id: uid(),
       species: species,
       name: String(name || specOf(species).name).slice(0, 16),
@@ -785,8 +961,12 @@
       startleT: 0,
       courtT: 0,
       speed: 0,
-      wseed: Math.random() * 90
+      wseed: Math.random() * 90,
+      dna: "",
+      genes: null,
+      parentNames: []
     };
+    return giveDna(f);
   }
   const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer", octo: "Eight", mandarin: "Mandy", pepper: "Mint", tusk: "Tusk", dragon: "Leaf", mask: "Mask" };
   let playing = false;
@@ -829,6 +1009,7 @@
     state.crew = state.crew || [];
     state.predators = state.predators || [];
     state.cemetery = state.cemetery || [];
+    state.bank = state.bank || {};
     state.log = state.log || [];
     state.eggs = state.eggs || [];
     state.goals = state.goals || {};
@@ -862,6 +1043,18 @@
       if (!f.sex) f.sex = Math.random() < 0.5 ? "m" : "f";
       if (f.gen == null) f.gen = 1;
       if (!f.parents) f.parents = [];
+      /* saves written before DNA kept parent NAMES in this field: move them, do not hash them */
+      if (f.parents.some(function (q) { return !isDna(q); })) {
+        f.parentNames = (f.parentNames || []).concat(f.parents.filter(function (q) { return !isDna(q); })).slice(0, 2);
+        f.parents = f.parents.filter(isDna);
+      }
+      if (!f.parentNames) f.parentNames = [];
+      if (!f.genes) f.genes = { born: f.born || Date.now(), salt: dnaSalt() };
+      if (!f.dna) f.dna = dnaFor(f.species, f.gen || 1, f.sex, f.traits, f.parents, f.genes.born, f.genes.salt);
+      /* a save from before birth snapshots existed gets one, and one re-hash to match it;
+         from then on a mismatch is evidence, not drift, so it is never repaired again */
+      if (!f.genes.traits) giveDna(f, true);
+      bankFish(f);
       if (!f.state) f.state = "cruise";
       if (f.phase == null) f.phase = Math.random() * 6.283;
       if (f.heading == null) f.heading = (f.vx || 0) < 0 ? Math.PI : 0;
@@ -920,6 +1113,36 @@
     };
   }
 
+  /* ---------------- the public life hall ----------------
+     The board lives on the Hugging Face space; everything here is read-only and none of
+     it is needed for the tank to run. No account, no login: a name, a species and hours. */
+  const HALL_URL = "https://deepseekoracle-lattice-marines-ledger.hf.space/fish/ledger.json";
+  function fetchHall(force) {
+    if (!state || typeof fetch !== "function") return;
+    if (!force && Date.now() - (state._hallAt || 0) < 4 * 60000) return;
+    if (Date.now() - (state._hallAt || 0) < 20000) return;
+    state._hallAt = Date.now();
+    fetch(HALL_URL, { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        const rows = (d && d.lives) || [];
+        state.hallPublic = {
+          updated: (d && d.updated) || null,
+          rows: rows.slice(0, 5).map(function (r) {
+            return {
+              keeper: r.name || "Keeper", fish: r.fish || r.name || "—",
+              hours: r.score || 0, species: r.species || "", dna: r.dna || "", gen: r.gen || 1
+            };
+          })
+        };
+        renderRail();
+      })
+      .catch(function () {});
+  }
+  function hallBest() {
+    const rows = (state && state.hallPublic && state.hallPublic.rows) || [];
+    return rows.length ? rows[0] : null;
+  }
   function bury(f, now) {
     const age = ageOf(f, now);
     const row = {
@@ -929,7 +1152,10 @@
       tankHours: Math.round(tankAge(now) / HOUR),
       theme: themeOf(state.theme).name,
       stage: f.species ? stageName(bodyAge(f), f.species) : "crew",
-      date: new Date(now).toISOString().slice(0, 10)
+      date: new Date(now).toISOString().slice(0, 10),
+      gen: f.gen || 1,
+      dna: f.dna || "",
+      keeper: state.owner || "Keeper"
     };
     state.cemetery.unshift(row);
     state.cemetery = state.cemetery.slice(0, 40);
@@ -940,17 +1166,30 @@
         : f.cause === "hunger"
           ? (f.name + " dies unfed after " + row.score + " hours.")
           : (f.name + " rests of old age after " + row.score + " hours."));
-    if (window.ArcadeLedger && ArcadeLedger.fish) {
+    if (window.ArcadeLedger && ArcadeLedger.fish && row.score >= 1) {
       ArcadeLedger.fish({
-        name: row.name,
+        name: state.owner || "Keeper",
+        fish: row.name,
         score: row.score,
+        hours: row.score,
         tankHours: row.tankHours,
         theme: row.theme,
         species: row.species,
         stage: row.stage,
+        gen: row.gen,
+        dna: row.dna,
         date: row.date,
         event: "life"
       });
+      /* the public hall is other keepers' fish. Beating it is the point of keeping one
+         alive this long, so say so out loud when it happens. */
+      const best = state.hallPublic && state.hallPublic.rows && state.hallPublic.rows[0];
+      if (best && row.score > (best.hours || 0)) {
+        log(row.name + " lived " + row.score + " hours. That is the longest life on the public hall.");
+        keeperNote("The hall says " + (best.hours || 0) + " hours from " + (best.keeper || "another keeper") +
+          ". " + row.name + " just beat it.");
+      }
+      fetchHall();
     }
   }
   function predOf(id) { return PREDATORS[id] || PREDATORS.pike; }
@@ -989,7 +1228,7 @@
     if (span <= 0) return;
     const unfed = now - (f.lastFed || f.born) > v.food * HOUR;
     const dirty = (state.quality || 100) < 45 || (state.algae || 0) > 68;
-    const crowded = state.fish.length >= crowdLimit();
+    const crowded = loadRatio() >= 0.85;
     const load = crowdLoad();
     const thin = (state.oxygen || 100) < OX.thin;
     let delta = 0;
@@ -1039,8 +1278,9 @@
     }
     const goal = (state.predators || []).length ? 16 : 12;
     const cost = price();
-    if (state.fish.length < goal && state.fish.length < fishCap() && state.quality >= 50 && state.points >= cost) {
+    if (state.fish.length < goal && state.quality >= 50 && state.points >= cost) {
       let id = autoSpecies();
+      if (!canAdd(id)) return;
       if (id === "octo" && hasOcto()) id = "dart";
       state.points -= cost;
       const fish = makeFish(id, specOf(id).name);
@@ -1053,16 +1293,74 @@
       if (!startHand("pellet")) state.points += 15;
     }
   }
+  /* ---- what a fish brings to a fight ----
+     spines  a bite can be repelled, and the hunter pays for trying
+     venom   even a bite that lands costs the hunter
+     armor   thick, hard to get a grip on
+     speed   a burst that steals the strike
+     hide    reads the weed and the rockwork
+     ink     the octopus's escape, already in the water */
+  const DEFENSE = {
+    glimmer:  { speed: 0.15, hide: 0.1 },
+    dart:     { speed: 0.45 },
+    azure:    { speed: 0.3, hide: 0.15 },
+    moss:     { hide: 0.45 },
+    lantern:  { hide: 0.35, speed: 0.1 },
+    ruby:     { armor: 0.25 },
+    veil:     { armor: 0.2, speed: 0.2 },
+    sunscale: { armor: 0.3 },
+    pearl:    { armor: 0.35 },
+    puff:     { spines: 0.5, armor: 0.1 },
+    mask:     { venom: 0.35, hide: 0.2 },
+    mandarin: { venom: 0.4, hide: 0.25 },
+    pepper:   { spines: 0.45, hide: 0.2 },
+    tusk:     { spines: 0.55 },
+    dragon:   { hide: 0.6 },
+    claw:     { venom: 0.5, armor: 0.3 },
+    crab:     { armor: 0.55, venom: 0.15 },
+    octo:     { venom: 0.3, hide: 0.4 }
+  };
+  function defenseOf(species) { return DEFENSE[species] || {}; }
+  function dval(species, key) { return defenseOf(species)[key] || 0; }
+  function defenseLine(f) {
+    if (!f) return "";
+    const d = defenseOf(f.species);
+    const bits = [];
+    if (d.spines) bits.push("spines");
+    if (d.venom) bits.push("venom");
+    if (d.armor) bits.push("armor");
+    if (d.speed) bits.push("burst speed");
+    if (d.hide) bits.push("cover");
+    const mates = schoolMates(f, 0.13);
+    if (mates) bits.push("shoal of " + (mates + 1));
+    return bits.length ? bits.join(" · ") : "no defences worth naming";
+  }
+  /* how many of its own kind are within reach - the oldest defence there is */
+  function schoolMates(f, r) {
+    const reach = r == null ? 0.13 : r;
+    let n = 0;
+    ((state && state.fish) || []).forEach(function (o) {
+      if (o === f || o.species !== f.species) return;
+      if (apart(o, f) <= reach) n += 1;
+    });
+    return n;
+  }
+  function schoolSafety(f) { return clamp(schoolMates(f, 0.13) / 5, 0, 1); }
   function huntChance(f, now) {
     const v = vitals(f);
     const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
     const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
     let chance = clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
-    if (f.species === "octo" && (f.inkUntil || 0) > now) chance = clamp(chance - 0.10, 0.05, 0.85);
-    if (f.species === "mandarin") chance = clamp(chance - 0.08, 0.05, 0.85);
-    if (f.species === "dragon" && nearWeed(f)) chance = clamp(chance - 0.12, 0.05, 0.85);
-    if (hasPerk("keen")) chance = clamp(chance - 0.05, 0.05, 0.85);
-    return chance;
+    /* armour and spines blunt the strike, speed and cover steal it, and a fish inside
+       its own shoal is a bad bet: the nearest of its kind is the one that gets seen */
+    chance -= dval(f.species, "armor") * 0.12 + dval(f.species, "speed") * 0.10 +
+      dval(f.species, "spines") * 0.08 + dval(f.species, "venom") * 0.05;
+    chance -= schoolSafety(f) * 0.22;
+    if (f.species === "octo" && (f.inkUntil || 0) > now) chance -= 0.10;
+    if (f.species === "mandarin") chance -= 0.08;
+    if (f.species === "dragon" && nearWeed(f)) chance -= 0.12;
+    if (hasPerk("keen")) chance -= 0.05;
+    return clamp(chance, 0.05, 0.85);
   }
   function nearWeed(f) {
     let close = false;
@@ -1092,16 +1390,33 @@
       log(f.name + " throws a cloud of black ink.");
     }
   }
-  function weakestPrey(now) {
+  /* How exposed a fish is. A hunter that only ever takes the hungriest fish wastes its
+     hours on the ones its prey's friends are guarding; this is the number that decides
+     which fish is worth the strike: weak, hungry, alone, and soft. */
+  function preyScore(f, now) {
+    const v = vitals(f);
+    const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
+    const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
+    let s = (1 - hpRatio) * 1.0 + (1 - fedRatio) * 0.7;
+    s += (1 - schoolSafety(f)) * 0.5;
+    s -= dval(f.species, "armor") * 0.25 + dval(f.species, "spines") * 0.2 +
+      dval(f.species, "venom") * 0.18 + dval(f.species, "speed") * 0.12;
+    const stage = stageName(bodyAge(f), f.species);
+    if (stage === "baby") s += 0.25;
+    else if (stage === "child") s += 0.15;
+    if (f.species === "octo" && (f.inkUntil || 0) > now) s -= 0.3;
+    return Math.round(s * 1000) / 1000;
+  }
+  function weakestPrey(now, exact) {
     const prey = state.fish.slice();
     if (!prey.length) return null;
-    prey.sort(function (a, b) {
-      const ah = (a.hp || 0) / vitals(a).hp;
-      const bh = (b.hp || 0) / vitals(b).hp;
-      if (ah !== bh) return ah - bh;
-      return foodLeft(a, now) - foodLeft(b, now);
+    let best = null, bestScore = -Infinity;
+    prey.forEach(function (f) {
+      /* murky water: the top of the list is not always the same fish */
+      const s = preyScore(f, now) + (exact ? 0 : Math.random() * 0.12);
+      if (s > bestScore) { bestScore = s; best = f; }
     });
-    return prey[0];
+    return best;
   }
   function stalkTarget(p) {
     if (!p.victim) return null;
@@ -1126,6 +1441,26 @@
   }
   function rollPredator(p, now, reason, allowBaby, countFail) {
     const victim = weakestPrey(now);
+    /* two hunters in one glass see the same easy fish. The stronger one takes it, and
+       the other loses the hour - which is how a hunter starves without ever missing. */
+    if (victim && reason !== "contact") {
+      const rival = (state.predators || []).filter(function (o) {
+        return o !== p && o.adult && (o.fails || 0) < 2 && o.victim === victim.id;
+      })[0];
+      if (rival) {
+        const mine = (p.hp || 1) / predMax(p) + (p.elder ? 0.4 : 0);
+        const theirs = (rival.hp || 1) / predMax(rival) + (rival.elder ? 0.4 : 0);
+        if (theirs > mine) {
+          p.hp = clamp((p.hp || predMax(p)) - predMax(p) * 0.08, 0, predMax(p));
+          p.victim = null;
+          p.pending = false;
+          p.nextRoll = now + HOUR;
+          log(p.name + " and " + rival.name + " both want " + victim.name + ". " + rival.name +
+            " is first to it. " + p.name + " loses the hour and takes a bite for trying.");
+          return false;
+        }
+      }
+    }
     p.pending = false;
     p.victim = null;
     p._stalkSaid = false;
@@ -1139,6 +1474,8 @@
     const chance = huntChance(victim, now);
     const roll = 1 + ((Math.random() * 100) | 0);
     const hit = roll <= Math.round(chance * 100);
+    const shield = schoolSafety(victim);
+    const def = defenseOf(victim.species);
     if (hit) {
       victim.cause = "hunt";
       bury(victim, now);
@@ -1157,10 +1494,20 @@
         p.streak = (p.streak || 0) + 1;
         if (p.streak >= 3) becomeJaws(p);
       }
+      let bites = "";
+      if (def.venom && Math.random() < def.venom * 0.35) {
+        p.hp = clamp((p.hp || predMax(p)) - predMax(p) * 0.15, 0, predMax(p));
+        bites = " The venom costs it.";
+        if (p.hp <= 0) { p.fails = 2; bites += " It sinks."; }
+      } else if (def.spines && Math.random() < def.spines * 0.3) {
+        p.hp = clamp((p.hp || predMax(p)) - predMax(p) * 0.1, 0, predMax(p));
+        bites = " The spines open a gill.";
+        if (p.hp <= 0) { p.fails = 2; bites += " It sinks."; }
+      }
       log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name +
-        (reason === "contact" ? " in the open" : ", the weakest") +
+        (reason === "contact" ? " in the open" : shield > 0.25 ? ", cut out of the shoal" : ", the most exposed one") +
         (victim.species === "octo" && (victim.inkUntil || 0) > now ? " through the ink" : "") +
-        (born ? ". A baby hunter is born." : "."));
+        (born ? ". A baby hunter is born." : ".") + bites);
       if (p.elder) keeperNote(p.name + " just took " + victim.name + ". I am sorry. Stay with the others.");
       else keeperNote(p.name + " took " + victim.name + ". The rest are still here.");
       addRipple(victim.x, victim.y);
@@ -1173,10 +1520,23 @@
     if (countFail !== false) p.fails = (p.fails || 0) + 1;
     if (p.kind === "shark" && !p.elder) p.streak = 0;
     if (reason === "contact") state.dodge = (state.dodge || 0) + 1;
+    /* the prey gets its shot back: spines and venom are not just a lower chance to bite */
+    let pay = "";
+    if (def.spines && Math.random() < def.spines * 0.45) {
+      p.hp = clamp((p.hp || predMax(p)) - predMax(p) * (0.22 + Math.random() * 0.2), 0, predMax(p));
+      pay = " " + victim.name + "'s spines draw blood.";
+    } else if (def.venom && Math.random() < def.venom * 0.4) {
+      p.hp = clamp((p.hp || predMax(p)) - predMax(p) * (0.16 + Math.random() * 0.16), 0, predMax(p));
+      pay = " The venom burns.";
+    } else if (def.armor && Math.random() < def.armor * 0.3) {
+      pay = " The scales turn the bite.";
+    }
+    if (p.hp <= 0) { p.fails = 2; pay += " " + p.name + " is finished."; }
     log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name +
       (reason === "contact" ? " at the last moment" : reason === "away" ? "" : ", which reached cover") +
+      (shield > 0.25 ? ". The shoal closes around it" : "") +
       (victim.species === "octo" && (victim.inkUntil || 0) > now ? ". The ink takes 10% off the bite" : "") +
-      "." + ((p.fails || 0) >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
+      "." + pay + ((p.fails || 0) >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
     p.forwardUntil = now + 16000;
     p.nextRoll = now + HOUR;
     return false;
@@ -1557,11 +1917,46 @@
     if (!spots.length) return { x: 0.5, y: 0.8 };
     return spots[(Math.random() * spots.length) | 0];
   }
+  /* ---- who breeds, how fast, and how reliably ----
+     cd    minutes before that species comes round again
+     min   water quality it insists on
+     eggs  the clutch it lays, low to high
+     roll  the odds the courtship takes at all: the fast schoolers spawn often and miss
+           often, the slow ones wait longer and almost never waste the trip
+     mature  the stage it must reach first */
+  const BREED = {
+    glimmer:  { cd: 30, min: 52, eggs: [2, 4], roll: 0.55, mature: "adult" },
+    dart:     { cd: 24, min: 50, eggs: [2, 4], roll: 0.5, mature: "adult" },
+    moss:     { cd: 28, min: 50, eggs: [2, 4], roll: 0.55, mature: "adult" },
+    azure:    { cd: 34, min: 56, eggs: [2, 3], roll: 0.6, mature: "adult" },
+    pearl:    { cd: 38, min: 60, eggs: [1, 3], roll: 0.7, mature: "adult" },
+    puff:     { cd: 40, min: 58, eggs: [1, 3], roll: 0.68, mature: "adult" },
+    lantern:  { cd: 46, min: 62, eggs: [1, 2], roll: 0.72, mature: "adult" },
+    mask:     { cd: 52, min: 66, eggs: [1, 3], roll: 0.75, mature: "adult" },
+    veil:     { cd: 58, min: 68, eggs: [1, 2], roll: 0.8, mature: "adult" },
+    ruby:     { cd: 60, min: 70, eggs: [1, 2], roll: 0.85, mature: "elder" },
+    sunscale: { cd: 72, min: 74, eggs: [1, 2], roll: 0.92, mature: "elder" },
+    tusk:     { cd: 80, min: 72, eggs: [1, 2], roll: 0.92, mature: "elder" },
+    mandarin: { cd: 76, min: 76, eggs: [1, 2], roll: 0.9, mature: "elder" },
+    pepper:   { cd: 84, min: 78, eggs: [1, 2], roll: 0.9, mature: "elder" },
+    claw:     { cd: 92, min: 80, eggs: [1, 2], roll: 0.95, mature: "elder" },
+    crab:     { cd: 98, min: 82, eggs: [1, 2], roll: 0.95, mature: "elder" },
+    octo: null,     /* one octopus keeps this glass, and it does not breed in it */
+    dragon: null    /* nor does the seadragon */
+  };
+  const BREED_RETRY = 4 * 60000;
+  function breedOf(species) { return BREED[species] || null; }
+  function breedReady(stage, b) {
+    if (b.mature === "elder") return stage === "elder" || stage === "adult";
+    return stage === "adult" || stage === "elder";
+  }
   function layEggs(a, b, now) {
     const spot = eggSpot();
     const room = EGG_CAP - state.eggs.length;
     if (room <= 0) return;
-    const n = Math.min(room, Math.random() < 0.35 ? 3 : 2);
+    const clutch = (breedOf(a.species) || { eggs: [2, 3] }).eggs;
+    const span = Math.max(0, clutch[1] - clutch[0]);
+    const n = Math.min(room, clutch[0] + Math.round(Math.random() * span));
     const fast = (state.quality || 0) >= 82;
     for (let i = 0; i < n; i += 1) {
       state.eggs.push({
@@ -1573,7 +1968,8 @@
         hatchAt: now + (fast ? HATCH_MS * 0.7 : HATCH_MS) * (hasPerk("quickfry") ? 0.65 : 1),
         gen: Math.max(a.gen || 1, b.gen || 1) + 1,
         traits: makeTraits(traits(a), traits(b)),
-        parents: [a.name, b.name]
+        parents: [a.dna, b.dna].filter(isDna),
+        parentNames: [a.name, b.name]
       });
     }
     log(a.name + " and " + b.name + " leave " + n + " " + specOf(a.species).name + " eggs on the rockwork.");
@@ -1596,12 +1992,16 @@
     }
     hatchList.forEach(function (e) {
       state.eggs = state.eggs.filter(function (o) { return o !== e; });
-      if (state.fish.length >= fishCap()) { log("An egg hatches but the glass is full."); return; }
+      if (!canAdd(e.species)) { log("An egg hatches but the glass has no room."); return; }
       if (e.species === "octo" && hasOcto()) { log("An octopus egg fades. One already keeps this glass."); return; }
       const fry = makeFish(e.species, fryName(e.species));
       fry.traits = e.traits || makeTraits();
       fry.gen = e.gen || 2;
-      fry.parents = (e.parents || []).slice();
+      fry.parents = (e.parents || []).filter(isDna).slice(0, 2);
+      fry.parentNames = (e.parentNames || []).slice(0, 2);
+      fry.born = now;
+      fry.genes = { born: now, salt: dnaSalt() };
+      giveDna(fry, true);
       fry.x = e.x;
       fry.y = e.y;
       fry.vx = 0.01;
@@ -1610,7 +2010,7 @@
       state.gen = Math.max(state.gen || 1, fry.gen);
       state.points += 12;
       log("A fry hatches by the rockwork: " + fry.name + ", generation " + fry.gen + ", from " +
-        (fry.parents.join(" and ") || "the pair") + ". +12");
+        (fry.parentNames.join(" and ") || "the pair") + ". DNA " + fry.dna + ". +12");
       addRipple(e.x, e.y);
       save();
     });
@@ -1618,26 +2018,49 @@
   function breedCheck(now) {
     if (!playing || !state) return;
     state.eggs = state.eggs || [];
+    if (typeof state._breedAt === "number") state._breedAt = {};
+    if (typeof state._breedTry === "number") state._breedTry = {};
+    state._breedAt = state._breedAt || {};
+    state._breedTry = state._breedTry || {};
     if (state.eggs.length >= EGG_CAP) return;
-    if (state.fish.length + state.eggs.length >= 40) return;
-    if ((state.quality || 0) < 62 || (state.algae || 0) > 55) return;
-    if (now - (state._breedAt || 0) < 12 * 60000) return;
-    const ready = state.fish.filter(function (f) {
-      const grown = stageName(bodyAge(f), f.species);
-      return (grown === "adult" || grown === "elder") && bodyAge(f) <= cycleOf(f.species)[5] * HOUR * 0.9 &&
-        (f.hp || 0) >= vitals(f).hp * 0.7 &&
-        now - (f.lastFed || f.born) < 3 * HOUR &&
-        now - (f.spawnCd || 0) > 45 * 60000 &&
-        f.species !== "octo" && f.species !== "dragon";
-    });
-    if (ready.length < 2) return;
-    let pair = null;
-    for (let i = 0; i < ready.length && !pair; i += 1) {
-      for (let j = i + 1; j < ready.length; j += 1) {
-        if (ready[i].species === ready[j].species && ready[i].sex !== ready[j].sex) { pair = [ready[i], ready[j]]; break; }
+    if (state.fish.length >= HARD_CAP) return;
+    if ((state.quality || 0) < 50 || (state.algae || 0) > 65) return;
+    /* each species is asked in turn, and only one pair courts per pass */
+    const ids = Object.keys(BREED);
+    for (let k = 0; k < ids.length; k += 1) {
+      const id = ids[k];
+      const b = breedOf(id);
+      if (!b) continue;
+      if ((state.quality || 0) < b.min) continue;
+      if (!canAdd(id) && fishLoad() + EGG_LOAD * 2 > loadCap()) continue;
+      if (now - (state._breedAt[id] || 0) < b.cd * 60000) continue;
+      /* a missed courtship costs a short retry, never the whole cadence, and a species
+         with no willing pair in the water does not burn its clock at all */
+      if (now - (state._breedTry[id] || 0) < BREED_RETRY) continue;
+      const ready = state.fish.filter(function (f) {
+        const grown = stageName(bodyAge(f), f.species);
+        return f.species === id && breedReady(grown, b) &&
+          bodyAge(f) <= cycleOf(f.species)[5] * HOUR * 0.9 &&
+          (f.hp || 0) >= vitals(f).hp * 0.7 &&
+          now - (f.lastFed || f.born) < 3 * HOUR &&
+          now - (f.spawnCd || 0) > 30 * 60000;
+      });
+      if (ready.length < 2) continue;
+      let pair = null;
+      for (let i = 0; i < ready.length && !pair; i += 1) {
+        for (let j = i + 1; j < ready.length; j += 1) {
+          if (ready[i].sex !== ready[j].sex) { pair = [ready[i], ready[j]]; break; }
+        }
       }
+      if (!pair) continue;
+      if (Math.random() > b.roll) { state._breedTry[id] = now; continue; }
+      state._breedAt[id] = now;
+      state._breedTry[id] = 0;
+      return court(pair, now);
     }
-    if (!pair) return;
+    return false;
+  }
+  function court(pair, now) {
     pair.forEach(function (f) {
       f.courtT = 7;
       f.spawnCd = now;
@@ -1648,11 +2071,11 @@
       f.actionT = 0;
       f.action = "";
     });
-    state._breedAt = now;
     state.court = (state.court || 0) + 1;
     const layer = pair[0].sex === "f" ? pair[0] : pair[1];
     layer.layAt = now + 7000;
     log(pair[0].name + " and " + pair[1].name + " turn slow circles. " + specOf(pair[0].species).name + " eggs are coming.");
+    return true;
   }
   function spawnLayCheck(now) {
     state.fish.forEach(function (f) {
@@ -1778,6 +2201,7 @@
       spawnLayCheck(now);
       breedCheck(now);
       checkGoals(now);
+      fetchHall();
     }
   }
   function award(f, n, why) {
@@ -3285,7 +3709,8 @@
         " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
         (word ? " · <b class='act'>" + word + "</b>" : "") + at +
         (social ? "<br><span class='lore'>" + esc(social) + "</span>" : "") + "<br>traits: " + esc(mine) +
-        (f.parents && f.parents.length ? " · from " + esc(f.parents.join(" and ")) : "") + "</span></button>";
+        (f.parentNames && f.parentNames.length ? " · from " + esc(f.parentNames.join(" and ")) : "") +
+        (f.dna ? " · <span class=\"dnabit\">" + esc(f.dna) + "</span>" : "") + "</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
@@ -3312,7 +3737,9 @@
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
-    document.getElementById("mLiving").textContent = state.fish.length + "/" + fishCap();
+    const liveEl = document.getElementById("mLiving");
+    liveEl.textContent = state.fish.length + " · " + Math.round(fishLoad()) + "/" + loadCap();
+    liveEl.title = "bodies · space used of the load this glass can carry. Small schooling fish cost less space than big solo fish.";
     const huntEl = document.getElementById("mHunters");
     if (huntEl) huntEl.textContent = (state.predators || []).length + "/" + HUNTER_CAP;
     const autoBtn = document.getElementById("btnAuto");
@@ -3382,7 +3809,11 @@
         ["oxygen", oxy + "% " + arrow(-trend.oxygen), band(oxy, OX.thin + 12, OX.thin), oxy / 100, oxy < OX.thin ? "thin for " + elapsedWord(state._oxyAt) : "fine"],
         ["waste", waste + "% " + arrow(trend.waste), band(100 - waste, 55, 30), waste / 100, bottoms ? bottoms + " lifting" : "nobody lifting"],
         ["algae", Math.round(state.algae) + "% " + arrow(trend.algae), band(100 - state.algae, 55, 32), state.algae / 100, grazers ? grazers + " grazing" : "no grazers"],
-        ["crowding", state.fish.length + "/" + crowdLimit(), band(100 - load * 55, 60, 40), Math.min(1, load), load > 0.95 ? "healing slower" : "water is keeping up"]
+        ["space used", Math.round(fishLoad()) + "/" + loadCap(), band(100 - load * 55, 60, 40), Math.min(1, load), load > 0.95 ? "healing slower" : "water is keeping up"],
+        ["public hall", state.hallPublic
+          ? (hallBest() ? (hallBest().hours + "h · " + hallBest().fish + " by " + hallBest().keeper) : "no lives inscribed yet")
+          : "reading the hall", "q-fair", 0.5,
+          Math.max(hallBest() ? hallBest().hours : 0, hall) > 0 ? "your best here " + hall + "h" : "longest life wins"]
       ];
       wp.innerHTML =
         "<div class='wgrid'>" + rows.map(function (r) {
@@ -3414,7 +3845,7 @@
       const wNote = wasteNote();
       if (wNote) notes.push(wNote);
       if (state.fish.length >= (hasPerk("crowd") ? 42 : 30)) notes.push("Crowded. Everyone heals slower.");
-      if (crowdLoad() > 0.85 && state.fish.length < crowdLimit()) notes.push("The glass is filling. Healing slows as it fills.");
+      if (crowdLoad() > 0.85 && canAdd("glimmer")) notes.push("The glass is filling. Healing slows as it fills.");
       if ((state.eggs || []).length) notes.push((state.eggs || []).length + " egg" + ((state.eggs || []).length > 1 ? "s" : "") + " on the rockwork.");
       noteEl.textContent = notes.join(" ") || "Water is steady.";
     }
@@ -3542,7 +3973,8 @@
     document.getElementById("fishCardChips").innerHTML =
       "<span>" + esc(stageName(bodyAge(f), f.species)) + "</span>" +
       "<span>" + esc(spec.temper === "chill" ? "relaxed" : "busy") + "</span>" +
-      "<span class='gold'>gen " + esc(f.gen || 1) + "</span>";
+      "<span class='gold'>gen " + esc(f.gen || 1) + "</span>" +
+      (verifyDna(f).ok ? "<span>dna ok</span>" : "<span>dna ?</span>");
     const pic = document.getElementById("fishCardPic");
     pic.src = portraitSrc(f.species);
     pic.alt = spec.name;
@@ -3564,7 +3996,10 @@
       ["Water here", temp + "° " + (f.y > 0.62 ? "at the sand" : f.y < 0.3 ? "at the surface" : "mid water")],
       ["Keeping", ok ? "comfortable" : (tempNote(f) || "off its band")],
       ["Oxygen", oxy + "%" + (oxy < OX.thin ? " · thin" : "")],
-      ["Line", "gen " + (f.gen || 1) + " · " + (f.sex === "f" ? "f" : "m")]
+      ["Line", "gen " + (f.gen || 1) + " · " + (f.sex === "f" ? "f" : "m")],
+      ["DNA", f.dna || "—"],
+      ["Genome", dnaLine(f)],
+      ["Defense", defenseLine(f)]
     ];
     document.getElementById("fishCardRows").innerHTML = rows.map(function (r) {
       return "<div><dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd></div>";
@@ -3662,6 +4097,8 @@
     death: { tag: "loss", pri: 2, lines: ["{name} is gone. {how}.", "We lost {name} — {how}."] },
     bite: { tag: "hunter", pri: 2, lines: ["That bite landed. {name} is gone.", "{name} was taken."] },
     dodge: { tag: "hunter", pri: 1, lines: ["{name} slipped it. Rolled {roll} against {chance}%.", "A miss at the last moment — {name} is still here."] },
+    repel: { tag: "hunter", pri: 1, lines: ["That one fought back. The hunter is hurt.", "Spines and venom. It paid for the try."] },
+    contest: { tag: "hunter", pri: 1, lines: ["{name} and {other} wanted the same fish. {other} took it.", "Two hunters, one fish — {fish} was the prize."] },
     stalk: { tag: "hunter", pri: 1, lines: ["It has picked {name}.", "It is lining up {name}."] },
     hunt: { tag: "hunter", pri: 2, lines: ["A boss just entered the glass.", "One hunter is in. Watch the water."] },
     jaws: { tag: "hunter", pri: 2, lines: ["Greymaw is JAWS now. Bigger, and it takes two a meal.", "JAWS. Keep the weak ones fed."] },
@@ -3689,6 +4126,8 @@
   };
   const KEEPER_SAY = {
     mara: {
+      repel: ["That fish had spines. The hunter is bleeding for its trouble — good."],
+      contest: ["Two hunters went for the same fish. One of them goes hungry tonight."],
       waste: ["Waste on the sand. A cory or the turtle, and it lifts.", "That much waste spends the oxygen. Lift it early."],
       death: ["{name} is gone. {how}. Keep the water and the rest will hold."],
       oxygen: ["Oxygen is low. Plants and a water change, and they will come down off the surface."],
@@ -4031,20 +4470,26 @@
         state.points += m === "happy" ? 1 : m === "normal" ? 1 : 0;
       });
       if (state.fish.length) save();
-      if (window.ArcadeLedger && ArcadeLedger.fish && (!state._tankPost || now - state._tankPost > HOUR)) {
+      const lead = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); })[0];
+      const leadHours = lead ? Math.round(ageOf(lead, now) / HOUR) : 0;
+      if (window.ArcadeLedger && ArcadeLedger.fish && leadHours >= 1 &&
+        (!state._tankPost || now - state._tankPost > HOUR)) {
         state._tankPost = now;
-        const lead = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); })[0];
         ArcadeLedger.fish({
           name: state.owner || "Keeper",
+          fish: lead ? lead.name : "",
           score: lead ? Math.round(ageOf(lead, now) / HOUR) : 0,
+          hours: lead ? Math.round(ageOf(lead, now) / HOUR) : 0,
           tankHours: Math.round(tankAge(now) / HOUR),
           theme: themeOf(state.theme).name,
           species: lead ? lead.species : "",
           stage: lead ? stageName(bodyAge(lead), lead.species) : "",
-          fish: lead ? lead.name : "",
+          gen: lead ? (lead.gen || 1) : 1,
+          dna: lead ? (lead.dna || "") : "",
           date: new Date(now).toISOString().slice(0, 10),
           event: "tank"
         });
+        fetchHall();
       }
     }
     if (state.opts.motion !== false) {
@@ -4137,8 +4582,8 @@
   document.getElementById("shop").onclick = function (e) {
     const b = e.target.closest("[data-buy]");
     if (!b) return;
-    if (state.fish.length >= fishCap()) { log("The tank holds " + fishCap() + " fish. More than that and the water turns."); return; }
     const sp = b.getAttribute("data-buy");
+    if (!canAdd(sp)) { log("No room in the glass for a " + specOf(sp).name + " yet. Space " + Math.round(fishLoad()) + " of " + loadCap() + "."); return; }
     if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
     if (state.points < cost) { log("Need " + cost + " points."); return; }
@@ -4391,6 +4836,18 @@
   /* Read-only view: for the curious, and for the tools. Nothing here writes. */
   window.FishTank = {
     get: function () { return state; },
+    /* recompute a fish's DNA from its genome; with no id, the whole tank */
+    verify: function (id) {
+      if (!state) return null;
+      if (id) {
+        const f = state.fish.filter(function (x) { return x.id === id || x.name === id || x.dna === id; })[0];
+        if (!f) return null;
+        const v = verifyDna(f);
+        return { name: f.name, dna: v.dna, ok: v.ok, reason: v.reason, lineage: lineageOf(f), parents: f.parents || [] };
+      }
+      const fish = state.fish.map(function (f) { const v = verifyDna(f); return { name: f.name, dna: v.dna, ok: v.ok }; });
+      return { fish: fish, ok: fish.filter(function (x) { return x.ok; }).length, bank: Object.keys(state.bank || {}).length };
+    },
     debug: function () {
       const counts = {};
       (state && state.fish ? state.fish : []).forEach(function (f) { counts[f.state || "?"] = (counts[f.state || "?"] || 0) + 1; });
@@ -4410,7 +4867,11 @@
         goals: state ? Object.keys(state.goals || {}).length : 0,
         motes: motes.length,
         aspect: Math.round(AR * 100) / 100,
-        points: state ? state.points : 0
+        points: state ? state.points : 0,
+        dna: state ? state.fish.filter(function (f) { return !!f.dna; }).length : 0,
+        dnaOk: state ? state.fish.filter(function (f) { return verifyDna(f).ok; }).length : 0,
+        bank: state ? Object.keys(state.bank || {}).length : 0,
+        lineage: state ? state.fish.reduce(function (n, f) { return Math.max(n, lineageOf(f).deepest || 0); }, 0) : 0
       };
     }
   };

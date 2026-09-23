@@ -193,6 +193,7 @@
   function bookRows(book) {
     if (!book) return [];
     if (Array.isArray(book.rows)) return book.rows;
+    if (book.key && Array.isArray(book[book.key])) return book[book.key];
     if (Array.isArray(book.wins)) return book.wins;
     if (Array.isArray(book.cashouts)) return book.cashouts;
     if (Array.isArray(book.rounds)) return book.rounds;
@@ -203,7 +204,115 @@
     return [];
   }
 
+  // Fish Tank life rows: {id, name (keeper), fish, species, event "life"|"tank",
+  // score (hours lived), hours, tankHours, gen, dna, theme, stage, date, iso}.
+  // Missing field -> "" so a thin row never breaks the card.
+  function fishField(r, keys) {
+    for (var i = 0; i < keys.length; i++) {
+      var v = r[keys[i]];
+      if (v !== undefined && v !== null && v !== "") return v;
+    }
+    return "";
+  }
+
+  function fishNorm(raw) {
+    var r = raw || {};
+    var event = r.event === "tank" ? "tank" : "life";
+    function hours(v) { var n = Number(v); return isFinite(n) && n > 0 ? Math.round(n) : 0; }
+    var score = hours(fishField(r, ["score", "hours"]));
+    var tankHours = hours(r.tankHours);
+    var iso = String(fishField(r, ["iso"]) || "");
+    return {
+      keeper: fishField(r, ["name"]),
+      fish: fishField(r, ["fish"]),
+      species: fishField(r, ["species"]),
+      event: event,
+      tankHours: tankHours,
+      // The book's own number ranks: score = hours lived. A whole-tank row with no life score
+      // yet falls back to its own age and says "h tank", never "h lived".
+      hours: score > 0 ? score : (event === "tank" && tankHours > 0 ? tankHours : 0),
+      hoursFrom: score > 0 ? "score" : (event === "tank" && tankHours > 0 ? "tankHours" : ""),
+      gen: fishField(r, ["gen"]),
+      dna: String(fishField(r, ["dna"]) || ""),
+      date: fishField(r, ["date"]) || (iso ? iso.slice(0, 10) : ""),
+      /* a life that only exists in this browser must never read as if the book held it */
+      local: !!r.local
+    };
+  }
+
+  var FISH_EMPTY = "No lives inscribed yet — the first keeper to inscribe a long life owns the hall.";
+  // bestJson resolves null only when no feed answered at all, so an unreachable book never
+  // masquerades as an empty one.
+  var FISH_OFFLINE = "The life book did not answer — retrying shortly.";
+
+  // Longest life first: rows the book scored (hours lived) outrank a whole-tank row that has
+  // posted no life score yet, and tanks rank among themselves by tank age. Same order as the
+  // Fish Tank hall page, so the card and the hall never disagree.
+  function fishRanked(list) {
+    return (list || []).map(fishNorm)
+      .filter(function (r) { return r.hours > 0 || r.fish || r.keeper; })
+      .sort(function (a, b) {
+        return (b.hoursFrom === "score" ? 1 : 0) - (a.hoursFrom === "score" ? 1 : 0) ||
+          b.hours - a.hours ||
+          String(b.date).localeCompare(String(a.date));
+      });
+  }
+
+  function fishCardRows(list) {
+    return (list || []).slice(0, 6).map(function (r) {
+      return { name: r.fish || r.keeper || "Unnamed fish", score: fishScore(r), meta: fishMeta(r) };
+    });
+  }
+
+  function fishScore(r) {
+    if (!r.hours) return "—";
+    return r.hours.toLocaleString("en-US") + (r.hoursFrom === "tankHours" ? "h tank" : "h");
+  }
+
+  function fishMeta(r) {
+    return [
+      r.keeper ? "kept by " + r.keeper : "",
+      r.species,
+      r.gen ? "gen " + r.gen : "",
+      r.dna ? r.dna.slice(0, 8) + (r.dna.length > 8 ? "…" : "") : "",
+      // when the tank's own age is already the ranking number, do not say it twice
+      r.event === "tank" ? (r.hoursFrom === "tankHours" ? "whole tank" : (r.tankHours ? "tank " + r.tankHours + "h" : "tank age")) : "",
+      r.local ? "unsynced · this browser" : "",
+      r.date
+    ].filter(Boolean).join(" · ");
+  }
+
+  var fishLoadingShown = false;
+
+  var FISH_FEEDS = [
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/fish/ledger.json",
+    "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/fish/ledger.json",
+    "/games/fish-tank/ledger.json"
+  ];
+
+  function fishOnly() {
+    bestJson(FISH_FEEDS, function (j) {
+      return (j && j.lives) || [];
+    }).then(function (data) {
+      var rows = fishRanked((data && data.lives) || []);
+      paintHall(
+        "fish",
+        rows.length
+          ? (rows.length + (rows.length === 1 ? " life" : " lives") + " · longest first · life book")
+          : (data ? FISH_EMPTY : FISH_OFFLINE),
+        fishCardRows(rows)
+      );
+    });
+  }
+
   function renderHalls() {
+    if (!fishLoadingShown) {
+      fishLoadingShown = true;
+      var froot = document.querySelector('[data-hall="fish"]');
+      var fmeta = froot && froot.querySelector(".hall-meta");
+      var flist = froot && froot.querySelector(".hall-rows");
+      if (fmeta && (!flist || !flist.children.length)) fmeta.textContent = "Reading the life book…";
+    }
     bestJson([
       "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
       "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
@@ -215,6 +324,8 @@
         paintArcadeBooks(arcade);
         return;
       }
+      // No arcade book at all: the fish card still reads its own life book.
+      fishOnly();
       renderHallsLegacy();
     });
   }
@@ -270,14 +381,20 @@
       return { name: r.name || "Warden", score: String(r.score), meta: cryptLine(r) };
     }));
 
-    var fish = bookRows(books["fish-tank"]).concat(lsJson("lygo-fish-tank-ledger-q") || []);
+    /* the book first, then this browser's own unsynced lives: the outbox, and the tank's
+       own cemetery. They are shown because a keeper wants to see them, but every row that
+       is not in the book is tagged unsynced so the public board never overstates itself. */
+    var fish = bookRows(books["fish-tank"]).concat((lsJson("lygo-fish-tank-ledger-q") || []).map(function (r) {
+      r.local = true; return r;
+    }));
     try {
       var tank = JSON.parse(localStorage.getItem("lygo_fish_tank_v1") || "{}");
-      if (tank.cemetery) fish = fish.concat(tank.cemetery);
+      if (tank.cemetery) fish = fish.concat(tank.cemetery.map(function (r) { r.local = true; return r; }));
     } catch (e) {}
     if (tank && tank.openedAt) {
       var lead = (tank.fish || []).slice().sort(function (a, b) { return (a.born || 0) - (b.born || 0); })[0];
       fish.push({
+        local: true,
         name: tank.owner || "Keeper",
         event: "tank",
         tankHours: Math.round((Date.now() - tank.openedAt) / 3600000),
@@ -288,20 +405,23 @@
         fish: lead ? lead.name : ""
       });
     }
-    var tankBest = {};
-    var fishFold = [];
-    fish.forEach(function (r) {
-      if (r.event === "tank") {
-        var k = (r.name || "") + "|" + (r.theme || "");
-        if (!tankBest[k] || (r.tankHours || 0) > (tankBest[k].tankHours || 0)) tankBest[k] = r;
-      } else if ((r.score || 0) > 0) fishFold.push(r);
+    var seenFish = {};
+    fish = fishRanked(fish).filter(function (r) {
+      var k = [r.fish, r.keeper, r.hours, r.date, r.event].join("|");
+      if (seenFish[k]) return false;
+      seenFish[k] = 1;
+      return true;
     });
-    Object.keys(tankBest).forEach(function (k) { fishFold.push(tankBest[k]); });
-    fish = fishFold.sort(function (a, b) { return (b.tankHours || 0) - (a.tankHours || 0) || (b.score || 0) - (a.score || 0); });
-    paintHall("fish", fish.length ? (stamp + fish.length + " lines") : "No stones yet.", fish.slice(0, 12).map(function (r) {
-      var who = r.event === "tank" ? ((r.fish || r.name) + " · " + (r.name || "Keeper")) : (r.name || "Fish");
-      return { name: who, score: (r.tankHours || 0) + "h tank", meta: [(r.score || 0) + "h fish", r.theme, r.species].filter(Boolean).join(" · ") };
-    }));
+    var fishPublic = fish.filter(function (r) { return !r.local; }).length;
+    var fishLocal = fish.length - fishPublic;
+    paintHall(
+      "fish",
+      fish.length
+        ? (stamp + fishPublic + (fishPublic === 1 ? " life" : " lives") + " in the book" +
+          (fishLocal ? " · " + fishLocal + " unsynced here" : "") + " · longest first")
+        : FISH_EMPTY,
+      fishCardRows(fish)
+    );
   }
 
   function cryptLine(r) {

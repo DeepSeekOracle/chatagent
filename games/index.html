@@ -37,7 +37,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/games/hub.css?v=8">
+<link rel="stylesheet" href="/games/hub.css?v=9">
+<link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
 <script type="application/ld+json" id="games-jsonld">
 {
   "@context": "https://schema.org",
@@ -329,6 +330,15 @@
   </div>
 </section>
 
+<section class="portal-tv" data-lygo-tv-section>
+  <p class="kicker">Δ9Φ963 · live tv</p>
+  <h2>LYGO TV</h2>
+  <p class="portal-lead">Live channels from the <a href="/sources/">LYGO TV source pool</a> — the steward's Rumble live room is the default feed. Watch in place or open the full player.</p>
+  <div class="ad-slot lygo-tv-wrap" aria-label="LYGO TV">
+    <div data-lygo-tv></div>
+  </div>
+</section>
+
 <div class="ad-slot" aria-label="Advertisement">
   <div class="ad-label">Advertisement</div>
   <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
@@ -355,5 +365,6 @@
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
 <script src="/games/arcade-ledger.js?v=3"></script>
 <script src="/games/hub.js?v=9" defer></script>
+<script src="/assets/lygo-tv-ninja.js?v=5" defer></script>
 </body>
 </html>
