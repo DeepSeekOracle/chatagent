@@ -209,14 +209,184 @@
 
   const FISH_CAP = 50;
   const HUNTER_CAP = 10;
-  const KEEPERS = {
-    mara: { id: "mara", name: "Mara", tag: "Water", pitch: 1.05, bio: "Mara has kept glass boxes for twenty years. She talks softly and notices the water before anyone else." },
-    ellis: { id: "ellis", name: "Ellis", tag: "Mood", pitch: 0.96, bio: "Ellis names every fish and remembers who ate. He thinks a happy tank is a noisy one, in a quiet way." },
-    ren: { id: "ren", name: "Ren", tag: "Watch", pitch: 0.9, bio: "Ren likes the long watch. Hunters do not surprise Ren. Ren just says when one is coming." },
-    june: { id: "june", name: "June", tag: "Sanctuary", pitch: 1.08, bio: "June keeps a peaceful room. She would rather have more fish and no hunters at all." },
-    mateo: { id: "mateo", name: "Mateo", tag: "Meals", pitch: 0.93, bio: "Mateo feeds by hand and hates a wasted flake. Meals last longer when he is on the glass." },
-    nia: { id: "nia", name: "Nia", tag: "Mix", pitch: 1.1, bio: "Nia likes a mixed tank. One kind of fish makes her nervous. A crowd of different kinds makes her relax." }
+  /* The water is a chemistry, not three dials. Plants and the surface make
+     oxygen, fish and waste spend it, and warm water holds less. Algae carries
+     its own momentum and breathes all night. */
+  const OX = {
+    fish: 1.7,                                   // oxygen one fish spends each hour
+    plant: { river: 8.5, coral: 6.5, bog: 10 },   // what the plants in each theme make
+    exchange: 4.5,                               // air working in at the surface
+    waste: 0.05,
+    algaeNight: 4,
+    thin: 55,                                    // fish start to feel it here
+    gasp: 44                                     // and gulp at the surface here
   };
+  const WASTE = { fish: 0.14, meal: 1.4, lift: 0.7, grazer: 0.16, settle: 1.7 };
+  const KEEPERS = {
+    mara: {
+      id: "mara", name: "Mara", tag: "Water", pitch: 1.05, rate: 0.94, cast: "hand", ext: "png", talk: true,
+      bio: "Mara has kept glass boxes for twenty years. She talks softly and notices the water before anyone else.",
+      greet: "The water is yours now. I will tell you when it changes.",
+      idle: ["Nothing needs doing. That is the goal, you know.", "I will sit with them a while.", "Quiet water. Good water."],
+      lines: {
+        night: ["The plants breathe slower at night. Watch the fish come down off the surface.", "Night glass. I keep my voice low for it."],
+        dawn: ["Dawn. They will want food before the light is fully up.", "First light on the sand. This is my hour."],
+        full: ["This is a full glass. The water is working, not resting.", "More fish, more waste. I will stay close to the filter."],
+        variety: ["Mixed tank. One kind likes it warm, one likes it cool — I split the difference.", "Different kinds, different water. That is the whole trick."],
+        crew: ["The cleaners are earning their keep. Let them work.", "Snails and corys. Between them the sand stays pale."]
+      }
+    },
+    ellis: {
+      id: "ellis", name: "Ellis", tag: "Mood", pitch: 0.96, rate: 0.92, cast: "hand", ext: "png", talk: true,
+      bio: "Ellis names every fish and remembers who ate. He thinks a happy tank is a noisy one, in a quiet way.",
+      greet: "Hello, all of you. I already know your names.",
+      idle: ["They are all awake. I checked twice.", "I know every one of them by the way they turn.", "A tank with names in it behaves better. I stand by that."],
+      lines: {
+        night: ["The shy ones come out at night. Look at the far water.", "I like the night shift. They are braver after dark."],
+        dawn: ["Morning. Everyone is looking up at once.", "Dawn chorus, fish edition. Watch them rise."],
+        variety: ["Six kinds and I can still tell who is who.", "A mix is more work to name. Worth it."],
+        few: ["Only a few in there. I talk to them more than I should.", "Small population. I know what each one ate."],
+        crew: ["The cleaners have names too, you know.", "That snail has opinions about the glass."]
+      }
+    },
+    ren: {
+      id: "ren", name: "Ren", tag: "Watch", pitch: 0.9, rate: 0.88, cast: "hand", ext: "png", talk: true,
+      bio: "Ren likes the long watch. Hunters do not surprise Ren. Ren just says when one is coming.",
+      greet: "I have the glass. Nothing gets past this chair.",
+      idle: ["Nothing on the water. I am still watching.", "The glass is clear. I stay anyway.", "Quiet hours are when you learn a tank."],
+      lines: {
+        night: ["Hunters move better at night. I will be here.", "Dark water. I do not blink at this hour."],
+        dusk: ["Dusk is when they start hunting. Watch the far water.", "The light is going. This is the dangerous hour."],
+        full: ["A full glass is a menu for a hunter. Keep the weak ones fed.", "Crowds hide a stalk. I count the fish twice."],
+        few: ["Thin tank. A hunter would starve in here. Good.", "Few fish. Less to lose. I still count."],
+        crew: ["The turtle is the calmest thing in the water.", "Cleaners keep working while the hunters sleep."]
+      }
+    },
+    june: {
+      id: "june", name: "June", tag: "Sanctuary", pitch: 1.08, rate: 0.95, cast: "hand", ext: "png", talk: true,
+      bio: "June keeps a peaceful room. She would rather have more fish and no hunters at all.",
+      greet: "No hunters, quiet water. That is what we are building.",
+      idle: ["Nobody is frightened in here. That is the whole point.", "Peaceful water. I could watch this all day.", "No hunters, no hurry."],
+      lines: {
+        night: ["Night in a quiet tank. Nothing cruises the dark.", "They rest properly here. No one is watching them."],
+        dawn: ["They wake slowly when nothing hunts them.", "Good morning, all of you. Nobody is coming."],
+        variety: ["All these kinds and not one of them scared. That is sanctuary.", "Different fish living side by side. That is what I want."],
+        full: ["Even full, they are calm. I would still rather they had room.", "A crowd is fine when nobody is hunting."],
+        crew: ["The cleaners and the fish have an understanding.", "Look at the turtle. Nothing bothers it."]
+      }
+    },
+    mateo: {
+      id: "mateo", name: "Mateo", tag: "Meals", pitch: 0.93, rate: 0.9, cast: "hand", ext: "png", talk: true,
+      bio: "Mateo feeds by hand and hates a wasted flake. Meals last longer when he is on the glass.",
+      greet: "Everyone eats on my watch. Nobody goes thin here.",
+      idle: ["Everyone has eaten. That is all I wanted.", "A fed tank is a bold tank.", "The flakes go fast. That is a good sign."],
+      lines: {
+        dawn: ["Breakfast is the best meal in a tank. Watch them rise.", "Dawn feeding. They have been waiting for me."],
+        night: ["Nothing at night. A full fish sleeps better.", "Night feeding only makes waste. I will wait for light."],
+        few: ["Few mouths, so every flake matters.", "I feed by hand so I know who got what."],
+        full: ["This many fish need feeding twice. I will keep up.", "A crowd eats a pinch in seconds. I bring more."],
+        crew: ["The cory gets what the others drop. Nothing wasted.", "Corys are the cleanup crew for a bad feeder. Good worker."]
+      }
+    },
+    nia: {
+      id: "nia", name: "Nia", tag: "Mix", pitch: 1.1, rate: 0.97, cast: "hand", ext: "png", talk: true,
+      bio: "Nia likes a mixed tank. One kind of fish makes her nervous. A crowd of different kinds makes her relax.",
+      greet: "A mixed tank then. That is how it should be.",
+      idle: ["Now this is a tank. Look at the variety.", "Same kind everywhere would bore me.", "A mix. That is the good stuff."],
+      lines: {
+        mono: ["Almost one kind in there. I would add something different.", "A single school is pretty, and fragile."],
+        night: ["Even at night, a mixed tank is busy.", "Different kinds keep different hours. Listen to it."],
+        dawn: ["Dawn in a mixed tank — everyone wakes at their own pace.", "Watch how differently they start the day."],
+        full: ["A full mixed glass. This is what I like to see.", "Crowded, but varied. That is the trick."],
+        crew: ["Even the cleaners come in different shapes.", "A varied clean-up crew for a varied tank."]
+      }
+    },
+    mira: {
+      id: "mira", name: "Mira Quinn", tag: "Parkland", pitch: 1.02, rate: 0.95, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Mira came off the fairways to keep glass. She reads a tank the way she read a green: grass, light, and patience.",
+      greet: "Give it light, give it time, and it will grow on you.",
+      idle: ["Green water, green plants. Feels like home.", "Let the plants do the work. They usually will.", "I have watched grass grow for a living. This is faster."],
+      lines: {
+        dawn: ["First light hits the plants and the whole tank turns gold.", "Early light. This is when the green moves."],
+        variety: ["Different plants for different fish. Same as a course needs different cuts.", "A varied tank holds its own water. I like that."],
+        night: ["At night the plants breathe the other way. Most keepers never notice.", "The dark water is doing work you cannot see."],
+        full: ["Full glass. The plants are carrying the oxygen load now.", "A crowd leans hard on the greenery. Watch it."]
+      }
+    },
+    sancora: {
+      id: "sancora", name: "Sancora Vale", tag: "Links", pitch: 0.95, rate: 0.9, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Sancora kept links on the coast and keeps water the same way: read the wind, read the tide, then decide.",
+      greet: "Read the water before you touch it. Then we start.",
+      idle: ["Salt on the air once. Now it is just glass and patience.", "Water tells you what it needs. You have to sit still long enough.", "A tank is a tide you control. Mostly."],
+      lines: {
+        full: ["A crowded tank is a tide with nowhere to go. Give it a change.", "Too much life in too little water. I have seen that on a shore."],
+        variety: ["Mixed water, mixed needs. You cannot please all of them at once.", "Different kinds want different temperatures. Split the difference and watch."],
+        dawn: ["Morning is the honest hour for water.", "Dawn on a links, dawn on a tank — same light, same lesson."],
+        crew: ["Cleaners are your current. They move what the fish leave.", "Let the workers work. You only steer."]
+      }
+    },
+    lyra: {
+      id: "lyra", name: "Lyra Helmer", tag: "Night green", pitch: 1.07, rate: 0.93, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Lyra plays the night round. She keeps the lantern fish lit and would happily sleep all day to sit up with the tank.",
+      greet: "Low light tonight and I am not sleeping. Good.",
+      idle: ["Midnight is the best tee time and the best water.", "I keep the light low and the glass close.", "Everyone is braver at night. Fish included."],
+      lines: {
+        night: ["The lanterns are doing the work now. This is my hour.", "Night glass, low light, and something glowing in the weeds.", "I came for this. Everyone else is asleep."],
+        dusk: ["The light is going. Watch who starts moving first.", "Dusk. The tank changes hands about now."],
+        dawn: ["I stay up for the dawn. Then I sleep through the day.", "First light. I have been here the whole time."],
+        variety: ["Different fish wake at different hours. Night shows you who is who.", "The mix only makes sense after dark."]
+      }
+    },
+    reed: {
+      id: "reed", name: "Reed Hollow", tag: "Pines", pitch: 0.92, rate: 0.88, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Reed came out of the pine woods and prefers a dark tank. Blackwater, leaf litter, and fish that have seen a few winters.",
+      greet: "Dark water, deep cover. Nothing here needs fussing.",
+      idle: ["Dark water is honest water.", "Tea-coloured glass, leaf litter, and no fuss.", "I like a tank that looks like it grew there."],
+      lines: {
+        night: ["Blackwater at night. You can barely see them. They like that.", "No light, no noise. This is how a tank should sleep."],
+        variety: ["Leaf litter and roots. Different fish for different cover.", "A varied tank is a forest. Everyone finds a layer."],
+        few: ["Few fish, deep cover. Like a quiet pond.", "Not many in here. The ones that are, are calm."],
+        full: ["A crowd in blackwater. Mind the oxygen, it goes quick.", "Full and dark means you check the water more often."]
+      }
+    },
+    calder: {
+      id: "calder", name: "Justin", tag: "Steward", pitch: 0.98, rate: 0.92, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Justin built this glass and still checks the water himself. He keeps the long watch, feeds by hand, and likes a tank that is alive at midnight.",
+      greet: "I am here. We will take this slow.",
+      idle: ["This one is mine. I still check the water myself.", "Built it, fed it, watched it. Still watching.", "Long watch tonight. Suits me."],
+      lines: {
+        night: ["Midnight and the tank is still working. That is the part I like.", "Night shift. The fish do not know I am here."],
+        dawn: ["Dawn feeding. I never miss it if I can help it.", "First light. Good start to a build day."],
+        full: ["Full glass. If the water holds, I will believe the maths.", "Crowded. This is where the numbers earn their keep."],
+        variety: ["Different kinds in one glass. Harder to run, better to watch.", "A mixed tank shows you everything at once."],
+        crew: ["The workers are on it. I just keep the books.", "Snails, corys, a turtle. That is a full crew."],
+        eggs: ["Eggs on the rockwork. That is a generation I did not buy.", "Fry coming. That is the tank making its own decisions."]
+      }
+    },
+    kai: {
+      id: "kai", name: "Kai Park", tag: "Lights", pitch: 1.0, rate: 0.95, cast: "lattice", ext: "jpg", talk: false,
+      bio: "Kai lights courses for a living and treats a tank like a stage. He wants the light right, the timing right, and a bit of a show.",
+      greet: "Lights on low to start. Watch what the fish do with it.",
+      idle: ["Light makes the tank. Everything else is plumbing.", "Right now the mood is blue. Later it will be gold.", "Give me a good lamp and a clean glass and I can sell this."],
+      lines: {
+        dusk: ["This is the show hour. Watch the light drop.", "Dusk cue. The tank turns over about now."],
+        dawn: ["Dawn run. Best light of the day and it lasts ten minutes.", "First light. I would put this on a poster."],
+        night: ["Night lighting on. Low, warm, and just enough to see them move.", "The dark tank is a different room. I like what it does."],
+        variety: ["Different colours under different light. That is the trick.", "A varied tank lights beautifully, if you know where to put the lamp."],
+        crew: ["The jelly catches the light better than any fish.", "Watch the turtle in the late light. That is a shot."]
+      }
+    }
+  };
+  const CAST_ORDER = ["mara", "ellis", "ren", "june", "mateo", "nia", "mira", "sancora", "lyra", "reed", "calder", "kai"];
+  function keeperOf(id) { return KEEPERS[id] || KEEPERS.mara; }
+  /* Static art has no talking frame: the bubble, the tag and the voice carry it instead. */
+  function keeperArt(id, beat) {
+    const k = keeperOf(id);
+    const use = beat && k.talk ? "_talk.png" : "." + k.ext;
+    return "./assets/keepers/" + id + use + "?v=4";
+  }
+  function keeperCardArt(id) { return "./assets/keepers/" + id + "." + keeperOf(id).ext + "?v=4"; }
+
   const PERKS = [
     { id: "clear", name: "Clear glass", text: "Algae grows slower and the water holds its quality." },
     { id: "bright", name: "Bright mood", text: "Fish stay content a little longer when the water is off." },
@@ -358,6 +528,43 @@
   }
   function fishCap() { return hasPerk("sanctuary") ? 70 : FISH_CAP; }
   function quietNeed() { return hasPerk("shortwatch") && !hasPerk("sanctuary") ? HOUR / 2 : HOUR; }
+  function crowdLimit() { return hasPerk("crowd") ? 42 : 30; }
+  /* Crowding is a slope, not a cliff: 20 fish already work the water harder
+     than 10, and 30 is a tank that needs a water change. */
+  function crowdLoad() { return clamp(((state && state.fish ? state.fish.length : 0)) / crowdLimit(), 0, 2.4); }
+  /* Warm water rides the surface, cold sits on the sand. */
+  function stratNow() {
+    const heater = !state || !state.opts || state.opts.heater !== false;
+    return (heater ? 0.85 : 0.45) + crowdLoad() * 0.3;
+  }
+  function tempAt(y) {
+    if (y == null) return (state && state.temp) || 25;
+    return ((state && state.temp) || 25) + (0.45 - clamp(y, 0.1, 0.92)) * stratNow() * 1.6;
+  }
+  /* Dawn, day, dusk, night: the tank keeps a rhythm even when the light is set. */
+  function rhythm() {
+    const mode = state && state.opts && state.opts.clock;
+    if (mode === "day") return "day";
+    if (mode === "night") return "night";
+    const h = new Date().getHours();
+    if (h >= 5 && h < 8) return "dawn";
+    if (h >= 8 && h < 17) return "day";
+    if (h >= 17 && h < 20) return "dusk";
+    return "night";
+  }
+  function oxygenNote() {
+    const o = state.oxygen == null ? 88 : state.oxygen;
+    if (o < OX.gasp) return "The water is thin. Fish are gulping at the surface.";
+    if (o < OX.thin) return "Oxygen is low. Keep the glass open and the plants bright.";
+    if (o > 92) return "The water is bright with oxygen.";
+    return "";
+  }
+  function wasteNote() {
+    const w = state.waste || 0;
+    if (w > 62) return "Waste is piling on the sand. A cory or the turtle would lift it.";
+    if (w > 34) return "A little waste on the bottom.";
+    return "";
+  }
   function mixScale() {
     const fish = (state && state.fish) || [];
     const n = fish.length;
@@ -370,7 +577,7 @@
     const kinds = Object.keys(counts).length;
     return {
       temp: clamp(0.4 + share * 1.4 - Math.min(kinds, 8) * 0.035, 0.4, 1.9),
-      dirt: clamp(0.7 + share * 0.9, 0.7, 1.6),
+      dirt: clamp(0.7 + share * 0.9, 0.7, 1.35),
       share: share,
       kinds: kinds
     };
@@ -417,6 +624,51 @@
   function log(t) {
     state.log.unshift(t);
     state.log = state.log.slice(0, 30);
+    readEvent(t);
+  }
+  /* Every notable thing already writes a line. The announcer reads those lines,
+     pulls the names and numbers out of them, and says it in the keeper's voice. */
+  const LOG_EVENTS = [
+    { key: "death", re: /^(.+) is eaten\./ },
+    { key: "death", re: /^(.+) dies unfed after (\d+) hours\./ },
+    { key: "death", re: /^(.+) dies in a dirty tank after (\d+) hours\./ },
+    { key: "death", re: /^(.+) rests of old age after (\d+) hours\./ },
+    { key: "bite", re: /^(.+) rolls (\d+) against \d+% and eats ([^.]+)\./, pick: function (m) { return { hunter: m[1], roll: m[2], name: m[3] }; } },
+    { key: "dodge", re: /^(.+) rolls (\d+) against (\d+)% and misses (.+) at the last moment/, pick: function (m) { return { hunter: m[1], roll: m[2], chance: m[3], name: m[4] }; } },
+    { key: "stalk", re: /^(.+) turns toward (.+), the weakest/, pick: function (m) { return { hunter: m[1], name: m[2] }; } },
+    { key: "hunt", re: /^Boss (.+) enters\./ },
+    { key: "ink", re: /^(.+) throws a cloud of black ink\./ },
+    { key: "jaws", re: /becomes JAWS/ },
+    { key: "battle", re: /spent the hour fighting|^One predator battle/ },
+    { key: "shock", re: /^(.+) cracks the water\./ },
+    { key: "leave", re: /^(.+) slips into the far water\./ },
+    { key: "grow", re: /^(.+) is grown\. It hunts/ },
+    { key: "court", re: /^(.+) and (.+) turn slow circles/ },
+    { key: "egg", re: /^(.+) and (.+) leave (\d+) (\w+) eggs/ },
+    { key: "birth", re: /^A fry hatches by the rockwork: ([^,]+), generation (\d+)/ },
+    { key: "first", re: /^First time — (.+)\. \+(\d+) pts\./ },
+    { key: "water", re: /^You change a third of the water/ },
+    { key: "buy", re: /^(.+) joins\. A baby\./ },
+    { key: "crew", re: /^(.+) starts work\./ },
+    { key: "retire", re: /^(.+) finishes a month of work\./ },
+    { key: "feed", re: /reaches over the glass|offers one pellet/ },
+    { key: "empty", re: /^The glass was empty/ },
+    { key: "starve", re: /^(.+) has not eaten in a while\./, pick: function (m) { return { name: m[1] }; } }
+  ];
+  function readEvent(text) {
+    for (let i = 0; i < LOG_EVENTS.length; i += 1) {
+      const e = LOG_EVENTS[i];
+      const m = e.re.exec(text);
+      if (!m) continue;
+      const vars = e.pick ? e.pick(m) : { name: m[1] || "", other: m[2] || "", n: m[3] || "" };
+      vars.line = text;
+      if (e.key === "death" && /old age/.test(text)) vars.how = "rests of old age";
+      else if (e.key === "death" && /unfed/.test(text)) vars.how = "starved";
+      else if (e.key === "death" && /dirty/.test(text)) vars.how = "the dirty water took it";
+      else if (e.key === "death") vars.how = "a hunter took it";
+      announce(e.key, vars);
+      return;
+    }
   }
   const SFX = {};
   let sfxReady = false;
@@ -436,6 +688,14 @@
     const key = { talk: "soundTalk", ambient: "soundAmbient", fx: "soundFx", fish: "soundFish" }[kind];
     if (o[key] != null) return !!o[key];
     return o.sound !== false;
+  }
+  /* the air pump and the low water bed have their own dial now, inside the tank sound */
+  function ambientVol() {
+    const o = state && state.opts ? state.opts : null;
+    if (!o) return 1;
+    const v = o.soundAmbientVol;
+    if (v == null) return 1;
+    return Math.max(0, Math.min(1.5, Number(v) || 0));
   }
   function sfxVol() {
     const v = state && state.opts ? state.opts.soundVol : null;
@@ -470,14 +730,14 @@
     if (!sfxReady && !ambient) return;
     ensureSfx();
     const jaws = ambient && (state.predators || []).some(function (p) { return p.elder; });
-    tuneLoop(SFX.pump, ambient, sfxVol() * 0.42);
-    tuneLoop(SFX.omen, jaws, sfxVol() * 0.4);
+    tuneLoop(SFX.pump, ambient, sfxVol() * 0.42 * ambientVol());
+    tuneLoop(SFX.omen, jaws, sfxVol() * 0.4 * ambientVol());
     if (!channelOn("talk") && typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
   }
   function tickFishNoise(now) {
     if (!playing || !state || !channelOn("fish") || !state.fish.length) return;
     if (now < (state._fishNoise || 0)) return;
-    state._fishNoise = now + (14000 + Math.random() * 12000);
+    state._fishNoise = now + (32000 + Math.random() * 38000);
     playSfx("nibble");
   }
   function save() {
@@ -553,6 +813,8 @@
     ensureState();
     if (hasPerk("pockets")) state.points = 40;
     if (heldOpts) state.opts = Object.assign(state.opts, heldOpts);
+    state.oxygen = 92;
+    state.waste = 8;
     state.temp = theme.temp;
     state.opts.temp = theme.temp;
     save();
@@ -565,7 +827,9 @@
     state.log = state.log || [];
     state.eggs = state.eggs || [];
     state.goals = state.goals || {};
-    state.simV = 2;
+    state.simV = 3;
+    if (state.oxygen == null) state.oxygen = 88;
+    if (state.waste == null) state.waste = 10;
     if (state.hatched == null) state.hatched = 0;
     if (state.court == null) state.court = 0;
     if (state.dodge == null) state.dodge = 0;
@@ -616,7 +880,7 @@
     if (!state.predators.length && !state.clearSince) state.clearSince = state.openedAt || Date.now();
     state.opts = Object.assign({
       names: true, board: true, motion: true, heater: true, temp: 25, clock: "real",
-      sound: true, soundVol: 0.4, soundTalk: true, soundAmbient: true, soundFx: true, soundFish: true
+      sound: true, soundVol: 0.4, soundAmbientVol: 1, soundTalk: true, soundAmbient: true, soundFx: true, soundFish: true
     }, state.opts || {});
   }
   function load() {
@@ -720,13 +984,18 @@
     if (span <= 0) return;
     const unfed = now - (f.lastFed || f.born) > v.food * HOUR;
     const dirty = (state.quality || 100) < 45 || (state.algae || 0) > 68;
-    const crowded = state.fish.length >= (hasPerk("crowd") ? 42 : 30);
+    const crowded = state.fish.length >= crowdLimit();
+    const load = crowdLoad();
+    const thin = (state.oxygen || 100) < OX.thin;
     let delta = 0;
-    if (!unfed && !dirty && !crowded) delta += v.regen * span;
-    else if (!unfed && !dirty) delta += v.regen * 0.4 * span;
+    if (!unfed && !dirty && !crowded && !thin) delta += v.regen * span;
+    else if (!unfed && !dirty && !thin) delta += v.regen * 0.4 * span;
+    else if (!unfed && !dirty) delta += v.regen * 0.1 * span;
     if (unfed) delta -= v.hurt * span;
     if (dirty) delta -= (5 + (crowded ? 4 : 0)) * span;
     else if (crowded) delta -= 2 * span;
+    if (load > 0.85) delta -= (load - 0.85) * 5 * span;
+    if (thin) delta -= (1.6 + (OX.thin - (state.oxygen || 0)) * 0.08) * span;
     const off = comfort(f);
     if (off > 2.5) delta -= (1.1 + (off - 2.5) * 1.5) * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
@@ -1367,6 +1636,7 @@
     pair.forEach(function (f) {
       f.courtT = 7;
       f.spawnCd = now;
+      mem(f).courtedAt = now;
       f.lastPlay = now;
       f.state = "court";
       f.idleT = 7;
@@ -1491,6 +1761,13 @@
       }
       save();
     } else if (retired.length) save();
+    state.fish.forEach(function (f) {
+      const close = STARVE - (now - (f.lastFed || f.born)) < 6 * HOUR;
+      if (close && !f.warned) {
+        if (f.hp > 0) log(f.name + " has not eaten in a while.");
+        f.warned = true;
+      } else if (!close && f.warned) f.warned = false;
+    });
     if (now - (state._lifeAt || 0) > 5000) {
       state._lifeAt = now;
       spawnLayCheck(now);
@@ -1588,7 +1865,7 @@
   }
   function comfort(f) {
     const band = TEMP_BAND[f.species] || [22, 28];
-    const t = state.temp || 25;
+    const t = tempAt(f ? f.y : null);
     let raw = 0;
     if (t < band[0]) raw = band[0] - t;
     else if (t > band[1]) raw = t - band[1];
@@ -1657,6 +1934,8 @@
       if (fl.gone) return;
       const d = span3(fl.x, fl.y, 0.86, f.x, f.y, depthOf(f));
       let score = d / mine * (1 + Math.abs(fl.y - mid) * 1.5);
+      const hour = rhythm();
+      if (hour === "dawn" || hour === "dusk") score -= 0.35;
       if (band[0] > 0.5 && fl.y < 0.52) score += 0.9;
       if ((f.species === "mandarin" || f.species === "dragon") && !starving) score += 1.35;
       if (f.species === "tusk") score -= 0.2;
@@ -1694,13 +1973,162 @@
     f.wanderA += n * dt * 0.9;
     return { x: Math.cos(f.wanderA), y: Math.sin(f.wanderA) * 0.5 };
   }
+  /* ---------------------------------------------------------------
+     Brains. Each fish keeps a memory and a small social record:
+     who it swims with, who pushed it, where it hid, when it last ate.
+     --------------------------------------------------------------- */
+  let simDt = 0.016;
+  let frameId = 0;
+  let anchorCache = { frame: -1, by: {} };
+  function hashId(id) {
+    let h = 7;
+    const str = String(id || "");
+    for (let i = 0; i < str.length; i += 1) h = (h * 131 + str.charCodeAt(i)) % 2147483647;
+    /* avalanche: short ids like f0, f1 must not land on the same patch */
+    h = (h ^ (h >>> 13)) * 1274126177 % 2147483647;
+    return Math.abs(h ^ (h >>> 16)) % 1000003;
+  }
+  const BOND_KEEP = 8;
+  function bond(f, o, delta) {
+    if (!f.bonds) f.bonds = {};
+    const next = clamp((f.bonds[o.id] || 0) + delta, -1, 1);
+    if (next === 0) delete f.bonds[o.id];
+    else f.bonds[o.id] = next;
+    f._bondPrune = (f._bondPrune || 0) + 1;
+    if (f._bondPrune > 900) { f._bondPrune = 0; pruneBonds(f); }
+  }
+  function pruneBonds(f) {
+    if (!f.bonds) return;
+    const keys = Object.keys(f.bonds);
+    keys.forEach(function (k) { if (Math.abs(f.bonds[k]) < 0.01) delete f.bonds[k]; });
+    const left = Object.keys(f.bonds);
+    if (left.length <= BOND_KEEP) return;
+    const keys2 = left;
+    keys2.sort(function (a, b) { return Math.abs(f.bonds[b]) - Math.abs(f.bonds[a]); });
+    keys2.slice(BOND_KEEP).forEach(function (k) { delete f.bonds[k]; });
+  }
+  function bondPick(f, want, min) {
+    if (!f.bonds) return null;
+    const floor = min == null ? 0.25 : min;
+    let best = null, bestV = want > 0 ? floor : -floor;
+    Object.keys(f.bonds).forEach(function (id) {
+      const v = f.bonds[id];
+      if (want > 0 ? v > bestV : v < bestV) { bestV = v; best = id; }
+    });
+    const o = state.fish.filter(function (x) { return x.id === best; })[0];
+    return o ? { f: o, v: bestV } : null;
+  }
+  function mem(f) {
+    if (!f.mem) f.mem = { shoves: 0, meals: 0 };
+    return f.mem;
+  }
+  function hidingSpot(f) {
+    if (!f.mem || !f.mem.hidSpot) return null;
+    return Date.now() - (f.mem.hidAt || 0) > 240000 ? null : f.mem.hidSpot;
+  }
+  function wary(f, now) { return !!(f.mem && now - (f.mem.chasedAt || 0) < 150000); }
+  /* The best social swimmer of a species leads the school; the rest keep slots. */
+  function anchorOf(species) {
+    if (anchorCache.frame !== frameId) anchorCache = { frame: frameId, by: {} };
+    if (anchorCache.by[species] !== undefined) return anchorCache.by[species];
+    let best = null, score = -1;
+    const now = Date.now();
+    state.fish.forEach(function (f) {
+      if (f.species !== species || socialOf(f) !== "school") return;
+      const t = traits(f);
+      const sc = t.social * 0.6 + t.bold * 0.2 + specOf(f.species).bulk * 0.2 + Math.min(0.1, ageOf(f, now) / (10 * DAY) * 0.12);
+      if (sc > score) { score = sc; best = f; }
+    });
+    anchorCache.by[species] = best;
+    return best;
+  }
+  function isAnchor(f) { return anchorOf(f.species) === f; }
+  function slotFor(f, anchor) {
+    const i = (hashId(f.id) % 6) + 1;
+    const h = anchor.heading == null ? (anchor.vx < 0 ? Math.PI : 0) : anchor.heading;
+    const back = 0.045 + i * 0.03;
+    const side = (i % 2 ? 1 : -1) * (0.015 + (i % 3) * 0.012);
+    return {
+      x: clamp(anchor.x - Math.cos(h) * back + Math.cos(h + Math.PI / 2) * side, 0.08, 0.92),
+      y: clamp(anchor.y - Math.sin(h) * back * 0.4 + side * 0.7, 0.13, 0.87)
+    };
+  }
+  function schoolSpread(f) {
+    let far = 0;
+    state.fish.forEach(function (o) { if (o !== f && o.species === f.species) far = Math.max(far, apart(f, o)); });
+    return far;
+  }
+  /* Every fish keeps a patch of water. Loners hold theirs against their own kind. */
+  function homeOf(f) {
+    if (!f.home) {
+      const band = bandOf(f);
+      const h = hashId(f.id);
+      const walker = !!motionOf(f).walk;
+      f.home = {
+        x: clamp(walker ? (h % 2 ? 0.22 : 0.78) : 0.14 + (h % 1000) / 1000 * 0.72, 0.12, 0.88),
+        y: clamp(band[0] + (band[1] - band[0]) * (0.3 + (h % 100) / 100 * 0.4), 0.16, 0.86)
+      };
+    }
+    return f.home;
+  }
+  function territorySteer(f, out) {
+    if (motionOf(f).walk) return;
+    const home = homeOf(f);
+    const t = unitDir(f, home.x, home.y);
+    const loner = socialOf(f) === "loner";
+    if (t.d > (loner ? 0.26 : 0.42)) {
+      const pull = loner ? 0.55 : 0.3;
+      out.x += t.x * pull;
+      out.y += t.y * pull;
+    }
+    if (!loner) return;
+    state.fish.forEach(function (o) {
+      if (o === f || o.species !== f.species) return;
+      const d = apart(f, o);
+      if (d > 0.13 || d < 0.0001) return;
+      const oh = homeOf(o);
+      if (Math.hypot(oh.x - home.x, (oh.y - home.y) * AR) < 0.22) return;
+      const w = 0.95 * (1 - d / 0.13);
+      const away = unitDir(f, o.x, o.y);
+      out.x -= away.x * w;
+      out.y -= away.y * w;
+      if (Math.random() < 0.02) bond(f, o, -0.03);
+    });
+  }
+  /* The cleaners are neighbours. Fish give the big ones room, follow the ones that
+     stir the sand, and rest beside a sleeping turtle. */
+  function crewSteer(f, out) {
+    const crew = state.crew || [];
+    if (!crew.length) return;
+    const tr = traits(f);
+    const hungry = foodLeft(f, Date.now()) < 4 * HOUR;
+    const floor = bandOf(f)[0] > 0.5;
+    crew.forEach(function (c) {
+      const d = Math.hypot(c.x - f.x, (c.y - f.y) * AR);
+      if (d < 0.0001) return;
+      if (c.role === "turtle" || c.role === "jelly") {
+        const near = c.role === "turtle" ? 0.12 : (phase() === "night" ? 0.15 : 0.12);
+        if (d < near) {
+          const w = (near - d) / near * (c.role === "jelly" ? 1.5 : 1.2);
+          out.x -= (c.x - f.x) / d * w;
+          out.y -= (c.y - f.y) / d * w;
+        }
+      }
+      if (floor && hungry && (c.role === "cory" || c.role === "turtle") && d < 0.3) {
+        const pull = (0.3 - d) * (0.8 + tr.appetite * 0.7);
+        out.x += (c.x - f.x) * pull * 2.4;
+      }
+      if (c.role === "turtle" && c.asleep && f.state === "rest" && d < 0.24) out.x += (c.x - f.x) * 0.6;
+    });
+  }
   /* Boids: separation always, alignment and cohesion by how social the fish is.
      A bigger fish shoves a smaller one aside, so the tank grows a pecking order. */
   function shoalSteer(f, out) {
     const m = motionOf(f);
     const tr = traits(f);
     const crowd = state.fish.length >= 30 ? 0.6 : 1;
-    const social = (socialOf(f) === "school" ? 0.35 + tr.social * 0.7 : tr.social * 0.22) * crowd;
+    const hourF = rhythm() === "dusk" ? 1.3 : rhythm() === "dawn" ? 1.1 : 1;
+    const social = (socialOf(f) === "school" ? 0.35 + tr.social * 0.7 : tr.social * 0.22) * crowd * hourF;
     const vision = m.vision * (0.8 + tr.social * 0.6);
     const sepR = (f.startleT > 0 ? 0.08 : 0.105) * (1.15 - tr.social * 0.25);
     const mineSize = Math.max(0.2, specOf(f.species).bulk * STAGE_DRAW[stageName(bodyAge(f), f.species)]);
@@ -1717,11 +2145,26 @@
         ax -= dx / d * w;
         ay -= dy / d * w;
       }
+      if (d < 0.14) bond(f, o, (o.species === f.species ? 0.06 : 0.022) * simDt);
+      else if (d < vision) bond(f, o, -0.012 * simDt);
       const sizeF = (specOf(o.species).bulk * STAGE_DRAW[stageName(bodyAge(o), o.species)]) / mineSize;
       if (sizeF > 1.12 && d < sepR * 1.8) {
         const w = (sizeF - 1.12) * (1 - d / (sepR * 1.8));
         ax -= dx / d * w * 1.5;
         ay -= dy / d * w * 1.5;
+        /* it remembers the shove: a smaller fish keeps a wide berth from that one */
+        if (sizeF > 1.25 && Math.random() < simDt * 0.7) {
+          const mm = mem(f);
+          if (mm.shovedBy !== o.id) { mm.shovedBy = o.id; mm.shoves += 1; }
+          mm.shovedAt = Date.now();
+          if (mm.shoves >= 3) { const tt = traits(f); tt.bold = clamp(tt.bold - 0.006, 0.05, 0.95); mm.shoves = 0; }
+          mem(o).gave = (mem(o).gave || 0) + 1;
+          if (Math.random() < 0.25) bond(f, o, -0.05);
+        }
+      }
+      if (f.mem && f.mem.shovedBy === o.id && Date.now() - (f.mem.shovedAt || 0) < 60000) {
+        const extra = 1 - d / (sepR * 2);
+        if (extra > 0) { ax -= dx / d * extra * 1.3; ay -= dy / d * extra * 1.3; }
       }
     });
     if (n) {
@@ -1733,6 +2176,17 @@
       const av = Math.hypot(avx, avy) || 1;
       ax += avx / av * social * 0.65;
       ay += avy / av * social * 0.65;
+      /* a school with a leader: the anchor holds the line, the rest keep slots */
+      if (f.species !== "mask" && socialOf(f) === "school" && !isAnchor(f)) {
+        const anchor = anchorOf(f.species);
+        if (anchor && apart(f, anchor) < Math.max(0.5, vision * 3)) {
+          const slot = slotFor(f, anchor);
+          const sv = unitDir(f, slot.x, slot.y);
+          const w = 1.05 * (0.5 + tr.social * 0.6);
+          ax += sv.x * w;
+          ay += sv.y * w;
+        }
+      }
       if (socialOf(f) === "school" && f.z != null) {
         let zs = 0, zn = 0;
         state.fish.forEach(function (o) {
@@ -1820,12 +2274,13 @@
   /* Danger pressure: a hunter in the water, or a hand reaching over the glass. */
   function huntPressure(f) {
     let flee = null;
+    const scared = wary(f, Date.now()) ? 1.25 : 1;
     (state.predators || []).forEach(function (p) {
       if (!p.adult) return;
       if ((p.away || 0) > 0.45) return;
       if (!p.pending && (p.depth || 0) < 0.55) return;
       const d = span3(p.x, p.y, depthOf(p), f.x, f.y, depthOf(f));
-      const reach = p.pending ? 0.46 : 0.30;
+      const reach = (p.pending ? 0.46 : 0.30) * scared;
       if (d >= reach) return;
       const w = (1 - d / reach) * (p.pending ? 1.7 : 1);
       if (!flee || w > flee.w) flee = { x: p.x, y: p.y, w: w, stalk: !!p.pending };
@@ -1847,7 +2302,10 @@
     const night = phase() === "night";
     const starving = STARVE - (now - (f.lastFed || f.born)) < 8 * HOUR;
     const danger = huntPressure(f);
-    if (danger && tr.bold < 0.94) {
+    const flake0 = danger ? nearestFlake(f) : null;
+    const desperate = !!(starving && flake0 && tr.bold > 0.45
+      && span3(f.x, f.y, depthOf(f), flake0.x, flake0.y, 0.86) < 0.3);
+    if (danger && tr.bold < 0.94 && !desperate) {
       if (f.species === "octo") releaseInk(f, now);
       f.state = "flee";
       f.stateT = 2.4;
@@ -1877,6 +2335,14 @@
       f.stateT = 1.2;
       return { mode: "gasp", tx: clamp(f.x + Math.sin(now / 2600 + (f.wseed || 0)) * 0.04, 0.12, 0.88), ty: 0.12,
         cap: speedOf(f, now, "cruise") * 0.42 };
+    }
+    if ((state.oxygen == null ? 100 : state.oxygen) < OX.gasp && !motionOf(f).walk) {
+      f.idleT = 0;
+      f.state = "gasp";
+      f.stateT = 1.2;
+      f.thin = 1;
+      return { mode: "gasp", tx: clamp(f.x + Math.sin(now / 2600 + (f.wseed || 0)) * 0.04, 0.12, 0.88), ty: 0.12,
+        cap: speedOf(f, now, "cruise") * 0.38 };
     }
     if (f.actionT > 0) {
       f.state = "play";
@@ -1912,7 +2378,10 @@
     if (f.state === "glide") return { mode: "glide", cap: speedOf(f, now, "cruise") * 0.35, glide: true };
     f.state = "cruise";
     if (!f.cruise || unitDir(f, f.cruise.x, f.cruise.y).d < 0.06) f.cruise = patrolPoint(f);
-    return { mode: "cruise", tx: f.cruise.x, ty: f.cruise.y, cap: speedOf(f, now, "cruise") };
+    let cruiseCap = speedOf(f, now, "cruise");
+    /* a leader slows for its school instead of leaving it behind */
+    if (socialOf(f) === "school" && isAnchor(f) && schoolSpread(f) > 0.34) cruiseCap *= 0.72;
+    return { mode: "cruise", tx: f.cruise.x, ty: f.cruise.y, cap: cruiseCap };
   }
   function scheduleIdle(f, now, night, mood) {
     if (motionOf(f).walk && Math.random() < 0.28) {
@@ -1925,10 +2394,21 @@
     const tr = traits(f);
     const band = bandOf(f);
     const roll = Math.random();
-    const grazeT = band[0] > 0.5 ? 0.5 : (f.species === "puff" ? 0.12 : 0.05);
+    const hour = rhythm();
+    const grazeT = (band[0] > 0.5 ? 0.5 : (f.species === "puff" ? 0.12 : 0.05)) * (hour === "dawn" ? 1.25 : hour === "day" ? 1 : 0.55);
     const restT = (night ? 0.36 : 0.05) + (1 - tr.bold) * (night ? 0.26 : 0.08) + (mood === "sad" ? 0.15 : 0);
+    let rest = restT;
+    if (hour === "dawn") rest *= 0.5;
+    else if (hour === "dusk") rest *= 0.7;
+    if (f.mem && Date.now() - (f.mem.ateAt || 0) < 25000) rest += 0.14;
+    if (hour === "night" && nearestShelter(f.x, f.y, 1.7) && roll < rest + 0.28) {
+      f.state = "shelter";
+      f.stateT = 8 + Math.random() * 10;
+      f.idleT = f.stateT;
+      return;
+    }
     if (roll < grazeT) { f.state = "graze"; f.stateT = 4 + Math.random() * 7; f.grazeT = f.stateT; }
-    else if (roll < grazeT + restT) { f.state = "rest"; f.stateT = 6 + Math.random() * 12; }
+    else if (roll < grazeT + rest) { f.state = "rest"; f.stateT = 6 + Math.random() * 12; }
     else if (roll < grazeT + restT + 0.11) { f.state = "hover"; f.stateT = 3 + Math.random() * 5; }
     else if (roll < grazeT + restT + 0.11 + motionOf(f).glide * 0.22) { f.state = "glide"; f.stateT = 0.7 + Math.random() * 1.6; }
     else { f.state = "cruise"; f.stateT = 4 + Math.random() * 9; f.cruise = patrolPoint(f); }
@@ -1990,6 +2470,7 @@
   function stepFish(f, dt) {
     const now = Date.now();
     const tr = traits(f);
+    simDt = dt;
     if (f.phase == null) f.phase = Math.random() * 6.283;
     if (f.heading == null) f.heading = f.vx < 0 ? Math.PI : 0;
     if (f.state == null) f.state = "cruise";
@@ -2033,6 +2514,11 @@
           out.x += sv.x * 1.6;
           out.y += sv.y * 1.6;
           f.state = "shelter";
+          /* it learns the hiding place and comes back to it next time */
+          if (sv.d < 0.09) { const mm = mem(f); mm.hidSpot = { x: s.x + 0.05, y: s.y }; mm.hidAt = now; }
+        } else {
+          const hid = hidingSpot(f);
+          if (hid) { const hv = unitDir(f, hid.x, hid.y); out.x += hv.x * 1.2; out.y += hv.y * 1.2; }
         }
       }
       f.startleT = Math.max(f.startleT, 0.7);
@@ -2104,8 +2590,11 @@
     if (mind.mode !== "glide") {
       shoalSteer(f, out);
       nicheSteer(f, out);
+      territorySteer(f, out);
+      crewSteer(f, out);
       decorSteer(f, out);
     }
+    if (wary(f, now) && mind.mode !== "gasp") out.y += 0.34;
     bandSteer(f, out, mind.mode === "gasp" ? 0.12 : null);
     wallSteer(f, out);
     if (motionOf(f).walk) out.y *= 0.05;
@@ -2252,6 +2741,9 @@
       });
       winner.lastFed = now;
       winner.lastPlay = now;
+      const wm = mem(winner);
+      wm.ateAt = now;
+      wm.meals = (wm.meals || 0) + 1;
       accrueGrowth(winner, now);
       if (fl.pellet) {
         addGrowthHours(winner, 2);
@@ -2265,6 +2757,8 @@
         if (near.length > 1 && Math.random() < 0.45) log(winner.name + " snatches a flake from " + near[1].name + " and grows.");
       }
       state.points += fl.pellet ? 2 : 1;
+      state.waste = clamp((state.waste || 0) + (fl.pellet ? WASTE.meal * 1.6 : WASTE.meal), 0, 100);
+      playSfx("nibble");
       fl.gone = true;
     });
     if (flakes.some(function (fl) { return fl.gone; })) {
@@ -2312,7 +2806,42 @@
     if (s === "eat") return "feeding";
     if (s === "hover") return "holding still";
     if (s === "glide") return "gliding";
+    if (s === "cruise") {
+      if (isAnchor(f) && state.fish.some(function (o) { return o !== f && o.species === f.species; })) return "leading";
+      const lead = anchorOf(f.species);
+      if (lead && lead !== f && apart(f, lead) < 0.3) return "following";
+      if (wary(f, Date.now())) return "keeping low";
+    }
     return "";
+  }
+  /* Who this fish lives with, in one line for the rail and the card. */
+  function socialLine(f) {
+    const bits = [];
+    const home = homeOf(f);
+    if (socialOf(f) === "school") {
+      const lead = anchorOf(f.species);
+      if (lead === f) bits.push("leads the " + specOf(f.species).name.toLowerCase() + " school");
+      else if (lead && apart(f, lead) < 0.35) bits.push("schools with " + lead.name);
+      else bits.push("looking for its school");
+    } else if (f.species !== "mask") {
+      const side = home.x < 0.35 ? "left" : home.x > 0.65 ? "right" : "middle";
+      bits.push("holds a patch on the " + side);
+    }
+    const pal = bondPick(f, 1, 0.3);
+    if (pal) bits.push("usually near " + pal.f.name);
+    const foe = bondPick(f, -1, 0.25);
+    if (foe) bits.push("keeps clear of " + foe.f.name);
+    const mm = f.mem || {};
+    const now = Date.now();
+    if (mm.chasedAt && now - mm.chasedAt < 180000) bits.push("wary since the last chase");
+    if (mm.hidSpot && hidingSpot(f)) bits.push("hiding place in the weeds");
+    if (mm.ateAt && now - mm.ateAt < 90000) bits.push("just ate");
+    if (mm.shovedBy) {
+      const bully = state.fish.filter(function (x) { return x.id === mm.shovedBy; })[0];
+      if (bully) bits.push("gives " + bully.name + " room");
+    }
+    if (mm.meals) bits.push(mm.meals + " meals");
+    return bits.join(" · ");
   }
   function drawFish(f, w, h, now) {
     const stage = stageName(bodyAge(f), f.species);
@@ -2340,7 +2869,7 @@
     }
     const flare = f.action === "flare" ? 1.16 : 1;
     const sc = STAGE_DRAW[stage] * specOf(f.species).bulk * (0.5 + z * 0.68) * flare;
-    const bh = Math.min(h * 0.22, 150) * sc;
+    let bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     if ((f.species === "octo" || f.species === "mandarin" || f.species === "pepper" || f.species === "tusk" || f.species === "dragon" || f.species === "mask") && img && img.complete && img.naturalWidth) {
@@ -2551,15 +3080,42 @@
     const span = Math.min(72, Math.max(0, (now - prev) / HOUR));
     if (span < 0.004) return;
     state.waterAt = now;
+    const wasAlgae = state.algae || 0, wasOxy = state.oxygen == null ? 88 : state.oxygen, wasWaste = state.waste || 0;
     const fishN = state.fish.length;
     const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
     const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
-    const day = phase() === "night" ? 0.35 : 1;
+    const night = rhythm() === "night";
+    const day = night ? 0.35 : 1;
+    const light = night ? 0.55 : (rhythm() === "dawn" || rhythm() === "dusk" ? 0.8 : 1);
     const mix = mixScale();
     const clear = hasPerk("clear") ? 0.72 : 1;
     const pace = (state.mode === "calm" ? 0.62 : state.mode === "busy" ? 1.45 : 1) * themeOf(state.theme).algae * mix.dirt * clear;
-    state.algae = clamp(state.algae + span * pace * (0.9 * day + fishN * 0.32) - span * grazers * 2.1, 0, 100);
-    state.quality = clamp(state.quality + span * (bottoms * 1.5 + grazers * 0.35 - fishN * 0.38 * mix.dirt * clear - state.algae * 0.03), 0, 100);
+    const load = crowdLoad();
+    const algae0 = clamp((state.algae || 0) / 100, 0, 1);
+    /* green film with momentum: slow to start, quick in the middle, capped by light */
+    const bloom = 0.5 + algae0 * 1.05;
+    state.algae = clamp(state.algae + span * pace * bloom * (0.55 * day + fishN * 0.3) * (1 - algae0 * 0.4) - span * grazers * 2.1, 0, 100);
+    /* waste: fish, uneaten food, and the algae that dies back */
+    state.waste = clamp((state.waste || 0) + span * (fishN * WASTE.fish * mix.dirt * (0.8 + load * 0.5) + (state.algae || 0) * 0.008)
+      - span * (bottoms * WASTE.lift + grazers * WASTE.grazer + WASTE.settle), 0, 100);
+    /* oxygen: plants and the surface make it, the fish, the waste and the night
+       algae spend it, and warm water simply holds less */
+    const warm = clamp(1.22 - ((state.temp || 25) - 20) * 0.032, 0.55, 1.25);
+    const made = (OX.plant[themeOf(state.theme).id] || OX.plant.river) * light * (hasPerk("clear") ? 0.9 : 1);
+    const spent = fishN * OX.fish * (0.55 + load * 0.25) + (state.waste || 0) * OX.waste
+      + (night ? (state.algae || 0) * OX.algaeNight * 0.008 : 0);
+    state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + span * (made + OX.exchange * warm - spent), 0, 100);
+    state.quality = clamp(state.quality + span * (bottoms * 1.8 + grazers * 0.4 + 1.6 - fishN * 0.3 * (0.55 + mix.dirt * 0.4) * clear
+      - (state.waste || 0) * 0.03 - (state.algae || 0) * 0.02
+      - Math.max(0, OX.thin - (state.oxygen || 100)) * 0.05), 0, 100);
+    const dir = function (d) { return d > 0.06 ? 1 : d < -0.06 ? -1 : 0; };
+    state.trend = {
+      algae: dir((state.algae || 0) - wasAlgae),
+      oxygen: dir((state.oxygen == null ? 88 : state.oxygen) - wasOxy),
+      waste: dir((state.waste || 0) - wasWaste)
+    };
+    if ((state.oxygen == null ? 88 : state.oxygen) < OX.thin) state._oxyAt = state._oxyAt || now;
+    else state._oxyAt = 0;
   }
   function draw() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -2715,10 +3271,13 @@
         "feed " + hours(Math.max(0, foodLeft(f, now))) + "h"].join(" · ");
       const mine = [traitWord("bold", tr.bold), traitWord("social", tr.social),
         traitWord("appetite", tr.appetite), traitWord("vigor", tr.vigor)].join(", ");
+      const social = socialLine(f);
+      const at = tempNote(f) ? " · " + tempNote(f) : "";
       return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
         esc(f.name) + "</b>" + (f.gen > 1 ? " <span class='gen'>gen " + f.gen + "</span>" : "") +
         " <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" + esc(line) +
-        (word ? " · <b class='act'>" + word + "</b>" : "") + "<br>traits: " + esc(mine) +
+        (word ? " · <b class='act'>" + word + "</b>" : "") + at +
+        (social ? "<br><span class='lore'>" + esc(social) + "</span>" : "") + "<br>traits: " + esc(mine) +
         (f.parents && f.parents.length ? " · from " + esc(f.parents.join(" and ")) : "") + "</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
@@ -2763,6 +3322,12 @@
     const worst = offs.length ? Math.max.apply(null, offs) : 0;
     mTemp.className = worst > 2.5 ? "q-poor" : worst > 1.5 ? "q-fair" : "q-good";
     document.getElementById("mAlgae").textContent = Math.round(state.algae) + "%";
+    const oxyEl = document.getElementById("mOxy");
+    if (oxyEl) {
+      const oxy = Math.round(state.oxygen == null ? 88 : state.oxygen);
+      oxyEl.textContent = oxy + "%";
+      oxyEl.className = oxy >= OX.thin + 12 ? "q-good" : oxy >= OX.thin ? "q-fair" : "q-poor";
+    }
     const qEl = document.getElementById("mQual");
     qEl.textContent = String(Math.round(state.quality));
     qEl.className = state.quality >= 70 ? "q-good" : state.quality >= 40 ? "q-fair" : "q-poor";
@@ -2789,6 +3354,39 @@
       return "<button type='button' class='btn' data-crew='" + c.id + "'>" + esc(c.name) + " · " + c.cost +
         " <span class='lore'>(" + n + ") " + esc(c.blurb) + "</span></button>";
     }).join("");
+    const wp = document.getElementById("waterPanel");
+    if (wp) {
+      const oxy = Math.round(state.oxygen == null ? 88 : state.oxygen);
+      const waste = Math.round(state.waste || 0);
+      const trend = state.trend || { algae: 0, oxygen: 0, waste: 0 };
+      const arrow = function (d) { return d > 0 ? "▲" : d < 0 ? "▼" : "·"; };
+      const band = function (v, good, fair) { return v >= good ? "q-good" : v >= fair ? "q-fair" : "q-poor"; };
+      let warm = 0, cold = 0, ok = 0;
+      state.fish.forEach(function (x) {
+        const t = tempNote(x);
+        if (t === "too warm") warm += 1;
+        else if (t === "too cold") cold += 1;
+        else ok += 1;
+      });
+      const grazers = state.crew.filter(function (c) { return c.role === "snail" || c.role === "otto" || c.role === "turtle"; }).length;
+      const bottoms = state.crew.filter(function (c) { return c.role === "cory" || c.role === "turtle"; }).length;
+      const load = crowdLoad();
+      const rows = [
+        ["oxygen", oxy + "% " + arrow(-trend.oxygen), band(oxy, OX.thin + 12, OX.thin), oxy / 100, oxy < OX.thin ? "thin for " + elapsedWord(state._oxyAt) : "fine"],
+        ["waste", waste + "% " + arrow(trend.waste), band(100 - waste, 55, 30), waste / 100, bottoms ? bottoms + " lifting" : "nobody lifting"],
+        ["algae", Math.round(state.algae) + "% " + arrow(trend.algae), band(100 - state.algae, 55, 32), state.algae / 100, grazers ? grazers + " grazing" : "no grazers"],
+        ["crowding", state.fish.length + "/" + crowdLimit(), band(100 - load * 55, 60, 40), Math.min(1, load), load > 0.95 ? "healing slower" : "water is keeping up"]
+      ];
+      wp.innerHTML =
+        "<div class='wgrid'>" + rows.map(function (r) {
+          return "<div class='wrow'><span class='wlabel'>" + r[0] + "</span><b class='" + r[2] + "'>" + r[1] +
+            "</b><em>" + r[4] + "</em><i class='bar'><u style='width:" + Math.round(clamp(r[3], 0, 1) * 100) + "%'></u></i></div>";
+        }).join("") + "</div>" +
+        "<p class='lore wline'>surface " + (Math.round(tempAt(0.12) * 10) / 10) + "° · bottom " + (Math.round(tempAt(0.88) * 10) / 10) +
+        "° · " + rhythm() + "</p>" +
+        "<p class='lore wline'>" + (ok + " comfortable") + (warm ? ", " + warm + " too warm" : "") + (cold ? ", " + cold + " too cold" : "") +
+        " · cleaners " + ((state.crew || []).length) + "/8</p>";
+    }
     const noteEl = document.getElementById("waterNote");
     if (noteEl) {
       const notes = [];
@@ -2804,7 +3402,12 @@
       if (cold) notes.push(cold + (cold > 1 ? " fish find" : " fish finds") + " it too cold — they hang low and slow.");
       if ((state.quality || 0) < 45) notes.push("The water is foul. Fish are listless and scratch on the rockwork.");
       if ((state.algae || 0) > 68) notes.push("Green film everywhere. The cleaners cannot keep up.");
+      const oxyNote = oxygenNote();
+      if (oxyNote) notes.push(oxyNote);
+      const wNote = wasteNote();
+      if (wNote) notes.push(wNote);
       if (state.fish.length >= (hasPerk("crowd") ? 42 : 30)) notes.push("Crowded. Everyone heals slower.");
+      if (crowdLoad() > 0.85 && state.fish.length < crowdLimit()) notes.push("The glass is filling. Healing slows as it fills.");
       if ((state.eggs || []).length) notes.push((state.eggs || []).length + " egg" + ((state.eggs || []).length > 1 ? "s" : "") + " on the rockwork.");
       noteEl.textContent = notes.join(" ") || "Water is steady.";
     }
@@ -2865,11 +3468,115 @@
       ["Temper", spec.temper === "chill" ? "Relaxed" : "Swims a lot"],
       ["With others", spec.social === "loner" ? "Loner" : "School"],
       ["Line", "gen " + (f.gen || 1)],
-      ["Depth", (f.z == null ? 0.5 : f.z) > 0.66 ? "near the glass" : ((f.z == null ? 0.5 : f.z) < 0.38 ? "far water" : "mid water")]
+      ["Depth", (f.z == null ? 0.5 : f.z) > 0.66 ? "near the glass" : ((f.z == null ? 0.5 : f.z) < 0.38 ? "far water" : "mid water")],
+      ["Water here", (Math.round(tempAt(f.y) * 10) / 10) + "° at " + (f.y > 0.62 ? "the sand" : f.y < 0.3 ? "the surface" : "mid water")],
+      ["Oxygen", Math.round(state.oxygen == null ? 88 : state.oxygen) + "%" + ((state.oxygen == null ? 88 : state.oxygen) < OX.thin ? " · thin" : "")]
     ];
     stats.innerHTML = rows.map(function (row) {
       return "<div><dt>" + esc(row[0]) + "</dt><dd>" + esc(row[1]) + "</dd></div>";
     }).join("");
+    const socialEl = document.getElementById("charSocial");
+    if (socialEl) {
+      const home = homeOf(f);
+      socialEl.innerHTML = "<b>With others:</b> " + esc(socialLine(f) || "quiet on its own") +
+        " · home patch " + (home.x < 0.35 ? "left" : home.x > 0.65 ? "right" : "middle") +
+        " " + (home.y > 0.6 ? "low" : home.y < 0.35 ? "high" : "mid");
+    }
+  }
+  /* A placard for the glass: who this fish is, right now. It fades on its own and
+     comes back the moment the fish is clicked again. */
+  const FISH_CARD_MS = 9000;
+  let fishCardTimer = 0;
+  const FISH_VOICE = {
+    mara: { fine: "Water suits this one. Nothing to fix.", watch: "I keep an eye on this one.", thin: "This one is due a meal." },
+    ellis: { fine: "I know this one by the way it turns.", watch: "That one has been quiet. I noticed.", thin: "It has not eaten. I remember who eats." },
+    ren: { fine: "Nothing hunting it. It can swim easy.", watch: "I am watching the far water for this one.", thin: "A thin fish is an easy target. Feed it." },
+    june: { fine: "Peaceful as anything in here.", watch: "Nobody is chasing it. That is the point of this tank.", thin: "Feed it. I will not have hunger in my room." },
+    mateo: { fine: "Fed and content. Exactly right.", watch: "Watching its weight for it.", thin: "Empty. That is on me, not the fish." },
+    nia: { fine: "Holds its own in a mixed tank. Good.", watch: "Different fish, different habits. This one is being itself.", thin: "Even a mixed tank needs full bellies." },
+    mira: { fine: "Growing clean, like it should.", watch: "Give it light and time. It is doing fine.", thin: "Thin growth. A meal and a week of light." },
+    sancora: { fine: "Water is reading right for it.", watch: "I am reading the water around it.", thin: "Hungry water makes a thin fish. Feed it." },
+    lyra: { fine: "Comes alive when the light drops.", watch: "I will see this one properly tonight.", thin: "Even the night ones need feeding." },
+    reed: { fine: "Dark water suits this one.", watch: "It keeps to the cover. Sensible fish.", thin: "Thin. That water is not feeding it." },
+    calder: { fine: "Numbers are right and the fish knows it.", watch: "Watching the tank, and this one with it.", thin: "Thin in the belly. Feeding it now." },
+    kai: { fine: "Looks good under this light.", watch: "I want to see it in the low light later.", thin: "A thin fish does not photograph. Feed it." }
+  };
+  function fishVoice(f) {
+    const who = keeperOf(keeperInfo().id);
+    const book = FISH_VOICE[who.id] || FISH_VOICE.mara;
+    const left = foodLeft(f, Date.now());
+    const cat = (f.hp || 100) < 70 || left < 6 * HOUR ? "thin" : (left < 20 * HOUR ? "watch" : "fine");
+    return book[cat] || book.fine;
+  }
+  function hideFishCard() {
+    const card = document.getElementById("fishCard");
+    if (!card) return;
+    card.classList.add("fade");
+    clearTimeout(fishCardTimer);
+    fishCardTimer = setTimeout(function () { card.classList.add("hidden"); }, 600);
+  }
+  function showFishCard(f) {
+    const card = document.getElementById("fishCard");
+    if (!card || !f) return;
+    const now = Date.now();
+    const spec = specOf(f.species);
+    const card2 = BIOS[f.species] || {};
+    const cycle = cycleOf(f.species);
+    const grown = f.growthHours || 0;
+    const lifeH = cycle[5] + Math.round((f.bonus || 0) / HOUR);
+    const ok = comfort(f) < 0.6;
+    const temp = Math.round(tempAt(f.y) * 10) / 10;
+    const oxy = Math.round(state.oxygen == null ? 88 : state.oxygen);
+    const home = homeOf(f);
+    const friend = bondPick(f, 1, 0.05);
+    const avoid = bondPick(f, -1, -0.05);
+    document.getElementById("fishCardSpecies").textContent = (card2.latin ? card2.latin + " · " : "") + spec.name;
+    document.getElementById("fishCardName").textContent = f.name;
+    document.getElementById("fishCardChips").innerHTML =
+      "<span>" + esc(stageName(bodyAge(f), f.species)) + "</span>" +
+      "<span>" + esc(spec.temper === "chill" ? "relaxed" : "busy") + "</span>" +
+      "<span class='gold'>gen " + esc(f.gen || 1) + "</span>";
+    const pic = document.getElementById("fishCardPic");
+    pic.src = portraitSrc(f.species);
+    pic.alt = spec.name;
+    document.getElementById("fishCardSocial").innerHTML =
+      "<b>" + esc(f.name) + "</b> " + esc(socialLine(f) || "keeps to itself") +
+      (friend ? " · closest to " + esc(friend.f.name) : "") +
+      (avoid ? " · avoids " + esc(avoid.f.name) : "") +
+      " · home patch " + (home.x < 0.35 ? "left" : home.x > 0.65 ? "right" : "middle") +
+      " " + (home.y > 0.6 ? "low" : home.y < 0.35 ? "high" : "mid");
+    const rows = [
+      ["Doing", stateWord(f) || "cruising"],
+      ["Mood", moodOf(f, now)],
+      ["Health", Math.round(f.hp || 0) + " / " + vitals(f).hp],
+      ["Fed for", hours(Math.max(0, foodLeft(f, now))) + " h"],
+      ["Age", hours(ageOf(f, now)) + " h"],
+      ["Growth", grown + " / " + lifeH + " h"],
+      ["Life left", Math.max(0, lifeH - grown) + " h"],
+      ["Depth", depthOf(f) > 0.66 ? "near the glass" : depthOf(f) < 0.38 ? "far water" : "mid water"],
+      ["Water here", temp + "° " + (f.y > 0.62 ? "at the sand" : f.y < 0.3 ? "at the surface" : "mid water")],
+      ["Keeping", ok ? "comfortable" : (tempNote(f) || "off its band")],
+      ["Oxygen", oxy + "%" + (oxy < OX.thin ? " · thin" : "")],
+      ["Line", "gen " + (f.gen || 1) + " · " + (f.sex === "f" ? "f" : "m")]
+    ];
+    document.getElementById("fishCardRows").innerHTML = rows.map(function (r) {
+      return "<div><dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd></div>";
+    }).join("");
+    document.getElementById("fishCardWord").textContent = fishVoice(f);
+    const kp = document.getElementById("fishCardKeeperPic");
+    const who = keeperOf(keeperInfo().id);
+    kp.src = keeperCardArt(who.id);
+    kp.alt = who.name;
+    document.getElementById("fishCardKeeperNote").textContent = who.name + " · " + who.tag;
+    card.classList.remove("hidden");
+    card.classList.remove("fade");
+    clearTimeout(fishCardTimer);
+    fishCardTimer = setTimeout(function () { hideFishCard(); }, FISH_CARD_MS);
+  }
+  function elapsedWord(at) {
+    if (!at) return "";
+    const mins = Math.round((Date.now() - at) / 60000);
+    return mins <= 0 ? "just now" : mins < 60 ? mins + "m" : Math.round(mins / 60) + "h";
   }
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>]/g, function (c) {
@@ -2878,7 +3585,7 @@
   }
 
   function menuKeeperPick(ownerName) {
-    const who = KEEPERS[menuKeeper] || KEEPERS.mara;
+    const who = keeperOf(menuKeeper);
     return {
       id: who.id,
       name: String(ownerName || who.name).slice(0, 18),
@@ -2888,6 +3595,23 @@
   let keeperNext = 0;
   let keeperLast = "";
   let keeperHide = 0;
+  let keeperDuck = 0;
+  let radioWas = null;
+  /* the keeper talks over the music, so the music steps back for the sentence */
+  function duckRadio(on) {
+    const R = window.LatticeRadio;
+    if (!R || typeof R.vol !== "function" || typeof R.setVol !== "function") return;
+    try {
+      if (on) {
+        if (!R.playing || !R.playing()) return;
+        if (radioWas == null) radioWas = R.vol();
+        R.setVol(Math.max(0, radioWas * 0.35));
+      } else if (radioWas != null) {
+        R.setVol(radioWas);
+        radioWas = null;
+      }
+    } catch (_) {}
+  }
   const KEEPER_LINES = {
     hot: [
       "Hey. It is getting warm in there for somebody.",
@@ -2926,6 +3650,189 @@
       "Food is in. Let them sort it out."
     ]
   };
+  /* What each event reads like, and the keeper's own way of saying it. */
+  const ANNOUNCE = {
+    death: { tag: "loss", pri: 2, lines: ["{name} is gone. {how}.", "We lost {name} — {how}."] },
+    bite: { tag: "hunter", pri: 2, lines: ["That bite landed. {name} is gone.", "{name} was taken."] },
+    dodge: { tag: "hunter", pri: 1, lines: ["{name} slipped it. Rolled {roll} against {chance}%.", "A miss at the last moment — {name} is still here."] },
+    stalk: { tag: "hunter", pri: 1, lines: ["It has picked {name}.", "It is lining up {name}."] },
+    hunt: { tag: "hunter", pri: 2, lines: ["A boss just entered the glass.", "One hunter is in. Watch the water."] },
+    jaws: { tag: "hunter", pri: 2, lines: ["Greymaw is JAWS now. Bigger, and it takes two a meal.", "JAWS. Keep the weak ones fed."] },
+    battle: { tag: "hunter", pri: 1, lines: ["Two hunters are fighting. Let them.", "A battle this hour. Something will lose."] },
+    shock: { tag: "hunter", pri: 1, lines: ["Volt cracked the water. Everything jolted.", "The eel shocked the tank."] },
+    ink: { tag: "octo", pri: 1, lines: ["The octopus inked. That bite just got harder.", "Black cloud. Good."] },
+    court: { tag: "life", pri: 1, lines: ["{name} and {other} are courting. The water is right.", "A pair is turning."] },
+    egg: { tag: "life", pri: 1, lines: ["{n} eggs on the rockwork now. {name} laid them.", "Eggs on the rock. Twenty minutes."] },
+    birth: { tag: "life", pri: 1, lines: ["{name} hatched — generation {other}.", "A fry: {name}."] },
+    first: { tag: "life", pri: 1, lines: ["First time for that one. {name}", "That has never happened in this glass before."] },
+    water: { tag: "water", pri: 1, lines: ["Fresh water. The glass clears.", "A third changed. Breathe, all of you."] },
+    oxygen: { tag: "water", pri: 2, lines: ["The water is too thin. They are at the surface for air.", "Oxygen is down. Open the light and let the plants work."] },
+    waste: { tag: "water", pri: 1, lines: ["There is waste on the sand. Something should lift it.", "The bottom is dirty. A cory would help."] },
+    crowd: { tag: "water", pri: 1, lines: ["This is a full glass. Everyone heals slower now.", "Busy tank. Mind the water."] },
+    feed: { tag: "meals", pri: 0, lines: ["Food is in. Let them sort it out.", "Somebody will get that flake."] },
+    buy: { tag: "life", pri: 1, lines: ["{name} is in the glass. A baby.", "New one: {name}."] },
+    crew: { tag: "water", pri: 1, lines: ["{name} starts on the green.", "A new cleaner at work."] },
+    retire: { tag: "water", pri: 0, lines: ["{name} has done its month.", "A cleaner retires."] },
+    leave: { tag: "hunter", pri: 0, lines: ["One slipped into the far water. It will be back.", "A hunter stepped out of the light."] },
+    grow: { tag: "hunter", pri: 0, lines: ["One of the babies grew up. It hunts next hour.", "A hunter fry is grown."] },
+    starve: { tag: "meals", pri: 1, lines: ["{name} is getting thin. A meal would fix it.", "{name} has not eaten in a while."] },
+    empty: { tag: "life", pri: 2, lines: ["The glass is empty. A fry drifted in. We start again.", "Everything is gone. One little fish arrived."] },
+    school: { tag: "life", pri: 1, lines: ["Six of one kind. That is a school now.", "A real school in the water."] },
+    calm: { tag: "water", pri: 0, lines: ["Quiet hour. Nothing to fix.", "They look settled."] }
+  };
+  const KEEPER_SAY = {
+    mara: {
+      waste: ["Waste on the sand. A cory or the turtle, and it lifts.", "That much waste spends the oxygen. Lift it early."],
+      death: ["{name} is gone. {how}. Keep the water and the rest will hold."],
+      oxygen: ["Oxygen is low. Plants and a water change, and they will come down off the surface."],
+      court: ["{name} and {other} are courting. The water is right for it — that is the whole trick."],
+      first: ["First time for that. Good water, good feeding, that is all it takes."]
+    },
+    ellis: {
+      birth: ["A fry — {name}. Generation {other}. I will remember this one."],
+      buy: ["{name}. I have already learned how they turn.", "{name} in the glass. Another name to keep straight."],
+      death: ["{name}. I knew that one. {how}."],
+      birth: ["A fry — {name}. Generation {other}. I will remember this one."],
+      court: ["{name} and {other}, turning together. Watch them."],
+      buy: ["{name}. Good name. Let us see who it becomes."]
+    },
+    ren: {
+      jaws: ["JAWS is in. Two a meal, and it does not hurry.", "Greymaw is JAWS. Watch the far water tonight."],
+      battle: ["Two hunters fighting. That is one less problem later.", "Let them fight. Something loses and it is not us."],
+      hunt: ["Hunter in the glass. It is already looking at somebody."],
+      stalk: ["It has chosen {name}. Watch the weeds."],
+      bite: ["The bite landed. {name} is gone. It will hunt again next hour."],
+      dodge: ["{name} made it. Rolled {roll} against {chance}% and lived."]
+    },
+    june: {
+      starve: ["{name} has not eaten. Feed them — I will not lose one to hunger."],
+      empty: ["The glass is empty. Then a fry arrived, and we start again, gently."],
+      death: ["We lost {name}. {how}. I would rather have had more fish than this."],
+      hunt: ["Another hunter. I did not want one tonight."],
+      crowd: ["It is crowded. I would take fewer fish and quieter water."],
+      court: ["{name} and {other} are courting. Nobody hunting, nothing wrong. This is the good hour."]
+    },
+    mateo: {
+      feed: ["There. Someone will get that flake. Do not waste it.", "That pinch will not last long."],
+      court: ["{name} and {other} are courting. They have been eating well."],
+      death: ["{name} is gone. {how}. Hungry water, that is usually what it is."],
+      water: ["Water change. That will clear the film off the glass."],
+      egg: ["Eggs. They will want feeding the moment they hatch.", "{n} eggs on the rockwork. I will have food ready."],
+      starve: ["{name} is thin. That is on me. Food now."]
+    },
+    nia: {
+      crowd: ["Full glass, and a mix of kinds. That is how I like it."],
+      buy: ["{name} is in. Different kind, different water. Good."],
+      death: ["We lost {name}. {how}. A mix is harder to keep, and worth it."],
+      first: ["First time in this glass. That is why I like a mixed tank."],
+      school: ["That is a proper school now. Different kinds, same water.", "Six of one kind, and they hold together."],
+      court: ["{name} and {other}. Different kinds courting in the same glass. This is why I mix."]
+    },
+    mira: {
+      dawn: ["First light on the plants. Whole tank turns gold. I never miss it."],
+      birth: ["A fry — {name}. New growth in a glass. That never gets old."],
+      water: ["Fresh water. The plants will take it from here."],
+      first: ["First time for that one. Give it light and time and it will grow."],
+      crew: ["The grazers keep the leaves clean. That is light getting through.", "Clean glass, clean leaves, that is the whole job."],
+      few: ["Thin planting and few fish. Quiet, but it works.", "Not much in here. The green will fill it."],
+      mono: ["One kind of fish and a lot of green. Simple, that."]
+    },
+    sancora: {
+      death: ["{name} is gone. {how}. Water decides these things. I only read it."],
+      oxygen: ["The water is thin. That is a tide that turned against you."],
+      water: ["Water change. Like a clean tide coming through."],
+      crowd: ["Crowded. Too much life in too little water. Thin them or feed the plants."],
+      dawn: ["Morning water on the coast reads the same as morning water in glass."],
+      night: ["Night water is honest. No glare, just the truth of it."],
+      crew: ["Your workers are the current in here. Let them run."],
+      few: ["A small population holds its water easily. Enjoy it."]
+    },
+    lyra: {
+      night: ["Low light and the glass close. This is my hour, not theirs."],
+      birth: ["A fry hatched — {name}. I sat up for this."],
+      court: ["{name} and {other}, turning in the low light. Nobody else is awake to see it."],
+      death: ["{name} is gone. {how}. Small loss, quiet hour."],
+      full: ["Full glass in low light. You see them better when they are crowded."],
+      variety: ["Different kinds keep different hours. Night sorts them out for you."],
+      crew: ["The jelly is the best thing in here once the light drops."],
+      calm: ["Nothing moving but the water. I could sit here till dawn."]
+    },
+    reed: {
+      death: ["{name} is gone. {how}. Dark water keeps its own accounts."],
+      water: ["A water change. The tea goes lighter for a while."],
+      crowd: ["Full and dark in here. Mind the air, it goes quick in blackwater."],
+      first: ["First time in the leaf litter. Something new under the roots."],
+      dawn: ["Dawn through blackwater. Grey light, grey fish, quiet."],
+      few: ["Few fish and deep cover. That is a pond, not a tank."],
+      crew: ["The cory works the leaf litter. Suits this water."],
+      calm: ["Nothing wrong in here. Dark water and no fuss."]
+    },
+    calder: {
+      death: ["{name} is gone. {how}. I will write it in the log and keep going.", "We lost {name}. {how}. That is the glass, not the water."],
+      hunt: ["A hunter is in. This is the part none of my maths can stop."],
+      jaws: ["JAWS. Bigger than the last one. Nobody touches it."],
+      birth: ["A fry — {name}, generation {other}. The tank is building its own stock now.", "Hatched: {name}. That one I did not pay for."],
+      first: ["First time in this glass. Good. That is the build working."],
+      water: ["Fresh water in. Watch the numbers fall in the right direction.", "Third of the water, gone and replaced. Better already."],
+      oxygen: ["Oxygen is down. Water change, and let the plants work.", "The water is thin. On a full glass that is the first thing to go."],
+      crowd: ["Full glass. Everyone heals slower — that is the load, not the fish."],
+      waste: ["Waste is up. The corys and the turtle will lift it.", "There is waste on the sand. That spends the oxygen too."],
+      starve: ["{name} is thin. Feeding now."],
+      school: ["Six of one kind, holding formation. That is a school, not a pile."],
+      shock: ["Something cracked the water. Everyone jolted — I felt it from here."],
+      ink: ["The octopus inked. That bite just got harder."],
+      battle: ["Two hunters fighting this hour. Let them spend each other."],
+      dodge: ["{name} slipped it — rolled {roll} against {chance}% and lived."],
+      stalk: ["It has picked {name}. Watch the weeds."],
+      bite: ["The bite landed. {name} is gone."],
+      leave: ["One slipped into the far water. It will be back."],
+      grow: ["A hunter fry is grown. It hunts next hour."],
+      feed: ["Food in. Let them sort it out.", "A pinch in the water. Watch who gets there first."],
+      buy: ["{name} is in the glass. A baby — the water will tell me if I got it right."],
+      crew: ["{name} starts on the green. Good worker.", "New cleaner at work. That frees my hands."],
+      retire: ["{name} has done its month. That is points well spent."],
+      egg: ["{n} eggs on the rockwork. Twenty minutes and we have fry.", "Eggs. That is the tank making decisions without me."],
+      mono: ["One kind in the glass. Easy to run, and it shows every mistake."],
+      few: ["Thin tank. I would still rather watch four than none."],
+      crew: ["The workers are covering the ground I cannot. Good trade."],
+      empty: ["The glass went empty and a fry drifted in. We start again from one."],
+      calm: ["Nothing needs doing. I still check.", "Quiet hour. The water is holding.", "All of them comfortable. That is the report."]
+    },
+    kai: {
+      dusk: ["Dusk cue. The tank turns over about now — best light of the day."],
+      night: ["Night lighting on. Low, warm, just enough to see them move."],
+      dawn: ["Dawn run. Ten minutes of perfect light, then it is just day."],
+      water: ["Fresh water. The glass goes clear and the light carries further."],
+      battle: ["Two hunters under the lights. That is a scene, I will give them that."],
+      crew: ["Even the cleaners look good under a low lamp."],
+      variety: ["Different colours, different light. That is the whole craft."],
+      calm: ["Nothing to do but watch the light move. Good shift."],
+      full: ["A full glass is the best thing to light. More movement to catch."]
+    }
+  };
+  let keeperTag = "";
+  function fill(tpl, vars) {
+    return String(tpl)
+      .replace(/\{name\}/g, vars.name || "a fish")
+      .replace(/\{other\}/g, vars.other || "another")
+      .replace(/\{n\}/g, vars.n || "two")
+      .replace(/\{how\}/g, vars.how || "gone")
+      .replace(/\{roll\}/g, vars.roll || "?")
+      .replace(/\{chance\}/g, vars.chance || "?");
+  }
+  function announce(key, vars) {
+    if (!state) return;
+    const spec = ANNOUNCE[key] || ANNOUNCE.calm;
+    const who = keeperInfo().id;
+    const own = (KEEPER_SAY[who] || {})[key];
+    const list = own && own.length ? own : spec.lines;
+    const tpl = list[(Math.random() * list.length) | 0];
+    const text = fill(tpl, vars || {});
+    keeperTag = spec.tag;
+    const spoke = keeperSay(text, spec.pri >= 2);
+    if (spoke) state._announce = { key: key, tag: spec.tag, at: Date.now(), text: text };
+    else state._pendingAnnounce = { key: key, tag: spec.tag, at: Date.now() };
+  }
   function keeperLine(key) {
     const list = KEEPER_LINES[key] || KEEPER_LINES.calm;
     return list[(Math.random() * list.length) | 0];
@@ -2934,19 +3841,19 @@
     const box = document.getElementById("keeperBox");
     if (!box || !state) return;
     const info = keeperInfo();
-    const face = KEEPERS[info.id] || KEEPERS.mara;
+    const face = keeperOf(info.id);
     const pic = document.getElementById("keeperPic");
     const label = document.getElementById("keeperLabel");
-    if (pic) { pic.alt = face.name; pic.setAttribute("data-keeper", face.id); }
+    if (pic) { pic.alt = face.name; pic.setAttribute("data-keeper", face.id); pic.setAttribute("src", keeperCardArt(face.id)); }
     if (label) label.textContent = info.name || face.name;
   }
   function keeperSay(text, force) {
-    if (!text) return;
+    if (!text) return false;
     const now = Date.now();
-    if (!force && now < keeperNext) return;
-    if (text === keeperLast && now < keeperNext + 20000) return;
+    if (!force && now < keeperNext) return false;
+    if (text === keeperLast && now < keeperNext + 12000) return false;
     keeperLast = text;
-    keeperNext = now + (force ? 32000 : 72000);
+    keeperNext = now + (force ? 30000 : 46000);
     const bubble = document.getElementById("keeperBubble");
     if (bubble) {
       bubble.textContent = text;
@@ -2954,16 +3861,24 @@
       clearTimeout(keeperHide);
       keeperHide = setTimeout(function () { bubble.classList.add("hidden"); }, 8500);
     }
-    if (!channelOn("talk") || typeof speechSynthesis === "undefined") return;
+    const tagEl = document.getElementById("keeperTag");
+    if (tagEl) tagEl.textContent = keeperTag ? ("watching " + keeperTag) : "";
+    if (!channelOn("talk") || typeof speechSynthesis === "undefined") return true;
     try {
-      const face = KEEPERS[keeperInfo().id] || KEEPERS.mara;
+      const face = keeperOf(keeperInfo().id);
       const u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.94;
+      u.rate = face.rate || 0.94;
       u.pitch = face.pitch || 1;
       u.volume = Math.max(0.2, sfxVol());
+      u.onend = function () { duckRadio(false); };
+      u.onerror = function () { duckRadio(false); };
       speechSynthesis.cancel();
+      duckRadio(true);
       speechSynthesis.speak(u);
-    } catch (_) {}
+      clearTimeout(keeperDuck);
+      keeperDuck = setTimeout(function () { duckRadio(false); }, 1200 + text.length * 70);
+    } catch (_) { duckRadio(false); }
+    return true;
   }
   function keeperNote(text) {
     if (!state) return;
@@ -2980,7 +3895,7 @@
       return;
     }
     if (now < keeperNext) return;
-    if (now - (state._keeperLook || 0) < 18000) return;
+    if (now - (state._keeperLook || 0) < 13000) return;
     state._keeperLook = now;
     const mix = mixScale();
     let warm = 0, cold = 0;
@@ -2991,32 +3906,65 @@
     });
     if (warm >= 1 && mix.share > 0.45) { keeperSay(keeperLine("hot"), false); return; }
     if (cold >= 1 && mix.share > 0.45) { keeperSay(keeperLine("cold"), false); return; }
+    if ((state.oxygen || 100) < OX.thin) { announce("oxygen", { line: oxygenNote() }); return; }
+    if ((state.waste || 0) > 52) { announce("waste", { line: wasteNote() }); return; }
+    if (crowdLoad() > 0.95) { announce("crowd", { line: "Crowded. Everyone heals slower." }); return; }
     if ((state.algae || 0) > 55) { keeperSay(keeperLine("dirty"), false); return; }
     if ((state.quality || 100) < 48) { keeperSay(keeperLine("foul"), false); return; }
     if (mix.kinds >= 5 && Math.random() < 0.35) { keeperSay(keeperLine("variety"), false); return; }
     if (mix.kinds === 1 && state.fish.length >= 4 && Math.random() < 0.4) { keeperSay(keeperLine("mono"), false); return; }
-    if (Math.random() < 0.25) keeperSay(keeperLine("calm"), false);
+    keeperChatter(now);
+  }
+  /* Chit chat: the keeper reads the room and says something in their own voice.
+     Every one of the twelve has their own lines for the hour and the state. */
+  function keeperChatter(now) {
+    const who = keeperOf(keeperInfo().id);
+    const topics = [];
+    const hour = rhythm();
+    const mix = mixScale();
+    if (hour === "night") topics.push("night");
+    if (hour === "dawn") topics.push("dawn");
+    if (hour === "dusk") topics.push("dusk");
+    if (mix.kinds >= 5) topics.push("variety");
+    if (mix.kinds === 1 && state.fish.length >= 4) topics.push("mono");
+    if (crowdLoad() > 0.6) topics.push("full");
+    if (state.fish.length && state.fish.length <= 4) topics.push("few");
+    if ((state.crew || []).length) topics.push("crew");
+    if ((state.eggs || []).length) topics.push("eggs");
+    if ((state.oxygen || 100) > OX.thin + 20) topics.push("calm");
+    const book = who.lines || {};
+    const voice = KEEPER_SAY[who.id] || {};
+    let pool = null;
+    if (topics.length) {
+      const want = topics[(Math.random() * topics.length) | 0];
+      if (voice[want] && voice[want].length) pool = voice[want];
+      else if (book[want] && book[want].length) pool = book[want];
+    }
+    if (!pool && who.idle && who.idle.length) pool = who.idle;
+    if (!pool) pool = KEEPER_LINES.calm;
+    keeperSay(pool[(Math.random() * pool.length) | 0], false);
   }
   function paintKeeperMenu() {
     const box = document.getElementById("menuKeepers");
     const perks = document.getElementById("menuPerks");
     const sheet = document.getElementById("keeperSheet");
     if (!box || !perks) return;
-    box.innerHTML = Object.keys(KEEPERS).map(function (id) {
-      const k = KEEPERS[id];
-      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img data-keeper='" + id + "' src='./assets/keepers/" + id + ".png?v=3' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
+    box.innerHTML = CAST_ORDER.map(function (id) {
+      const k = keeperOf(id);
+      return "<button type='button' class='keeper-card " + k.cast + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id +
+        "'><img data-keeper='" + id + "' src='" + keeperCardArt(id) + "' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
     }).join("");
     perks.innerHTML = PERKS.map(function (p) {
       const on = menuPerks.indexOf(p.id) >= 0;
       return "<button type='button' class='perk-card" + (on ? " on" : "") + "' data-perk='" + p.id + "'><b>" + p.name + "</b><span>" + p.text + "</span></button>";
     }).join("");
-    const face = KEEPERS[menuKeeper] || KEEPERS.mara;
+    const face = keeperOf(menuKeeper);
     const gifts = menuPerks.map(function (id) {
       const p = PERKS.filter(function (x) { return x.id === id; })[0];
       return p ? "<li><b>" + p.name + "</b> — " + p.text + "</li>" : "";
     }).join("");
     if (sheet) {
-      sheet.innerHTML = "<img class='keeper-face' data-keeper='" + face.id + "' src='./assets/keepers/" + face.id + ".png?v=3' alt='" + face.name + "'>" +
+      sheet.innerHTML = "<img class='keeper-face' data-keeper='" + face.id + "' src='" + keeperCardArt(face.id) + "' alt='" + face.name + "'>" +
         "<div><p class='rpg-tag'>" + face.tag + "</p><h2>" + face.name + "</h2>" +
         "<p class='char-bio'>" + face.bio + "</p>" +
         "<ul class='rpg-gifts'>" + (gifts || "<li>No gifts yet. Choose three below.</li>") + "</ul></div>";
@@ -3028,10 +3976,12 @@
     const bubble = document.getElementById("keeperBubble");
     const talking = bubble && !bubble.classList.contains("hidden");
     const beat = talking ? (Math.floor(now / 170) % 2 === 1) : (Math.floor(now / 420) % 8 === 0);
-    return "./assets/keepers/" + id + (beat ? "_talk.png?v=3" : ".png?v=3");
+    return keeperArt(id, beat);
   }
   function keeperAnim(now) {
     const liveId = (playing && state) ? keeperInfo().id : menuKeeper;
+    const bubble = document.getElementById("keeperBubble");
+    const talking = !!(bubble && !bubble.classList.contains("hidden"));
     document.querySelectorAll("img[data-keeper]").forEach(function (img) {
       const id = img.getAttribute("data-keeper") || liveId;
       if (id !== liveId && img.id !== "keeperPic") return;
@@ -3040,12 +3990,15 @@
         img.src = src;
         img.setAttribute("data-src", src);
       }
+      /* no talking frame? then the picture itself leans in while they speak */
+      img.classList.toggle("talking", talking && !keeperOf(id).talk);
     });
   }
   function loop(t) {
     if (!playing || !state) { keeperAnim(Date.now()); syncLoops(); requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
+    frameId += 1;
     const now = Date.now();
     AR = Math.max(0.5, canvas.clientWidth / Math.max(1, canvas.clientHeight));
     catchUp(now);
@@ -3116,7 +4069,12 @@
     tickFishNoise(now);
     requestAnimationFrame(loop);
   }
-  function pick(id) { selected = id; renderRail(); }
+  function pick(id) {
+    selected = id;
+    renderRail();
+    const f = state.fish.filter(function (x) { return x.id === id; })[0];
+    if (f) showFishCard(f); else hideFishCard();
+  }
   document.getElementById("fishList").onclick = function (e) {
     const b = e.target.closest("[data-id]");
     if (b) pick(b.getAttribute("data-id"));
@@ -3130,7 +4088,7 @@
       const d = Math.hypot(f.x - x, f.y - y) + (1 - depthOf(f)) * 0.045;
       if (d < bd) { bd = d; best = f; }
     });
-    if (best) pick(best.id);
+    if (best) pick(best.id); else hideFishCard();
   });
   document.getElementById("fishName").addEventListener("change", function (e) {
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
@@ -3177,6 +4135,8 @@
     state.points -= 10;
     state.algae = clamp(state.algae - 28, 0, 100);
     state.quality = clamp(state.quality + 24, 0, 100);
+    state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + 18, 0, 100);
+    state.waste = clamp((state.waste || 0) - 30, 0, 100);
     log("You change a third of the water. Algae drops. The glass clears.");
     save();
     renderRail();
@@ -3204,6 +4164,8 @@
     document.getElementById("optSoundAmbient").checked = o.soundAmbient !== false && o.sound !== false;
     document.getElementById("optSoundFx").checked = o.soundFx !== false && o.sound !== false;
     document.getElementById("optSoundFish").checked = o.soundFish !== false && o.sound !== false;
+    document.getElementById("optAmbientVol").value = String(Math.round((o.soundAmbientVol == null ? 1 : o.soundAmbientVol) * 100));
+    document.getElementById("optAmbientVal").textContent = Math.round((o.soundAmbientVol == null ? 1 : o.soundAmbientVol) * 100) + "%";
     document.getElementById("optSoundVol").value = String(Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100));
     document.getElementById("optSoundVal").textContent = Math.round((o.soundVol == null ? 0.4 : o.soundVol) * 100) + "%";
     document.getElementById("optClock").value = o.clock || "real";
@@ -3222,6 +4184,8 @@
     o.soundFx = document.getElementById("optSoundFx").checked;
     o.soundFish = document.getElementById("optSoundFish").checked;
     o.soundVol = (Number(document.getElementById("optSoundVol").value) || 0) / 100;
+    o.soundAmbientVol = Math.max(0, Math.min(100, Number(document.getElementById("optAmbientVol").value) || 0)) / 100;
+    document.getElementById("optAmbientVal").textContent = Math.round(o.soundAmbientVol * 100) + "%";
     document.getElementById("optSoundVal").textContent = Math.round(o.soundVol * 100) + "%";
     syncLoops();
     o.clock = document.getElementById("optClock").value || "real";
@@ -3364,10 +4328,10 @@
       document.getElementById("perkNote").textContent = "Pick exactly three gifts.";
       return;
     }
-    const ownerName = document.getElementById("menuOwner").value || (KEEPERS[menuKeeper] || KEEPERS.mara).name;
+    const ownerName = document.getElementById("menuOwner").value || keeperOf(menuKeeper).name;
     fresh(menuPicks.slice(), menuMode, ownerName, menuTheme);
     enterTank();
-    keeperSay("I am here. We will take this slow.", true);
+    keeperSay(keeperOf(keeperInfo().id).greet || "I am here. We will take this slow.", true);
   };
   document.getElementById("btnMenu").onclick = function () {
     if (state) save();
@@ -3385,11 +4349,12 @@
     readOpt();
     document.getElementById("optLayer").classList.add("hidden");
   };
-  ["optNames", "optBoard", "optMotion", "optHeater", "optClock", "optSoundTalk", "optSoundAmbient", "optSoundFx", "optSoundFish", "optSoundVol"].forEach(function (id) {
+  ["optNames", "optBoard", "optMotion", "optHeater", "optClock", "optSoundTalk", "optSoundAmbient", "optAmbientVol", "optSoundFx", "optSoundFish", "optSoundVol"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", readOpt);
   });
   document.getElementById("optTemp").addEventListener("input", readOpt);
   document.getElementById("optSoundVol").addEventListener("input", readOpt);
+  document.getElementById("optAmbientVol").addEventListener("input", readOpt);
   document.getElementById("optReset").onclick = function () {
     if (!window.confirm("Clear this tank, the cleaners, and the cemetery in this browser?")) return;
     fresh();

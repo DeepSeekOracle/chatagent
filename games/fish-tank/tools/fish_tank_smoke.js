@@ -76,6 +76,11 @@ must("a bite can miss at the last moment", js.indexOf('reason === "contact"') >=
 must("tank hour grows each species on its own clock", js.indexOf("const LIFE_CYCLE = {") >= 0 && js.indexOf("addGrowthHours(f, fed ? 2 : 1)") >= 0);
 must("JAWS is the shark elder and battles once an hour", js.indexOf('p.name = "JAWS"') >= 0 && js.indexOf("function predatorBattle(a, b)") >= 0 && js.indexOf("One predator battle this tank hour.") >= 0);
 must("tank sounds can be turned off", js.indexOf('getElementById("optSoundAmbient")') >= 0 && html.indexOf('id="optSoundTalk"') >= 0 && js.indexOf("function syncLoops()") >= 0);
+["mira.jpg", "sancora.jpg", "lyra.jpg", "reed.jpg", "calder.jpg", "kai.jpg", "mara.png", "ellis_talk.png", "ren_talk.png", "june_talk.png", "mateo_talk.png", "nia_talk.png"].forEach(function (name) {
+  const p = path.join(root, "assets", "keepers", name);
+  const st = fs.existsSync(p) ? fs.statSync(p) : null;
+  must(name + " is a real portrait", !!(st && st.size > 4000));
+});
 ["shark_baby.png", "shark_adult.png", "shark_elder.png", "shark_elder_stalk.png"].forEach(function (name) {
   const p = path.join(root, "assets", "fish", name);
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
@@ -102,6 +107,73 @@ must("one octopus inks when chased", js.indexOf('id: "octo"') >= 0 && js.indexOf
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
   must(name + " is a real sprite", !!(st && st.size > 8000));
 });
+
+/* 4b. phase 3: the water chemistry, the brains, and the announcer */
+must("the water carries oxygen and waste", js.indexOf("state.oxygen == null") >= 0 && js.indexOf("const OX = {") >= 0 && js.indexOf("const WASTE = {") >= 0);
+must("plants make oxygen and fish spend it", js.indexOf("const made = (OX.plant[themeOf(state.theme).id]") >= 0 && js.indexOf("const spent = fishN * OX.fish") >= 0);
+must("warm water holds less oxygen", js.indexOf("const warm = clamp(1.22 - ((state.temp || 25) - 20) * 0.032") >= 0);
+must("algae blooms with momentum and breathes at night", js.indexOf("const bloom = 0.5 + algae0 * 1.05;") >= 0 && js.indexOf("(night ? (state.algae || 0) * OX.algaeNight") >= 0);
+must("thin water sends fish up for air", js.indexOf("state.oxygen == null ? 100 : state.oxygen) < OX.gasp") >= 0 && js.indexOf("function oxygenNote()") >= 0);
+must("waste comes off the fish and the meals", js.indexOf("WASTE.meal") >= 0 && js.indexOf("function wasteNote()") >= 0);
+must("the tank is warmer at the top than the sand", js.indexOf("function tempAt(y)") >= 0 && js.indexOf("function stratNow()") >= 0 && js.indexOf("const t = tempAt(f ? f.y : null);") >= 0);
+must("crowding is a slope, not a cliff", js.indexOf("function crowdLoad()") >= 0 && js.indexOf("function crowdLimit()") >= 0 && js.indexOf("if (load > 0.85) delta -=") >= 0);
+must("dawn and dusk are real hours", js.indexOf("function rhythm()") >= 0 && js.indexOf('hour === "dawn"') >= 0 && js.indexOf('hour === "dusk"') >= 0);
+must("a water change adds air", js.indexOf("state.oxygen = clamp((state.oxygen == null ? 88 : state.oxygen) + 18") >= 0);
+must("the water panel is on the rail", html.indexOf('id="waterPanel"') >= 0 && js.indexOf('getElementById("waterPanel")') >= 0 && js.indexOf("wgrid") >= 0);
+must("the board shows oxygen", html.indexOf('id="mOxy"') >= 0);
+must("fish keep bonds with each other", js.indexOf("function bond(f, o, delta)") >= 0 && js.indexOf("bonds") >= 0 && js.indexOf("function bondPick(f, want, min)") >= 0);
+must("the school has a leader and slots", js.indexOf("function anchorOf(species)") >= 0 && js.indexOf("function slotFor(f, anchor)") >= 0 && js.indexOf("if (isAnchor(f) && state.fish.some(") >= 0);
+must("a leader waits for its school", js.indexOf("isAnchor(f) && schoolSpread(f) > 0.34") >= 0);
+must("a shoved fish remembers who did it", js.indexOf("mm.shovedBy = o.id") >= 0 && js.indexOf("f.mem.shovedBy === o.id") >= 0);
+must("fish hold territory, loners against their own kind", js.indexOf("function homeOf(f)") >= 0 && js.indexOf("function territorySteer(f, out)") >= 0);
+must("a chased fish remembers where it hid", js.indexOf("function hidingSpot(f)") >= 0 && js.indexOf("mm.hidSpot = { x: s.x + 0.05, y: s.y }") >= 0 && js.indexOf("function wary(f, now)") >= 0);
+must("fish give the cleaners room and follow the stirrers", js.indexOf("function crewSteer(f, out)") >= 0 && js.indexOf("c.role === \"cory\" || c.role === \"turtle\"") >= 0);
+must("a starving fish will risk it for a flake", js.indexOf("const desperate = !!(starving && flake0") >= 0);
+must("the keeper reads real events", js.indexOf("const LOG_EVENTS = [") >= 0 && js.indexOf("function readEvent(text)") >= 0 && js.indexOf("function announce(key, vars)") >= 0);
+must("every keeper has their own voice", js.indexOf("const KEEPER_SAY = {") >= 0 && js.indexOf("mara: {") >= 0 && js.indexOf("mateo: {") >= 0 && js.indexOf('announce("oxygen"') >= 0);
+must("the keeper ducks the radio to talk", js.indexOf("function duckRadio(on)") >= 0 && js.indexOf("R.setVol(Math.max(0, radioWas * 0.35))") >= 0);
+must("a meal makes a sound", js.indexOf('playSfx("nibble");') >= 0);
+must("the card says how it lives with others", html.indexOf('id="charSocial"') >= 0 && js.indexOf("function socialLine(f)") >= 0);
+must("the keeper box shows what it watches", html.indexOf('id="keeperTag"') >= 0 && js.indexOf('document.getElementById("keeperTag")') >= 0);
+
+/* 4c. the cast: twelve keepers, six of them still portraits, all of them talking */
+must("twelve keepers on the cast", js.indexOf("const CAST_ORDER = [") >= 0 && (js.match(/cast: "lattice"/g) || []).length === 6);
+must("the lattice six are wired by name", ["mira", "sancora", "lyra", "reed", "calder", "kai"].every(function (id) {
+  return js.indexOf('id: "' + id + '"') >= 0;
+}));
+must("Calder Voss is Justin, the steward, in this glass", js.indexOf('name: "Justin", tag: "Steward"') >= 0);
+must("static art still gets the bubble and the tag", js.indexOf("function keeperArt(id, beat)") >= 0 && js.indexOf("function keeperCardArt(id)") >= 0);
+must("a keeper without a talking frame still leans in", js.indexOf('img.classList.toggle("talking"') >= 0 && css.indexOf(".keeper-box img.talking") >= 0);
+must("every keeper has idle chatter and topic lines", js.indexOf("idle: [") >= 0 && js.indexOf("function keeperChatter(now)") >= 0);
+must("the twelve keepers all have voices", (js.match(/rate: 0\./g) || []).length >= 12 && !/[\\s]KEEPERS\[menuKeeper\] \|\| KEEPERS\.mara/.test(js));
+must("the keeper menu draws the whole cast in order", js.indexOf("CAST_ORDER.map(function (id)") >= 0);
+must("every keeper opens the tank in their own words", (js.match(/greet: "/g) || []).length === 12 && js.indexOf(".greet || ") >= 0);
+
+/* 4d. two dials for sound: the tank mix, and the water bed on its own */
+must("the ambient water has its own volume dial", html.indexOf('id="optAmbientVol"') >= 0 && html.indexOf('id="optAmbientVal"') >= 0);
+must("it sits beside its switch and apart from the tank sound dial",
+  html.indexOf('id="optAmbientVol"') > html.indexOf('id="optSoundAmbient"') && html.indexOf('id="optAmbientVol"') < html.indexOf('id="optSoundVol"'));
+must("the dial is stored on the tank, not on the radio", js.indexOf("soundAmbientVol: 1") >= 0 && js.indexOf("o.soundAmbientVol = Math.max(0, Math.min(100") >= 0);
+must("it scales both water loops and nothing else",
+  js.indexOf("tuneLoop(SFX.pump, ambient, sfxVol() * 0.42 * ambientVol())") >= 0 &&
+  js.indexOf("tuneLoop(SFX.omen, jaws, sfxVol() * 0.4 * ambientVol())") >= 0);
+must("the ambient dial reads back into the panel", js.indexOf('document.getElementById("optAmbientVal").textContent = Math.round(o.soundAmbientVol * 100)') >= 0);
+
+/* 4e. the fish card: a placard on the left of the glass */
+must("the fish card is in the stage, on the left of the glass",
+  html.indexOf('id="fishCard"') >= 0 && html.indexOf('id="fishCard"') < html.indexOf('class="tankwrap"'));
+must("it carries the fish's own metadata", ["fishCardPic", "fishCardSpecies", "fishCardName", "fishCardChips",
+  "fishCardSocial", "fishCardRows", "fishCardWord", "fishCardKeeperPic", "fishCardKeeperNote"].every(function (id) {
+  return html.indexOf('id="' + id + '"') >= 0;
+}));
+must("it fades on its own and hides after", js.indexOf("function hideFishCard()") >= 0 && js.indexOf("const FISH_CARD_MS = 9000") >= 0 &&
+  css.indexOf(".fish-card.fade") >= 0 && css.indexOf(".fish-card.hidden") >= 0);
+must("clicking a fish opens it, from the list or the glass", js.indexOf("if (f) showFishCard(f); else hideFishCard();") >= 0 &&
+  js.indexOf("if (best) pick(best.id); else hideFishCard();") >= 0);
+must("the placard is tank themed, not a browser dialog", js.indexOf("function showFishCard(f)") >= 0 &&
+  css.indexOf(".fish-card {") >= 0 && css.indexOf(".fish-card-rows dt") >= 0 && css.indexOf("linear-gradient(180deg, #0b1c24ee") >= 0 &&
+  (js.match(/fishCardRows|fishCardChips/g) || []).length >= 2);
+must("the keeper signs the fish card in their own voice", js.indexOf("const FISH_VOICE = {") >= 0 && js.indexOf("function fishVoice(f)") >= 0);
 
 /* 5. ambient water, and the reduced-motion contract */
 must("light shafts", js.indexOf('ctx.globalCompositeOperation = "lighter"') >= 0);

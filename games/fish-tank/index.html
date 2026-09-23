@@ -51,7 +51,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./tank.css?v=9">
+<link rel="stylesheet" href="./tank.css?v=10">
 </head>
 <body>
 <div id="menu" class="menu">
@@ -160,6 +160,7 @@
     <div><b id="mTemp">25.0°</b><span>water</span></div>
     <div><b id="mAlgae">0%</b><span>algae</span></div>
     <div><b id="mQual">100</b><span>quality</span></div>
+    <div><b id="mOxy">92%</b><span>oxygen</span></div>
     <div><b id="mEggs">0</b><span>eggs</span></div>
     <div><b id="mGen">gen 1</b><span>lineage</span></div>
     <p class="lore board-note" id="waterNote">Water is steady.</p>
@@ -169,7 +170,25 @@
       <p id="keeperBubble" class="keeper-bubble hidden"></p>
       <img id="keeperPic" alt="" width="120" height="120">
       <b id="keeperLabel">Keeper</b>
+      <span class="keeper-tag" id="keeperTag"></span>
     </aside>
+    <section id="fishCard" class="fish-card hidden" aria-live="polite" aria-label="Fish card">
+      <header>
+        <img id="fishCardPic" alt="">
+        <div>
+          <p class="kicker" id="fishCardSpecies">Fish</p>
+          <h3 id="fishCardName">—</h3>
+          <p class="chips" id="fishCardChips"></p>
+        </div>
+      </header>
+      <p class="fish-card-social" id="fishCardSocial"></p>
+      <dl class="fish-card-rows" id="fishCardRows"></dl>
+      <p class="fish-card-word" id="fishCardWord"></p>
+      <footer class="fish-card-foot">
+        <img id="fishCardKeeperPic" alt="">
+        <span id="fishCardKeeperNote"></span>
+      </footer>
+    </section>
     <div class="tankwrap"><canvas id="tank"></canvas></div>
     <aside class="rail">
       <p class="kicker">Keeper</p>
@@ -180,6 +199,8 @@
         <button type="button" class="btn" id="pellet">Pellet · 15</button>
         <button type="button" class="btn" id="change">Water change · 10</button>
       </div>
+      <h2>Water</h2>
+      <div class="water-panel" id="waterPanel"></div>
       <h2>Scoreboard</h2>
       <div class="board-table" id="boardRows"></div>
       <h2>Firsts</h2>
@@ -196,6 +217,7 @@
           </div>
         </div>
         <p id="charBio" class="char-bio">Click a fish in the glass or the list.</p>
+        <p id="charSocial" class="char-social"></p>
         <dl id="charStats" class="char-stats"></dl>
       </article>
       <input class="name" id="fishName" maxlength="16" placeholder="Name" aria-label="Fish name">
@@ -236,6 +258,7 @@
     <label class="check"><input type="checkbox" id="optHeater" checked> Heater on</label>
     <label class="check"><input type="checkbox" id="optSoundTalk" checked> Character talking</label>
     <label class="check"><input type="checkbox" id="optSoundAmbient" checked> Ambient water</label>
+    <label class="check">Ambient volume <input type="range" id="optAmbientVol" min="0" max="100" value="100"> <b id="optAmbientVal">100%</b></label>
     <label class="check"><input type="checkbox" id="optSoundFx" checked> Sound effects</label>
     <label class="check"><input type="checkbox" id="optSoundFish" checked> Fish noise</label>
     <label class="check">Sound <input type="range" id="optSoundVol" min="0" max="100" value="40"> <b id="optSoundVal">40%</b></label>
@@ -274,6 +297,6 @@
 </div>
 <script src="/games/arcade-ledger.js?v=4"></script>
 <script src="./radio.js?v=2"></script>
-<script src="./tank.js?v=38"></script>
+<script src="./tank.js?v=39"></script>
 </body>
 </html>

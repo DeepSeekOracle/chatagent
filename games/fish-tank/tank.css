@@ -240,3 +240,66 @@ canvas { width:100%; height:100%; display:block; }
   .stage { grid-template-columns:1fr; grid-template-rows:1fr auto; }
   .rail { max-height:38vh; border-left:0; border-top:1px solid var(--line); }
 }
+
+/* Water panel, keeper tag, and the social line on a character card. */
+.water-panel { margin: 4px 0 10px; }
+.wgrid { display: grid; gap: 6px; }
+.wrow { display: grid; grid-template-columns: 68px 62px 1fr; align-items: center; gap: 6px; }
+.wrow .wlabel { font: 600 11px "IBM Plex Mono", monospace; letter-spacing: 0.06em; text-transform: uppercase; color: #7f9fb8; }
+.wrow b { font: 600 12px "Source Sans 3", sans-serif; }
+.wrow em { font-size: 11px; font-style: normal; color: #92a9bd; }
+.wrow .bar { grid-column: 1 / -1; display: block; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.wrow .bar u { display: block; height: 100%; background: linear-gradient(90deg, #3fa9c9, #7fe0c8); text-decoration: none; }
+.wline { margin: 6px 0 0; }
+.keeper-tag { display: block; font: 500 10px "IBM Plex Mono", monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #7f9fb8; margin-top: 3px; }
+.char-social { margin: 6px 0 2px; font-size: 12px; color: #a9c0d2; }
+.char-social b { color: #e8eef5; }
+
+/* Twelve on the cast: the menu scrolls, and still art leans in when it speaks. */
+.cast-grid { max-height: 430px; overflow-y: auto; padding-right: 2px; }
+.cast-grid .keeper-card.lattice img { object-position: center 22%; filter: saturate(1.02); }
+.keeper-box img.talking { transform: scale(1.045); box-shadow: 0 0 0 2px #fbbf2455, 0 0 18px #fbbf2433; transition: transform .18s ease, box-shadow .18s ease; }
+.keeper-box img { transition: transform .18s ease, box-shadow .18s ease; }
+
+/* ---- fish card: the placard that hangs on the left of the glass ---- */
+.fish-card {
+  position: absolute; left: 10px; top: 10px; transform: translateX(0);
+  width: 274px; max-height: calc(100% - 18px); overflow: hidden auto;
+  background: linear-gradient(180deg, #0b1c24ee, #071319f2 55%, #061017f7);
+  border: 1px solid #fbbf2466; border-radius: 14px; padding: .55rem .6rem .5rem;
+  box-shadow: 0 18px 44px #000000aa, inset 0 1px 0 #ffffff12, 0 0 0 1px #06202b inset;
+  z-index: 9; opacity: 1; transition: opacity .55s ease, transform .55s ease;
+}
+.fish-card.hidden { opacity: 0; pointer-events: none; transform: translateX(-10px); }
+.fish-card.fade { opacity: 0; pointer-events: none; transform: translateX(-6px); }
+.fish-card header { display: grid; grid-template-columns: 62px 1fr; gap: .5rem; align-items: center; }
+.fish-card header img {
+  width: 62px; height: 62px; object-fit: contain; border-radius: 10px;
+  background: radial-gradient(circle at 50% 35%, #12384a, #06131b 70%); border: 1px solid #ffffff14;
+}
+.fish-card h3 { font-family: Syne, sans-serif; font-size: 1.02rem; margin: .05rem 0 .1rem; line-height: 1.1; }
+.fish-card .kicker { margin: 0; }
+.fish-card .chips { margin: .1rem 0 0; display: flex; flex-wrap: wrap; gap: .22rem; }
+.fish-card .chips span {
+  font: 650 .58rem "IBM Plex Mono", monospace; letter-spacing: .04em; text-transform: uppercase;
+  color: #cbe6d6; background: #ffffff10; border: 1px solid #ffffff1a; border-radius: 999px; padding: .1rem .38rem;
+}
+.fish-card .chips span.gold { color: #1a1204; background: linear-gradient(180deg, #fde68a, #f59e0b); border-color: #b45309; }
+.fish-card-social {
+  margin: .42rem 0 .34rem; font-size: .68rem; line-height: 1.35; color: #bcd6c8;
+  border-left: 2px solid #fbbf2455; padding-left: .4rem;
+}
+.fish-card-rows { display: grid; grid-template-columns: 1fr 1fr; gap: .16rem .5rem; margin: 0; }
+.fish-card-rows div { display: flex; justify-content: space-between; gap: .3rem; border-bottom: 1px dotted #ffffff12; padding-bottom: .1rem; }
+.fish-card-rows dt { font: 650 .56rem "IBM Plex Mono", monospace; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); }
+.fish-card-rows dd { margin: 0; font-size: .68rem; text-align: right; color: #eaf6ee; }
+.fish-card-word { margin: .4rem 0 0; font-size: .68rem; font-style: italic; color: #cfe6d8; }
+.fish-card-foot {
+  display: flex; align-items: center; gap: .38rem; margin-top: .42rem; padding-top: .36rem;
+  border-top: 1px solid #ffffff14; font-size: .64rem; color: var(--mute); line-height: 1.3;
+}
+.fish-card-foot img { width: 26px; height: 26px; border-radius: 7px; object-fit: cover; object-position: center 18%; border: 1px solid #fbbf2444; }
+@media (max-width: 900px) {
+  .fish-card { width: 236px; left: 6px; top: 6px; }
+  .fish-card-rows { grid-template-columns: 1fr; }
+}
