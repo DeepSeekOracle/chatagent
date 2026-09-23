@@ -208,6 +208,7 @@
   const EGG_CAP = 6;
 
   const FISH_CAP = 50;
+  const HUNTER_CAP = 10;
   const CREW = [
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
@@ -777,9 +778,11 @@
       if (selected === victim.id) selected = null;
       if (countFail !== false) p.fails = 0;
       let born = false;
-      if (allowBaby) {
+      if (allowBaby && state.predators.length < HUNTER_CAP) {
         state.predators.push(makePredator(p.kind, false));
         born = true;
+      } else if (allowBaby) {
+        log("The hunter line is full at " + HUNTER_CAP + ". No baby this hour.");
       }
       if (p.elder) p.hp = Math.min(predMax(p), (p.hp || predMax(p)) + predMax(p) * 0.25);
       if (p.kind === "shark" && !p.elder) {
@@ -923,6 +926,10 @@
       if (now - state.clearSince >= HOUR) {
         const kinds = ["pike", "cinder", "gar", "eel", "shark"];
         const kind = kinds[(Math.random() * kinds.length) | 0];
+        if (state.predators.length >= HUNTER_CAP) {
+          log("The hunter line is full at " + HUNTER_CAP + ". No new boss this hour.");
+          return;
+        }
         state.predators.push(makePredator(kind, true));
         state.clearSince = 0;
         log("Boss " + predOf(kind).name + " enters. One hunter a tank hour. A full fish is 25%. Two misses and it dies. You cannot stop it.");
@@ -956,6 +963,12 @@
     armStalk(now);
     const before = state.predators.length;
     state.predators = state.predators.filter(function (p) { return (p.fails || 0) < 2; });
+    if (state.predators.length > HUNTER_CAP) {
+      state.predators.sort(function (a, b) {
+        return (b.elder ? 2 : b.adult ? 1 : 0) - (a.elder ? 2 : a.adult ? 1 : 0);
+      });
+      state.predators = state.predators.slice(0, HUNTER_CAP);
+    }
     if (before && !state.predators.length) state.clearSince = now;
     if (!state.predators.length) {
       if (!state.clearSince) state.clearSince = state.openedAt || now;
@@ -2611,7 +2624,9 @@
     const ranked = state.fish.slice().sort(function (a, b) { return ageOf(b, now) - ageOf(a, now); });
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
-    document.getElementById("mLiving").textContent = state.fish.length + "/" + FISH_CAP + ((state.predators || []).length ? (" +" + state.predators.length) : "");
+    document.getElementById("mLiving").textContent = state.fish.length + "/" + FISH_CAP;
+    const huntEl = document.getElementById("mHunters");
+    if (huntEl) huntEl.textContent = (state.predators || []).length + "/" + HUNTER_CAP;
     const autoBtn = document.getElementById("btnAuto");
     if (autoBtn) {
       autoBtn.textContent = state.auto ? "Auto on" : "Auto";

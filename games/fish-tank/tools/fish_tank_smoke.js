@@ -42,6 +42,7 @@ must("version is a number", jsV && Number(jsV[1]) >= 21);
 
 /* 3. the rules the title advertises must still be in the code */
 must("tank holds 50 fish", js.indexOf("const FISH_CAP = 50;") >= 0);
+must("hunters have their own cap of 10", js.indexOf("const HUNTER_CAP = 10;") >= 0 && js.indexOf("state.predators.length < HUNTER_CAP") >= 0);
 must("a bite starts at 25%", js.indexOf("clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85)") >= 0);
 must("hunter takes the weakest", js.indexOf("function weakestPrey(now)") >= 0);
 must("two misses kill the hunter", js.indexOf("(p.fails || 0) < 2") >= 0);
