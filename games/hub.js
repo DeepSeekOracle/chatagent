@@ -199,6 +199,7 @@
     if (Array.isArray(book.scores)) return book.scores;
     if (Array.isArray(book.ladder)) return book.ladder;
     if (Array.isArray(book.runs)) return book.runs;
+    if (Array.isArray(book.lives)) return book.lives;
     return [];
   }
 
@@ -267,6 +268,16 @@
     crypt = crypt.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
     paintHall("crypt", crypt.length ? (stamp + crypt.length + " runs") : "No crypt runs yet.", crypt.slice(0, 12).map(function (r) {
       return { name: r.name || "Warden", score: String(r.score), meta: cryptLine(r) };
+    }));
+
+    var fish = bookRows(books["fish-tank"]).concat(lsJson("lygo-fish-tank-ledger-q") || []);
+    try {
+      var tank = JSON.parse(localStorage.getItem("lygo_fish_tank_v1") || "{}");
+      if (tank.cemetery) fish = fish.concat(tank.cemetery);
+    } catch (e) {}
+    fish = fish.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
+    paintHall("fish", fish.length ? (stamp + fish.length + " lives") : "No stones yet.", fish.slice(0, 12).map(function (r) {
+      return { name: r.name || "Fish", score: String(r.score) + " h", meta: [r.species, r.stage].filter(Boolean).join(" · ") };
     }));
   }
 

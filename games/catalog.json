@@ -133,6 +133,24 @@
       ]
     },
     {
+      "id": "fish-tank",
+      "slug": "fish-tank",
+      "title": "Fish Tank",
+      "tagline": "Real-time aquarium",
+      "blurb": "Ten species, six ages. They grow to adult in a day and rest within a week unless you use pellets. Local save. Cemetery hall ranks the longest lives.",
+      "status": "live",
+      "featured": true,
+      "order": 8,
+      "href": "/games/fish-tank/",
+      "cover": "/games/fish-tank/assets/og.jpg",
+      "coverAlt": "Daylight aquarium with plants, stones, and driftwood",
+      "genre": ["sim"],
+      "players": "1, autonomous",
+      "links": [
+        { "label": "Cemetery hall", "href": "/games/fish-tank/ledger.html" }
+      ]
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",
