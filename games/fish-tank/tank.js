@@ -2989,7 +2989,7 @@
     if (!box || !perks) return;
     box.innerHTML = Object.keys(KEEPERS).map(function (id) {
       const k = KEEPERS[id];
-      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img data-keeper='" + id + "' src='./assets/keepers/" + id + ".png' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
+      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img data-keeper='" + id + "' src='./assets/keepers/" + id + ".png?v=3' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
     }).join("");
     perks.innerHTML = PERKS.map(function (p) {
       const on = menuPerks.indexOf(p.id) >= 0;
@@ -3001,7 +3001,7 @@
       return p ? "<li><b>" + p.name + "</b> — " + p.text + "</li>" : "";
     }).join("");
     if (sheet) {
-      sheet.innerHTML = "<img class='keeper-face' data-keeper='" + face.id + "' src='./assets/keepers/" + face.id + ".png' alt='" + face.name + "'>" +
+      sheet.innerHTML = "<img class='keeper-face' data-keeper='" + face.id + "' src='./assets/keepers/" + face.id + ".png?v=3' alt='" + face.name + "'>" +
         "<div><p class='rpg-tag'>" + face.tag + "</p><h2>" + face.name + "</h2>" +
         "<p class='char-bio'>" + face.bio + "</p>" +
         "<ul class='rpg-gifts'>" + (gifts || "<li>No gifts yet. Choose three below.</li>") + "</ul></div>";
@@ -3013,7 +3013,7 @@
     const bubble = document.getElementById("keeperBubble");
     const talking = bubble && !bubble.classList.contains("hidden");
     const beat = talking ? (Math.floor(now / 170) % 2 === 1) : (Math.floor(now / 420) % 8 === 0);
-    return "./assets/keepers/" + id + (beat ? "_talk.png" : ".png");
+    return "./assets/keepers/" + id + (beat ? "_talk.png?v=3" : ".png?v=3");
   }
   function keeperAnim(now) {
     const liveId = (playing && state) ? keeperInfo().id : menuKeeper;
