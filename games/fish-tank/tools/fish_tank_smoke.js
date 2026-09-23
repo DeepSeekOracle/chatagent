@@ -81,7 +81,8 @@ must("firsts pay points", js.indexOf("const GOALS = [") >= 0 && js.indexOf("func
 must("traits are named in the rail", js.indexOf("TRAIT_WORDS") >= 0 && html.indexOf('id="goals"') >= 0);
 must("water trouble is reported", html.indexOf('id="waterNote"') >= 0 && js.indexOf("gulp at the surface") >= 0);
 must("LYGO Claw and the crab walk the sand", js.indexOf('id: "claw"') >= 0 && js.indexOf('id: "crab"') >= 0 && js.indexOf("walk: true") >= 0 && js.indexOf("under the rockwork") >= 0);
-["claw_l.png", "claw_r.png", "claw_l_walk.png", "claw_r_walk.png", "crab_l.png", "crab_r.png", "crab_l_walk.png", "crab_r_walk.png"].forEach(function (name) {
+must("Volt the eel can spawn as a boss", js.indexOf('eel: { id: "eel"') >= 0 && js.indexOf('"pike", "cinder", "gar", "eel"') >= 0 && js.indexOf("function shockFish(p)") >= 0);
+["claw_l.png", "claw_r.png", "claw_l_walk.png", "claw_r_walk.png", "crab_l.png", "crab_r.png", "crab_l_walk.png", "crab_r_walk.png", "eel_adult.png", "eel_baby.png", "eel_adult_zap.png", "eel_adult_zap2.png", "eel_baby_zap.png"].forEach(function (name) {
   const p = path.join(root, "assets", "fish", name);
   const st = fs.existsSync(p) ? fs.statSync(p) : null;
   must(name + " is a real sprite", !!(st && st.size > 8000));

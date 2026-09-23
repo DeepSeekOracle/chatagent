@@ -47,7 +47,8 @@
   const PREDATORS = {
     pike: { id: "pike", name: "Reed", blurb: "Long bill. A boss if the tank is quiet for an hour." },
     cinder: { id: "cinder", name: "Cinder", blurb: "Orange hunter. A lucky bite leaves a baby." },
-    gar: { id: "gar", name: "Sable", blurb: "Dark gar. Two misses in a row and it dies." }
+    gar: { id: "gar", name: "Sable", blurb: "Dark gar. Two misses in a row and it dies." },
+    eel: { id: "eel", name: "Volt", blurb: "Electric eel. A boss. The zap stuns whoever is close." }
   };
   /* ---------------------------------------------------------------
      Phase 2 — living water.
@@ -184,12 +185,17 @@
     });
   });
   const PRED_SPRITES = {};
-  ["pike", "cinder", "gar"].forEach(function (id) {
+  ["pike", "cinder", "gar", "eel"].forEach(function (id) {
     ["baby", "adult"].forEach(function (age) {
       const img = new Image();
       img.src = "./assets/fish/" + id + "_" + age + ".png";
       PRED_SPRITES[id + "_" + age] = img;
     });
+  });
+  ["eel_adult_zap", "eel_adult_zap2", "eel_baby_zap"].forEach(function (key) {
+    const img = new Image();
+    img.src = "./assets/fish/" + key + ".png";
+    PRED_SPRITES[key] = img;
   });
   ["claw", "crab"].forEach(function (id) {
     ["l", "r"].forEach(function (dir) {
@@ -637,7 +643,7 @@
     if (!state.predators.length) {
       if (!state.clearSince) state.clearSince = state.openedAt || now;
       if (now - state.clearSince >= HOUR) {
-        const kinds = ["pike", "cinder", "gar"];
+        const kinds = ["pike", "cinder", "gar", "eel"];
         const kind = kinds[(Math.random() * kinds.length) | 0];
         state.predators.push(makePredator(kind, true));
         state.clearSince = 0;
@@ -697,14 +703,51 @@
     p.face = Math.cos(p.heading) >= 0 ? 1 : -1;
     p.bank = (p.bank || 0) + (clamp(clamp(diff, -1.6 * dt, 1.6 * dt) / Math.max(dt, 0.01) * 0.16, -0.3, 0.3) - (p.bank || 0)) * Math.min(1, dt * 4);
     p.phase += dt * (2.2 + Math.hypot(p.vx, p.vy / AR) * 22);
+    if (p.kind === "eel") {
+      if (!p.pending) p.zapSaid = false;
+      p.zapT = Math.max(0, (p.zapT || 0) - dt);
+      p.zapCd = (p.zapCd == null ? 0.6 : p.zapCd) - dt;
+      if (p.zapCd <= 0) {
+        p.zapT = p.pending ? 0.55 : 0.32;
+        p.zapCd = p.pending ? 1.15 : (p.adult ? 3.1 : 4.6);
+        if (p.adult) shockFish(p);
+      }
+    }
+  }
+  function shockFish(p) {
+    const reach = p.pending ? 0.3 : 0.18;
+    let hit = 0;
+    state.fish.forEach(function (f) {
+      const d = Math.hypot(f.x - p.x, (f.y - p.y) * AR);
+      if (d > reach) return;
+      f.startleT = Math.max(f.startleT || 0, 1.6);
+      f.hp = Math.max(1, (f.hp || 1) - (p.pending ? 5 : 2));
+      const push = (f.x - p.x) || (Math.random() - 0.5);
+      f.vx += push * 1.1;
+      f.vy += (f.y - p.y) * 0.35;
+      hit += 1;
+    });
+    if (hit && p.pending && !p.zapSaid) {
+      p.zapSaid = true;
+      log(p.name + " cracks the water. " + hit + (hit > 1 ? " fish jolt." : " fish jolts."));
+    }
   }
   function drawPredator(p, w, h, now) {
-    const key = p.kind + "_" + (p.adult ? "adult" : "baby");
-    const img = PRED_SPRITES[key];
-    const sc = p.adult ? 1.35 : 0.55;
-    const bh = Math.min(h * 0.2, 140) * sc;
+    const age = p.adult ? "adult" : "baby";
+    let key = p.kind + "_" + age;
+    if (p.kind === "eel" && (p.zapT || 0) > 0) {
+      const alt = p.adult && ((Math.floor(now / 140) % 2) === 1);
+      key = alt ? "eel_adult_zap2" : (key + "_zap");
+    }
+    const img = PRED_SPRITES[key] || PRED_SPRITES[p.kind + "_" + age];
+    const sc = p.kind === "eel" ? (p.adult ? 0.72 : 0.4) : (p.adult ? 1.35 : 0.55);
+    const bh = Math.min(h * (p.kind === "eel" ? 0.13 : 0.2), p.kind === "eel" ? 86 : 140) * sc;
     let bw = bh * 2.2;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
+    if (p.kind === "eel") {
+      bw = Math.min(w * 0.46, 520) * (p.adult ? 1 : 0.52);
+      bh = img && img.complete && img.naturalWidth ? bw * (img.naturalHeight / img.naturalWidth) : bw * 0.22;
+    }
     const x = p.x * w;
     const y = p.y * h;
     const alpha = p.pending ? 1 : 0.88;
@@ -727,10 +770,36 @@
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.scale(p.face === -1 ? -1 : 1, 1);
-    const wag = state.opts.motion === false ? 0 : Math.sin(p.phase || 0) * (p.pending ? 0.09 : 0.045);
+    const wag = state.opts.motion === false ? 0 : Math.sin(p.phase || 0) * (p.kind === "eel" && p.zapT > 0 ? 0.02 : (p.pending ? 0.09 : 0.045));
     ctx.rotate(wag + (p.bank || 0) * 0.5);
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     ctx.restore();
+    if (p.kind === "eel" && p.zapT > 0 && state.opts.motion !== false) {
+      const pulse = 0.45 + Math.sin(now / 80) * 0.35;
+      const glow = ctx.createRadialGradient(x, y, 2, x, y, Math.max(24, bw * 0.45));
+      glow.addColorStop(0, "rgba(186,240,255," + (0.28 * pulse).toFixed(3) + ")");
+      glow.addColorStop(1, "rgba(120,200,255,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(x - bw * 0.6, y - bh, bw * 1.2, bh * 2);
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.9, p.zapT * 2);
+      ctx.strokeStyle = "rgba(214,246,255,0.9)";
+      ctx.lineWidth = 1.6;
+      const face = p.face === -1 ? -1 : 1;
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(x + face * bw * 0.18, y);
+        let px = x + face * bw * 0.18;
+        let py = y;
+        for (let s = 1; s <= 5; s += 1) {
+          px += face * bw * 0.07;
+          py += Math.sin(now / 45 + s * 1.7 + i) * bh * 0.22;
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
     if (state.opts.names !== false) {
       ctx.fillStyle = "#fb7185";
       ctx.font = "700 13px Syne, sans-serif";
