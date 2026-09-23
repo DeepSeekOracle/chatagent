@@ -27,7 +27,7 @@
     playing: false,
     muted: false,
     view: true,
-    vol: 0.55,
+    vol: 0.5,
     bag: []
   };
   try {
@@ -144,14 +144,33 @@
     if (st.playing) el().play().catch(() => {});
   }
 
+  function armGesture() {
+    if (st._armed) return;
+    st._armed = true;
+    const kick = function () {
+      document.removeEventListener("pointerdown", kick, true);
+      document.removeEventListener("keydown", kick, true);
+      if (st.wantPlay && !st.playing) play();
+    };
+    document.addEventListener("pointerdown", kick, true);
+    document.addEventListener("keydown", kick, true);
+  }
   function play() {
     st.wantPlay = true;
     if (!st.tracks.length) return;
     const a = el();
-    if (!a.src) next();
-    a.play().then(() => { st.playing = true; paint(); }).catch(() => {
-      if (st.tracks.length > 1) next();
-    });
+    if (!a) return;
+    if (!a.src) loadIndex(st.i || 0);
+    a.volume = st.vol;
+    a.muted = st.muted;
+    const started = a.play();
+    if (started && started.then) {
+      started.then(function () { st.playing = true; paint(); }).catch(function (err) {
+        const blocked = err && (err.name === "NotAllowedError" || err.name === "AbortError");
+        if (blocked) armGesture();
+        else if (st.tracks.length > 1) next();
+      });
+    }
   }
 
   function pauseKeep() {
@@ -183,7 +202,7 @@
     ensureDsp();
     loadPlaylists().then(function () {
       paint();
-      if (st.wantPlay) play();
+      play();
     });
     const a = el();
     a.addEventListener("ended", () => { st.playing = true; next(); });
