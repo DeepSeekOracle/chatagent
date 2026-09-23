@@ -17,16 +17,16 @@
   const STARVE = 36 * HOUR;
   const FED_FAST = 6 * HOUR;
   const SPECIES = [
-    { id: "glimmer", name: "Glimmer", play: "jump", temper: "lively", bulk: 1, blurb: "Happy. Swims a lot and jumps." },
-    { id: "azure", name: "Azure", play: "flare", temper: "lively", bulk: 0.92, blurb: "Happy. Turns and covers the tank." },
-    { id: "dart", name: "Dart", play: "race", temper: "lively", bulk: 0.78, blurb: "Happy. Rarely stops swimming." },
-    { id: "puff", name: "Puff", play: "boop", temper: "chill", bulk: 0.88, blurb: "Relaxed. Hovers, then a soft bump." },
-    { id: "lantern", name: "Lantern", play: "glow", temper: "lively", bulk: 0.74, blurb: "Happy. Cruises, and glows at dusk." },
-    { id: "moss", name: "Moss", play: "clean", temper: "chill", bulk: 0.96, blurb: "Relaxed. Stays low and unhurried." },
-    { id: "ruby", name: "Ruby", play: "school", temper: "chill", bulk: 1, blurb: "Relaxed. Drifts with the school." },
-    { id: "veil", name: "Veil", play: "dance", temper: "chill", bulk: 1.05, blurb: "Relaxed. Long, slow arcs." },
-    { id: "sunscale", name: "Sunscale", play: "lap", temper: "chill", bulk: 1.12, blurb: "Relaxed. One slow lap at a time." },
-    { id: "pearl", name: "Pearl", play: "flash", temper: "lively", bulk: 0.7, blurb: "Happy. Darts and flashes." }
+    { id: "glimmer", name: "Glimmer", play: "jump", temper: "lively", social: "school", bulk: 1, blurb: "Happy. Schools, and jumps." },
+    { id: "azure", name: "Azure", play: "flare", temper: "lively", social: "loner", bulk: 0.92, blurb: "Happy loner. Keeps its own water." },
+    { id: "dart", name: "Dart", play: "race", temper: "lively", social: "school", bulk: 0.78, blurb: "Happy. Schools and rarely stops." },
+    { id: "puff", name: "Puff", play: "boop", temper: "chill", social: "loner", bulk: 0.88, blurb: "Relaxed loner. A soft bump, then space." },
+    { id: "lantern", name: "Lantern", play: "glow", temper: "lively", social: "school", bulk: 0.74, blurb: "Happy. Schools, and glows at dusk." },
+    { id: "moss", name: "Moss", play: "clean", temper: "chill", social: "loner", bulk: 0.96, blurb: "Relaxed loner. Stays low." },
+    { id: "ruby", name: "Ruby", play: "school", temper: "chill", social: "school", bulk: 1, blurb: "Relaxed. Holds the school together." },
+    { id: "veil", name: "Veil", play: "dance", temper: "chill", social: "loner", bulk: 1.05, blurb: "Relaxed loner. Long, slow arcs." },
+    { id: "sunscale", name: "Sunscale", play: "lap", temper: "chill", social: "loner", bulk: 1.12, blurb: "Relaxed loner. One slow lap." },
+    { id: "pearl", name: "Pearl", play: "flash", temper: "lively", social: "school", bulk: 0.7, blurb: "Happy. Schools and flashes." }
   ];
   const CREW = [
     { id: "snail", name: "Nerite", cost: 20, blurb: "Scrapes algae off the glass." },
@@ -355,6 +355,35 @@
   }
 
   function temperOf(f) { return specOf(f.species).temper === "chill" ? "chill" : "lively"; }
+  function socialOf(f) { return specOf(f.species).social === "loner" ? "loner" : "school"; }
+  function applySocial(f) {
+    if (socialOf(f) === "school") {
+      const mates = state.fish.filter(function (o) { return o !== f && socialOf(o) === "school"; });
+      if (!mates.length) return;
+      let sx = 0, sy = 0, svx = 0;
+      mates.forEach(function (o) { sx += o.x; sy += o.y; svx += o.vx || 0; });
+      sx /= mates.length; sy /= mates.length; svx /= mates.length;
+      f.vx += (sx - f.x) * 0.45;
+      f.vy += (sy - f.y) * 0.45;
+      f.vx = f.vx * 0.65 + svx * 0.35;
+      mates.forEach(function (o) {
+        const nd = Math.hypot(o.x - f.x, o.y - f.y);
+        if (nd < 0.075 && nd > 0.001) {
+          f.vx -= (o.x - f.x) / nd * 0.025;
+          f.vy -= (o.y - f.y) / nd * 0.02;
+        }
+      });
+    } else {
+      state.fish.forEach(function (o) {
+        if (o === f) return;
+        const nd = Math.hypot(o.x - f.x, o.y - f.y);
+        if (nd < 0.18 && nd > 0.001) {
+          f.vx -= (o.x - f.x) / nd * 0.045;
+          f.vy -= (o.y - f.y) / nd * 0.03;
+        }
+      });
+    }
+  }
   function fishSprint(f) {
     const hungry = Date.now() - (f.lastFed || f.born) > 3 * HOUR;
     const desperate = STARVE - (Date.now() - (f.lastFed || f.born)) < 8 * HOUR;
@@ -574,6 +603,7 @@
         startPlay(f);
       }
     }
+    if (!bite) applySocial(f);
     f.x += f.vx * dt;
     f.y += f.vy * dt;
     if (f.x < 0.08) { f.x = 0.08; f.vx = Math.abs(f.vx); }
@@ -748,7 +778,7 @@
       const starveIn = Math.max(0, STARVE - (now - (f.lastFed || f.born)));
       return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
         esc(f.name) + "</b> <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" +
-        esc(specOf(f.species).name) + " · " + (temperOf(f) === "chill" ? "relaxed" : "swims a lot") + " · " + stageName(bodyAge(f)) + " · lived " + hours(ageOf(f, now)) + "h · unfed dies in " + hours(starveIn) + "h</span></button>";
+        esc(specOf(f.species).name) + " · " + (temperOf(f) === "chill" ? "relaxed" : "swims a lot") + " · " + (socialOf(f) === "loner" ? "loner" : "school") + " · " + stageName(bodyAge(f)) + " · lived " + hours(ageOf(f, now)) + "h · unfed dies in " + hours(starveIn) + "h</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
@@ -976,7 +1006,7 @@
     if (!box) return;
     box.innerHTML = SPECIES.map(function (s) {
       const on = menuPicks.indexOf(s.id) >= 0;
-      return "<button type='button' data-pick='" + s.id + "' class='" + (on ? "on" : "") + "'>" + esc(s.name) + "<br><span class='lore'>" + (s.temper === "chill" ? "Relaxed" : "Swims a lot") + "</span></button>";
+      return "<button type='button' data-pick='" + s.id + "' class='" + (on ? "on" : "") + "'>" + esc(s.name) + "<br><span class='lore'>" + (s.temper === "chill" ? "Relaxed" : "Swims a lot") + " · " + (s.social === "loner" ? "Loner" : "School") + "</span></button>";
     }).join("");
   }
   function showPanel(which) {
