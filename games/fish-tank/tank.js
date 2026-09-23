@@ -4976,8 +4976,12 @@
     playing = false;
     const cont = document.getElementById("menuContinue");
     if (cont) cont.disabled = !hasSave;
-    /* the caretaker list is on the home tab now, so it has to be drawn with the cards */
+    /* the caretaker list is on the home tab now, so it has to be drawn with the cards, and
+       the merged tab has to be opened as a pair - the boot lands on the markup's own classes
+       otherwise, which hides the caretaker of a tank the keeper is about to start */
     paintKeeperMenu();
+    const litTab = document.querySelector(".menu-tabs .tab.on");
+    showPanel(litTab ? litTab.getAttribute("data-tab") : "panelHome");
     document.getElementById("menu").classList.remove("hidden");
     document.getElementById("app").classList.add("hidden");
     paintCast();
