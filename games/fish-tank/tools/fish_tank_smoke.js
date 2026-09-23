@@ -335,6 +335,14 @@ must("an empty tank ends the run", js.indexOf("state.run.collapsed = true;") >= 
 must("the mode is offered on the menu", html.indexOf('id="menuRpg"') >= 0 &&
   html.indexOf("Fish Tank RPG") >= 0 && js.indexOf("rpgCard.onclick") >= 0);
 
+must("an RPG run is never charged for a cleaner", js.indexOf("if (!RPG()) state.points -= spec.cost;") >= 0 &&
+  js.indexOf("an RPG run pays for nothing") >= 0);
+must("one click listener, guarded, and no duplicate", js.indexOf('e.target && e.target.closest ? e.target.closest("[data-spawn]") : null') >= 0 &&
+  js.indexOf('e.target && e.target.closest ? e.target.closest("[data-crew]") : null') >= 0 &&
+  js.split("addEventListener(\"click\"").length === 3 &&
+  js.indexOf('const b = e.target.closest("[data-spawn]")') < 0);
+must("the shelf repaints the moment a fish goes in", js.indexOf("paintRpg();\n  }") >= 0);
+
 console.log("");
 if (fails) {
   console.log(fails + " smoke check(s) failed");

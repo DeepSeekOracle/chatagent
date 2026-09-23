@@ -3862,6 +3862,7 @@
     if (state.run) state.run.added += 1;
     log(spec.name + " goes in free. " + (mine.length + 1) + "/2 of its kind in the water.");
     save();
+    paintRpg();
   }
   /* the panel: the shelf, the pairs, and the state of the run */
   function paintRpg() {
@@ -5124,15 +5125,11 @@
     renderRail();
   };
   document.addEventListener("click", function (e) {
-    const b = e.target.closest("[data-spawn]");
-    if (b && !b.disabled) spawnFish(b.getAttribute("data-spawn"));
-  });
-  document.addEventListener("click", function (e) {
-    const b = e.target.closest("[data-spawn]");
+    const b = e.target && e.target.closest ? e.target.closest("[data-spawn]") : null;
     if (b && !b.disabled) spawnFish(b.getAttribute("data-spawn"));
   });
   document.getElementById("crewShop").onclick = function (e) {
-    const b = e.target.closest("[data-crew]");
+    const b = e.target && e.target.closest ? e.target.closest("[data-crew]") : null;
     if (!b) return;
     if (state.crew.length >= 8) { log("Eight cleaners fill the work."); return; }
     const spec = crewOf(b.getAttribute("data-crew"));
@@ -5150,7 +5147,8 @@
     if (RPG()) {
       /* nothing to pay with: the shelf is the limit instead */
     } else if (state.points < spec.cost) { log(spec.name + " costs " + spec.cost + " points."); return; }
-    state.points -= spec.cost;
+    /* an RPG run pays for nothing */
+    if (!RPG()) state.points -= spec.cost;
     state.crew.push(makeCrew(spec.id));
     log(spec.name + " starts work.");
     save();
