@@ -34,10 +34,17 @@
     { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Grazes and cruises the whole tank." }
   ];
   const CREW_LIFE = 30 * DAY;
+  const CREW_SPRITES = {};
+  const CREW_H = { snail: 0.12, otto: 0.075, cory: 0.1, jelly: 0.2, turtle: 0.16 };
   const SPRITES = {};
   const TANKS = { day: new Image(), night: new Image() };
   TANKS.day.src = "./assets/tank-day.jpg";
   TANKS.night.src = "./assets/tank-night.jpg";
+  CREW.forEach(function (c) {
+    const img = new Image();
+    img.src = "./assets/crew/" + c.id + ".png";
+    CREW_SPRITES[c.id] = img;
+  });
   STAGES.forEach(function (pair) {
     SPECIES.forEach(function (sp) {
       const img = new Image();
@@ -370,55 +377,22 @@
       else if (c.role === "turtle") y += Math.sin(t * 0.7) * 8;
       else y += Math.sin(t * 1.4) * 3;
     }
+    const img = CREW_SPRITES[c.role];
+    const bh = h * (CREW_H[c.role] || 0.12);
+    let bw = bh;
+    if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     ctx.save();
     ctx.translate(x, y);
-    ctx.scale(c.vx >= 0 ? 1 : -1, 1);
-    if (c.role === "snail") {
-      ctx.fillStyle = "#d6c4a8";
-      ctx.beginPath(); ctx.ellipse(-6, 4, 10, 5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#b45309";
-      ctx.beginPath(); ctx.arc(4, 0, 8, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#fde68a"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(4, 0, 4, 0.4, 4); ctx.stroke();
-    } else if (c.role === "otto") {
-      ctx.fillStyle = "#94a3b8";
-      ctx.beginPath(); ctx.ellipse(0, 0, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#0f172a";
-      ctx.fillRect(8, -2, 3, 3);
-    } else if (c.role === "cory") {
-      ctx.fillStyle = "#a8a29e";
-      ctx.beginPath(); ctx.ellipse(0, 2, 18, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#e7e5e4";
-      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(22, -6); ctx.moveTo(12, 2); ctx.lineTo(22, 4); ctx.stroke();
-    } else if (c.role === "jelly") {
-      const g = ctx.createRadialGradient(0, -4, 2, 0, 0, 22);
-      g.addColorStop(0, "rgba(186,230,253,0.9)");
-      g.addColorStop(1, "rgba(125,211,252,0.15)");
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.ellipse(0, -6, 18, 12, 0, Math.PI, 0); ctx.fill();
-      ctx.strokeStyle = "rgba(224,242,254,0.7)";
-      for (let i = -2; i <= 2; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * 6, 2);
-        ctx.quadraticCurveTo(i * 8, 16 + Math.sin(t * 3 + i) * 4, i * 4, 28);
-        ctx.stroke();
-      }
-    } else {
-      ctx.fillStyle = "#166534";
-      ctx.beginPath(); ctx.ellipse(0, 0, 22, 14, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#14532d";
-      ctx.beginPath(); ctx.ellipse(-2, -2, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#bbf7d0";
-      ctx.beginPath(); ctx.arc(16, -2, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#052e16";
-      ctx.beginPath(); ctx.arc(18, -3, 1.4, 0, Math.PI * 2); ctx.fill();
-    }
+    if (c.role !== "jelly") ctx.scale(c.vx >= 0 ? 1 : -1, 1);
+    const wag = state.opts.motion === false || c.role === "jelly" ? 0 : Math.sin(t * 3) * 0.06;
+    ctx.rotate(wag);
+    if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     ctx.restore();
     if (state.opts.names !== false) {
       ctx.fillStyle = "#e2e8f0";
       ctx.font = "600 12px Syne, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(c.name, x, y - 22);
+      ctx.fillText(c.name, x, y - bh / 2 - 8);
     }
   }
   function stepCrew(c, dt) {
