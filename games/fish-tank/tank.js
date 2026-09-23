@@ -245,6 +245,7 @@
     snailAlgae: 2.4,     // a nerite eats the green too - slower than an otto, but it counts
     ottoBought: 2,       // algae eaters the shop will sell at a time
     ottoClutch: 5,       // hours between clutches for a settled algae eater
+    rpgBreedMin: 30,     // an RPG run breeds on a 30 minute window, not on the species clock
     ottoHatch: 0.35      // hours in the egg before an otto hatches
   };
   const KEEPERS = {
@@ -2100,7 +2101,13 @@
       if (!b) continue;
       if ((state.quality || 0) < b.min) continue;
       if (!canAdd(id) && fishLoad() + EGG_LOAD * 2 > loadCap()) continue;
-      if (now - (state._breedAt[id] || 0) < b.cd * 60000) continue;
+      /* An RPG run breeds on a window rather than a species clock, and the window picks its
+         own moment: a fresh draw the second the last one bred, anywhere from the top of the
+         window to its end, thrown away once it is spent. Nothing is carried over and nothing
+         is seeded, so no window repeats the window before it. */
+      const win = (RPG() ? Math.min(b.cd, LOOP.rpgBreedMin) : b.cd) * 60000;
+      const wait = (RPG() && state._breedWait && state._breedWait[id] != null) ? state._breedWait[id] : win;
+      if (now - (state._breedAt[id] || 0) < wait) continue;
       /* a missed courtship costs a short retry, never the whole cadence, and a species
          with no willing pair in the water does not burn its clock at all */
       if (now - (state._breedTry[id] || 0) < BREED_RETRY) continue;
@@ -2123,6 +2130,10 @@
       if (Math.random() > b.roll) { state._breedTry[id] = now; continue; }
       state._breedAt[id] = now;
       state._breedTry[id] = 0;
+      if (RPG()) {
+        state._breedWait = state._breedWait || {};
+        state._breedWait[id] = Math.floor(Math.random() * win);
+      }
       return court(pair, now);
     }
     return false;
@@ -2188,7 +2199,7 @@
       if (state.goals[g.id] || !met[g.id]) return;
       state.goals[g.id] = now;
       state.points += g.pay;
-      log("First time — " + g.text + ". +" + g.pay + " pts.");
+    log("First time — " + g.text + ". " + (RPG() ? "A mark for the run." : "+" + g.pay + " pts."));
       save();
     });
   }
@@ -3828,7 +3839,8 @@
     state.crew = (state.crew || []).filter(function (x) { return x.id !== id; });
     state.points = (state.points || 0) + back;
     if (selectedCrew === id) selectedCrew = null;
-    log(c.name + " the " + (cspec.name || c.role) + " is sent back to the shop. +" + back + " pts.");
+      log(c.name + " the " + (cspec.name || c.role) + " leaves the glass." +
+        (RPG() ? " Nothing is bought in a run, so nothing comes back." : " Sent back to the shop. +" + back + " pts."));
     keeperNote(c.name + " has worked this glass for " + hours(ageOf(c, Date.now())) +
       " hours. Half the price comes back and the berth is free again.");
     save();
@@ -3893,7 +3905,7 @@
     box.innerHTML =
       "<p class='kicker'>Fish Tank RPG</p>" +
       "<p class='lore'>No points, no shop. Two of each kind from the shelf, everything else from a pair breeding." +
-      " A run that empties is over.</p>" +
+      " A pair breeds once a 30 minute window, at a moment of its own, so watch and wait. A run that empties is over.</p>" +
       "<div class='wrow'><span class='wlabel'>run</span><b class='q-fair'>" +
       hours(Date.now() - (run.start || Date.now())) + "h</b><span class='wsub'>" + k + " fish · " +
       Object.keys(kinds).length + " kinds · came " + (run.added || 0) + " · lost " + (run.lost || 0) +
@@ -4061,9 +4073,14 @@
       }
       if (state.crew.length >= 8) return;
       if ((state.algae || 0) < 12) return;
-      if (now - (c.lastClutch || 0) < LOOP.ottoClutch * HOUR) return;
+      /* the same window in a run: a clutch a window, at a moment of its own, and the fry
+         follows within the window rather than hours later */
+      const cwin = RPG() ? Math.min(LOOP.ottoClutch * HOUR, LOOP.rpgBreedMin * 60000) : LOOP.ottoClutch * HOUR;
+      const cwait = (RPG() && c.clutchWait != null) ? c.clutchWait : cwin;
+      if (now - (c.lastClutch || 0) < cwait) return;
       c.lastClutch = now;
-      c.eggs = now + LOOP.ottoHatch * HOUR;
+      if (RPG()) c.clutchWait = Math.floor(Math.random() * cwin);
+      c.eggs = now + (RPG() ? Math.min(LOOP.ottoHatch * HOUR, LOOP.rpgBreedMin * 60000) : LOOP.ottoHatch * HOUR);
       log(c.name + " lays a clutch on the glass.");
       save();
     });
@@ -4377,7 +4394,7 @@
           ["On the job", hours(onJob) + " h"],
           ["Service left", Math.round(Math.max(0, CREW_LIFE - onJob) / DAY) + " days"],
           ["Berths taken", ((state.crew || []).length) + " / 8"],
-          ["Wage", (cspec.cost || 0) + " pts"]
+          ["Wage", RPG() ? "free in a run" : (cspec.cost || 0) + " pts"]
         ].map(function (r) {
           return "<div><dt>" + esc(r[0]) + "</dt><dd>" + esc(String(r[1])) + "</dd></div>";
         }).join("");

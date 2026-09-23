@@ -357,6 +357,21 @@ must("a resumed run re-swaps the copy too", js.indexOf("if (!state._rpgCopy) { s
 must("the run panel wears the tank's own classes", js.indexOf('box.className = "rpg-panel wgrid";') >= 0 &&
   js.indexOf("class='wrow'") >= 0 && js.indexOf("class='wlabel'") >= 0 && js.indexOf("class='wsub'") >= 0);
 
+must("an RPG run breeds on a 30 minute window, drawn fresh each time", js.indexOf("rpgBreedMin: 30,") >= 0 &&
+  js.indexOf("const win = (RPG() ? Math.min(b.cd, LOOP.rpgBreedMin) : b.cd) * 60000;") >= 0 &&
+  js.indexOf("const wait = (RPG() && state._breedWait && state._breedWait[id] != null) ? state._breedWait[id] : win;") >= 0 &&
+  js.indexOf("state._breedWait[id] = Math.floor(Math.random() * win);") >= 0 &&
+  js.indexOf("if (now - (state._breedAt[id] || 0) < wait) continue;") >= 0);
+must("the algae eater clutch runs on the same window in a run", js.indexOf("const cwin = RPG() ? Math.min(LOOP.ottoClutch * HOUR, LOOP.rpgBreedMin * 60000) : LOOP.ottoClutch * HOUR;") >= 0 &&
+  js.indexOf("if (RPG()) c.clutchWait = Math.floor(Math.random() * cwin);") >= 0 &&
+  js.indexOf("RPG() ? Math.min(LOOP.ottoHatch * HOUR, LOOP.rpgBreedMin * 60000) : LOOP.ottoHatch * HOUR") >= 0);
+must("the standard mode keeps its own species clock", js.indexOf(": b.cd) * 60000;") >= 0 &&
+  /glimmer:  \{ cd: 30,/.test(js) && /sunscale: \{ cd: 72,/.test(js));
+
+must("no log line promises a point in a run", js.indexOf('RPG() ? "A mark for the run." : "+" + g.pay + " pts."') >= 0 &&
+  js.indexOf('RPG() ? " Nothing is bought in a run, so nothing comes back."') >= 0 &&
+  js.indexOf('["Wage", RPG() ? "free in a run"') >= 0);
+
 console.log("");
 if (fails) {
   console.log(fails + " smoke check(s) failed");
