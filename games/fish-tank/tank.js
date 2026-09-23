@@ -390,23 +390,45 @@
       if (!startHand("pellet")) state.points += 15;
     }
   }
-  function rollPredator(p, now) {
-    const die = 1 + ((Math.random() * 6) | 0);
+  function huntChance(f, now) {
+    const v = vitals(f);
+    const hpRatio = clamp((f.hp || 0) / (v.hp || 1), 0, 1);
+    const fedRatio = clamp(foodLeft(f, now) / (v.food * HOUR), 0, 1);
+    return clamp(0.25 + (1 - hpRatio) * 0.4 + (1 - fedRatio) * 0.3, 0.25, 0.85);
+  }
+  function weakestPrey(now) {
     const prey = state.fish.slice();
-    const hit = die === 1 || die === 6;
-    if (hit && prey.length) {
-      const victim = prey[(Math.random() * prey.length) | 0];
+    if (!prey.length) return null;
+    prey.sort(function (a, b) {
+      const ah = (a.hp || 0) / vitals(a).hp;
+      const bh = (b.hp || 0) / vitals(b).hp;
+      if (ah !== bh) return ah - bh;
+      return foodLeft(a, now) - foodLeft(b, now);
+    });
+    return prey[0];
+  }
+  function rollPredator(p, now) {
+    const victim = weakestPrey(now);
+    if (!victim) {
+      p.fails = (p.fails || 0) + 1;
+      log(p.name + " finds no fish." + (p.fails >= 2 ? " Two empty hours. It dies." : " It has one more hour."));
+      p.nextRoll = now + HOUR;
+      return;
+    }
+    const chance = huntChance(victim, now);
+    const roll = 1 + ((Math.random() * 100) | 0);
+    const hit = roll <= Math.round(chance * 100);
+    if (hit) {
       victim.cause = "hunt";
       bury(victim, now);
       state.fish = state.fish.filter(function (f) { return f !== victim; });
       if (selected === victim.id) selected = null;
       p.fails = 0;
-      const baby = makePredator(p.kind, false);
-      state.predators.push(baby);
-      log(p.name + " rolls " + die + " and eats " + victim.name + ". A baby hunter is born. You cannot stop it.");
+      state.predators.push(makePredator(p.kind, false));
+      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and eats " + victim.name + ", the weakest. A baby hunter is born.");
     } else {
       p.fails = (p.fails || 0) + 1;
-      log(p.name + " rolls " + die + " and misses." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
+      log(p.name + " rolls " + roll + " against " + Math.round(chance * 100) + "% and misses " + victim.name + "." + (p.fails >= 2 ? " Two misses in a row. It dies." : " It has one more hour."));
     }
     p.nextRoll = now + HOUR;
   }
@@ -435,7 +457,7 @@
         const kind = kinds[(Math.random() * kinds.length) | 0];
         state.predators.push(makePredator(kind, true));
         state.clearSince = 0;
-        log("Boss " + predOf(kind).name + " enters. A d6 each hour: 1 or 6 eats a fish and leaves a baby. Two misses and it dies. You cannot stop it.");
+        log("Boss " + predOf(kind).name + " enters. Each hour it targets the weakest, hungriest fish. A full fish is 25%. Lower health or an empty belly raises the odds. Two misses and it dies. You cannot stop it.");
       }
     } else state.clearSince = 0;
   }
