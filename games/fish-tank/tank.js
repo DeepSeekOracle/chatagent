@@ -26,7 +26,9 @@
     { id: "ruby", name: "Ruby", play: "school", temper: "chill", social: "school", bulk: 1, blurb: "Relaxed. Holds the school together." },
     { id: "veil", name: "Veil", play: "dance", temper: "chill", social: "loner", bulk: 1.05, blurb: "Relaxed loner. Long, slow arcs." },
     { id: "sunscale", name: "Sunscale", play: "lap", temper: "chill", social: "loner", bulk: 1.12, blurb: "Relaxed loner. One slow lap." },
-    { id: "pearl", name: "Pearl", play: "flash", temper: "lively", social: "school", bulk: 0.7, blurb: "Happy. Schools and flashes." }
+    { id: "pearl", name: "Pearl", play: "flash", temper: "lively", social: "school", bulk: 0.7, blurb: "Happy. Schools and flashes." },
+    { id: "claw", name: "LYGO Claw", play: "snap", temper: "chill", social: "loner", bulk: 1.28, blurb: "The lobster. Walks the sand. Gold claws." },
+    { id: "crab", name: "Pincer", play: "scuttle", temper: "chill", social: "loner", bulk: 1.05, blurb: "Reef crab. Sideways on the bottom." }
   ];
   const VITALS = {
     glimmer: { hp: 100, regen: 8, hurt: 10, food: 14 },
@@ -38,7 +40,9 @@
     ruby: { hp: 140, regen: 5, hurt: 7, food: 20 },
     veil: { hp: 110, regen: 4, hurt: 8, food: 17 },
     sunscale: { hp: 150, regen: 3, hurt: 6, food: 24 },
-    pearl: { hp: 60, regen: 11, hurt: 15, food: 7 }
+    pearl: { hp: 60, regen: 11, hurt: 15, food: 7 },
+    claw: { hp: 160, regen: 3, hurt: 5, food: 26 },
+    crab: { hp: 110, regen: 5, hurt: 7, food: 16 }
   };
   const PREDATORS = {
     pike: { id: "pike", name: "Reed", blurb: "Long bill. A boss if the tank is quiet for an hour." },
@@ -61,7 +65,9 @@
     ruby: { cruise: 0.072, burst: 0.34, turn: 2.2, vision: 0.25, band: [0.24, 0.62], tail: 15, glide: 0.60 },
     veil: { cruise: 0.055, burst: 0.20, turn: 1.6, vision: 0.18, band: [0.22, 0.70], tail: 10, glide: 0.80 },
     sunscale: { cruise: 0.050, burst: 0.26, turn: 1.5, vision: 0.18, band: [0.30, 0.80], tail: 9, glide: 0.85 },
-    pearl: { cruise: 0.092, burst: 0.46, turn: 2.9, vision: 0.22, band: [0.14, 0.48], tail: 21, glide: 0.35 }
+    pearl: { cruise: 0.092, burst: 0.46, turn: 2.9, vision: 0.22, band: [0.14, 0.48], tail: 21, glide: 0.35 },
+    claw: { cruise: 0.024, burst: 0.08, turn: 0.95, vision: 0.15, band: [0.82, 0.86], tail: 4, glide: 0.08, walk: true },
+    crab: { cruise: 0.046, burst: 0.18, turn: 2.1, vision: 0.16, band: [0.82, 0.86], tail: 9, glide: 0.05, walk: true }
   };
   /* Soft obstacles read off the painted tank, per theme. rx/ry are real
      stretches in screen fractions, so a rock blocks as tall as it is wide.
@@ -101,7 +107,8 @@
   };
   const TEMP_BAND = {
     glimmer: [23, 28], azure: [22, 27], dart: [22, 27], puff: [23, 28], lantern: [23, 28],
-    moss: [20, 26], ruby: [23, 28], veil: [22, 27], sunscale: [21, 26], pearl: [23, 28]
+    moss: [20, 26], ruby: [23, 28], veil: [22, 27], sunscale: [21, 26], pearl: [23, 28],
+    claw: [16, 24], crab: [22, 29]
   };
   const TRAIT_WORDS = {
     bold: ["timid", "wary", "steady", "bold", "fearless"],
@@ -123,7 +130,7 @@
     { id: "clear", text: "Quality 95 with twelve fish", pay: 35 },
     { id: "gen3", text: "A third generation is born here", pay: 60 },
     { id: "thirty", text: "Thirty fish at once", pay: 60 },
-    { id: "allten", text: "All ten species at once", pay: 70 }
+    { id: "allten", text: "All twelve species at once", pay: 70 }
   ];
   const STALK_LEAD = 22000;
   const STRIKE_WINDOW = 40000;
@@ -165,6 +172,7 @@
   CREW_SPRITES.turtleSleep.src = "./assets/crew/turtle-sleep.png";
   STAGES.forEach(function (pair) {
     SPECIES.forEach(function (sp) {
+      if (sp.id === "claw" || sp.id === "crab") return;
       const img = new Image();
       img.src = "./assets/fish/" + sp.id + "_" + pair[0] + ".png";
       SPRITES[sp.id + "_" + pair[0]] = img;
@@ -181,6 +189,15 @@
       const img = new Image();
       img.src = "./assets/fish/" + id + "_" + age + ".png";
       PRED_SPRITES[id + "_" + age] = img;
+    });
+  });
+  ["claw", "crab"].forEach(function (id) {
+    ["l", "r"].forEach(function (dir) {
+      ["", "_walk"].forEach(function (step) {
+        const img = new Image();
+        img.src = "./assets/fish/" + id + "_" + dir + step + ".png";
+        SPRITES[id + "_" + dir + step] = img;
+      });
     });
   });
   ["baby", "child", "adult"].forEach(function (stage) {
@@ -288,7 +305,7 @@
       wseed: Math.random() * 90
     };
   }
-  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan" };
+  const STARTER_NAMES = { glimmer: "Sunny", dart: "Stripe", puff: "Coral", azure: "Veilblue", lantern: "Wick", moss: "Pebble", ruby: "Disc", veil: "Ribbon", sunscale: "Koi", pearl: "Fan", claw: "Claw", crab: "Pincer" };
   let playing = false;
   let hasSave = false;
   let menuMode = "standard";
@@ -483,7 +500,7 @@
     if (off > 2.5) delta -= (1.1 + (off - 2.5) * 1.5) * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
   }
-  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure"];
+  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure", "crab", "claw"];
   function autoSpecies() {
     let best = AUTO_CAST[0];
     let bestN = 99;
@@ -992,6 +1009,11 @@
       award(f, 6, "flares");
     } else if (kind === "flash") {
       award(f, 5, "flashes a fan tail");
+    } else if (kind === "snap") {
+      award(f, 4, "clicks a gold claw");
+    } else if (kind === "scuttle") {
+      state.algae = clamp((state.algae || 0) - 1.5, 0, 100);
+      award(f, 4, "scuttles the sand and lifts a little waste");
     } else {
       award(f, 4, "plays");
     }
@@ -1047,6 +1069,15 @@
       if (dist < bd) { bd = dist; best = d; }
     });
     return best && bd < (far == null ? 1.7 : far) ? best : null;
+  }
+  function nearestBottomRock(f) {
+    let best = null, bd = 1e9;
+    decorOf().forEach(function (d) {
+      if (d.kind !== "solid" || d.y < 0.4) return;
+      const dist = Math.hypot(f.x - d.x, (f.y - d.y) * AR);
+      if (dist < bd) { bd = dist; best = d; }
+    });
+    return best;
   }
   function stageSpeed(stage) {
     return stage === "baby" ? 0.55 : stage === "infant" ? 0.72 : stage === "child" ? 0.86 : stage === "teen" ? 0.96 : 1;
@@ -1238,9 +1269,17 @@
         cap: speedOf(f, now, starving ? "burst" : "cruise") * (0.7 + tr.appetite * 0.5) };
     }
     if (comfort(f) > 2.5) {
+      f.idleT = 0;
+      if (m.walk) {
+        f.state = "shelter";
+        f.stateT = 1.6;
+        const rock = nearestBottomRock(f);
+        const floor = (band[0] + band[1]) / 2;
+        return { mode: "shelter", tx: rock ? rock.x : clamp(f.x, 0.14, 0.86), ty: floor,
+          cap: speedOf(f, now, "cruise") * 0.32 };
+      }
       f.state = "gasp";
       f.stateT = 1.2;
-      f.idleT = 0;
       return { mode: "gasp", tx: clamp(f.x + Math.sin(now / 2600 + (f.wseed || 0)) * 0.04, 0.12, 0.88), ty: 0.12,
         cap: speedOf(f, now, "cruise") * 0.42 };
     }
@@ -1281,6 +1320,13 @@
     return { mode: "cruise", tx: f.cruise.x, ty: f.cruise.y, cap: speedOf(f, now, "cruise") };
   }
   function scheduleIdle(f, now, night, mood) {
+    if (motionOf(f).walk && Math.random() < 0.28) {
+      startPlay(f);
+      f.state = "play";
+      f.stateT = f.actionT;
+      f.idleT = f.actionT;
+      return;
+    }
     const tr = traits(f);
     const band = bandOf(f);
     const roll = Math.random();
@@ -1334,6 +1380,10 @@
     f.face = Math.cos(f.heading || 0) >= 0 ? 1 : -1;
     if (f.zTarget == null) f.zTarget = 0.25 + Math.random() * 0.6;
     f.z = f.z == null ? f.zTarget : f.z + (f.zTarget - f.z) * Math.min(1, dt * 0.1);
+    if (m.walk) {
+      f.pitch = (f.pitch || 0) * 0.15;
+      f.bank = (f.bank || 0) * 0.25;
+    }
     f.speed = sp;
   }
   function stepFish(f, dt) {
@@ -1344,6 +1394,10 @@
     if (f.state == null) f.state = "cruise";
     if (f.z == null) f.z = 0.25 + Math.random() * 0.6;
     f.startleT = Math.max(0, (f.startleT || 0) - dt);
+    if (f.actionT > 0) {
+      f.actionT = Math.max(0, f.actionT - dt);
+      if (f.actionT === 0) f.action = "";
+    }
     if (f.courtT) f.courtT = Math.max(0, f.courtT - dt);
     const spent = f.state === "flee" || f.startleT > 0.2;
     f.stamina = clamp((f.stamina == null ? 1 : f.stamina) + (spent ? -dt * 0.16 : dt * 0.09), 0, 1);
@@ -1354,8 +1408,15 @@
     let glide = false;
     if (mind.mode === "flee") {
       const t = unitDir(f, mind.tx, mind.ty);
-      out.x -= t.x * (2.6 + mind.w * 2);
-      out.y -= t.y * (2.6 + mind.w * 2);
+      if (motionOf(f).walk) {
+        const away = f.x < mind.tx ? -1 : 1;
+        out.x += away * (2.4 + mind.w * 1.6);
+        const rock = nearestBottomRock(f);
+        if (rock) out.x += (rock.x >= f.x ? 1 : -1) * 0.7;
+      } else {
+        out.x -= t.x * (2.6 + mind.w * 2);
+        out.y -= t.y * (2.6 + mind.w * 2);
+      }
       if (mind.stalk) {
         const s = nearestShelter(f.x, f.y, 1.4);
         if (s) {
@@ -1389,6 +1450,8 @@
       else if (a === "glow") { out.x += Math.cos(now / 3000 + (f.wseed || 0)) * 0.5; out.y += 0.2; }
       else if (a === "flare") { out.x += Math.sin(now / 1200 + (f.wseed || 0)) * 0.2; out.y += 0.1; }
       else if (a === "flash") { const t = unitDir(f, f.tx || f.x + f.face * 0.4, f.ty || f.y); out.x += t.x * 1.6; out.y += t.y * 1.6; }
+      else if (a === "snap") { out.x += Math.sin(now / 220 + (f.wseed || 0)) * 0.3; }
+      else if (a === "scuttle") { out.x += (f.face || 1) * 1.6; }
       else if (a === "lap") {
         const t = unitDir(f, f.tx, 0.34 + Math.sin(now / 5200 + (f.wseed || 0)) * 0.12);
         out.x += t.x * 1.1; out.y += t.y * 1.1;
@@ -1435,6 +1498,7 @@
     }
     bandSteer(f, out, mind.mode === "gasp" ? 0.12 : null);
     wallSteer(f, out);
+    if (motionOf(f).walk) out.y *= 0.05;
     if (f.state === "rest" || f.state === "hover") { out.x *= 0.4; out.y *= 0.4; }
     applyVelocity(f, dt, out.x, out.y, cap, glide);
     f.x += f.vx * dt;
@@ -1444,6 +1508,11 @@
     if (f.x > 0.95) { f.x = 0.95; f.vx = -Math.abs(f.vx) * 0.4; }
     if (f.y < top) { f.y = top; f.vy = Math.abs(f.vy) * 0.4; }
     if (f.y > 0.88) { f.y = 0.88; f.vy = -Math.abs(f.vy) * 0.4; }
+    if (motionOf(f).walk) {
+      const floor = (bandOf(f)[0] + bandOf(f)[1]) / 2;
+      f.y += (floor - f.y) * Math.min(1, dt * 8);
+      f.vy *= 0.12;
+    }
     bodyUpdate(f, dt, cap);
     if (f.state === "graze" && Math.random() < dt * 0.5) state.algae = clamp((state.algae || 0) - 0.05, 0, 100);
   }
@@ -1579,11 +1648,12 @@
   }
   function stateWord(f) {
     const s = f.state;
-    if (s === "flee") return (f.stamina != null && f.stamina < 0.35) ? "tiring" : "bolting";
-    if (s === "shelter") return "in the weeds";
+    const walk = motionOf(f).walk;
+    if (s === "flee") return walk ? "scuttling clear" : ((f.stamina != null && f.stamina < 0.35) ? "tiring" : "bolting");
+    if (s === "shelter") return walk ? "under the rockwork" : "in the weeds";
     if (s === "gasp") return "gasping at the top";
-    if (s === "rest") return "resting";
-    if (s === "graze") return "grazing";
+    if (s === "rest") return walk ? "still on the sand" : "resting";
+    if (s === "graze") return walk ? "picking the sand" : "grazing";
     if (s === "court") return "courting";
     if (s === "eat") return "feeding";
     if (s === "hover") return "holding still";
@@ -1597,7 +1667,13 @@
     const goingRight = (f.face || 1) !== -1;
     let img = SPRITES[f.species + "_" + stage];
     let useTurn = false;
-    if (f.species === "azure" || f.species === "sunscale") {
+    if (f.species === "claw" || f.species === "crab") {
+      const dir = goingRight ? "r" : "l";
+      const stepMs = f.species === "claw" ? 460 : 220;
+      const stepping = Math.abs(f.vx) > 0.004 && ((Math.floor(now / stepMs) % 2) === 1);
+      const turned = SPRITES[f.species + "_" + dir + (stepping ? "_walk" : "")] || SPRITES[f.species + "_" + dir];
+      if (turned) { img = turned; useTurn = true; }
+    } else if (f.species === "azure" || f.species === "sunscale") {
       const turnStage = f.species === "sunscale"
         ? (stage === "baby" || stage === "infant" ? "baby" : (stage === "child" || stage === "teen" ? "child" : "adult"))
         : stage;
@@ -1611,6 +1687,10 @@
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     const breathe = state.opts.motion === false ? 0 : Math.sin(now / (f.state === "rest" ? 1700 : 900) + f.x * 10) * (f.state === "rest" ? 2.4 : 1.1);
     let y = f.y * h + breathe;
+    if (motionOf(f).walk) {
+      const bob = state.opts.motion === false || Math.abs(f.vx) < 0.004 ? 0 : Math.sin((f.phase || 0) * 2) * 1.6;
+      y = h * 0.91 - bh * 0.46 + bob;
+    }
     const x = f.x * w;
     if (f.action === "jump") {
       const u = Math.max(0, f.actionT / 1.1);
@@ -1637,7 +1717,7 @@
     const artRight = FACE_RIGHT[f.species] !== false;
     const face = useTurn ? 1 : ((goingRight === artRight) ? 1 : -1);
     const strain = clamp(sp / Math.max(0.02, speedOf(f, now, "cruise")), 0, 1.5);
-    const amp = (temperOf(f) === "chill" ? 0.03 : 0.07) * (0.4 + strain * 0.8);
+    const amp = motionOf(f).walk ? 0 : (temperOf(f) === "chill" ? 0.03 : 0.07) * (0.4 + strain * 0.8);
     const wag = state.opts.motion === false ? 0 : Math.sin(f.phase || 0) * amp * (f.state === "rest" ? 0.35 : 1);
     ctx.scale(face, 1);
     ctx.rotate(wag * (f.action === "flare" ? 2 : 1) + (f.bank || 0) * 0.5 - (f.pitch || 0) * 0.3);
@@ -2038,12 +2118,15 @@
     const noteEl = document.getElementById("waterNote");
     if (noteEl) {
       const notes = [];
-      let warm = 0, cold = 0;
+      let warm = 0, cold = 0, warmWalk = 0;
       state.fish.forEach(function (x) {
-        if (tempNote(x) === "too warm") warm += 1;
-        else if (tempNote(x) === "too cold") cold += 1;
+        if (tempNote(x) === "too warm") {
+          if (motionOf(x).walk) warmWalk += 1;
+          else warm += 1;
+        } else if (tempNote(x) === "too cold") cold += 1;
       });
       if (warm) notes.push(warm + (warm > 1 ? " fish find" : " fish finds") + " the water too warm — they gulp at the surface.");
+      if (warmWalk) notes.push(warmWalk + (warmWalk > 1 ? " on the sand tuck" : " on the sand tucks") + " against the rocks. The water is too warm.");
       if (cold) notes.push(cold + (cold > 1 ? " fish find" : " fish finds") + " it too cold — they hang low and slow.");
       if ((state.quality || 0) < 45) notes.push("The water is foul. Fish are listless and scratch on the rockwork.");
       if ((state.algae || 0) > 68) notes.push("Green film everywhere. The cleaners cannot keep up.");

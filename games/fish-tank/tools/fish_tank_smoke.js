@@ -80,6 +80,12 @@ must("foul water kills eggs", js.indexOf("never hatch. The water is foul.") >= 0
 must("firsts pay points", js.indexOf("const GOALS = [") >= 0 && js.indexOf("function checkGoals(now)") >= 0);
 must("traits are named in the rail", js.indexOf("TRAIT_WORDS") >= 0 && html.indexOf('id="goals"') >= 0);
 must("water trouble is reported", html.indexOf('id="waterNote"') >= 0 && js.indexOf("gulp at the surface") >= 0);
+must("LYGO Claw and the crab walk the sand", js.indexOf('id: "claw"') >= 0 && js.indexOf('id: "crab"') >= 0 && js.indexOf("walk: true") >= 0 && js.indexOf("under the rockwork") >= 0);
+["claw_l.png", "claw_r.png", "claw_l_walk.png", "claw_r_walk.png", "crab_l.png", "crab_r.png", "crab_l_walk.png", "crab_r_walk.png"].forEach(function (name) {
+  const p = path.join(root, "assets", "fish", name);
+  const st = fs.existsSync(p) ? fs.statSync(p) : null;
+  must(name + " is a real sprite", !!(st && st.size > 8000));
+});
 
 /* 5. ambient water, and the reduced-motion contract */
 must("light shafts", js.indexOf('ctx.globalCompositeOperation = "lighter"') >= 0);
