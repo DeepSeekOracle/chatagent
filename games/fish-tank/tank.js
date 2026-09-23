@@ -33,7 +33,7 @@
     { id: "otto", name: "Algae eater", cost: 28, blurb: "Lives on the green film." },
     { id: "cory", name: "Cory", cost: 28, blurb: "Bottom feeder. Lifts the waste." },
     { id: "jelly", name: "Moon jelly", cost: 36, blurb: "Pulses when the water is kind." },
-    { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Grazes and cruises the whole tank." }
+    { id: "turtle", name: "Pond turtle", cost: 50, blurb: "Stays on the sand. Naps in its shell." }
   ];
   const CREW_LIFE = 30 * DAY;
   const HANDS = { f: new Image(), m: new Image() };
@@ -58,6 +58,8 @@
     img.src = "./assets/crew/" + c.id + ".png";
     CREW_SPRITES[c.id] = img;
   });
+  CREW_SPRITES.turtleSleep = new Image();
+  CREW_SPRITES.turtleSleep.src = "./assets/crew/turtle-sleep.png";
   STAGES.forEach(function (pair) {
     SPECIES.forEach(function (sp) {
       const img = new Image();
@@ -685,19 +687,20 @@
     const t = now / 1000 + c.wobble;
     let x = c.x * w;
     let y = c.y * h;
-    if (state.opts.motion !== false) {
+    const napping = c.role === "turtle" && c.asleep;
+    if (state.opts.motion !== false && !napping) {
       if (c.role === "jelly") y += Math.sin(t) * 10;
-      else if (c.role === "turtle") y += Math.sin(t * 0.7) * 8;
+      else if (c.role === "turtle") y += Math.sin(t * 0.5) * 2;
       else y += Math.sin(t * 1.4) * 3;
     }
-    const img = CREW_SPRITES[c.role];
+    const img = napping ? CREW_SPRITES.turtleSleep : CREW_SPRITES[c.role];
     const bh = h * (CREW_H[c.role] || 0.12);
     let bw = bh;
     if (img && img.complete && img.naturalWidth) bw = bh * (img.naturalWidth / img.naturalHeight);
     ctx.save();
     ctx.translate(x, y);
     if (c.role !== "jelly") ctx.scale(c.vx >= 0 ? 1 : -1, 1);
-    const wag = state.opts.motion === false || c.role === "jelly" ? 0 : Math.sin(t * 3) * 0.06;
+    const wag = state.opts.motion === false || c.role === "jelly" || napping ? 0 : Math.sin(t * 3) * (c.role === "turtle" ? 0.02 : 0.06);
     ctx.rotate(wag);
     if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -bw / 2, -bh / 2, bw, bh);
     ctx.restore();
@@ -709,11 +712,27 @@
     }
   }
   function stepCrew(c, dt) {
+    const now = Date.now();
+    if (c.role === "turtle") {
+      if (c.asleep == null) c.asleep = false;
+      if (!c.until) c.until = now + 14000 + Math.random() * 12000;
+      if (now >= c.until) {
+        c.asleep = !c.asleep;
+        c.until = now + (c.asleep ? 22000 + Math.random() * 28000 : 16000 + Math.random() * 18000);
+        c.vx = 0;
+      }
+      if (c.asleep) c.vx = 0;
+      else if (Math.random() < dt * 0.12) c.vx = (Math.random() < 0.5 ? -1 : 1) * 0.01;
+      c.x += c.vx * dt;
+      c.y = 0.84;
+      if (c.x < 0.1) { c.x = 0.1; c.vx = Math.abs(c.vx || 0.01); }
+      if (c.x > 0.9) { c.x = 0.9; c.vx = -Math.abs(c.vx || 0.01); }
+      return;
+    }
     const slow = c.role === "snail" ? 0.35 : c.role === "jelly" ? 0.45 : 1;
     if (Math.random() < dt * 0.2) c.vx = (Math.random() < 0.5 ? -1 : 1) * 0.025 * slow;
     c.x += c.vx * dt;
     if (c.role === "jelly") c.y = 0.26 + Math.sin(Date.now() / 1400 + c.wobble) * 0.06;
-    else if (c.role === "turtle") c.y = 0.48 + Math.sin(Date.now() / 1800 + c.wobble) * 0.12;
     else if (c.role === "otto") c.y = 0.34 + Math.sin(Date.now() / 2200 + c.wobble) * 0.18;
     else c.y = 0.8 + Math.sin(Date.now() / 900 + c.wobble) * 0.03;
     if (c.x < 0.08) { c.x = 0.08; c.vx = Math.abs(c.vx); }
