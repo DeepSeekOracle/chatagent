@@ -4,6 +4,8 @@
 
   function arcadeName() {
     try {
+      var s = JSON.parse(localStorage.getItem("lattice-swarm-v1") || "{}");
+      if (s.name) return String(s.name).slice(0, 18);
       var e = JSON.parse(localStorage.getItem("lygo-eternal-lattice-v1") || "{}");
       if (e.playerName) return String(e.playerName).slice(0, 18);
       var r = JSON.parse(localStorage.getItem("lygo-haven-rally-v1") || "{}");
@@ -20,6 +22,9 @@
   var lastEternal = "";
 
   function onSwarm(raw) {
+    /* The game itself submits a richer record for each finished run (name, turns,
+       harmony, outcome) and sets this flag; posting here as well would double it. */
+    if (window.__swarmOwnsLedger) return;
     var j = JSON.parse(raw);
     var score = Math.round(Number(j.bestScore) || 0);
     if (score < 1 || score === lastSwarm) return;
