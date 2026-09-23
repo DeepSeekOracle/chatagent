@@ -12,7 +12,7 @@
     ["elder", 4 * DAY]
   ];
   const STAGE_DRAW = { baby: 0.42, infant: 0.55, child: 0.7, teen: 0.84, adult: 1, elder: 0.95 };
-  const FACE_RIGHT = { dart: false, ruby: false, veil: false };
+  const FACE_RIGHT = {};
   const LIFE = 7 * DAY;
   const SPECIES = [
     { id: "glimmer", name: "Glimmer", play: "jump", bulk: 1, blurb: "Jumps the surface." },
