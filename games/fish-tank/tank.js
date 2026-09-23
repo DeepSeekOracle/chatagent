@@ -3931,6 +3931,9 @@
      however good the water looks. */
   /* a run flagged at the menu becomes a run as soon as the water does */
   let menuRpg = false;
+  /* once per page load, not once per save: the shell's markup is standard every time the page
+     opens, so a flag kept in the tank would leave a resumed run reading like the other mode */
+  let rpgCopied = false;
   /* The shell's copy talks about points in a mode that has none. Swapped once, when the run
      starts: the keeper's own line, the how-to card, the paragraphs that promise points for
      feeding and for marks, and the two buttons that still advertise a price. */
@@ -3983,7 +3986,7 @@
     /* a run picked up from the save never went through the menu, so the shell's copy is
        swapped here too. rpgCopy only rewrites what still says points, so this is safe to
        land on any state, whenever it was started. */
-    if (!state._rpgCopy) { state._rpgCopy = true; rpgCopy(); }
+    if (!rpgCopied) { rpgCopied = true; rpgCopy(); }
     /* nothing can be bought, so nothing can be saved up */
     if (state.points) state.points = 0;
     if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
