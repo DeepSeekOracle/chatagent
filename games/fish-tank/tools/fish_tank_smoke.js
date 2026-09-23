@@ -348,14 +348,13 @@ must("nothing charges an RPG run a point", js.indexOf("if (!RPG() && state.point
   js.indexOf("if (!RPG() && state.points < 10)") >= 0 &&
   js.split("state.points -=").length === js.split("RPG()) state.points -=").length &&
   js.indexOf("if (state.points) state.points = 0;") >= 0);
-must("the shell stops promising points in a run", js.indexOf("function rpgCopy()") >= 0 &&
+must("the shell stops promising points in a run", js.indexOf("function modeCopy()") >= 0 &&
   js.indexOf("There is no shop in a run") >= 0 && js.indexOf("A water change is free in a run.") >= 0 &&
-  js.indexOf("Marks are what the run is measured on.") >= 0 && js.indexOf("rpgCopy();") >= 0 &&
-  html.indexOf('id="howLine"') >= 0 && js.indexOf('getElementById("change")') >= 0 &&
-  js.indexOf("Water change · free") >= 0);
-must("a resumed run re-swaps the copy too", js.indexOf("if (!rpgCopied) { rpgCopied = true; rpgCopy(); }") >= 0 &&
-  js.indexOf("let rpgCopied = false;") >= 0 &&
-  js.indexOf("function rpgCopy()") >= 0);
+  js.indexOf("Marks are what the run is measured on.") >= 0 &&
+  js.indexOf('rpg ? "Water change · free"') >= 0 && html.indexOf('id="howLine"') >= 0);
+must("a resumed run re-swaps the copy too", js.indexOf("if (copiedFor !== key) { copiedFor = key; modeCopy(); }") >= 0 &&
+  js.indexOf("let copiedFor = null;") >= 0 &&
+  js.indexOf("function modeCopy()") >= 0);
 must("the run panel wears the tank's own classes", js.indexOf('box.className = "rpg-panel wgrid";') >= 0 &&
   js.indexOf("class='wrow'") >= 0 && js.indexOf("class='wlabel'") >= 0 && js.indexOf("class='wsub'") >= 0);
 
@@ -387,6 +386,20 @@ must("the shell tells the run about the hour", js.indexOf("a fish with no food f
 
 must("Automatic can feed a run", js.indexOf("(RPG() || state.points >= 15) && !hand && !flakes.length") >= 0 &&
   js.indexOf("a run leans on Automatic") >= 0 && js.indexOf("state.fish.some(function (f) { return !isFull(f, now); })") >= 0);
+
+must("the two modes write their own copy, both ways", js.indexOf("function modeCopy()") >= 0 &&
+  js.indexOf('if (rpg) swap("Points come from every flake a fish actually eats — so feeding is the job."') >= 0 &&
+  js.indexOf('else swap("There is no shop in a run') >= 0 &&
+  js.indexOf('rpg ? "Pellet · free" : "Pellet · 15"') >= 0 &&
+  js.indexOf('rpg ? "Water change · free" : "Water change · 10"') >= 0 && js.indexOf("rpgCopy") < 0);
+must("every standard way into a tank clears the run flag", js.split("menuRpg = false;").length === 7 &&
+  js.split("function applyRpgRun").length === 2 && js.split("applyRpgRun();").length === 2);
+must("the copy follows the tank, not the page", js.indexOf("function modeCopyTick()") >= 0 &&
+  js.indexOf("if (copiedFor !== key) { copiedFor = key; modeCopy(); }") >= 0 &&
+  js.split("modeCopyTick();").length === 2);
+
+must("nothing still calls a retired name", js.indexOf("rpgCopied") < 0 && js.indexOf("rpgCopy(") < 0 &&
+  js.indexOf("_rpgCopy") < 0 && js.indexOf("scrapers") < 0 && js.indexOf("rotWaste") < 0);
 
 console.log("");
 if (fails) {

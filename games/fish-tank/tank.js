@@ -3933,11 +3933,15 @@
   let menuRpg = false;
   /* once per page load, not once per save: the shell's markup is standard every time the page
      opens, so a flag kept in the tank would leave a resumed run reading like the other mode */
-  let rpgCopied = false;
+  let copiedFor = null;
   /* The shell's copy talks about points in a mode that has none. Swapped once, when the run
      starts: the keeper's own line, the how-to card, the paragraphs that promise points for
      feeding and for marks, and the two buttons that still advertise a price. */
-  function rpgCopy() {
+  /* The two modes stand alone, copy included. This runs for whatever tank is on the glass,
+     every time one starts, and writes that mode's own words: the standard originals or the
+     run's. One-way swaps are what left a standard tank reading like a run. */
+  function modeCopy() {
+    const rpg = RPG();
     const swap = function (find, put) {
       const els = [].slice.call(document.querySelectorAll("p.lore, li, span, b"));
       for (let i = 0; i < els.length; i += 1) {
@@ -3946,26 +3950,28 @@
         els[i].textContent = els[i].textContent.split(find).join(put);
       }
     };
-    swap("Points come from every flake a fish actually eats — so feeding is the job.",
-      "There is no shop in a run, so nothing is bought: every fish in the water came from your pick, the shelf, or a pair breeding. Feeding is still the job.");
-    swap("All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.",
-      "The clock pays a run in hours survived, not points. Two of each kind is all the shelf gives you; the rest has to breed.");
-    swap("A water change costs 10 points.", "A water change is free in a run.");
-    swap("Marks pay points the first time they happen.", "Marks are what the run is measured on.");
-    swap("About a day and a half with no food, and a fish dies.",
-      "Feed them inside the hour: a fish with no food for an hour is a dead fish.");
-    swap("No food for about a day and a half, and that fish dies.",
-      "No food for about an hour, and that fish dies.");
-    swap("A pellet adds a day to whoever reaches it first.",
-      "A pellet fills whoever reaches it first for the hour.");
-    swap("The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.",
-      "The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.");
+    if (rpg) swap("Points come from every flake a fish actually eats — so feeding is the job.", "There is no shop in a run, so nothing is bought: every fish in the water came from your pick, the shelf, or a pair breeding. Feeding is still the job.");
+    else swap("There is no shop in a run, so nothing is bought: every fish in the water came from your pick, the shelf, or a pair breeding. Feeding is still the job.", "Points come from every flake a fish actually eats — so feeding is the job.");
+    if (rpg) swap("All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.", "The clock pays a run in hours survived, not points. Two of each kind is all the shelf gives you; the rest has to breed.");
+    else swap("The clock pays a run in hours survived, not points. Two of each kind is all the shelf gives you; the rest has to breed.", "All of it earns points. Points buy more fish and cleaners. The Firsts list pays for milestones.");
+    if (rpg) swap("A water change costs 10 points.", "A water change is free in a run.");
+    else swap("A water change is free in a run.", "A water change costs 10 points.");
+    if (rpg) swap("Marks pay points the first time they happen.", "Marks are what the run is measured on.");
+    else swap("Marks are what the run is measured on.", "Marks pay points the first time they happen.");
+    if (rpg) swap("About a day and a half with no food, and a fish dies.", "Feed them inside the hour: a fish with no food for an hour is a dead fish.");
+    else swap("Feed them inside the hour: a fish with no food for an hour is a dead fish.", "About a day and a half with no food, and a fish dies.");
+    if (rpg) swap("No food for about a day and a half, and that fish dies.", "No food for about an hour, and that fish dies.");
+    else swap("No food for about an hour, and that fish dies.", "No food for about a day and a half, and that fish dies.");
+    if (rpg) swap("A pellet adds a day to whoever reaches it first.", "A pellet fills whoever reaches it first for the hour.");
+    else swap("A pellet fills whoever reaches it first for the hour.", "A pellet adds a day to whoever reaches it first.");
+    if (rpg) swap("The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.", "The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.");
+    else swap("The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.", "The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.");
     const how = document.getElementById("howLine");
-    if (how) how.textContent = "Ages, food, water, cleaners, and the run.";
+    if (how) how.textContent = rpg ? "Ages, food, water, cleaners, and the run." : "Ages, food, water, cleaners, points.";
     const wc = document.getElementById("change");
-    if (wc) wc.textContent = "Water change · free";
+    if (wc) wc.textContent = rpg ? "Water change · free" : "Water change · 10";
     const pl = document.getElementById("pellet");
-    if (pl) pl.textContent = "Pellet · free";
+    if (pl) pl.textContent = rpg ? "Pellet · free" : "Pellet · 15";
   }
   function applyRpgRun() {
     if (!menuRpg || !state) return;
@@ -3976,17 +3982,19 @@
     if (!state.run) {
       state.run = { start: Date.now(), added: 0, lost: 0, seen: state.fish.length, collapsed: false, ended: 0 };
     }
-    rpgCopy();
+    modeCopy();
     log("Fish Tank RPG. Three of your pick, two of a kind from the shelf, and the rest has to breed. Nothing can be bought.");
     keeperNote("Fish Tank RPG: feed them, watch the water, and let the pairs breed. There is no shop to fall back on, and an empty tank ends the run.");
     save();
   }
+  /* the copy has to land for a standard tank too, which stepRpg never sees */
+  function modeCopyTick() {
+    if (!state) return;
+    const key = state.openedAt || 1;
+    if (copiedFor !== key) { copiedFor = key; modeCopy(); }
+  }
   function stepRpg(now) {
     if (!RPG() || !state.run || state.run.collapsed) return;
-    /* a run picked up from the save never went through the menu, so the shell's copy is
-       swapped here too. rpgCopy only rewrites what still says points, so this is safe to
-       land on any state, whenever it was started. */
-    if (!rpgCopied) { rpgCopied = true; rpgCopy(); }
     /* nothing can be bought, so nothing can be saved up */
     if (state.points) state.points = 0;
     if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
@@ -5022,7 +5030,7 @@
     (state.crew || []).forEach(function (c) { stepCrew(c, dt); });
     stepLoop(dt, now);
     applyRpgRun();
-    applyRpgRun();
+    modeCopyTick();
     stepRpg(now);
     (state.predators || []).forEach(function (p) { stepPredator(p, dt); });
     stepAmbient(dt, now);
@@ -5319,10 +5327,16 @@
     });
   }
   document.getElementById("menuContinue").onclick = function () {
+    menuRpg = false;
     if (!hasSave || !state) return;
     enterTank();
   };
-  document.getElementById("menuNew").onclick = function () { showPanel("panelKeep"); paintKeeperMenu(); };
+  document.getElementById("menuNew").onclick = function () {
+    /* a new tank is a standard tank: the run flag belongs to the run's own card alone */
+    menuRpg = false;
+    showPanel("panelKeep");
+    paintKeeperMenu();
+  };
 
   const rpgCard = document.getElementById("menuRpg");
   if (rpgCard) rpgCard.onclick = function () {
@@ -5378,11 +5392,13 @@
   });
   document.querySelectorAll("[data-mode]").forEach(function (btn) {
     btn.onclick = function () {
+      menuRpg = false;
       menuMode = btn.getAttribute("data-mode");
       document.querySelectorAll("[data-mode]").forEach(function (el) { el.classList.toggle("on", el === btn); });
     };
   });
   document.getElementById("menuAuto").onclick = function () {
+    menuRpg = false;
     const ownerName = document.getElementById("menuOwner") ? document.getElementById("menuOwner").value : "Keeper";
     if (menuPerks.length !== 3) menuPerks = ["clear", "bright", "meals"];
     fresh(["dart", "ruby", "azure"], "standard", ownerName || "Keeper", menuTheme || "river");
