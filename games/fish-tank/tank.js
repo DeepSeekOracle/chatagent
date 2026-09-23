@@ -343,6 +343,53 @@
     else if (crowded) delta -= 2 * span;
     f.hp = clamp((f.hp || 0) + delta, 0, v.hp);
   }
+  const AUTO_CAST = ["dart", "ruby", "lantern", "pearl", "glimmer", "moss", "veil", "puff", "sunscale", "azure"];
+  function autoSpecies() {
+    let best = AUTO_CAST[0];
+    let bestN = 99;
+    AUTO_CAST.forEach(function (id) {
+      const n = state.fish.filter(function (f) { return f.species === id; }).length;
+      if (n < bestN) { bestN = n; best = id; }
+    });
+    return best;
+  }
+  function tickAuto(now) {
+    if (!state.auto || !playing) return;
+    if (state._autoAt && now - state._autoAt < 20000) return;
+    state._autoAt = now;
+    const soon = state.fish.some(function (f) { return foodLeft(f, now) < 3 * HOUR; });
+    if ((soon || !state.fish.length) && !hand && !flakes.length) startHand("flakes");
+    if ((state.quality < 60 || state.algae > 45) && state.points >= 10) {
+      state.points -= 10;
+      state.algae = clamp(state.algae - 28, 0, 100);
+      state.quality = clamp(state.quality + 24, 0, 100);
+      log("Auto keeper changes some water.");
+    }
+    const crewN = (state.crew || []).length;
+    if (crewN < 2 && state.points >= 20 && state.algae > 25) {
+      state.points -= 20;
+      state.crew.push(makeCrew("snail"));
+      log("Auto keeper adds a nerite.");
+    } else if (crewN < 4 && state.points >= 28 && state.quality < 65) {
+      state.points -= 28;
+      state.crew.push(makeCrew("cory"));
+      log("Auto keeper adds a cory.");
+    }
+    const goal = (state.predators || []).length ? 16 : 12;
+    const cost = price();
+    if (state.fish.length < goal && state.fish.length < FISH_CAP && state.quality >= 50 && state.points >= cost) {
+      const id = autoSpecies();
+      state.points -= cost;
+      const fish = makeFish(id, specOf(id).name);
+      state.fish.push(fish);
+      log("Auto keeper adds " + fish.name + ". Hunters are not touched.");
+    }
+    const weak = state.fish.slice().sort(function (a, b) { return (a.hp || 0) - (b.hp || 0); })[0];
+    if (weak && (weak.hp || 0) < vitals(weak).hp * 0.35 && state.points >= 15 && !hand && !flakes.length) {
+      state.points -= 15;
+      if (!startHand("pellet")) state.points += 15;
+    }
+  }
   function rollPredator(p, now) {
     const die = 1 + ((Math.random() * 6) | 0);
     const prey = state.fish.slice();
@@ -1009,6 +1056,11 @@
     const long = ranked.length ? ageOf(ranked[0], now) : 0;
     const hall = state.cemetery.reduce(function (m, g) { return Math.max(m, g.score || 0); }, 0);
     document.getElementById("mLiving").textContent = state.fish.length + "/" + FISH_CAP + ((state.predators || []).length ? (" +" + state.predators.length) : "");
+    const autoBtn = document.getElementById("btnAuto");
+    if (autoBtn) {
+      autoBtn.textContent = state.auto ? "Auto on" : "Auto";
+      autoBtn.classList.toggle("gold", !!state.auto);
+    }
     document.getElementById("mLong").textContent = hours(long) + " h";
     document.getElementById("mTank").textContent = hours(tankAge(now)) + " h";
     document.getElementById("mBest").textContent = hall + " h";
@@ -1047,6 +1099,7 @@
     const now = Date.now();
     catchUp(now);
     simWater(now);
+    tickAuto(now);
     stepHand(dt);
     state.fish.forEach(function (f) { stepFish(f, dt); });
     resolveBites();
@@ -1258,6 +1311,21 @@
       document.querySelectorAll("[data-mode]").forEach(function (el) { el.classList.toggle("on", el === btn); });
     };
   });
+  document.getElementById("menuAuto").onclick = function () {
+    const ownerName = document.getElementById("menuOwner") ? document.getElementById("menuOwner").value : "Keeper";
+    fresh(["dart", "ruby", "azure"], "standard", ownerName, menuTheme || "river");
+    state.auto = true;
+    save();
+    enterTank();
+    log("Automatic keeper is on. It will stock, feed, and clean. It cannot stop a hunter.");
+  };
+  document.getElementById("btnAuto").onclick = function () {
+    if (!state) return;
+    state.auto = !state.auto;
+    log(state.auto ? "Automatic keeper is on. Hunters still hunt." : "Automatic keeper is off.");
+    save();
+    renderRail();
+  };
   document.getElementById("menuOpen").onclick = function () {
     if (menuPicks.length !== 3) {
       document.getElementById("menuNote").textContent = "Pick exactly three fish.";
