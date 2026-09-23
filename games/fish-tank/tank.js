@@ -59,6 +59,11 @@
       img.src = "./assets/fish/" + sp.id + "_" + pair[0] + ".png";
       SPRITES[sp.id + "_" + pair[0]] = img;
     });
+    ["l", "r"].forEach(function (dir) {
+      const img = new Image();
+      img.src = "./assets/fish/azure_" + pair[0] + "_" + dir + ".png";
+      SPRITES["azure_" + pair[0] + "_" + dir] = img;
+    });
   });
 
   const canvas = document.getElementById("tank");
@@ -356,7 +361,15 @@
   function drawFish(f, w, h, now) {
     const age = ageOf(f, now);
     const stage = stageName(age);
-    const img = SPRITES[f.species + "_" + stage];
+    if (f.vx > 0.004) f.face = 1;
+    else if (f.vx < -0.004) f.face = -1;
+    const goingRight = f.face !== -1;
+    let img = SPRITES[f.species + "_" + stage];
+    let useTurn = false;
+    if (f.species === "azure") {
+      const turned = SPRITES["azure_" + stage + "_" + (goingRight ? "r" : "l")];
+      if (turned) { img = turned; useTurn = true; }
+    }
     const sc = STAGE_DRAW[stage] * specOf(f.species).bulk;
     const bh = Math.min(h * 0.22, 150) * sc;
     let bw = bh;
@@ -371,7 +384,7 @@
     ctx.save();
     ctx.translate(x, y);
     const artRight = FACE_RIGHT[f.species] !== false;
-    const face = ((f.vx >= 0) === artRight) ? 1 : -1;
+    const face = useTurn ? 1 : (((goingRight) === artRight) ? 1 : -1);
     ctx.scale(face, 1);
     const wag = state.opts.motion === false ? 0 : Math.sin(now / 180 + f.y * 20) * 0.12;
     ctx.rotate(wag * (f.action === "flare" ? 2.2 : 1));
