@@ -2922,7 +2922,7 @@
     const face = KEEPERS[info.id] || KEEPERS.mara;
     const pic = document.getElementById("keeperPic");
     const label = document.getElementById("keeperLabel");
-    if (pic) { pic.src = "./assets/keepers/" + face.id + ".png"; pic.alt = face.name; }
+    if (pic) { pic.alt = face.name; pic.setAttribute("data-keeper", face.id); }
     if (label) label.textContent = info.name || face.name;
   }
   function keeperSay(text, force) {
@@ -2989,7 +2989,7 @@
     if (!box || !perks) return;
     box.innerHTML = Object.keys(KEEPERS).map(function (id) {
       const k = KEEPERS[id];
-      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img src='./assets/keepers/" + id + ".png' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
+      return "<button type='button' class='keeper-card" + (menuKeeper === id ? " on" : "") + "' data-keeper='" + id + "'><img data-keeper='" + id + "' src='./assets/keepers/" + id + ".png' alt='" + k.name + "'><b>" + k.name + "</b><span>" + k.tag + "</span></button>";
     }).join("");
     perks.innerHTML = PERKS.map(function (p) {
       const on = menuPerks.indexOf(p.id) >= 0;
@@ -3001,7 +3001,7 @@
       return p ? "<li><b>" + p.name + "</b> — " + p.text + "</li>" : "";
     }).join("");
     if (sheet) {
-      sheet.innerHTML = "<img src='./assets/keepers/" + face.id + ".png' alt='" + face.name + "'>" +
+      sheet.innerHTML = "<img class='keeper-face' data-keeper='" + face.id + "' src='./assets/keepers/" + face.id + ".png' alt='" + face.name + "'>" +
         "<div><p class='rpg-tag'>" + face.tag + "</p><h2>" + face.name + "</h2>" +
         "<p class='char-bio'>" + face.bio + "</p>" +
         "<ul class='rpg-gifts'>" + (gifts || "<li>No gifts yet. Choose three below.</li>") + "</ul></div>";
@@ -3009,8 +3009,26 @@
     const note = document.getElementById("perkNote");
     if (note) note.textContent = menuPerks.length === 3 ? "Three gifts on the card." : ("Choose " + (3 - menuPerks.length) + " more.");
   }
+  function keeperSrc(id, now) {
+    const bubble = document.getElementById("keeperBubble");
+    const talking = bubble && !bubble.classList.contains("hidden");
+    const beat = talking ? (Math.floor(now / 170) % 2 === 1) : (Math.floor(now / 420) % 8 === 0);
+    return "./assets/keepers/" + id + (beat ? "_talk.png" : ".png");
+  }
+  function keeperAnim(now) {
+    const liveId = (playing && state) ? keeperInfo().id : menuKeeper;
+    document.querySelectorAll("img[data-keeper]").forEach(function (img) {
+      const id = img.getAttribute("data-keeper") || liveId;
+      if (id !== liveId && img.id !== "keeperPic") return;
+      const src = keeperSrc(img.id === "keeperPic" ? liveId : id, now);
+      if (img.getAttribute("data-src") !== src) {
+        img.src = src;
+        img.setAttribute("data-src", src);
+      }
+    });
+  }
   function loop(t) {
-    if (!playing || !state) { syncLoops(); requestAnimationFrame(loop); return; }
+    if (!playing || !state) { keeperAnim(Date.now()); syncLoops(); requestAnimationFrame(loop); return; }
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     const now = Date.now();
@@ -3078,6 +3096,7 @@
     resize();
     draw();
     syncLoops();
+    keeperAnim(now);
     keeperPulse(now);
     requestAnimationFrame(loop);
   }
