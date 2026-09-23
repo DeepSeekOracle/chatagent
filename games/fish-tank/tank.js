@@ -14,6 +14,8 @@
   const STAGE_DRAW = { baby: 0.42, infant: 0.55, child: 0.7, teen: 0.84, adult: 1, elder: 0.95 };
   const FACE_RIGHT = {};
   const LIFE = 7 * DAY;
+  const STARVE = 36 * HOUR;
+  const FED_FAST = 6 * HOUR;
   const SPECIES = [
     { id: "glimmer", name: "Glimmer", play: "jump", bulk: 1, blurb: "Jumps the surface." },
     { id: "azure", name: "Azure", play: "flare", bulk: 0.92, blurb: "Flares and turns." },
@@ -89,6 +91,22 @@
   }
   function lifeOf(f) { return LIFE + (f.bonus || 0); }
   function ageOf(f, now) { return Math.max(0, now - f.born); }
+  function bodyAge(f) { return f.growth || 0; }
+  function accrueGrowth(f, now) {
+    const from = f.growthAt || f.born || now;
+    if (!f.growth) f.growth = 0;
+    if (now > from) {
+      let t = from;
+      const boostEnd = (f.lastFed || f.born || from) + FED_FAST;
+      if (t < boostEnd) {
+        const end = Math.min(now, boostEnd);
+        f.growth += (end - t) * 2.4;
+        t = end;
+      }
+      if (t < now) f.growth += (now - t) * 0.7;
+    }
+    f.growthAt = now;
+  }
   function hours(ms) { return Math.round(ms / HOUR * 10) / 10; }
   function price() { return 30 + state.fish.length * 18; }
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
@@ -109,6 +127,8 @@
       name: String(name || specOf(species).name).slice(0, 16),
       born: now,
       bonus: 0,
+      growth: 0,
+      growthAt: now,
       lastFed: now,
       lastPlay: now,
       x: 0.2 + Math.random() * 0.6,
@@ -161,6 +181,11 @@
     if (state.temp == null) state.temp = 25;
     if (!state.waterAt) state.waterAt = Date.now();
     if (!state.theme) state.theme = "river";
+    (state.fish || []).forEach(function (f) {
+      if (f.growth == null) f.growth = Math.max(0, Date.now() - (f.born || Date.now()));
+      if (!f.growthAt) f.growthAt = Date.now();
+      if (!f.lastFed) f.lastFed = f.born || Date.now();
+    });
     if (!state.openedAt) {
       const births = (state.fish || []).map(function (f) { return f.born; }).filter(Boolean);
       state.openedAt = births.length ? Math.min.apply(null, births) : Date.now();
@@ -209,12 +234,14 @@
       score: Math.round(age / HOUR),
       tankHours: Math.round(tankAge(now) / HOUR),
       theme: themeOf(state.theme).name,
-      stage: f.species ? stageName(age) : "crew",
+      stage: f.species ? stageName(bodyAge(f)) : "crew",
       date: new Date(now).toISOString().slice(0, 10)
     };
     state.cemetery.unshift(row);
     state.cemetery = state.cemetery.slice(0, 40);
-    log(f.name + " rests in the cemetery after " + row.score + " hours.");
+    log(f.cause === "hunger"
+      ? (f.name + " dies unfed after " + row.score + " hours.")
+      : (f.name + " rests of old age after " + row.score + " hours."));
     if (window.ArcadeLedger && ArcadeLedger.fish) {
       ArcadeLedger.fish({
         name: row.name,
@@ -231,7 +258,13 @@
   function catchUp(now) {
     const dead = [];
     state.fish.forEach(function (f) {
-      if (ageOf(f, now) >= lifeOf(f)) dead.push(f);
+      accrueGrowth(f, now);
+      const hunger = now - (f.lastFed || f.born) >= STARVE;
+      const old = bodyAge(f) >= lifeOf(f);
+      if (hunger || old) {
+        f.cause = hunger ? "hunger" : "age";
+        dead.push(f);
+      }
     });
     const retired = [];
     (state.crew || []).forEach(function (c) {
@@ -385,13 +418,17 @@
       });
       winner.lastFed = now;
       winner.lastPlay = now;
+      accrueGrowth(winner, now);
       if (fl.pellet) {
-        winner.bonus = Math.min(7 * DAY, (winner.bonus || 0) + DAY);
+        winner.growth += 2 * HOUR;
+        winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + DAY);
         log(near.length > 1
-          ? (winner.name + " wins the pellet. " + near[1].name + " is shoved off.")
-          : (winner.name + " takes the pellet. One more day."));
-      } else if (near.length > 1 && Math.random() < 0.45) {
-        log(winner.name + " snatches a flake from " + near[1].name + ".");
+          ? (winner.name + " wins the pellet and grows. " + near[1].name + " is shoved off.")
+          : (winner.name + " takes the pellet, grows faster, and gains a day."));
+      } else {
+        winner.growth += 0.75 * HOUR;
+        winner.bonus = Math.min(14 * DAY, (winner.bonus || 0) + 10 * HOUR);
+        if (near.length > 1 && Math.random() < 0.45) log(winner.name + " snatches a flake from " + near[1].name + " and grows.");
       }
       state.points += fl.pellet ? 2 : 1;
       fl.gone = true;
@@ -492,7 +529,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function drawFish(f, w, h, now) {
-    const age = ageOf(f, now);
+    const age = bodyAge(f);
     const stage = stageName(age);
     if (f.vx > 0.004) f.face = 1;
     else if (f.vx < -0.004) f.face = -1;
@@ -643,12 +680,11 @@
     const now = Date.now();
     const list = document.getElementById("fishList");
     list.innerHTML = state.fish.map(function (f) {
-      const age = ageOf(f, now);
       const mood = moodOf(f, now);
-      const left = Math.max(0, lifeOf(f) - age);
+      const starveIn = Math.max(0, STARVE - (now - (f.lastFed || f.born)));
       return "<button type='button' class='fishline" + (f.id === selected ? " on" : "") + "' data-id='" + f.id + "'><b>" +
         esc(f.name) + "</b> <span class='mood-" + mood + "'>" + mood + "</span><br><span class='lore'>" +
-        esc(specOf(f.species).name) + " · " + stageName(age) + " · " + hours(age) + "h · " + hours(left) + "h left</span></button>";
+        esc(specOf(f.species).name) + " · " + stageName(bodyAge(f)) + " · lived " + hours(ageOf(f, now)) + "h · unfed dies in " + hours(starveIn) + "h</span></button>";
     }).join("") || "<p class='lore'>The tank is empty. Buy a fish.</p>";
     const graves = document.getElementById("graves");
     graves.innerHTML = state.cemetery.slice(0, 8).map(function (g) {
@@ -732,7 +768,7 @@
           tankHours: Math.round(tankAge(now) / HOUR),
           theme: themeOf(state.theme).name,
           species: lead ? lead.species : "",
-          stage: lead ? stageName(ageOf(lead, now)) : "",
+          stage: lead ? stageName(bodyAge(lead)) : "",
           fish: lead ? lead.name : "",
           date: new Date(now).toISOString().slice(0, 10),
           event: "tank"
