@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260924d">
+<link rel="stylesheet" href="style.css?v=20260924e">
 <link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
 <script src="/assets/hls.min.js" defer></script>
 <script src="/assets/lygo-tv-ninja.js?v=7" defer></script>
@@ -132,11 +132,13 @@
     <div class="intro-actions">
       <button type="button" id="introEnter" class="intro-cta" disabled>Entering…</button>
       <button type="button" id="introCode" class="intro-link">I am a supporter — enter my code</button>
+      <a class="intro-link" id="introPatron" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Get this month's code (Patreon)</a>
       <a class="intro-link" id="introGuide" href="#start">How to start</a>
     </div>
     <p class="intro-supporter" id="introSupporter" hidden></p>
     <p class="intro-foot">Reminders are the only interruption, and a supporter code switches them off in the browser
-      where you enter it. <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> ·
+      where you enter it — the monthly code lives on the <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Patreon post</a>.
+      <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> ·
       <a href="https://chatagent.ca/about.html">Steward: Justin Helmer</a>.</p>
   </div>
 </div>
@@ -363,6 +365,31 @@ steward: Justin Helmer / Excavationpro / Lightfather
     </figure>
   </div>
 </section>
+<section class="sup-suite" id="supporter-suite" aria-labelledby="supTitle">
+  <h2 id="supTitle">⚿ Supporter access <span class="sup-tag">PRO thank-you</span></h2>
+  <p class="hint">Supporters get a <strong>new code every month</strong> from the steward's Patreon post. Paste it and the
+    donation reminders stop in this browser — that is the whole perk. Nothing else on this console is locked: every
+    provider, every model, the compare bench and the image suite work exactly the same without a code. The code is
+    checked inside your browser, never sent anywhere, and never stored.</p>
+  <div class="sup-grid">
+    <div class="sup-controls">
+      <label class="sup-lbl" for="supCode">This month's code</label>
+      <input id="supCode" type="text" placeholder="LYGO-2609-XXXX-XXXX" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="supState">
+      <div class="sup-actions">
+        <button type="button" id="supGo" class="btn-gold">Unlock this browser</button>
+        <button type="button" id="supRelock" hidden>Lock this browser again</button>
+      </div>
+      <p class="hint" id="supMsg" aria-live="polite"></p>
+    </div>
+    <div class="sup-side">
+      <p class="sup-state" id="supState">Checking…</p>
+      <a class="sup-get" id="supGet" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Get this month's code — Patreon post →</a>
+      <p class="hint">Codes rotate monthly, and that post always holds the current one: if your code has lapsed, the new
+        month's code switches the reminders off again. Straight about the limits — the check runs in your browser, so
+        this is a thank-you gate rather than a licence, and it turns the reminders off in <em>one</em> browser.</p>
+    </div>
+  </div>
+</section>
 <section class="legal how" id="disclaimer">
   <h2>Two products — do not mix them</h2>
   <ol>
@@ -415,44 +442,32 @@ steward: Justin Helmer / Excavationpro / Lightfather
 <noscript>
   <p>LYGO LLM Portal requires JavaScript. Docs: <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a>. Free. No account.</p>
 </noscript>
-<div id="supporterLayer" class="sup-layer" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="supTitle">
-  <div class="sup-card">
-    <p class="kicker">Supporter access · code from this month's Patreon post</p>
-    <h2 id="supTitle">Switch the donation reminders off</h2>
-    <p class="sup-state" id="supState">Checking…</p>
-    <label class="sup-lbl" for="supCode">Your code</label>
-    <input id="supCode" type="text" placeholder="LYGO-2609-XXXX-XXXX" autocomplete="off" spellcheck="false" inputmode="text">
-    <div class="sup-actions">
-      <button type="button" id="supGo" class="btn-gold">Unlock this browser</button>
-      <button type="button" id="supRelock" hidden>Lock this browser again</button>
-      <button type="button" id="supClose">Close</button>
-    </div>
-    <p class="hint" id="supMsg" aria-live="polite"></p>
-    <p class="hint">Straight answers: the code is checked inside your browser and only stops the reminders in
-      <em>this</em> browser — nothing else on the portal is locked, and the free portal keeps working exactly the
-      same without a code. It is a thank-you, not a licence. Codes rotate every month and go up on
-      <a href="https://www.patreon.com/Excavationpro" rel="noopener">Patreon</a>; your code works through the date
-      shown above, then the new month's code arrives. The code itself is never stored — this browser remembers only
-      that it was unlocked, and until when.</p>
-  </div>
-</div>
 <div id="donateLayer" class="donate-layer" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="donateTitle">
-  <div class="donate-card">
-    <p class="kicker">Friendly reminder · every 15 minutes · off with a supporter code</p>
-    <h2 id="donateTitle">Keep the lattice lit</h2>
-    <p>This portal is free. You do not have to donate. Opening PayPal or Patreon unlocks Continue — even if you give $0.</p>
+  <canvas id="donateCanvas" class="intro-canvas" aria-hidden="true"></canvas>
+  <div class="donate-card intro-card">
+    <p class="intro-kicker">Δ9Φ963 · chatagent.ca · PUBLIC RESOURCE</p>
+    <h2 id="donateTitle" class="intro-title">KEEP THE LATTICE LIT</h2>
+    <p class="intro-sub">This portal is free and stays free — there is nothing behind this card to buy.</p>
+    <ul class="intro-terms">
+      <li><strong>You do not have to donate.</strong> Opening PayPal or the Patreon post unlocks Continue — even if you give $0.</li>
+      <li><strong>Supporters get this month's code</strong> from the <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Patreon post</a>. Paste it in the supporter module below and these reminders stop in this browser.</li>
+      <li><strong>Everything works without it</strong> — every provider, every model, the compare bench and the image suite.</li>
+    </ul>
     <div class="donate-actions">
       <a class="btn-gold" id="donatePaypal" href="https://www.paypal.com/paypalme/ExcavationPro">Open PayPal.me/ExcavationPro</a>
-      <a class="btn-gold" id="donatePatreon" href="https://www.patreon.com/Excavationpro">Open Patreon</a>
+      <a class="btn-gold" id="donatePatreon" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961">Patreon post — donate or get this month's code</a>
     </div>
-    <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
-    <button type="button" id="donateUnlock" class="donate-alt">Already a supporter? Enter this month's code (turns these reminders off)</button>
+    <div class="donate-actions">
+      <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
+      <button type="button" id="donateUnlock" class="donate-alt">I am a supporter — enter this month's code</button>
+    </div>
+    <p class="intro-foot">Code and support: <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">chatagent-ca-api · Patreon</a> · <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a></p>
   </div>
 </div>
 <script src="tools.js?v=20260924a"></script>
 <script src="app.js?v=20260924g"></script>
 <script src="radio.js"></script>
-<script src="supporter.js?v=20260924a"></script>
-<script src="donate.js?v=20260924a"></script>
+<script src="supporter.js?v=20260924b"></script>
+<script src="donate.js?v=20260924b"></script>
 </body>
 </html>

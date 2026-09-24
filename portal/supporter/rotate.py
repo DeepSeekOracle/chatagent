@@ -65,6 +65,78 @@ def default_until(month):
     return next_month(month) + "-05"
 
 
+def month_iter(start, count):
+    """`count` consecutive months, starting at `start` (YYYY-MM)."""
+    y, m = int(start[:4]), int(start[5:7])
+    out = []
+    for _ in range(count):
+        out.append("%04d-%02d" % (y, m))
+        m += 1
+        if m > 12:
+            y, m = y + 1, 1
+    return out
+
+
+def series_doc(pairs, today):
+    """The document that goes to the vault: codes in the order they go up on Patreon.
+
+    Every code works the moment it is in this file (the browser only refuses an entry whose `until`
+    has passed), so the steward pastes one a month and never needs a code change to keep supporters
+    served. Rotating early for a leak is still one command: --add --month <that month> --until <today>.
+    """
+    lines = []
+    lines.append("LYGO PORTAL SUPPORTER CODES — ROTATION SHELF")
+    lines.append("=" * 72)
+    lines.append("")
+    lines.append("Generated:      %s" % today)
+    lines.append("Codes:          %d" % len(pairs))
+    lines.append("First:          %s  (%s)" % (pairs[0][0], pairs[0][2]) if pairs else "")
+    lines.append("Last:           %s  (%s)" % (pairs[-1][0], pairs[-1][2]) if pairs else "")
+    lines.append("")
+    lines.append("WHAT THESE ARE")
+    lines.append("  The supporter code for the LYGO API Portal at https://chatagent.ca/portal/.")
+    lines.append("  A visitor presses \"Supporter\" in the top nav, pastes the code, and the donation")
+    lines.append("  reminder stops in that browser. Nothing else on the portal is locked, with or without")
+    lines.append("  a code. The code stays valid through the date beside it (the 5th of the next month).")
+    lines.append("")
+    lines.append("WHAT TO DO WITH THEM")
+    lines.append("  1. Paste THIS MONTH's code into the Patreon post that explains the code:")
+    lines.append("     https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961")
+    lines.append("     Do not post more than the current month.")
+    lines.append("  2. On the 1st of the next month, replace it with that month's code. That is the only")
+    lines.append("     monthly step. No code change, no push, no rebuild: every code below is already")
+    lines.append("     accepted by the live portal.")
+    lines.append("  3. If a code leaks (posted outside Patreon, or shared too far), regenerate that month")
+    lines.append("     and put the new one up:  python portal/supporter/rotate.py --add --month YYYY-MM")
+    lines.append("     then push portal/supporter.js. Codes past their date are refused automatically.")
+    lines.append("")
+    lines.append("HONEST LIMITS")
+    lines.append("  The code is checked inside the visitor's browser against a SHA-256, so it proves")
+    lines.append("  \"this browser was given this month's code\" and nothing more. It is a thank-you gate,")
+    lines.append("  not a licence, not DRM, and not a security boundary. Whoever holds a future month's")
+    lines.append("  code can use it early and stays unlocked through that month's date, so treat this")
+    lines.append("  file as a shelf for yourself: publish one month at a time.")
+    lines.append("")
+    lines.append("  Only the SHA-256 of each code ships to the web (portal/supporter.js). This plaintext")
+    lines.append("  list is the only copy of the codes; if it is lost, regenerate the months you still")
+    lines.append("  need rather than guessing.")
+    lines.append("")
+    lines.append("THE CODES")
+    lines.append("-" * 72)
+    lines.append("%-10s  %-24s  %s" % ("MONTH", "CODE", "VALID THROUGH"))
+    lines.append("-" * 72)
+    for month, code, until in pairs:
+        lines.append("%-10s  %-24s  %s" % (month, code, until))
+    lines.append("-" * 72)
+    lines.append("")
+    lines.append("Steward's permanent code (never expires, keep it off Patreon) is in")
+    lines.append("supporter-code-steward.txt in the same home folder as the other generated codes.")
+    lines.append("")
+    lines.append("Δ9Φ963 · keep the lattice lit.")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def load_block(path):
     """The array literal between the markers: (raw, start_index, end_index_after_bracket, rows)."""
     raw = open(path, "rb").read().decode("utf-8")
@@ -103,6 +175,12 @@ def main():
     ap = argparse.ArgumentParser(description="Rotate the LYGO portal supporter code.")
     ap.add_argument("--file", default=DEFAULT_FILE, help="the file whose hash block is patched")
     ap.add_argument("--add", action="store_true", help="generate a code for --month and add its hash")
+    ap.add_argument("--series", type=int, default=0, metavar="N",
+                    help="generate N consecutive monthly codes (all accepted at once) and add their hashes")
+    ap.add_argument("--from-month", dest="from_month", default=None,
+                    help="with --series: the first month (default: next month)")
+    ap.add_argument("--vault-dir", dest="vault_dir", default=None,
+                    help="with --series: also write the rotation shelf document (and a JSON copy) here")
     ap.add_argument("--steward", action="store_true", help="add a permanent code (no expiry)")
     ap.add_argument("--month", default=None, help="YYYY-MM the code is issued for")
     ap.add_argument("--until", default=None, help="inclusive end date YYYY-MM-DD (default: 5th of next month)")
@@ -115,7 +193,7 @@ def main():
     args = ap.parse_args()
 
     path = os.path.abspath(args.file)
-    raw, start, end, rows = load_block(path)
+    raw, blk_start, blk_end, rows = load_block(path)
 
     if args.selftest:
         a = hash_code("lygo-2609-a7k3-9qzp")
@@ -149,6 +227,42 @@ def main():
                                               "  (EXPIRED — the browser will refuse this code today)" if expired else ""))
         return 1 if expired else 0
 
+    if args.series:
+        first_month = args.from_month or next_month(date.today().isoformat()[:7])
+        if not re.match(r"^\d{4}-\d{2}$", first_month):
+            print("--from-month must look like 2026-10", file=sys.stderr)
+            return 2
+        months = month_iter(first_month, args.series)
+        pairs, codes = [], []
+        for mo in months:
+            code = make_code(mo)
+            until = default_until(mo)
+            entry = {"label": mo, "sha256": hash_code(code), "until": until, "note": "monthly rotation"}
+            rows = [r for r in rows if r.get("label") != mo] + [entry]
+            pairs.append((mo, code, until))
+            codes.append({"month": mo, "code": code, "until": until, "sha256": entry["sha256"]})
+        save_block(path, raw, blk_start, blk_end, rows)
+        today = date.today().isoformat()
+        os.makedirs(args.outdir, exist_ok=True)
+        shelf = os.path.join(args.outdir, "supporter-code-series-%s_%s.txt" % (pairs[0][0], pairs[-1][0]))
+        with open(shelf, "w", encoding="utf-8") as f:
+            f.write("\n".join("%s\t%s\t%s" % p for p in pairs) + "\n")
+        print("series: %d codes, %s .. %s" % (len(pairs), pairs[0][0], pairs[-1][0]))
+        print("shelf:  %s" % shelf)
+        if args.vault_dir:
+            os.makedirs(args.vault_dir, exist_ok=True)
+            doc = os.path.join(args.vault_dir, "LYGO_PORTAL_SUPPORTER_CODES.txt")
+            with open(doc, "w", encoding="utf-8") as f:
+                f.write(series_doc(pairs, today))
+            js = os.path.join(args.vault_dir, "lygo-portal-supporter-codes.json")
+            with open(js, "w", encoding="utf-8") as f:
+                json.dump({"generated": today, "first": pairs[0][0], "last": pairs[-1][0], "codes": codes}, f, indent=2)
+            print("vault:  %s" % doc)
+            print("vault:  %s" % js)
+        print()
+        print_rows(rows)
+        return 0
+
     if args.steward or args.add:
         if args.steward:
             code = "LYGO-STEW-" + gap() + "-" + gap()
@@ -166,7 +280,7 @@ def main():
                      "until": args.until or default_until(month),
                      "note": args.note or ("this month's code" if month >= today_month else "rotated out")}
         rows = [r for r in rows if r.get("label") != entry["label"]] + [entry]
-        save_block(path, raw, start, end, rows)
+        save_block(path, raw, blk_start, blk_end, rows)
         os.makedirs(args.outdir, exist_ok=True)
         keep = os.path.join(args.outdir, "supporter-code-%s.txt" % entry["label"])
         with open(keep, "w", encoding="utf-8") as f:

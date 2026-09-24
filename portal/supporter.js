@@ -28,14 +28,44 @@
   var CODE_HASHES = [
     {"label": "2026-08", "sha256": "5d29c090b2e2ee7796cc7cbbffa78ec50544cc1e45df8e9224b557704fcf0f5d", "until": "2026-09-05", "note": "rotated out"},
     {"label": "2026-09", "sha256": "31f34f39b74ad94630e9b2c8ebceb64660ea5546b83d9f88447523eb73498990", "until": "2026-10-05", "note": "this month's code"},
-    {"label": "steward", "sha256": "9dc55ba3412edfbaedd8c62140cb23168bb613934983f8c4b7337f36f3026e16", "until": null, "permanent": true, "note": "steward: never expires \u2014 keep the plaintext private"}
+    {"label": "steward", "sha256": "9dc55ba3412edfbaedd8c62140cb23168bb613934983f8c4b7337f36f3026e16", "until": null, "permanent": true, "note": "steward: never expires \u2014 keep the plaintext private"},
+    {"label": "2026-10", "sha256": "317714cd0c62c304d7eed6950347d44c1a8cf1f5588c098f41034cf9715ddd4f", "until": "2026-11-05", "note": "monthly rotation"},
+    {"label": "2026-11", "sha256": "44cfbab3d9f3cb32c9c0164f14b0816af30be6c2b2958e4a7f47c16d011e354c", "until": "2026-12-05", "note": "monthly rotation"},
+    {"label": "2026-12", "sha256": "4bba660370693a8c8ea242d17636d75321aa8f34819751214e76492babc37e76", "until": "2027-01-05", "note": "monthly rotation"},
+    {"label": "2027-01", "sha256": "ff580f4a38fbf99c778b6bd1540913b716319cda4a9ab1b1d8cddc183920d3f9", "until": "2027-02-05", "note": "monthly rotation"},
+    {"label": "2027-02", "sha256": "8a2b17eb5d47f99ac31393749a89e3653c77e34e35bc9125ae0a88d8e87c1844", "until": "2027-03-05", "note": "monthly rotation"},
+    {"label": "2027-03", "sha256": "68c1cddefbffe22dd8d98f751bfee479b1084606aafaa47f17b94fe120107191", "until": "2027-04-05", "note": "monthly rotation"},
+    {"label": "2027-04", "sha256": "626954aa4d23ce0a57acfa71fd8f4bab99d37eab6cee70f1b0b5e092a12fd49b", "until": "2027-05-05", "note": "monthly rotation"},
+    {"label": "2027-05", "sha256": "c57c9f6f92f4c3888d1c1060ae300046deffef378ca5e6e54ce582a8b0e118bf", "until": "2027-06-05", "note": "monthly rotation"},
+    {"label": "2027-06", "sha256": "10de61edec644146fd74a8c25bd61d1ad7320cee64c99c99be5b7d43bf2888fc", "until": "2027-07-05", "note": "monthly rotation"},
+    {"label": "2027-07", "sha256": "6859a1071fa89e4ef5f4c7444947fb80ad88c90673a7c21ba8109d9aa495b0bf", "until": "2027-08-05", "note": "monthly rotation"},
+    {"label": "2027-08", "sha256": "d27ac913e99bc83337a4c0f1e367329ca02141244c60df358b24828e187252b0", "until": "2027-09-05", "note": "monthly rotation"},
+    {"label": "2027-09", "sha256": "10c5e57eb30e266128bfe2b224033f4b158f7e841cd3897a67237f1a0a8ecb13", "until": "2027-10-05", "note": "monthly rotation"},
+    {"label": "2027-10", "sha256": "95d773b07ab019a8911892c26e883caf7e6532142a7e54335ebef3d7d2b1a11e", "until": "2027-11-05", "note": "monthly rotation"},
+    {"label": "2027-11", "sha256": "01bf25a5fb3eb1fddd0750bfd0dd1d63759ce9deb59dda78e775116fafbab391", "until": "2027-12-05", "note": "monthly rotation"},
+    {"label": "2027-12", "sha256": "93959640b22345b749a16a1d438961674e7e4a84cbeaf145bbf72890f66f27f4", "until": "2028-01-05", "note": "monthly rotation"},
+    {"label": "2028-01", "sha256": "65861f7114d22d781add12ed799944df55047bafdcbd65099db3a3733026a4ba", "until": "2028-02-05", "note": "monthly rotation"},
+    {"label": "2028-02", "sha256": "44c14568c6b534f325214a9291867ac77c5ba98067123b28ca39da4a1b4cbe21", "until": "2028-03-05", "note": "monthly rotation"},
+    {"label": "2028-03", "sha256": "bbd85e479153d76a5d437916ee8f5614cfea3858b9ae8b3918f53e7af7e47a8e", "until": "2028-04-05", "note": "monthly rotation"},
+    {"label": "2028-04", "sha256": "dbd8eed19924425f889992af55052256976f6fccc94a813ad840ad06647aeac2", "until": "2028-05-05", "note": "monthly rotation"},
+    {"label": "2028-05", "sha256": "feff0d5a91086f9ea175342e766b2f81bd7c6499fe708b1f7a23666acd857235", "until": "2028-06-05", "note": "monthly rotation"},
+    {"label": "2028-06", "sha256": "42e16c90fd05ec9290f41a7bf7d0965872ab7f87c86f4d7310778e4f0f4c94a0", "until": "2028-07-05", "note": "monthly rotation"},
+    {"label": "2028-07", "sha256": "e17b51d928f7c9ea00a1e8691764b0dfbfc8921beb29e179599fc943240f0cd3", "until": "2028-08-05", "note": "monthly rotation"},
+    {"label": "2028-08", "sha256": "440c5ab94352de12addf10ce37bc36724ab4297ddac5ceb38cc2d93b77cee971", "until": "2028-09-05", "note": "monthly rotation"},
+    {"label": "2028-09", "sha256": "cae24e52d1271aabe19e21cd4a0cb3c90ef02956b0e82be3e1eefab208fc0fef", "until": "2028-10-05", "note": "monthly rotation"},
+    {"label": "2028-10", "sha256": "82f239c06c7170624b25e81a6ab0d655cb0e1fc90059275a8488bce267119f03", "until": "2028-11-05", "note": "monthly rotation"},
+    {"label": "2028-11", "sha256": "18aadac7c4bb4f7427d5a27eaea20d58a062f8a2b88e01c89f8b8fb7217a4309", "until": "2028-12-05", "note": "monthly rotation"},
+    {"label": "2028-12", "sha256": "ebf7e1c300b9a5f48a158e39cfb3e239db961b262588340db8cd5e5c595223df", "until": "2029-01-05", "note": "monthly rotation"},
+    {"label": "2029-01", "sha256": "e1a17c13eab698c08c3810ba46d451c591999396899baab5516c81e29fb0947a", "until": "2029-02-05", "note": "monthly rotation"},
+    {"label": "2029-02", "sha256": "9cbd1c7dd297e89f4f5f889572ff89ba802b46a977a5b873e64dd827367a4400", "until": "2029-03-05", "note": "monthly rotation"},
+    {"label": "2029-03", "sha256": "1d97297008142bf08bb5a02624d2c25b5252c335fadd2bfce089a4887d69c884", "until": "2029-04-05", "note": "monthly rotation"}
   ];
   /* @supporter-hashes:end */
 
   var introEl = null;
-  var panelEl = null;
+  var moduleEl = null;
   var lastFocus = null;
-  var rain = null;
+  var rains = {};              // one backdrop per layer that wants one, keyed by canvas id
 
   function el(id) { return document.getElementById(id); }
   function store(key) { try { return g.localStorage.getItem(key); } catch (_) { return null; } }
@@ -125,12 +155,10 @@
     announce();
   }
 
-  /* ---- the supporter panel ------------------------------------------------------ */
-
-  function panelOpen() { return panelEl && !panelEl.hidden; }
+  /* ---- the supporter module ----------------------------------------------------- */
 
   function paintPanel(msg) {
-    if (!panelEl) return;
+    if (!moduleEl) return;
     var s = state();
     var st = el("supState");
     if (st) {
@@ -151,23 +179,16 @@
     if (m) m.textContent = msg || "";
   }
 
-  function openPanel(msg) {
-    if (!panelEl) return;
-    lastFocus = document.activeElement;
-    panelEl.hidden = false;
-    panelEl.classList.add("is-open");
-    document.documentElement.classList.add("sup-modal");
+  // The module is part of the console itself (module 3, under the image suite), so "opening" it means
+  // walking the visitor there and putting the cursor in the field - no overlay, nothing to dismiss.
+  function revealModule(msg) {
+    if (!moduleEl) return;
+    try { moduleEl.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); } catch (_) {}
+    moduleEl.classList.add("is-flash");
+    g.setTimeout(function () { moduleEl.classList.remove("is-flash"); }, 1800);
     paintPanel(msg);
     var inp = el("supCode");
-    if (inp) inp.focus();
-  }
-
-  function closePanel() {
-    if (!panelEl) return;
-    panelEl.hidden = true;
-    panelEl.classList.remove("is-open");
-    document.documentElement.classList.remove("sup-modal");
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (inp && inp.focus) { try { inp.focus({ preventScroll: true }); } catch (_) { inp.focus(); } }
   }
 
   async function submitCode() {
@@ -198,9 +219,9 @@
     return !!(g.matchMedia && g.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
 
-  function startRain() {
-    var canvas = el("introCanvas");
-    if (!canvas || rain) return;
+  function startRain(canvasId) {
+    var canvas = el(canvasId);
+    if (!canvas || rains[canvasId]) return;
     var ctx = canvas.getContext("2d");
     if (!ctx) return;
     var GLYPHS = "Δ9Φ963ΛΞΣΩ01⊹⟡✕⌘アカサタナハマヤラワ";
@@ -244,14 +265,16 @@
     resize();
     g.addEventListener("resize", resize);
     if (still) {                                // no animation to run: the frame above is the entrance
-      rain = { stop: function () {}, still: true };
+      rains[canvasId] = { stop: function () {}, still: true };
       return;
     }
-    rain = { stop: function () { if (raf) g.cancelAnimationFrame(raf); raf = 0; } };
+    rains[canvasId] = { stop: function () { if (raf) g.cancelAnimationFrame(raf); raf = 0; } };
     raf = g.requestAnimationFrame(frame);
   }
 
-  function stopRain() { if (rain) { rain.stop(); rain = null; } }
+  function stopRain(canvasId) {
+    if (rains[canvasId]) { rains[canvasId].stop(); delete rains[canvasId]; }
+  }
 
   var LINES = [
     "> Δ9Φ963 // LYGO LATTICE · PUBLIC GATE",
@@ -287,7 +310,7 @@
     introEl.hidden = false;
     introEl.classList.add("is-open");
     document.documentElement.classList.add("sup-modal");
-    startRain();
+    startRain("introCanvas");
     var ctas = el("introEnter");
     if (ctas) { ctas.disabled = true; ctas.textContent = "Entering…"; }
     typeLines(function () {
@@ -307,7 +330,7 @@
     introEl.hidden = true;
     introEl.classList.remove("is-open");
     document.documentElement.classList.remove("sup-modal");
-    stopRain();
+    stopRain("introCanvas");
     if (lastFocus && lastFocus.focus) lastFocus.focus();
     // A visitor who entered from the intro should not be fighting a reminder seconds later.
     try { document.dispatchEvent(new CustomEvent("lygo-intro-entered")); } catch (_) {}
@@ -327,7 +350,7 @@
 
   function boot() {
     introEl = el("introLayer");
-    panelEl = el("supporterLayer");
+    moduleEl = el("supporter-suite");
     paintChip();
 
     if (introEl && introDue()) openIntro();
@@ -337,14 +360,14 @@
     if (enter) enter.addEventListener("click", closeIntro);
 
     var toCode = el("introCode");
-    if (toCode) toCode.addEventListener("click", function () { closeIntro(); openPanel(); });
+    if (toCode) toCode.addEventListener("click", function () { closeIntro(); revealModule(); });
 
     var guide = el("introGuide");
     if (guide) guide.addEventListener("click", closeIntro);
 
     ["supporterOpen", "supporterOpenFoot"].forEach(function (id) {
       var b = el(id);
-      if (b) b.addEventListener("click", function () { openPanel(); });
+      if (b) b.addEventListener("click", function () { revealModule(); });
     });
 
     var go = el("supGo");
@@ -356,28 +379,25 @@
     var rl = el("supRelock");
     if (rl) rl.addEventListener("click", function () { relock(); paintPanel("Locked again — the reminders resume in this browser."); });
 
-    var cl = el("supClose");
-    if (cl) cl.addEventListener("click", closePanel);
-
     // The donor card is where a supporter looks first: give it a door into the panel.
     var du = el("donateUnlock");
     if (du) du.addEventListener("click", function () {
       try { document.dispatchEvent(new CustomEvent("lygo-portal-close-donate")); } catch (_) {}
-      openPanel();
+      revealModule();
     });
 
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        if (panelOpen()) { e.preventDefault(); closePanel(); return; }
-        if (introEl && !introEl.hidden) { e.preventDefault(); closeIntro(); return; }
+      if (introEl && !introEl.hidden) {
+        if (e.key === "Escape") { e.preventDefault(); closeIntro(); return; }
+        trapTab(e, introEl);
       }
-      if (panelOpen()) trapTab(e, panelEl);
-      else if (introEl && !introEl.hidden) trapTab(e, introEl);
     });
 
-    if (panelEl) panelEl.addEventListener("click", function (e) { if (e.target === panelEl) closePanel(); });
-
     document.addEventListener("lygo-supporter", function () { paintPanel(); });
+
+    // The reminder card wears the same backdrop as the entrance, so the two read as one system.
+    document.addEventListener("lygo-donate-shown", function () { startRain("donateCanvas"); });
+    document.addEventListener("lygo-donate-hidden", function () { stopRain("donateCanvas"); });
   }
 
   g.LYGO_SUPPORTER = {
@@ -386,7 +406,7 @@
     state: state,
     unlock: tryCode,            // async (code) -> { ok, why?, label?, until? }
     relock: relock,
-    openPanel: openPanel,
+    reveal: revealModule,
     entries: function () { return CODE_HASHES.map(function (r) { return r.label; }); },
   };
 

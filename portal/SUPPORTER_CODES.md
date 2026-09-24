@@ -28,7 +28,8 @@ browser tools work exactly the same with or without a code.
 | The rotation tool | `portal/supporter/rotate.py` |
 | The plaintext codes it prints | `~/.lygo-supporter-codes/supporter-code-<label>.txt` (outside the repo, on purpose) |
 | The reminder that gets switched off | `portal/donate.js` — asks `window.LYGO_SUPPORTER.unlocked()` before it ever schedules |
-| Entry points for the code | `⚿ Supporter` in the top nav, `⚿ Supporter code` under the composer, the door on the donor card, and the intro |
+| The module where the code is entered | `#supporter-suite` in `portal/index.html`, under the image suite — a console module, not an overlay. `⚿ Supporter` in the top nav, `⚿ Supporter code` under the composer, the door on the reminder card and the entrance all scroll to it |
+| The post that carries the code | <https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961> — linked from the entrance, the reminder card and the module's "Get this month's code" button |
 
 ## Rotating (once a month, about a minute)
 
@@ -46,6 +47,34 @@ node --check portal/supporter.js                              # the file still p
 1. Paste the code into this month's Patreon post (template below).
 2. Commit and push `portal/supporter.js` so the live portal accepts the new code.
 3. Post the Patreon announcement — the old code keeps working through its grace date, so nobody is cut off.
+
+### The pre-loaded shelf (30 months, to March 2029)
+
+The portal currently ships **33 accepted codes**: the steward's permanent one, this month's, the rotated-out
+example, and **30 monthly codes from 2026-10 through 2029-03** — all generated at once and all valid today.
+Every one of them was verified through the live page code, so from here the monthly step is only:
+
+> On the 1st, paste that month's code from the vault into the Patreon post. No push, no rebuild, no tool run.
+
+The plaintext shelf lives **outside the repo**, on the USB stick:
+
+| File | What it is |
+|---|---|
+| `E:\Data Vault\LYGO_PORTAL_SUPPORTER_CODES.txt` | the rotation shelf: every month's code, the date it is good through, and the instructions |
+| `E:\Data Vault\lygo-portal-supporter-codes.json` | the same list machine-readable (`month`, `code`, `until`, `sha256`) |
+| `~/.lygo-supporter-codes/supporter-code-series-*.txt` | the working copy the tool writes on this PC |
+| `~/.lygo-supporter-codes/supporter-code-steward.txt` | the steward's permanent code — never post this |
+
+Regenerate the shelf (idempotent per month: re-running replaces that month's code and hash):
+
+```bash
+python portal/supporter/rotate.py --series 30 --from-month 2026-10 --vault-dir "E:/Data Vault"
+```
+
+**One trade-off to know:** because all 30 months work now, whoever holds a *future* month's code can use it
+early and stays unlocked through that month's date (a 2029-03 code reads "through 2029-04-05"). The shelf is
+therefore a steward's file: publish one month at a time, and if a future code leaks, regenerate that month
+(`--add --month YYYY-MM --until <today>` kills the leaked one) and push.
 
 Useful variants:
 
@@ -103,12 +132,12 @@ Thank you — you keep the lattice lit. Δ9Φ963
 ## Checking the live portal accepts it (60 seconds)
 
 1. `https://chatagent.ca/portal/` in a **fresh private window** — the intro should cover the page.
-2. Enter the portal. Press `⚿ Supporter`, paste a wrong code → it must say the code is not one of this
-   portal's codes (no vague failure).
+2. Enter the portal. Press `⚿ Supporter` (it scrolls to the **Supporter access** module under the image
+   suite) and paste a wrong code → it must say the code is not one of this portal's codes (no vague failure).
 3. Paste the real code → "Unlocked … through `<date>`", the `⚿ SUPPORTER` chip appears next to the header stamp.
 4. Wait: the donation reminder must not appear (it fires every 15 minutes; in a test you can watch the
    network tab stay quiet, or temporarily open the console and check `LYGO_SUPPORTER.unlocked()` is `true`).
-5. Press `⚿ Supporter` → **Lock this browser again** → the reminders are back. Reload: the intro does not
+5. Press **Lock this browser again** in the module → the reminders are back. Reload: the intro does not
    return, and the unlock you had is gone.
 6. QA switch: `https://chatagent.ca/portal/?intro=0` opens the portal with no intro (it does not mark the
    intro as seen) — useful when you are checking something else.
@@ -118,7 +147,8 @@ Thank you — you keep the lattice lit. Δ9Φ963
 - **"This browser will not hash anything outside a secure page"** — the panel needs `https` (or `localhost`).
   That is WebCrypto's rule, not a bug; the live portal is https.
 - **A supporter says the code does not work** — first `--check` it. `no match` means the code never shipped
-  (the file was not pushed, or the push has not deployed yet); `EXPIRED` means the grace date passed.
+  (the file was not pushed, or the push has not deployed yet); `EXPIRED` means the grace date passed. Then ask
+  whether they pasted it into the module on the console (the field under the image suite) rather than the search bar.
 - **The reminders still appear after unlocking** — check the `⚿ SUPPORTER` chip. If the chip is missing but the
-  panel says active, the browser has `localStorage` disabled (private mode with storage blocked), and nothing
+  module says active, the browser has `localStorage` disabled (private mode with storage blocked), and nothing
   this page can do will stick.

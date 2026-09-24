@@ -1,6 +1,7 @@
 (() => {
   const PAYPAL = "https://www.paypal.com/paypalme/ExcavationPro";
-  const PATREON = "https://www.patreon.com/Excavationpro";
+  // The post, not the profile: that page carries the explanation and the current month's code.
+  const PATREON = "https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961";
   const EVERY_MS = 15 * 60 * 1000;
   let opened = false;
   let timer = null;
@@ -34,6 +35,7 @@
     layer.hidden = false;
     layer.classList.add("is-open");
     layer.setAttribute("aria-hidden", "false");
+    document.dispatchEvent(new CustomEvent("lygo-donate-shown"));   // supporter.js paints the backdrop
   }
 
   function hide() {
@@ -43,6 +45,7 @@
     layer.classList.remove("is-open");
     layer.setAttribute("aria-hidden", "true");
     opened = false;
+    document.dispatchEvent(new CustomEvent("lygo-donate-hidden"));
     schedule();
   }
 
