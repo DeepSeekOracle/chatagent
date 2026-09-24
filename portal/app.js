@@ -1607,6 +1607,59 @@
   }
   paintWorld();
   setInterval(paintWorld, 1000);
+
+  // The city strip. #world-cities and the .wcity markup (.n name / .t time / .w note) have been in the
+  // page and the stylesheet since the beginning with nothing writing into them, so the "World time"
+  // band showed a local clock, UTC, and an empty row. Built here from the visitor's own clock: no API,
+  // no key, nothing fetched, works offline. A zone this browser cannot do is left out rather than faked.
+  const worldCities = document.getElementById("world-cities");
+  if (worldCities) {
+    const CITIES = [["Your time", null], ["Edmonton", "America/Edmonton"], ["Toronto", "America/Toronto"],
+                    ["New York", "America/New_York"], ["London", "Europe/London"],
+                    ["Berlin", "Europe/Berlin"], ["Tokyo", "Asia/Tokyo"]];
+    function cityTime(tz, now) {
+      const opt = tz ? { timeZone: tz, hour: "2-digit", minute: "2-digit" } : { hour: "2-digit", minute: "2-digit" };
+      return new Intl.DateTimeFormat(undefined, opt).format(now);
+    }
+    function cityOffset(tz) {
+      try {
+        const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(new Date());
+        const name = parts.filter(function (p) { return p.type === "timeZoneName"; })[0];
+        return name ? name.value.replace("GMT", "UTC") : "";
+      } catch (e) { return ""; }
+    }
+    function cityDay(tz) {
+      return new Intl.DateTimeFormat("en-CA", tz ? { timeZone: tz } : {}).format(new Date());
+    }
+    const chips = [];
+    CITIES.forEach(function (row) {
+      let time = "";
+      try { time = cityTime(row[1], new Date()); } catch (e) { return; }
+      const el = document.createElement("div");
+      el.className = "wcity";
+      el.title = row[1] ? row[0] + " — " + row[1] : "the clock this browser runs on";
+      el.innerHTML = '<div class="n"></div><div class="t"></div><div class="w"></div>';
+      el.children[0].textContent = row[0];
+      el.children[1].textContent = time;
+      el.children[2].textContent = row[1] ? cityOffset(row[1]) : "this browser";
+      worldCities.appendChild(el);
+      chips.push({ el: el, tz: row[1] });
+    });
+    function paintCities() {
+      const now = new Date();
+      const here = cityDay(null);
+      chips.forEach(function (c) {
+        try {
+          c.el.children[1].textContent = cityTime(c.tz, now);
+          if (!c.tz) return;
+          const day = cityDay(c.tz);
+          c.el.children[2].textContent = cityOffset(c.tz) + (day === here ? "" : (day > here ? " · next day" : " · previous day"));
+        } catch (e) { /* leave what is there rather than blank it */ }
+      });
+    }
+    paintCities();
+    setInterval(paintCities, 30000);
+  }
   document.querySelectorAll(".y").forEach(function (el) {
     el.textContent = String(new Date().getFullYear());
   });
