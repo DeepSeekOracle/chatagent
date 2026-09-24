@@ -1056,7 +1056,7 @@
           (health.image && health.image.route ? " · route " + health.image.route : "")
         : (!base || base === location.origin
             ? "no console attached — open this page with ?console=https://your-gateway (PC LOCAL default: http://127.0.0.1:9642)"
-            : "no answer from " + base),
+            : "no answer from " + base + (LOCAL_ACCESS ? " — " + LOCAL_ACCESS : "")),
       cost: "free (your machine) · one at a time · 3 per 10 min",
       verified: !!(health && health.ok),
     });
@@ -1478,6 +1478,27 @@
     return fetch(u, o);
   }
 
+  // What the browser thinks about this page reaching the visitor's own machine. A refused request and
+  // a gateway that is not running both arrive as "Failed to fetch", and telling a visitor to start
+  // something that is already running wastes their time - so ask the browser which one this was.
+  var LOCAL_ACCESS = "";                    // cached: the route table below is built synchronously
+  // (var, not let: this file runs top to bottom in one IIFE, and the image module renders before this
+  //  line executes - a let here would be in the temporal dead zone and throw on the first paint.)
+  async function probeLocalAccess() {
+    LOCAL_ACCESS = await localNote();
+    return LOCAL_ACCESS;
+  }
+
+  async function localNote() {
+    try {
+      if (!navigator.permissions || !navigator.permissions.query) return "";
+      const st = await navigator.permissions.query({ name: "local-network-access" });
+      if (st.state === "denied") return "the browser refused this page's request to your local network (site settings → Local network access → Allow for chatagent.ca, then reload)";
+      if (st.state === "prompt") return "the browser has not been asked yet - reload and allow the local network prompt";
+      return "";
+    } catch (e) { return ""; }
+  }
+
   function moduleTone(m) {
     const s = String((m.surfaces || {}).web || "");
     if (s.indexOf("FULL") === 0) return { cls: "mod-full", label: "web-ready" };
@@ -1496,7 +1517,7 @@
   async function moduleCall(path, query) {
     const u = new URL(path, MODULES.base || location.origin);
     if (query) Object.keys(query).forEach(function (k) { u.searchParams.set(k, query[k]); });
-    const r = await fetch(u.toString(), { headers: { Accept: "application/json" } });
+    const r = await consoleFetch(u.toString(), { headers: { Accept: "application/json" } });
     const body = await r.text();
     if (!r.ok) throw new Error("HTTP " + r.status + " from " + u.pathname +
       (r.status === 0 ? " (a console on another origin must allow this page via CORS)" : ""));
@@ -1589,14 +1610,18 @@
       MODULES.ok = false;
       const msg = String(e && e.message ? e.message : e);
       const quiet = MODULES.base === location.origin && /HTTP 404/.test(msg);   // public page: no console here, and that is normal
-      MODULES.status = (MODULES.base === location.origin ? "no console attached here" : "no console at " + MODULES.base) +
-        (quiet ? "" : " (" + msg + ")");
+      let why = quiet ? "" : " (" + msg + ")";
+      if (!quiet && isLocalAddress(MODULES.base)) {
+        await probeLocalAccess();
+        if (LOCAL_ACCESS) why = " — " + LOCAL_ACCESS;
+      }
+      MODULES.status = (MODULES.base === location.origin ? "no console attached here" : "no console at " + MODULES.base) + why;
     }
     renderModules();
   }
 
   window.lygoModules = { table: function () { return MODULES; }, call: moduleCall, reload: loadModules };
-  loadModules();
+  probeLocalAccess().then(loadModules, loadModules);
 
   const worldLocal = document.getElementById("world-local");
   const worldUtc = document.getElementById("world-utc");
