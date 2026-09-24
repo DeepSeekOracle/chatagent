@@ -1493,8 +1493,8 @@
     try {
       if (!navigator.permissions || !navigator.permissions.query) return "";
       const st = await navigator.permissions.query({ name: "local-network-access" });
-      if (st.state === "denied") return "the browser refused this page's request to your local network (site settings → Local network access → Allow for chatagent.ca, then reload)";
-      if (st.state === "prompt") return "the browser has not been asked yet - reload and allow the local network prompt";
+      if (st.state === "denied") return "allow it for chatagent.ca: site settings → Local network access → Allow, then reload.";
+      if (st.state === "prompt") return "reload this page and say yes when the browser asks about your local network.";
       return "";
     } catch (e) { return ""; }
   }
