@@ -1,6 +1,6 @@
 (() => {
   const PAYPAL = "https://www.paypal.com/paypalme/ExcavationPro";
-  const PATREON = "https://www.patreon.com/Excavationpro";
+  const PATREON = "https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961";
   const EVERY_MS = 15 * 60 * 1000;
   let opened = false;
   let timer = null;

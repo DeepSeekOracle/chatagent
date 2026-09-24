@@ -5333,7 +5333,7 @@
       "</div><div class='modes' style='margin-top:.6rem'><button class='btn gold' id='menuOpt'>Options</button>" +
       "<button class='btn' id='menuRadio'>Radio</button></div>" +
       "<div class='donate-row'><a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
-      "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro' target='_blank' rel='noopener'>Patreon</a></div>" +
+      "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961' target='_blank' rel='noopener'>Patreon</a></div>" +
       "<p class='lore' style='margin-top:.6rem'>Best " + persist.best + " · Survive " + (persist.surviveBest || 0) + " · Descent " + (persist.campaignBest || 0) + " · Runs " + persist.runs + " · Seals " + (persist.seals || 0) + " · <a href='./ledger.html'>Live hall</a> · <a href='/games/'>Hub</a></p>" +
       "<p class='hall-peek' id='hallPeek'>Hall loading…</p></div></div>",
       true

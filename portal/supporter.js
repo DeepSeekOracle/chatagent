@@ -18,7 +18,7 @@
   var INTRO_STORE = "lygo_portal_intro";
   var UNLOCK_STORE = "lygo_portal_supporter";
   var INTRO_VERSION = "2026-09-24";        // bump to show the entrance again after a real redesign
-  var REMINDER_URL = "https://www.patreon.com/Excavationpro";
+  var REMINDER_URL = "https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961";
   var DAY = 24 * 60 * 60 * 1000;
 
   /* Accepted codes, as SHA-256 of the normalized code (uppercase, A-Z0-9 only).
