@@ -197,6 +197,13 @@ footer.site { margin-top:28px; padding-top:16px; border-top:1px solid var(--line
       <h2>Support (optional)</h2>
       <p>Downloads are free. Optional fuel for hosting and packaging: <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal.me/ExcavationPro</a>. A donation does not buy rights, bypass the gate, or unlock extra malware. It is a tip.</p>
     </article>
+    <article class="ch" style="border-color:rgba(255,176,0,.42)">
+      <h2>Image generation · engine + docs</h2>
+      <p>The portal draws pictures two ways: a <b>key route</b> with no install (Gemini free tier, OpenRouter, SiliconFlow, Fireworks — the page names the ones a browser can actually call), or the console's own engine on your PC: <b>stable-diffusion.cpp</b>, the same one the PC console uses. The all-in-one add-on is 12 MB, CPU build, no CUDA, no admin, no key:
+      <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/image-engine-v1/LYGO_IMAGE_ENGINE_SETUP.exe">LYGO_IMAGE_ENGINE_SETUP.exe</a>
+      (12,930,665 B, sha256 <code>56934538d1847921d03a96a49b64a59081bdbcf08dc3a1f1bb1d7229716a5a</code>). It needs the console in front of it and one checkpoint fetched once — the docs walk it in four steps. Measured honestly: 55 s at 512² and ~5 min at 1024² on CPU, 12.5 s on a free card.</p>
+      <p><a href="/portal/image-engine.html">chatagent.ca/portal/image-engine.html</a> · agent skill: <a href="https://github.com/DeepSeekOracle/chatagent/blob/main/portal/image-engine/SKILL.md">lygo-image-engine · SKILL.md</a> · live module: <a href="/portal/#image-suite">the picture module</a></p>
+    </article>
   </div>
 
   <div class="stats" id="stats"></div>

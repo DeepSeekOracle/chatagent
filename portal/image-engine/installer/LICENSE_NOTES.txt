@@ -1,0 +1,44 @@
+LICENCE NOTES — LYGO Image Engine
+=================================
+
+WHAT IS IN THIS INSTALLER (shipped by us)
+-----------------------------------------
+* stable-diffusion.cpp runtime — MIT Licence. Upstream: leejet/stable-diffusion.cpp
+  (github.com/leejet/stable-diffusion.cpp). Built as the CPU backend.
+* ggml and the ggml CPU kernels come from the same project (MIT).
+* libwebp / libsharpyuv (BSD-3-Clause, Google) for the encoder path.
+* Our own helper scripts (get_model.ps1, LYGO_IMAGE_ENGINE.bat, README.txt) —
+  released with the LYGO kit under the LYGO Sovereign Licence v3.0. Free to use
+  and build on; resale and rebranding are not permitted.
+
+WHAT IS *NOT* IN THIS INSTALLER (and why)
+-----------------------------------------
+No checkpoint ships here. The weights are the model author's work, they are
+4-7 GB, and their licences are theirs — not ours to redistribute. get_model.ps1
+downloads a checkpoint from Hugging Face on the user's behalf, from the author's
+own repository, and reports which licence applies:
+
+  sd_xl_turbo_1.0_fp16.safetensors   stabilityai/sdxl-turbo
+      Stability AI Non-Commercial Research Community Licence.
+      NON-COMMERCIAL. Research and personal use. Read it before selling output.
+
+  v1-5-pruned-emaonly.safetensors    stable-diffusion-v1-5/stable-diffusion-v1-5
+      CreativeML Open RAIL-M. Commercial use permitted with the use restrictions
+      in that licence (including its attachment to derivatives).
+
+Use -From <url> to point the fetcher at any checkpoint your own infrastructure
+serves; whatever you point it at is your choice and your licence.
+
+WHAT YOU MAKE IS YOURS
+----------------------
+Generated images are not restricted by this installer or by the LYGO kit. The
+checkpoint's licence is the only thing that follows the output, and only when
+you use that checkpoint. If you need clean commercial terms, use a checkpoint
+whose licence grants them.
+
+WHAT WE DO NOT COLLECT
+----------------------
+Nothing. This engine runs on your machine and writes pictures into the console's
+workspace\images folder. The web portal only reaches it when you start the
+gateway yourself, and the gateway binds 127.0.0.1 by default (this PC only).
+No telemetry, no accounts, no calls home.
