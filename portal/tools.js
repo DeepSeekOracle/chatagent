@@ -30,6 +30,7 @@
     fn("base64", "Encode or decode base64. action=encode|decode.", { text: S, action: S }, ["text"]),
     fn("uuid", "Generate a random UUID.", {}),
     fn("json_pretty", "Parse and pretty-print JSON text.", { text: S }, ["text"]),
+    fn("image_generate", "Make a picture from a prompt. The picture is SHOWN to the human in this chat - you get its route, model and timing, never the pixels. Needs a picture route: an attached LYGO console, or the visitor's image-capable key.", { prompt: S, size: { type: "integer", description: "square pixels, 512 / 768 / 1024" } }, ["prompt"]),
     fn("champion", "Load a Δ9 champion lens by name (ARKOS, LYRA, …).", { name: S }, ["name"]),
     fn("skill_list", "List LYGO skills shipped on this portal and which are enabled.", {}),
     fn("skill_read", "Read one shipped skill by slug.", { slug: S }, ["slug"]),
@@ -78,6 +79,7 @@
     wiki_search: 1, fetch_page: 1, weather: 1, now: 1, calc: 1, champion: 1, hash_text: 1,
     skill_list: 1, skill_read: 1, hn_search: 1, arxiv_search: 1, github_search: 1, wayback: 1,
     geolocate: 1, clipboard_write: 1, web_search: 1, http_json: 1, lattice_handshake: 1, continuity_seed: 1, whoami: 1,
+    image_generate: 1,
     world_pulse: 1,
   };
 
@@ -531,6 +533,16 @@
       if (!confirm("Allow this portal to read your clipboard?")) return { ok: false, error: "denied" };
       const t = await navigator.clipboard.readText();
       return { ok: true, text: String(t).slice(0, 4000) };
+    }
+    if (name === "image_generate") {
+      // ONE owner: the same function the Image generation suite at the bottom of the page calls, so the
+      // agent cannot claim a picture the page did not make. Bytes are returned once for display; the
+      // chat loop keeps them out of the message history.
+      if (typeof g.lygoImageGenerate !== "function") return { ok: false, error: "no_image_suite" };
+      const r = await g.lygoImageGenerate(String(args.prompt || ""), args.size);
+      if (!r || !r.ok) return r || { ok: false, error: "image_failed" };
+      return { ok: true, prompt: r.prompt, route: r.route, model: r.model, seconds: r.seconds,
+               bytes: r.bytes, image: r.image, note: "the picture is displayed to the human in this chat" };
     }
     return { ok: false, error: "unknown_tool", name: name };
   }

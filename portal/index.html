@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260920a">
+<link rel="stylesheet" href="style.css?v=20260924a">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
@@ -148,7 +148,7 @@
     <label class="chk hide-public" id="full-wrap"><input type="checkbox" id="full"> Full LYGO limbs</label>
   </div>
   <p class="models-bar"><span id="models-status" class="models-status">models — the list is read from your key, not a hard-coded table</span><button type="button" id="models-refresh" title="Re-read the model list from this provider">↻ models</button><input id="model-filter" type="search" placeholder="filter models…" autocomplete="off" aria-label="Filter models" hidden></p>
-  <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
+  <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="#image-suite">Image suite</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
 </header>
 <section id="world" class="world" aria-label="World time">
   <div class="world-now">
@@ -262,6 +262,49 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <span id="radioHint" class="hint"></span>
   </div>
 </footer>
+<section class="img-suite" id="image-suite" aria-labelledby="img-h">
+  <h2 id="img-h">Image generation</h2>
+  <p class="hint">Type a prompt, choose where the picture is made, and it appears right here in the module. Nothing is
+    uploaded to chatagent.ca: a picture is either made on a LYGO console you attach (the same SDXL engine the PC LOCAL
+    console uses) or by the key you pasted above — that key stays in this tab.</p>
+  <div class="img-grid">
+    <div class="img-controls">
+      <label class="img-lbl" for="img-prompt">What should the picture show?</label>
+      <textarea id="img-prompt" rows="4" spellcheck="false" placeholder="a lime green sports car on a wet neon street, cinematic lighting, ultra detailed, 8k photo"></textarea>
+      <div class="img-row">
+        <label class="img-lbl" for="img-route">Make it with</label>
+        <select id="img-route" aria-label="Picture route"></select>
+      </div>
+      <div class="img-row">
+        <label class="img-lbl" for="img-size">Size</label>
+        <select id="img-size" aria-label="Picture size">
+          <option value="1024">1024 × 1024 · best quality</option>
+          <option value="768">768 × 768 · faster</option>
+          <option value="512">512 × 512 · fastest</option>
+        </select>
+        <button type="button" id="img-go">Generate image</button>
+        <button type="button" id="img-check">Check routes</button>
+      </div>
+      <p class="hint" id="img-status">Loading routes…</p>
+      <details class="img-routes">
+        <summary>Which routes this page can really use, and what each one costs</summary>
+        <div id="img-routes-body"></div>
+      </details>
+      <p class="hint">A console draws one picture at a time (3 per 10 minutes per address): seconds on a free card, about
+        5 minutes on the CPU route the engine picks while the chat model holds the card. A key route bills your own
+        account, usually free or a few cents a picture.</p>
+    </div>
+    <figure class="img-stage">
+      <img id="img-out" alt="the picture this page generated" hidden>
+      <figcaption id="img-meta" class="hint">No picture yet.</figcaption>
+      <div class="img-actions">
+        <a id="img-dl" class="img-btn" hidden download="lygo-image.png">Download</a>
+        <button type="button" id="img-again" hidden>Again</button>
+        <button type="button" id="img-clear" hidden>Clear</button>
+      </div>
+    </figure>
+  </div>
+</section>
 <section class="legal how" id="disclaimer">
   <h2>Two products — do not mix them</h2>
   <ol>
@@ -326,8 +369,8 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
   </div>
 </div>
-<script src="tools.js?v=20260920a"></script>
-<script src="app.js?v=20260920d"></script>
+<script src="tools.js?v=20260924a"></script>
+<script src="app.js?v=20260924a"></script>
 <script src="radio.js"></script>
 <script src="donate.js"></script>
 </body>

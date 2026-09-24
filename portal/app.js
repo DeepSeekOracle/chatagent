@@ -288,7 +288,7 @@
       "You are a LYGO-aligned agent in the public API portal at https://chatagent.ca/portal/. " +
       "The human is the publisher. Assist; never replace them. Dual ledgers / Haven Star Chart = CANON. This chat = RESOURCE. " +
       "P0: no OS wipe, no secrets in notes, no fabricated receipts. " +
-      "You have real browser limbs (call them; do not describe calling): wiki_search, wiki_summary, web_search, fetch_page, web_fetch, http_json, weather, geocode, world_pulse, now, calc, hash_text, base64, uuid, json_pretty, champion, skill_list, skill_read, skill_enable, skill_disable, hn_search, arxiv_search, github_search, github_repo, wayback, clawhub_search, skillhub_list, hf_search, npm_search, pypi_search, so_search, define, currency, crypto_price, quake, eonet, iss, book_search, pubmed, lattice_handshake, site_card, whoami, kernel_status, soul_read, identity_read, memory_read, remember, memory_recall, notepad_read, notepad_write, todo_add, todo_list, p0_gate, geolocate (asks permission), clipboard_write/read (asks permission). Skills are already on this page — toggle on/off. Never tell the human to install or download a skill for this portal. " +
+      "You have real browser limbs (call them; do not describe calling): wiki_search, wiki_summary, web_search, fetch_page, web_fetch, http_json, weather, geocode, world_pulse, now, calc, hash_text, base64, uuid, json_pretty, champion, skill_list, skill_read, skill_enable, skill_disable, hn_search, arxiv_search, github_search, github_repo, wayback, clawhub_search, skillhub_list, hf_search, npm_search, pypi_search, so_search, define, currency, crypto_price, quake, eonet, iss, book_search, pubmed, lattice_handshake, site_card, whoami, kernel_status, soul_read, identity_read, memory_read, remember, memory_recall, notepad_read, notepad_write, todo_add, todo_list, p0_gate, geolocate (asks permission), clipboard_write/read (asks permission), image_generate (make a picture from a prompt - the picture is SHOWN to the human in this chat; it needs a picture route, which the Image generation suite at the bottom of this page names honestly). Skills are already on this page — toggle on/off. Never tell the human to install or download a skill for this portal. " +
       "If they want disk/skills/local GGUF, send them to https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel and https://chatagent.ca/lygo-llm-console.html — this page is API-only. " +
       "Never invent github.com/user/repo. Real org https://github.com/DeepSeekOracle · HF https://huggingface.co/DeepSeekOracle.";
     if (invoked) s += " Champion lens: " + invoked + ". Observed / Inferred / Unknown.";
@@ -919,7 +919,12 @@
             let args = {};
             try { args = typeof fn.arguments === "string" ? JSON.parse(fn.arguments) : fn.arguments || {}; } catch (_) {}
             const result = await runTool(fn.name, args);
-            messages.push({ role: "tool", tool_call_id: tc.id || String(i), content: JSON.stringify(result) });
+            if (result && result.image) showAgentImage(result);
+            // The picture itself never enters the message history: 2.8 MB of base64 re-sent on every
+            // turn is a provider bill, not a feature. The model is told it was shown instead.
+            const wire = Object.assign({}, result);
+            if (wire.image) { delete wire.image; wire.shown_to_human = true; }
+            messages.push({ role: "tool", tool_call_id: tc.id || String(i), content: JSON.stringify(wire) });
           }
           continue;
         }
@@ -960,6 +965,480 @@
   };
 
   bubble("assistant", stewardHowTo("welcome"));
+
+  // ---- Image generation suite ----------------------------------------------------------------
+  // ONE owner for "make a picture": the module at the bottom of the page and the agent's
+  // image_generate limb both call lygoImageGenerate() below, so a picture the visitor asks for and a
+  // picture the agent asks for come from the same routes with the same honest metadata.
+  //
+  // MEASURED 2026-09-23 from https://chatagent.ca with an OPTIONS preflight (asking a server what it
+  // will allow a browser costs no key):
+  //   BROWSER-OK : gemini (generateContent), openrouter, siliconflow, novita, fireworks, huggingface
+  //   NO CORS    : xai, openai, deepinfra, hyperbolic, groq (403) - a web page cannot call them at all
+  // The console route is what makes the PC console's OWN pictures (SDXL-Turbo through the kit's picture
+  // limb): POST /api/image starts a job, this page polls it, the bytes come back from /api/image?file=…
+  // MEASURED: 12.5 s on a free card, 272-300 s on the CPU route the limb picks while the chat model
+  // holds the card - so the clock is shown instead of a spinner that looks hung.
+  const IMG_PROVIDER = {
+    gemini: {
+      label: "Google Gemini image", kind: "gemini", model: "gemini-2.5-flash-image",
+      url: "https://generativelanguage.googleapis.com/v1beta/models/",
+      note: "free tier — aistudio.google.com/apikey",
+    },
+    openrouter: {
+      label: "OpenRouter image model", kind: "openrouter", model: "google/gemini-2.5-flash-image-preview",
+      url: "https://openrouter.ai/api/v1/", note: "paid, a few cents a picture",
+    },
+    huggingface: {
+      label: "Hugging Face router (FLUX.1-schnell)", kind: "hf", model: "black-forest-labs/FLUX.1-schnell",
+      url: "https://router.huggingface.co/hf-inference/models/", note: "your HF token; free tier is rate-limited",
+    },
+    siliconflow: {
+      label: "SiliconFlow (Kolors)", kind: "openai-images", model: "Kwai-Kolors/Kolors",
+      url: "https://api.siliconflow.cn/v1/images/generations", note: "cheap",
+    },
+    fireworks: {
+      label: "Fireworks (FLUX schnell)", kind: "openai-images",
+      model: "accounts/fireworks/models/flux-1-schnell",
+      url: "https://api.fireworks.ai/inference/v1/image_generation/accounts/fireworks/models/flux-1-schnell",
+      note: "cheap",
+    },
+    novita: {
+      label: "Novita (SDXL)", kind: "novita", model: "sd_xl_base_1.0.safetensors",
+      url: "https://api.novita.ai/v3/async/", note: "cheap",
+    },
+  };
+  // Why a vendor that HAS pictures is still not on the list: the browser is the limit, not the key.
+  const IMG_NO_BROWSER = {
+    xai: "xAI has an image model (grok-2-image) but sends no CORS header — a web page cannot call it.",
+    openai: "OpenAI's images API sends no CORS header to this page — use the console route or Gemini.",
+    deepinfra: "DeepInfra hosts FLUX but sends no CORS header — a web page cannot call it.",
+    hyperbolic: "Hyperbolic hosts FLUX but sends no CORS header — a web page cannot call it.",
+    together: "Together hosts FLUX but its API sends no CORS header, so even chat is blocked here.",
+    anthropic: "Anthropic has no image generation API.",
+    groq: "Groq has no image generation API.",
+    mistral: "Mistral has no image generation API.",
+    deepseek: "DeepSeek has no image generation API.",
+    cerebras: "Cerebras has no image generation API.",
+    cohere: "Cohere has no image generation API.",
+    perplexity: "Perplexity has no image generation API.",
+    llm7: "LLM7 has no image generation API.",
+    custom: "a custom chat URL is not an image endpoint — point it at an OpenAI-compatible images route and use it as a chat provider.",
+  };
+  const IMG = { routes: null, busy: false, last: null };
+
+  function imgEl(id) { return document.getElementById(id); }
+  function imgSleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function imgStatus(t, kind) {
+    const el = imgEl("img-status");
+    if (!el) return;
+    el.textContent = t;
+    el.className = "hint" + (kind ? " img-" + kind : "");
+  }
+  function imgKey() { return tokenEl ? String(tokenEl.value || "").trim() : ""; }
+
+  function imgConsoleAttached() {
+    const base = consoleBase();
+    return !!(base && base !== location.origin) || !!(IMG.routes && IMG.routes.console && IMG.routes.console.ok);
+  }
+
+  function imgRouteRows() {
+    const rows = [];
+    const base = consoleBase();
+    const health = IMG.routes && IMG.routes.console;
+    rows.push({
+      id: "console",
+      label: "Your LYGO console (this machine's own picture engine)",
+      ready: !!(health && health.ok && (health.image || {}).ready),
+      keyed: true,
+      note: health && health.ok
+        ? "attached at " + base + (health.image && health.image.engine ? " · " + health.image.engine : "") +
+          (health.image && health.image.route ? " · route " + health.image.route : "")
+        : (!base || base === location.origin
+            ? "no console attached — open this page with ?console=https://your-gateway (PC LOCAL default: http://127.0.0.1:9642)"
+            : "no answer from " + base),
+      cost: "free (your machine) · one at a time · 3 per 10 min",
+      verified: !!(health && health.ok),
+    });
+    Object.keys(IMG_PROVIDER).forEach(function (pid) {
+      const p = IMG_PROVIDER[pid];
+      const probe = IMG.routes && IMG.routes.providers && IMG.routes.providers[pid];
+      rows.push({
+        id: pid, label: p.label, ready: !!(probe && probe.ok), keyed: !!imgKey(),
+        note: (probe ? (probe.ok ? "browser can call it" : "blocked: " + (probe.why || "no CORS header")) : "not checked yet") +
+              " · " + p.note,
+        cost: "your key, your account",
+        verified: !!(probe && probe.ok && probe.used),
+      });
+    });
+    Object.keys(IMG_NO_BROWSER).forEach(function (pid) {
+      rows.push({ id: "no:" + pid, label: (PROVIDERS[pid] ? PROVIDERS[pid].label : pid), ready: false, keyed: false,
+                  note: IMG_NO_BROWSER[pid], cost: "not available to a web page", verified: false });
+    });
+    return rows;
+  }
+
+  function renderImgRoutes() {
+    const box = imgEl("img-routes-body");
+    const sel = imgEl("img-route");
+    const rows = imgRouteRows();
+    if (sel) {
+      const keep = sel.value;
+      sel.innerHTML = "";
+      rows.filter(function (r) { return r.id.indexOf("no:") !== 0; }).forEach(function (r) {
+        const o = document.createElement("option");
+        o.value = r.id;
+        o.textContent = r.label + (r.ready ? (r.id === "console" ? " — ready" : " — browser-callable") : " — not available yet");
+        sel.appendChild(o);
+      });
+      if (keep) sel.value = keep;
+      if (!sel.value && sel.options.length) sel.value = sel.options[0].value;
+    }
+    if (box) {
+      box.innerHTML = "";
+      rows.forEach(function (r) {
+        const row = document.createElement("div");
+        row.className = "img-route-row " + (r.ready ? "img-ok" : "img-no");
+        const name = document.createElement("b");
+        name.textContent = r.label;
+        const why = document.createElement("span");
+        why.className = "hint";
+        why.textContent = (r.ready ? "ready · " : "not available · ") + r.note + " · " + r.cost +
+          (r.verified ? " · verified here" : "");
+        row.appendChild(name);
+        row.appendChild(why);
+        box.appendChild(row);
+      });
+    }
+  }
+
+  async function imgCheckRoutes(deep) {
+    // Live, from THIS page's origin: the console's own /health, then one unauthenticated call to each
+    // image endpoint. A readable answer of any status means a browser may call it; "Failed to fetch"
+    // means the server sent no CORS header, which no key can fix.
+    imgStatus("checking the routes from this page…");
+    const out = { console: { ok: false }, providers: {} };
+    const base = consoleBase();
+    try {
+      const r = await fetch(base + "/health", { headers: { Accept: "application/json" } });
+      const j = await r.json();
+      out.console = { ok: true, base: base, image: j.image || null, model: j.model || "" };
+    } catch (e) {
+      out.console = { ok: false, base: base, why: base === location.origin
+        ? "this page is not being served by a console (add ?console=https://your-gateway)"
+        : String(e && e.message ? e.message : e) };
+    }
+    const ids = Object.keys(IMG_PROVIDER);
+    for (let i = 0; i < ids.length; i++) {
+      const pid = ids[i];
+      const p = IMG_PROVIDER[pid];
+      const url = p.kind === "gemini" ? p.url + p.model + ":generateContent"
+        : p.kind === "novita" ? p.url + "txt2img" : p.url;
+      if (!deep && pid === "novita") { out.providers[pid] = { ok: false, why: "not probed" }; continue; }
+      try {
+        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ prompt: "route check", inputs: "route check" }) });
+        out.providers[pid] = { ok: true, status: r.status, acao: r.headers.get("access-control-allow-origin") || "" };
+      } catch (e) {
+        out.providers[pid] = { ok: false, why: "no CORS header (Failed to fetch from a web page)" };
+      }
+    }
+    IMG.routes = out;
+    renderImgRoutes();
+    const okN = Object.keys(out.providers).filter(function (k) { return out.providers[k].ok; }).length;
+    imgStatus("routes checked: console " + (out.console.ok ? "answered" : "not attached") +
+              " · " + okN + " key route(s) callable from a browser" + (imgKey() ? " · a key is in the box" : " · no key pasted yet"));
+    return out;
+  }
+
+  function imgProviderError(pid, j, status) {
+    const e = (j && j.error) || {};
+    const m = (typeof e === "string" ? e : e.message || e.type || "") || (j && (j.message || j.detail || j.reason)) || "";
+    let hint = String(m || ("HTTP " + status)).slice(0, 300);
+    if (status === 401 || status === 403) hint += " — that key was refused for image generation.";
+    if (status === 404) hint += " — this provider has no image model by that id; check the model name.";
+    if (status === 429) hint += " — rate limited by the provider; try again in a minute.";
+    return { ok: false, error: "provider_" + status, hint: hint, route: pid };
+  }
+
+  async function imgBlobToDataUrl(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("HTTP " + r.status + " fetching the picture");
+    const blob = await r.blob();
+    return await new Promise(function (res, rej) {
+      const fr = new FileReader();
+      fr.onload = function () { res(fr.result); };
+      fr.onerror = function () { rej(new Error("could not read the picture bytes")); };
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  async function imgViaConsole(prompt, size) {
+    const base = consoleBase();
+    const post = await fetch(base + "/api/image", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: prompt, size: Number(size) || 0 }),
+    });
+    const started = await post.json().catch(function () { return {}; });
+    if (!post.ok || !started.job) {
+      return { ok: false, error: started.error || ("HTTP " + post.status),
+               hint: started.hint || (started.image && started.image.enabled === false
+                 ? "the operator turned the public picture route off (LYGO_PUBLIC_IMAGE=0)"
+                 : "no console answered at " + base + " — attach one with ?console=https://your-gateway") };
+    }
+    const cpu = started.route === "cpu";
+    imgStatus("the console is drawing… 0s" + (cpu ? " — the CPU route takes about 5 minutes, leave the tab open" : " — the card route takes seconds to a minute"));
+    const deadline = Date.now() + 20 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await imgSleep(2000);
+      let row = {};
+      try {
+        const r = await fetch(base + "/api/image?job=" + encodeURIComponent(started.job));
+        row = await r.json();
+      } catch (e) {
+        return { ok: false, error: "poll_failed", hint: String(e && e.message ? e.message : e) };
+      }
+      if (!row.status || row.status === "running") {
+        imgStatus("the console is drawing… " + (row.elapsed || 0) + "s" + (cpu ? " (CPU route)" : ""));
+        continue;
+      }
+      if (row.status === "failed") {
+        return { ok: false, error: row.error || "image_failed", hint: row.hint || "", seconds: row.seconds,
+                 route: "console · " + (row.route || "?"), model: row.engine || "" };
+      }
+      const dataUrl = await imgBlobToDataUrl(base + row.url);
+      return { ok: true, image: dataUrl, route: "console" + (row.route ? " · " + row.route : ""),
+               model: row.engine || "sd-cli", bytes: row.bytes, seconds: row.seconds, prompt: prompt,
+               width: row.drawn_w || 0, height: row.drawn_h || 0 };
+    }
+    return { ok: false, error: "timeout", hint: "the console was still drawing after 20 minutes" };
+  }
+
+  async function imgViaProvider(pid, prompt, size) {
+    const p = IMG_PROVIDER[pid];
+    if (!p) return { ok: false, error: "no_route", hint: IMG_NO_BROWSER[pid] || ("no picture route for " + pid) };
+    const key = imgKey();
+    if (!key) return { ok: false, error: "no_key",
+                       hint: "paste that provider's key in the Connect box at the top first — it stays in this tab" };
+    const px = String(size || "1024");
+    if (p.kind === "gemini") {
+      const url = p.url + encodeURIComponent(p.model) + ":generateContent?key=" + encodeURIComponent(key);
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+      const j = await r.json().catch(function () { return {}; });
+      if (!r.ok) return imgProviderError(pid, j, r.status);
+      const parts = ((((j.candidates || [])[0] || {}).content || {}).parts) || [];
+      for (let i = 0; i < parts.length; i++) {
+        const inl = parts[i].inlineData || parts[i].inline_data;
+        if (inl && inl.data) {
+          return { ok: true, image: "data:" + (inl.mimeType || inl.mime_type || "image/png") + ";base64," + inl.data,
+                   route: pid, model: p.model, prompt: prompt };
+        }
+      }
+      return { ok: false, error: "no_image_in_answer", route: pid,
+               hint: "the model answered without a picture — a safety filter or a text-only model id can do that" };
+    }
+    if (p.kind === "openrouter") {
+      const r = await fetch(p.url + "chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + key,
+                   "HTTP-Referer": "https://chatagent.ca/portal/", "X-Title": "LYGO API Portal" },
+        body: JSON.stringify({ model: p.model, modalities: ["image", "text"],
+                               messages: [{ role: "user", content: prompt }] }),
+      });
+      const j = await r.json().catch(function () { return {}; });
+      if (!r.ok) return imgProviderError(pid, j, r.status);
+      const msg = (((j.choices || [])[0] || {}).message) || {};
+      const imgs = msg.images || [];
+      if (imgs.length && imgs[0].image_url && imgs[0].image_url.url) {
+        return { ok: true, image: imgs[0].image_url.url, route: pid, model: p.model, prompt: prompt };
+      }
+      return { ok: false, error: "no_image_in_answer", route: pid,
+               hint: "that model answered text only — pick an image model id on OpenRouter" };
+    }
+    if (p.kind === "openai-images") {
+      const r = await fetch(p.url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+        body: JSON.stringify({ model: p.model, prompt: prompt, n: 1, size: px + "x" + px,
+                               response_format: "b64_json" }),
+      });
+      const j = await r.json().catch(function () { return {}; });
+      if (!r.ok) return imgProviderError(pid, j, r.status);
+      const d = ((j.data || [])[0]) || (j.images || [])[0] || {};
+      if (d.b64_json) return { ok: true, image: "data:image/png;base64," + d.b64_json, route: pid, model: p.model, prompt: prompt };
+      if (d.url || d.image_url) return { ok: true, image: d.url || d.image_url, route: pid, model: p.model, prompt: prompt };
+      return { ok: false, error: "no_image_in_answer", route: pid, hint: "the answer carried no picture data" };
+    }
+    if (p.kind === "novita") {
+      const r = await fetch(p.url + "txt2img", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+        body: JSON.stringify({ model_name: p.model, prompt: prompt, image_num: 1,
+                               width: Number(px), height: Number(px), steps: 25 }),
+      });
+      const j = await r.json().catch(function () { return {}; });
+      if (!r.ok) return imgProviderError(pid, j, r.status);
+      const task = j.task_id || "";
+      if (!task) return { ok: false, error: "no_task_id", route: pid, hint: JSON.stringify(j).slice(0, 200) };
+      for (let i = 0; i < 60; i++) {
+        await imgSleep(2000);
+        imgStatus("Novita is drawing… " + (i * 2) + "s");
+        const rr = await fetch(p.url + "txt2img/result?task_id=" + encodeURIComponent(task),
+                               { headers: { Authorization: "Bearer " + key } });
+        const rj = await rr.json().catch(function () { return {}; });
+        if (rj.task && rj.task.status === "TASK_STATUS_SUCCEED") {
+          const im = ((rj.images || [])[0]) || {};
+          if (im.image_url) return { ok: true, image: im.image_url, route: pid, model: p.model, prompt: prompt };
+        }
+        if (rj.task && /FAILED/.test(String(rj.task.status))) {
+          return { ok: false, error: "novita_failed", route: pid, hint: String(rj.task.reason || "task failed") };
+        }
+      }
+      return { ok: false, error: "timeout", route: pid, hint: "Novita did not finish the task in 2 minutes" };
+    }
+    if (p.kind === "hf") {
+      const r = await fetch(p.url + p.model, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+        body: JSON.stringify({ inputs: prompt }),
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(function () { return ""; });
+        return imgProviderError(pid, { error: t.slice(0, 200) }, r.status);
+      }
+      const blob = await r.blob();
+      const dataUrl = await new Promise(function (res, rej) {
+        const fr = new FileReader();
+        fr.onload = function () { res(fr.result); };
+        fr.onerror = function () { rej(new Error("could not read the picture bytes")); };
+        fr.readAsDataURL(blob);
+      });
+      return { ok: true, image: dataUrl, route: pid, model: p.model, bytes: blob.size, prompt: prompt };
+    }
+    return { ok: false, error: "no_route", route: pid, hint: IMG_NO_BROWSER[pid] || "no picture route here" };
+  }
+
+  // The one function the module UI and the agent limb share.
+  async function lygoImageGenerate(prompt, size, routeId) {
+    const p = String(prompt || "").trim().slice(0, 700);
+    if (!p) return { ok: false, error: "empty_prompt", hint: "say what the picture should show" };
+    const sel = imgEl("img-route");
+    const rid = String(routeId || (sel ? sel.value : "") || "console");
+    if (IMG.busy) return { ok: false, error: "busy", hint: "a picture is already being made on this page — one at a time" };
+    IMG.busy = true;
+    const t0 = Date.now();
+    try {
+      const r = (rid === "console") ? await imgViaConsole(p, size) : await imgViaProvider(rid, p, size);
+      if (!r.ok) {
+        imgStatus("no picture: " + (r.error || "failed") + (r.hint ? " — " + r.hint : ""), "err");
+        return r;
+      }
+      r.seconds = r.seconds || Math.round((Date.now() - t0) / 100) / 10;
+      IMG.last = r;
+      return r;
+    } catch (e) {
+      const m = String(e && e.message ? e.message : e);
+      const hint = /Failed to fetch|NetworkError|CORS/i.test(m)
+        ? "that call never left your browser: " + m + " — the vendor sends no CORS header, so no key can fix it here."
+        : m;
+      imgStatus("no picture: " + hint, "err");
+      return { ok: false, error: "call_failed", hint: hint, route: rid };
+    } finally {
+      IMG.busy = false;
+    }
+  }
+
+  function imgShow(r) {
+    const out = imgEl("img-out"), meta = imgEl("img-meta"), dl = imgEl("img-dl");
+    const again = imgEl("img-again"), clr = imgEl("img-clear");
+    if (!out) return;
+    out.src = r.image;
+    out.hidden = false;
+    if (dl) {
+      dl.href = r.image;
+      dl.download = "lygo-image-" + Date.now() + ".png";
+      dl.hidden = false;
+    }
+    if (again) again.hidden = false;
+    if (clr) clr.hidden = false;
+    if (meta) {
+      meta.textContent = [r.route || "?", r.model || "?",
+                          (r.width ? r.width + "×" + (r.height || r.width) + " px" : ""),
+                          (r.seconds ? r.seconds + "s" : ""),
+                          (r.bytes ? Math.round(r.bytes / 1024) + " KB" : ""),
+                          (r.prompt ? "“" + String(r.prompt).slice(0, 60) + "”" : "")].filter(Boolean).join(" · ");
+    }
+  }
+
+  async function imgGo() {
+    const pr = imgEl("img-prompt"), sz = imgEl("img-size"), sel = imgEl("img-route");
+    const prompt = pr ? String(pr.value || "").trim() : "";
+    if (!prompt) { imgStatus("type what the picture should show first.", "err"); return null; }
+    if (sel && sel.value.indexOf("no:") === 0) { imgStatus("that vendor cannot be called from a web page — pick another route.", "err"); return null; }
+    const go = imgEl("img-go");
+    if (go) { go.disabled = true; }
+    try {
+      const r = await lygoImageGenerate(prompt, sz ? sz.value : "1024", sel ? sel.value : "console");
+      if (r.ok) {
+        imgShow(r);
+        imgStatus("done in " + r.seconds + "s on " + (r.route || "?") + " — the picture is above; “Download” saves it.");
+      }
+      return r;
+    } finally {
+      if (go) { go.disabled = false; }
+    }
+  }
+
+  function imgClear() {
+    const out = imgEl("img-out"), meta = imgEl("img-meta"), dl = imgEl("img-dl");
+    const again = imgEl("img-again"), clr = imgEl("img-clear");
+    if (out) { out.hidden = true; out.removeAttribute("src"); }
+    if (dl) { dl.hidden = true; dl.removeAttribute("href"); }
+    if (again) again.hidden = true;
+    if (clr) clr.hidden = true;
+    if (meta) meta.textContent = "No picture yet.";
+    IMG.last = null;
+  }
+
+  // An agent-made picture is SHOWN, never narrated, and its bytes never enter the message history:
+  // 2.8 MB of base64 re-sent every turn is a provider bill, not a feature.
+  function showAgentImage(r) {
+    if (!log || !r || !r.image) return;
+    const fig = document.createElement("figure");
+    fig.className = "bubble assistant img-bubble";
+    const im = document.createElement("img");
+    im.src = r.image;
+    im.alt = r.prompt || "picture generated by the agent";
+    const cap = document.createElement("figcaption");
+    cap.textContent = "image_generate · " + (r.route || "?") + " · " + (r.model || "?") +
+                      (r.seconds ? " · " + r.seconds + "s" : "") + " — saved from here with Download in the image suite below";
+    fig.appendChild(im);
+    fig.appendChild(cap);
+    log.appendChild(fig);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  window.lygoImageGenerate = lygoImageGenerate;    // the agent limb calls exactly this
+  window.lygoImageSuite = { check: imgCheckRoutes, routes: imgRouteRows, generate: imgGo, show: imgShow };
+
+  (function imgWire() {
+    const go = imgEl("img-go"), check = imgEl("img-check"), again = imgEl("img-again"), clr = imgEl("img-clear");
+    const prompt = imgEl("img-prompt");
+    if (go) go.addEventListener("click", function () { imgGo(); });
+    if (check) check.addEventListener("click", function () { imgCheckRoutes(true); });
+    if (again) again.addEventListener("click", function () {
+      const pr = imgEl("img-prompt");
+      if (pr && pr.value) imgGo();
+    });
+    if (clr) clr.addEventListener("click", imgClear);
+    if (prompt) prompt.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); imgGo(); }
+    });
+    if (imgEl("img-go")) {
+      renderImgRoutes();
+      imgStatus("pick a prompt and a route, then Generate. Nothing has been generated yet.");
+      imgCheckRoutes(false).catch(function () { renderImgRoutes(); });
+    }
+  })();
 
   // ---- LYGO Function Modules ---------------------------------------------------------------
   // This page grows by module, it never forks. A console you attach (PC LOCAL or USB CLAW)
