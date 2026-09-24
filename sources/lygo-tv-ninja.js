@@ -238,8 +238,15 @@
         frame.setAttribute("allow", "autoplay; encrypted-media; fullscreen; picture-in-picture");
         frame.title = ch.title;
         const src = embed(ch);
-        frame.src = "about:blank";
-        window.requestAnimationFrame(function () { frame.src = src; });
+        if (frame.getAttribute("src") === src) {
+          // Same URL again (the sound toggle reloads the channel so the embed re-reads it). The blank
+          // hop is only needed for that case - and it must not depend on requestAnimationFrame, which a
+          // backgrounded tab never runs, leaving the screen stuck blank on the channel just asked for.
+          frame.src = "about:blank";
+          window.setTimeout(function () { frame.src = src; }, 0);
+        } else {
+          frame.src = src;
+        }
         return;
       }
       playHls(ch.url);
