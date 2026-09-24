@@ -80,6 +80,20 @@
     s = String(s || "").replace(/\s+/g, " ").trim();
     return s ? s.slice(0, 240) : "http " + status;
   }
+  // What the vendor actually said. The chat path used to read the answer with r.json().catch(() => ({})):
+  // a 400 whose body is not the JSON shape we expect (an HTML page from a proxy, a plain-text reason, a
+  // field-level complaint under a different key) became an empty object, and the visitor was shown the
+  // literal string "http 400" - which is exactly what happened at Google Gemini on 2026-09-24. The body
+  // is now kept as text and quoted when nothing structured is there.
+  function vendorMessage(j, raw, status) {
+    const e = j && j.error;
+    const m = (e && (typeof e === "string" ? e : (e.message || e))) || (j && (j.message || j.detail || j.reason)) || "";
+    const s = (typeof m === "string" ? m : JSON.stringify(m || "")).replace(/\s+/g, " ").trim();
+    if (s) return s.slice(0, 400);
+    const t = String(raw || "").replace(/\s+/g, " ").trim();
+    return t ? "the vendor answered body: " + t.slice(0, 300) : "http " + status;
+  }
+
   function hostOf(url) {
     try { return new URL(url).host; } catch (_) { return String(url || ""); }
   }
@@ -536,21 +550,39 @@
     } else {
       payload = { model: model, messages: messages, max_tokens: 1024, stream: false, tools: AGENT_TOOLS };
     }
-    let r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
-    let j = await r.json().catch(function () { return {}; });
-    if (!r.ok && payload.tools && (r.status === 400 || r.status === 404 || r.status === 422) && AGENT_TOOLS_CORE.length && payload.tools.length > AGENT_TOOLS_CORE.length) {
+    async function attempt(body) {                  // one POST; the answer is kept as text, parsed if it can be
+      const rr = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(body) });
+      const raw = await rr.text();
+      let jj = null;
+      try { jj = JSON.parse(raw); } catch (_) {}
+      return { r: rr, j: jj || {}, raw: raw };
+    }
+    const retryable = { 400: 1, 404: 1, 422: 1 };
+    let out = await attempt(payload);
+    if (!out.r.ok && retryable[out.r.status] && payload.tools && AGENT_TOOLS_CORE.length && payload.tools.length > AGENT_TOOLS_CORE.length) {
       payload.tools = AGENT_TOOLS_CORE;
-      r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
-      j = await r.json().catch(function () { return {}; });
+      out = await attempt(payload);
     }
-    if (!r.ok && payload.tools && (r.status === 400 || r.status === 404 || r.status === 422)) {
+    if (!out.r.ok && retryable[out.r.status] && payload.tools) {
       delete payload.tools;
-      r = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(payload) });
-      j = await r.json().catch(function () { return {}; });
+      out = await attempt(payload);
     }
+    // Google's OpenAI-compatible endpoint is where this bites: a body it does not expect comes back 400
+    // naming the field it will not take, and that field has been max_tokens. Try the newer name, then try
+    // with no cap at all, before telling the visitor anything - and if it still fails, quote the vendor.
+    if (!out.r.ok && out.r.status === 400 && ("max_tokens" in payload)) {
+      delete payload.max_tokens;
+      payload.max_completion_tokens = 1024;
+      out = await attempt(payload);
+    }
+    if (!out.r.ok && out.r.status === 400 && ("max_completion_tokens" in payload)) {
+      delete payload.max_completion_tokens;
+      out = await attempt(payload);
+    }
+    let r = out.r;
+    let j = out.j;
     if (!r.ok) {
-      const err = (j.error && (j.error.message || JSON.stringify(j.error))) || j.detail || ("http " + r.status);
-      const msg = typeof err === "string" ? err : JSON.stringify(err);
+      const msg = vendorMessage(j, out.raw, r.status);
       if (/does not exist|do not have access|model_not_found|invalid_model|not a valid model|unknown model|no such model/i.test(msg)) {
         const live = await refreshModels({ note: "model not on this key — list reloaded" });
         if (live.model && live.model !== model) {
