@@ -69,10 +69,13 @@
   file to fetch.</p>
 
   <h3>1. The console</h3>
-  <p><a href="/lygo-llm-console.html">LYGO LLM Console 1.3.1</a> — the PC installer, or the FULL set that
-  already carries the chat weights. Builds and hashes are listed on the
+  <p><a href="/lygo-llm-console.html">LYGO LLM Console 1.3.2</a> — the PC installer, or the <b>FULL set</b>
+  that carries the chat weights, the picture engine <em>and</em> the SD 1.5 checkpoint inside, so pictures
+  work the moment it finishes installing (nothing to fetch; the one download is optional and faster).
+  The stick build (USB CLAW) carries the picture engine too, and its ALL-IN-ONE variant the checkpoint as
+  well. Builds and hashes are listed on the
   <a href="/lygoskillhub.html#catalog">SkillHub catalog</a> and hosted on
-  <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds">our Hugging Face vault</a>.</p>
+  <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/tree/console-v1.3.2">our Hugging Face vault</a>.</p>
 
   <h3>2. The image engine (12 MB, CPU build, no CUDA, no admin)</h3>
   <pre>LYGO_IMAGE_ENGINE_SETUP.exe
@@ -107,9 +110,12 @@ powershell -ExecutionPolicy Bypass -File get_model.ps1 -Model sd15 # SD 1.5, 4.2
   <h2>What it costs, measured — not estimated</h2>
   <table>
     <tr><th>engine</th><th>512×512</th><th>1024×1024</th><th>notes</th></tr>
-    <tr><td>CPU build (what the add-on ships)</td><td>~55 s</td><td>272–300 s</td>
+    <tr><td>CPU build, distilled checkpoint (SDXL Turbo, 4 steps)</td><td>~55 s</td><td>272–300 s</td>
         <td>this box, while the chat model held the 8 GB card</td></tr>
-    <tr><td>CUDA build (1.1 GB, not in the add-on)</td><td>~4 s</td><td>~12.5 s</td>
+    <tr><td>CPU build, SD 1.5 (20 steps)</td><td>~174 s</td><td>minutes</td>
+        <td>MEASURED 173.9 s at 512² — the checkpoint we may redistribute, so the one the all-in-one
+            installers carry; 20 steps is 5× Turbo's, and the clock follows the steps</td></tr>
+    <tr><td>CUDA build (1.1 GB, optional)</td><td>~4 s</td><td>~12.5 s</td>
         <td>card free; not required for the engine to work</td></tr>
     <tr><td>Key routes (Gemini / OpenRouter / SiliconFlow / Fireworks)</td><td colspan="2">the provider's clock</td>
         <td>no local compute at all; your key, your quota</td></tr>
