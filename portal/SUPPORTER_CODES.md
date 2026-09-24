@@ -31,6 +31,29 @@ browser tools work exactly the same with or without a code.
 | The module where the code is entered | `#supporter-suite` in `portal/index.html`, under the image suite — a console module, not an overlay. `⚿ Supporter` in the top nav, `⚿ Supporter code` under the composer, the door on the reminder card and the entrance all scroll to it |
 | The post that carries the code | <https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961> — linked from the entrance, the reminder card and the module's "Get this month's code" button |
 
+## The eight games carry the same codes
+
+Every game under `/games/` loads one shared gate (`games/lygo-gate.js` + `games/lygo-gate.css`,
+two lines in each game's `index.html`). It is the same system as the portal, deliberately:
+
+- a donation reminder **every ten minutes**, and none at all once a code is in;
+- a **Supporter access row at the bottom of the game's menu** — the same row, the same wording, the
+  same check. `fish-tank` mounts it in `#menu`, the other hand-written games in `#overlay`, and the
+  two compiled games (`lattice-swarm`, `eternal-lattice`) get it as a collapsible `⚿` tab at the
+  bottom of the screen, because their menus live inside their bundles;
+- **one unlock for the whole site**: the games and the portal share the localStorage key
+  `lygo_portal_supporter`, so a code entered anywhere quiets everywhere.
+
+The code list lives in **two** files, and the portal's is the source of truth. After any rotation:
+
+```
+python tools/sync_supporter_codes.py           # copies the portal table into the games gate
+python tools/sync_supporter_codes.py --check    # verify only; exits 1 when the two differ
+```
+
+Rotating without that command leaves the games on last month's code — the reminders would come back
+in every game while the portal stayed quiet.
+
 ## Rotating (once a month, about a minute)
 
 From the repo root, on the machine that has the repo:
