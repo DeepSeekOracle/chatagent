@@ -313,6 +313,29 @@ section.how ol, section.how ul { margin: 0.4rem 0 0.8rem 1.2rem; }
 .champions { display:flex; flex-wrap:wrap; gap:.28rem; }
 .champions button { font-size:.68rem; padding:.22rem .4rem; font-weight:500; }
 
+/* ---- LYGO TV (Ninja) at the top of the page: medium, centered ------------------------------- */
+/* The shared /assets/lygo-tv-ninja.css is 960px wide; the portal asks for the medium house size. */
+.lygo-tv-wrap.tv-med,
+.ad-slot.lygo-tv-wrap.tv-med {
+  width: min(640px, 100%);
+  max-width: 640px;
+  margin: 1rem auto 0.5rem;
+  padding: 0 0 0.8rem;
+}
+.lygo-tv-wrap.tv-med .lygo-tv-ninja { max-width: 640px; margin: 0 auto; }
+@media (min-width: 1100px) {
+  .lygo-tv-wrap.tv-med,
+  .ad-slot.lygo-tv-wrap.tv-med {
+    width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+@media (max-width: 700px) {
+  .lygo-tv-wrap.tv-med,
+  .ad-slot.lygo-tv-wrap.tv-med { width: 100%; max-width: 100%; margin: 0.7rem 0 0.4rem; padding: 0 0 0.6rem; }
+}
+
 /* ---- Image generation suite (bottom of the page) -------------------------------------------- */
 .img-suite {
   padding: 1.1rem 1.1rem 1.3rem;

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
@@ -36,7 +36,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260924a">
+<link rel="stylesheet" href="style.css?v=20260924b">
+<link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
+<script src="/assets/hls.min.js" defer></script>
+<script src="/assets/lygo-tv-ninja.js?v=5" defer></script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
@@ -150,6 +153,9 @@
   <p class="models-bar"><span id="models-status" class="models-status">models — the list is read from your key, not a hard-coded table</span><button type="button" id="models-refresh" title="Re-read the model list from this provider">↻ models</button><input id="model-filter" type="search" placeholder="filter models…" autocomplete="off" aria-label="Filter models" hidden></p>
   <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="#image-suite">Image suite</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
 </header>
+<section class="lygo-tv-wrap tv-med" aria-label="LYGO TV — live channels">
+  <div data-lygo-tv></div>
+</section>
 <section id="world" class="world" aria-label="World time">
   <div class="world-now">
     <div id="world-local" class="world-local">local —</div>
