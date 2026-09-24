@@ -1338,7 +1338,13 @@
     } catch (e) {
       const m = String(e && e.message ? e.message : e);
       const hint = /Failed to fetch|NetworkError|CORS/i.test(m)
-        ? "that call never left your browser: " + m + " — the vendor sends no CORS header, so no key can fix it here."
+        ? (rid === "console"
+            ? "your browser did not let this page reach your own machine: " + m +
+              " — for a public page calling 127.0.0.1 that is Chrome's Local Network Access rule " +
+              "(Private Network Access), not a vendor and not a key. Allow local network access for " +
+              "chatagent.ca, and make sure the console's PUBLIC_GATEWAY.bat is actually running " +
+              "(default port 9642). The page cannot tell the two apart from here — the browser hides it."
+            : "that call never left your browser: " + m + " — the vendor sends no CORS header, so no key can fix it here.")
         : m;
       imgStatus("no picture: " + hint, "err");
       return { ok: false, error: "call_failed", hint: hint, route: rid };
