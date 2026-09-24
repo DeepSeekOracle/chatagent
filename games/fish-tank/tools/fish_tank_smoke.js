@@ -371,7 +371,36 @@ must("the standard mode keeps its own species clock", js.indexOf(": b.cd) * 6000
 
 must("no log line promises a point in a run", js.indexOf('RPG() ? "A mark for the run." : "+" + g.pay + " pts."') >= 0 &&
   js.indexOf('RPG() ? " Nothing is bought in a run, so nothing comes back."') >= 0 &&
+  js.indexOf('(RPG() ? "" : " +" + gain)') >= 0 &&
+  js.indexOf('(RPG() ? ". A new line in the run." : ". +12")') >= 0 &&
+  js.indexOf('(RPG() ? " · frees the berth" : " · +" + Math.floor((cspec.cost || 0) / 2) + " pts")') >= 0 &&
   js.indexOf('["Wage", RPG() ? "free in a run"') >= 0);
+
+/* the duplicated fish buttons: a run has no points, so it gets one set of spawn buttons, and
+   the paid shelf is not the one that stays */
+must("a run gets the shelf instead of the paid row, never both", js.indexOf("shop.hidden = shelf;") >= 0 &&
+  js.indexOf('shopHead.textContent = shelf ? "The shelf" : "Bring a baby"') >= 0 &&
+  js.indexOf('shop.innerHTML = shelf ? "" : SPECIES.map(') >= 0 &&
+  js.indexOf('const anchor = document.getElementById("shop") || document.getElementById("crewShop");') >= 0 &&
+  js.indexOf('insertBefore(box, anchor);') >= 0 &&
+  html.indexOf('id="shopHead"') >= 0 && css.indexOf(".row[hidden] { display:none !important; }") >= 0);
+must("a run's marks carry no price tag and pay nothing", js.indexOf("if (!RPG()) state.points += g.pay;") >= 0 &&
+  js.indexOf("const pays = !RPG();") >= 0 &&
+  js.indexOf('(done || !pays ? "" : " <span class=\'lore\'>+" + g.pay + "</span>")') >= 0 &&
+  js.indexOf("if (!RPG()) state.points += 12;") >= 0 &&
+  js.indexOf("if (!RPG()) state.points = (state.points || 0) + back;") >= 0);
+must("a run's own rules stand in for the points Automatic would spend", js.indexOf("(RPG() || state.points >= 10)") >= 0 &&
+  js.indexOf("(RPG() || state.points >= 20)") >= 0 && js.indexOf("(RPG() || state.points >= 28)") >= 0 &&
+  js.indexOf("if (!RPG() && state.fish.length < goal && state.quality >= 50 && state.points >= cost)") >= 0 &&
+  js.indexOf("a run's purse is always empty") >= 0);
+must("the last shop talk leaves the run's copy, both ways", js.indexOf('swap("Buy one here, then pick it in the list above"') >= 0 &&
+  js.indexOf('"Nothing is bought in a run: take one and it starts work, then pick it in the list above"') >= 0 &&
+  js.indexOf("There is no shop in a run. Spawn from the shelf.") >= 0 &&
+  js.indexOf("The tank is empty. Spawn one from the shelf.") >= 0 &&
+  js.indexOf('state.log[0].replace(/Mode: [a-z]+\\.$/, "Mode: rpg.")') >= 0 &&
+  js.indexOf("the shelf holds two and no more") >= 0 && js.indexOf("The shelf holds two of these as well.") >= 0 &&
+  js.indexOf("That is points well spent") < 0 &&
+  html.indexOf('id="crewNote"') >= 0);
 
 must("an RPG run squeezes the food window into the hour", js.indexOf("rpgFoodScale: 1 / 36,") >= 0 &&
   js.indexOf("return vitals(f).food * HOUR * (RPG() ? LOOP.rpgFoodScale : 1);") >= 0 &&

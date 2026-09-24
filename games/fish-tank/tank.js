@@ -1327,25 +1327,29 @@
     state._autoAt = now;
     const soon = state.fish.some(function (f) { return foodLeft(f, now) < 3 * HOUR; });
     if ((soon || !state.fish.length) && !hand && !flakes.length) startHand("flakes");
-    if ((state.quality < 60 || state.algae > 45) && state.points >= 10) {
+    /* A run has no points to spend, so the run's own rules stand in: the water and the
+       cleaners are free, and the keeper never stocks the glass - the shelf is the keeper's
+       own pick and past it only a pair breeding adds anything. Gating on points here left
+       Automatic doing nothing at all in a run, because a run's purse is always empty. */
+    if ((state.quality < 60 || state.algae > 45) && (RPG() || state.points >= 10)) {
     if (!RPG()) state.points -= 10;
       state.algae = clamp(state.algae - 28, 0, 100);
       state.quality = clamp(state.quality + 24, 0, 100);
       log("Auto keeper changes some water.");
     }
     const crewN = (state.crew || []).length;
-    if (crewN < 2 && state.points >= 20 && state.algae > 25) {
+    if (crewN < 2 && (RPG() || state.points >= 20) && state.algae > 25) {
     if (!RPG()) state.points -= 20;
       state.crew.push(makeCrew("snail"));
       log("Auto keeper adds a nerite.");
-    } else if (crewN < 4 && state.points >= 28 && state.quality < 65) {
+    } else if (crewN < 4 && (RPG() || state.points >= 28) && state.quality < 65) {
       if (!RPG()) state.points -= 28;
       state.crew.push(makeCrew("cory"));
       log("Auto keeper adds a cory.");
     }
     const goal = (state.predators || []).length ? 16 : 12;
     const cost = price();
-    if (state.fish.length < goal && state.quality >= 50 && state.points >= cost) {
+    if (!RPG() && state.fish.length < goal && state.quality >= 50 && state.points >= cost) {
       let id = autoSpecies();
       if (!canAdd(id)) return;
       if (id === "octo" && hasOcto()) id = "dart";
@@ -2090,9 +2094,9 @@
       state.fish.push(fry);
       state.hatched = (state.hatched || 0) + 1;
       state.gen = Math.max(state.gen || 1, fry.gen);
-      state.points += 12;
+      if (!RPG()) state.points += 12;
       log("A fry hatches by the rockwork: " + fry.name + ", generation " + fry.gen + ", from " +
-        (fry.parentNames.join(" and ") || "the pair") + ". DNA " + fry.dna + ". +12");
+        (fry.parentNames.join(" and ") || "the pair") + ". DNA " + fry.dna + (RPG() ? ". A new line in the run." : ". +12"));
       addRipple(e.x, e.y);
       save();
     });
@@ -2212,7 +2216,7 @@
     GOALS.forEach(function (g) {
       if (state.goals[g.id] || !met[g.id]) return;
       state.goals[g.id] = now;
-      state.points += g.pay;
+      if (!RPG()) state.points += g.pay;
     log("First time — " + g.text + ". " + (RPG() ? "A mark for the run." : "+" + g.pay + " pts."));
       save();
     });
@@ -2299,9 +2303,10 @@
   function award(f, n, why) {
     const mood = moodOf(f, Date.now());
     const gain = Math.max(1, Math.round(n * (mood === "happy" ? 1.25 : mood === "sad" ? 0.5 : 1)));
-    state.points += gain;
+    if (!RPG()) state.points += gain;
     f.lastPlay = Date.now();
-    log(f.name + " " + why + " +" + gain);
+    /* a run pays in hours, not points, so its log says what the fish did and nothing more */
+    log(f.name + " " + why + (RPG() ? "" : " +" + gain));
   }
   function nearest(f) {
     let best = null, bd = 1e9;
@@ -3851,12 +3856,13 @@
     const cspec = crewOf(c.role) || {};
     const back = Math.floor((cspec.cost || 0) / 2);
     state.crew = (state.crew || []).filter(function (x) { return x.id !== id; });
-    state.points = (state.points || 0) + back;
+    /* a run has nothing to pay back with */
+    if (!RPG()) state.points = (state.points || 0) + back;
     if (selectedCrew === id) selectedCrew = null;
       log(c.name + " the " + (cspec.name || c.role) + " leaves the glass." +
         (RPG() ? " Nothing is bought in a run, so nothing comes back." : " Sent back to the shop. +" + back + " pts."));
     keeperNote(c.name + " has worked this glass for " + hours(ageOf(c, Date.now())) +
-      " hours. Half the price comes back and the berth is free again.");
+      " hours. " + (RPG() ? "The berth is free again." : "Half the price comes back and the berth is free again."));
     save();
     railSig = "";
     renderRail();
@@ -3895,16 +3901,14 @@
     if (!RPG() || !state) return;
     let box = document.getElementById("rpgPanel");
     if (!box) {
-      const anchor = document.getElementById("crewShop");
+      /* the run's shelf stands in the paid shelf's own slot, under the same heading: it is
+         the only way to add a fish in a run, so it belongs where the shop used to be */
+      const anchor = document.getElementById("shop") || document.getElementById("crewShop");
       if (!anchor || !anchor.parentNode) return;
-      /* sit above the Cleaners heading, not between it and the cleaner buttons: the run's shelf
-         is its own shelf and should not split someone else's section */
-      let head = anchor.previousElementSibling;
-      while (head && head.tagName !== "H2") head = head.previousElementSibling;
       box = document.createElement("div");
       box.id = "rpgPanel";
       box.className = "rpg-panel wgrid";
-      anchor.parentNode.insertBefore(box, head || anchor);
+      anchor.parentNode.insertBefore(box, anchor);
     }
     const run = state.run || {};
     const k = state.fish.length;
@@ -3970,6 +3974,8 @@
     else swap("No food for about an hour, and that fish dies.", "No food for about a day and a half, and that fish dies.");
     if (rpg) swap("A pellet adds a day to whoever reaches it first.", "A pellet fills whoever reaches it first for the hour.");
     else swap("A pellet fills whoever reaches it first for the hour.", "A pellet adds a day to whoever reaches it first.");
+    if (rpg) swap("Buy one here, then pick it in the list above", "Nothing is bought in a run: take one and it starts work, then pick it in the list above");
+    else swap("Nothing is bought in a run: take one and it starts work, then pick it in the list above", "Buy one here, then pick it in the list above");
     if (rpg) swap("The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.", "The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.");
     else swap("The keeper keeps them fed and tends the water, and does its best. No promises. Hunters still roll; you cannot stop them.", "The keeper picks the fish, feeds, and tends the water. Hunters still roll. You cannot stop them.");
     const how = document.getElementById("howLine");
@@ -3985,6 +3991,9 @@
     state.opts = state.opts || {};
     state.opts.mode = "rpg";
     state.points = 0;
+    /* the shell's welcome line announces a standard tank, because the run is only flagged
+       here: the run's own first line has to say what the tank actually is */
+    if (state.log && state.log[0]) state.log[0] = state.log[0].replace(/Mode: [a-z]+\.$/, "Mode: rpg.");
     if (!state.run) {
       state.run = { start: Date.now(), added: 0, lost: 0, seen: state.fish.length, collapsed: false, ended: 0 };
     }
@@ -4003,7 +4012,6 @@
     if (!RPG() || !state.run || state.run.collapsed) return;
     /* nothing can be bought, so nothing can be saved up */
     if (state.points) state.points = 0;
-    if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
     if (now - (state._rpgDrew || 0) > 1000) { state._rpgDrew = now; paintRpg(); }
     const n = state.fish.length;
     if (n > (state.run.seen || 0)) state.run.added += n - (state.run.seen || 0);
@@ -4193,7 +4201,8 @@
       railSig = sig;
       const box = document.getElementById("manageScroll");
       const keep = box ? box.scrollTop : 0;
-      list.innerHTML = fishHtml || (q ? "<p class='lore'>No fish matches that.</p>" : "<p class='lore'>The tank is empty. Buy a fish.</p>");
+      list.innerHTML = fishHtml || (q ? "<p class='lore'>No fish matches that.</p>"
+        : "<p class='lore'>" + (RPG() ? "The tank is empty. Spawn one from the shelf." : "The tank is empty. Buy a fish.") + "</p>");
       const crewList = document.getElementById("crewList");
       if (crewList) {
         crewList.innerHTML = crewHtml || (q && crewAll.length ? "<p class='lore'>No cleaner matches that.</p>" : "");
@@ -4220,14 +4229,21 @@
     const d = new Date();
     clock.textContent = themeOf(state.theme).name + " · " + phase() + " · " +
       d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    /* A run has no points and no shop, so it gets no paid shelf: the run's own shelf (two of
+       each kind, free) takes this slot instead. Leaving the paid row up put two sets of fish
+       buttons in the rail, the top set wearing prices nobody in a run can pay. */
     const shop = document.getElementById("shop");
+    const shopHead = document.getElementById("shopHead");
+    const shelf = RPG();
+    if (shopHead) shopHead.textContent = shelf ? "The shelf" : "Bring a baby";
     const cost = price();
-    shop.innerHTML = SPECIES.map(function (s) {
+    shop.innerHTML = shelf ? "" : SPECIES.map(function (s) {
       const taken = s.id === "octo" && hasOcto();
       return "<button type='button' class='btn' " + (taken ? "disabled " : "") + "data-buy='" + s.id + "'>" +
         esc(s.name) + (taken ? " · one already" : (" · " + cost)) +
         "<br><span class='lore'>" + esc(s.blurb) + "</span></button>";
     }).join("");
+    shop.hidden = shelf;
     const f = state.fish.filter(function (x) { return x.id === selected; })[0];
     const name = document.getElementById("fishName");
     if (document.activeElement !== name) {
@@ -4384,10 +4400,12 @@
     }
     const goalEl = document.getElementById("goals");
     if (goalEl) {
+      /* a run's marks are what it is measured on, so they carry no price tag either */
+      const pays = !RPG();
       goalEl.innerHTML = GOALS.map(function (g) {
         const done = state.goals && state.goals[g.id];
         return "<div class='goal" + (done ? " done" : "") + "'>" + (done ? "✓" : "·") + " " + esc(g.text) +
-          (done ? "" : " <span class='lore'>+" + g.pay + "</span>") + "</div>";
+          (done || !pays ? "" : " <span class='lore'>+" + g.pay + "</span>") + "</div>";
       }).join("");
     }
   }
@@ -4417,19 +4435,25 @@
         niche.textContent = "Cleaners";
         bio.textContent = (cspec.blurb || "") + " " + whatCrewIsDoing(c) +
           (c.role === "otto"
-            ? " Algae eaters are the last link in the chain: the shop sells two and no more, so the rest have to be bred."
+            ? (RPG()
+              ? " Algae eaters are the last link in the chain: the shelf holds two and no more, so the rest have to be bred."
+              : " Algae eaters are the last link in the chain: the shop sells two and no more, so the rest have to be bred.")
             : c.role === "snail"
-              ? " A nerite is an algae eater too, only slower, and it expels nothing. The shop never runs out of them."
+              ? (RPG()
+                ? " A nerite is an algae eater too, only slower, and it expels nothing. The shelf holds two of these as well."
+                : " A nerite is an algae eater too, only slower, and it expels nothing. The shop never runs out of them.")
               : "");
         pic.removeAttribute("src");
         pic.alt = "";
         const acts = document.getElementById("charActions");
         if (acts) {
-          acts.innerHTML = "<button type='button' class='btn' data-release='" + c.id + "'>Release · +" +
-            Math.floor((cspec.cost || 0) / 2) + " pts</button>";
+          /* nothing was paid for this one in a run, so nothing comes back: the button sells
+             the berth, not a refund */
+          acts.innerHTML = "<button type='button' class='btn' data-release='" + c.id + "'>Release" +
+            (RPG() ? " · frees the berth" : " · +" + Math.floor((cspec.cost || 0) / 2) + " pts") + "</button>";
         }
         stats.innerHTML = [
-          ["From", c.bought === false ? "bred in this tank" : "the shop"],
+          ["From", c.bought === false ? "bred in this tank" : (RPG() ? "the shelf" : "the shop")],
           ["On the job", hours(onJob) + " h"],
           ["Service left", Math.round(Math.max(0, CREW_LIFE - onJob) / DAY) + " days"],
           ["Berths taken", ((state.crew || []).length) + " / 8"],
@@ -4815,7 +4839,7 @@
       feed: ["Food in. Let them sort it out.", "A pinch in the water. Watch who gets there first."],
       buy: ["{name} is in the glass. A baby — the water will tell me if I got it right."],
       crew: ["{name} starts on the green. Good worker.", "New cleaner at work. That frees my hands."],
-      retire: ["{name} has done its month. That is points well spent."],
+      retire: ["{name} has done its month. A month of work, and the berth is free again."],
       egg: ["{n} eggs on the rockwork. Twenty minutes and we have fry.", "Eggs. That is the tank making decisions without me."],
       mono: ["One kind in the glass. Easy to run, and it shows every mistake."],
       few: ["Thin tank. I would still rather watch four than none."],
@@ -5184,6 +5208,9 @@
     const b = e.target.closest("[data-buy]");
     if (!b) return;
     const sp = b.getAttribute("data-buy");
+    /* a run has no shop, and the paid shelf is not even in the DOM there: a stale click
+       must not buy a fish behind the shelf's back */
+    if (RPG()) { log("There is no shop in a run. Spawn from the shelf."); return; }
     if (!canAdd(sp)) { log("No room in the glass for a " + specOf(sp).name + " yet. Space " + Math.round(fishLoad()) + " of " + loadCap() + "."); return; }
     if (sp === "octo" && hasOcto()) { log("One octopus already keeps this glass."); return; }
     const cost = price();
