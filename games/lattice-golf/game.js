@@ -3,10 +3,23 @@
   "use strict";
 
   const SAVE_KEY = "lygo-lattice-golf-v1";
-  const CUP = 1.2;
-  const GIMME = 2.0;
+  /* Putting model. The cup is a target, not a magnet: a rolling ball is only
+     captured when it is on line AND slow enough, the gimme is a real gimme, and
+     the green breaks one way. See simulateRoll() / shotModel(). */
+  const CUP = 0.55;
+  const GIMME = 1.1;
+  const LIP = 1.2;
   const CENTER = 140;
   const CHIP_FLOOR = 3;
+  /* Par doctrine. A hole is par when you take one club to each landing and two
+     putts, unless its yardage already sits inside the real-golf band for the
+     authored par — then the authored label stands (the endless generator authors
+     straight into those bands). The authored championship holes are 700+ yard
+     walks with four or five landings, so they score as par 6/7 rather than the
+     par 4 the card used to claim: a 751 yard par 4 is a par nobody can make. */
+  const PAR_MAX_YARDS = { 3: 250, 4: 480, 5: 700 };
+  const PAR_CEIL = 7;
+  const LANDING_MIN = 40;
   const CLUBS = [
     { id: "dr", name: "Driver", min: 220, max: 290 },
     { id: "3w", name: "3 Wood", min: 190, max: 250 },
@@ -213,7 +226,7 @@
         greenR: 10,
       }),
       H(3, "Marsh Pin", [{ x: 0, y: 0 }, { x: 248, y: 10 }], {
-        hint: "Forced carry 248. 4-iron / hybrid. Short is marsh. Long is marsh behind the pin.",
+        hint: "Forced carry 248. 3-wood or driver. Short is marsh. Long is marsh behind the pin.",
         water: [{ x: 22, y: -58, w: 200, h: 116 }],
         bunkers: [{ x: 238, y: 28, r: 10 }, { x: 258, y: -10, r: 9 }],
         greenR: 10,
@@ -349,10 +362,34 @@
     if (!ball) return { x: hole.pin.x, y: hole.pin.y };
     if (dist(ball, hole.pin) <= (hole.greenR || 12) + 8) return { x: hole.pin.x, y: hole.pin.y };
     const path = hole.path || [];
-    for (let i = 1; i < path.length; i++) {
+    /* Aim at the next waypoint AHEAD of the ball. The old test ("the first waypoint
+       more than 36 yd away") returned the tee-side elbow the moment the ball passed
+       it — so on every multi-landing hole the default shot line pointed back down
+       the fairway. Find the leg the ball is standing on first, then take the next
+       corner past it; past the last corner the pin is the aim. */
+    let leg = 0;
+    let best = Infinity;
+    for (let i = 0; i < path.length - 1; i++) {
+      const d = distToSeg(ball, path[i], path[i + 1]);
+      if (d < best - 1e-6) { best = d; leg = i; }
+    }
+    for (let i = leg + 1; i < path.length; i++) {
       if (dist(ball, path[i]) > 36) return { x: path[i].x, y: path[i].y };
     }
     return { x: hole.pin.x, y: hole.pin.y };
+  }
+  function landingCount(path) {
+    if (!path || path.length < 2) return 1;
+    let n = 0;
+    for (let i = 1; i < path.length; i++) if (dist(path[i - 1], path[i]) >= LANDING_MIN) n++;
+    return Math.max(1, n);
+  }
+  function parOf(hole) {
+    if (!hole) return 4;
+    const yards = (hole.path && hole.path.length > 1) ? pathLen(hole.path) : (hole.yards || 0);
+    const authored = hole.par || 4;
+    if (yards <= (PAR_MAX_YARDS[authored] || PAR_MAX_YARDS[4])) return authored;
+    return Math.min(PAR_CEIL, landingCount(hole.path) + 2);
   }
 
   function worldHole(h) {
@@ -529,8 +566,13 @@
         }
       }
     }
+    /* One green tilt per hole: a putt curves toward its low side. Seeded off the
+       hole, so the read is the same for the whole round and in a live match, and
+       reported by the caddie — a break you cannot read is just noise. */
+    const breakR = (150 + rng() * 350) * (rng() < 0.5 ? 1 : -1);
     return {
-      par: h.par,
+      par: parOf(h),
+      break: 1 / breakR,
       name: h.name || "",
       hint: h.hint || "",
       yards: pathLen(path),
@@ -562,13 +604,17 @@
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
   }
+  /* Flight test only — did the ball itself find the cup on the fly (or run over it)?
+     A putt never uses this: a putt rolls, and the roll owns its own, slower capture
+     in simulateRoll(), which is where weight finally matters. */
   function shotHolesOut(from, to, pin, putt, onGreen) {
     if (dist(to, pin) <= CUP) return true;
+    if (putt) return false;
     if (onGreen && dist(from, pin) <= GIMME) return true;
     const len = dist(from, to);
-    const shortGame = putt || onGreen || len < 28 || dist(from, pin) < 22;
+    const shortGame = onGreen || len < 28 || dist(from, pin) < 22;
     if (!shortGame) return false;
-    return distToSeg(pin, from, to) <= CUP * 0.95;
+    return distToSeg(pin, from, to) <= CUP;
   }
   function inRect(p, r) {
     if (!p || !r || r.w == null || r.h == null) return false;
@@ -649,9 +695,12 @@
   }
   function intendedCarry() {
     if (!G.club) return 0;
-    const markD = G.marker && G.ball ? dist(G.ball, G.marker) : 0;
-    const onG = G.hole && G.ball && lieAt(G.hole, G.ball) === "green";
-    if (G.club.putt || onG) return Math.min(G.club.max, Math.max(0.35, markD * G.power));
+    /* Every club reads the same way: power is a fraction of that club's full shot.
+       The putter used to measure itself off the marker distance instead, and since
+       the marker parks on the pin that handed the player the exact number on every
+       putt — the stroke had no weight to judge. The marker is the LINE now; the
+       putter's power is the roll, 0 to its full 40 yd, honoured on any lie. */
+    if (G.club.putt) return Math.max(0.35, G.club.max * G.power);
     const floor = Math.min(CHIP_FLOOR, G.club.max * 0.04);
     return floor + (G.club.max - floor) * G.power;
   }
@@ -705,12 +754,37 @@
     return { x: pts[pts.length - 1].x, y: pts[pts.length - 1].y };
   }
 
+  /* The speed whose roll stops exactly `want` yards along THIS line. Roll distance is
+     the area under the friction curve, so the speed is the sum of mu over the route:
+     a putt that leaves the fringe and crosses onto the green must be struck for the
+     surface it is going to sit on, not only for the one it starts on. Without this a
+     12 yd putt from the fringe ran 23 yd — the bar said one thing, the ball another. */
+  function rollSpeedFor(from, heading, want, hole, putt) {
+    if (!hole || !(want > 0)) return want;
+    /* Half-yard samples: a two-yard sample straddling the collar counts a yard of
+       fringe as green and leaves the putt a foot short. */
+    const n = Math.max(4, Math.min(80, Math.ceil(want * 2)));
+    const ds = want / n;
+    let v = 0;
+    const cx = Math.cos(heading);
+    const cy = Math.sin(heading);
+    for (let i = 0; i < n; i++) {
+      const p = { x: from.x + cx * (i + 0.5) * ds, y: from.y + cy * (i + 0.5) * ds };
+      let lie = lieAt(hole, p);
+      if (lie === "water" || lie === "trees" || lie === "oob") lie = "rough";
+      v += rollMu(lie, putt) * ds;
+    }
+    return v;
+  }
+
   function simulateRoll(start, heading, v0, hole, pin, putt) {
     const path = [{ x: start.x, y: start.y }];
     if (!hole || v0 < 0.25) return { rest: { x: start.x, y: start.y }, path: path, holed: false };
     let x = start.x, y = start.y;
     let v = v0;
     let steps = 0;
+    let hd = heading;
+    const bend = hole.break || 0;
     while (v > 0.12 && steps < 720) {
       steps += 1;
       const here = { x: x, y: y };
@@ -718,20 +792,16 @@
       if (lie === "trees") break;
       if (lie === "water") return { rest: here, path: path, holed: false, water: true };
       const mu = rollMu(lie, putt);
-      const ds = Math.min(0.42, v);
-      let nx = x + Math.cos(heading) * ds;
-      let ny = y + Math.sin(heading) * ds;
-      if (lie === "green") {
-        const dPin = dist({ x: nx, y: ny }, pin);
-        if (dPin < hole.greenR * 1.08) {
-          const pull = 0.07 * ds * (1 - dPin / Math.max(1, hole.greenR));
-          const a = ang({ x: nx, y: ny }, pin);
-          nx += Math.cos(a) * pull;
-          ny += Math.sin(a) * pull;
-        }
-      }
+      /* 0.35 not 0.42: a step coarser than the cup can hop straight over it, which
+         makes a dead-on putt miss at random. */
+      const ds = Math.min(0.35, v);
+      const nx = x + Math.cos(hd) * ds;
+      const ny = y + Math.sin(hd) * ds;
       const nxt = { x: nx, y: ny };
-      if (shotHolesOut(here, nxt, pin, true, lie === "green" || dist(nxt, pin) <= hole.greenR)) {
+      /* The cup holds a ball that is on line AND slow enough to sit: more than LIP
+         yards of roll left at the hole and it runs by. That lip-out is the whole
+         point of the putting model — weight, not just line. */
+      if (dist(nxt, pin) <= CUP && v <= LIP * mu) {
         path.push({ x: pin.x, y: pin.y });
         return { rest: { x: pin.x, y: pin.y }, path: path, holed: true };
       }
@@ -742,6 +812,9 @@
       x = nx;
       y = ny;
       path.push({ x: x, y: y });
+      /* The green tilts: a rolling ball curves toward the low side. Applied on the
+         green only, and reported by the caddie so the line can be read. */
+      if (lie === "green" && bend) hd += bend * ds;
       v -= mu * ds;
     }
     return { rest: { x: x, y: y }, path: path, holed: false };
@@ -784,33 +857,40 @@
     let rollYd = 0;
     let rollPath = [carry];
     let landLie = lieAt(G.hole, carry);
-    let holed = !blocked && shotHolesOut(from, carry, pin, G.club.putt, onG);
-    if (holed) {
-      dest = { x: pin.x, y: pin.y };
-      carry = dest;
-      rollPath = [from, dest];
-    } else if (G.club.putt) {
-      const heading = a2;
-      const sim = simulateRoll(from, heading, actual, G.hole, pin, true);
+    let holed = false;
+    if (G.club.putt) {
+      /* A putt is a roll, not a flight. It starts on the blade where the ball lies,
+         travels exactly the distance the power bar states — on any lie, because the
+         stated number is a distance and not a velocity to be quietly divided by the
+         friction of whatever the ball is sitting on — and the roll owns the cup. */
+      const v0 = rollSpeedFor(from, a2, actual, G.hole, true);
+      const sim = simulateRoll(from, a2, v0, G.hole, pin, true);
+      carry = from;
       dest = sim.rest;
+      landLie = lie;
       rollPath = sim.path;
       rollYd = dist(from, dest);
-      carry = from;
-      landLie = lie;
       if (sim.holed) {
         holed = true;
         dest = { x: pin.x, y: pin.y };
       }
-    } else if (!blocked && landLie !== "water") {
-      const v0 = actual * rollFracOf(G.club);
-      const heading = a2 + windCross * 0.12 / Math.max(10, actual);
-      const sim = simulateRoll(carry, heading, v0, G.hole, pin, false);
-      dest = sim.rest;
-      rollPath = sim.path;
-      rollYd = dist(carry, dest);
-      if (sim.holed) {
-        holed = true;
+    } else {
+      holed = !blocked && shotHolesOut(from, carry, pin, false, onG);
+      if (holed) {
         dest = { x: pin.x, y: pin.y };
+        carry = dest;
+        rollPath = [from, dest];
+      } else if (!blocked && landLie !== "water") {
+        const v0 = actual * rollFracOf(G.club);
+        const heading = a2 + windCross * 0.12 / Math.max(10, actual);
+        const sim = simulateRoll(carry, heading, v0, G.hole, pin, false);
+        dest = sim.rest;
+        rollPath = sim.path;
+        rollYd = dist(carry, dest);
+        if (sim.holed) {
+          holed = true;
+          dest = { x: pin.x, y: pin.y };
+        }
       }
     }
     return {
@@ -846,6 +926,33 @@
       ? (along >= 0 ? "tail" : "into")
       : (cross >= 0 ? "from left" : "from right");
     return G.wind.mph.toFixed(1) + " mph · " + dir;
+  }
+
+  /* The green read. A break the player cannot see or measure is just a lie, so the
+     caddie states it: how far a putt of this length curves, and how far the marker
+     line sits off the cup. Both are in yards, both are actionable. */
+  function puttRead() {
+    if (!G.hole || !G.ball || !G.hole.pin) return null;
+    const pin = G.hole.pin;
+    const d = dist(G.ball, pin);
+    if (d > 45 || d < 0.1) return null;
+    const bend = G.hole.break || 0;
+    /* Only the stretch of the putt that runs ON the green breaks: the collar does not
+       tilt. Reading the whole putt inflated the break on every fringe putt. */
+    const curved = Math.min(d, G.hole.greenR || d);
+    const brk = 0.5 * Math.abs(bend) * curved * curved;
+    const md = G.marker ? dist(G.ball, G.marker) : 0;
+    /* signed lateral offset of the marker from the ball→cup line, in the same
+       handedness the renderer draws (positive = right of the line, looking at the
+       cup, because the world's +y runs to the golfer's right). */
+    const line = md > 0.4 ? -Math.sin(ang(G.ball, G.marker) - ang(G.ball, pin)) * md : 0;
+    return {
+      brk: brk,
+      side: bend > 0 ? "right" : "left",
+      line: line,
+      flat: brk < 0.08,
+      lineTxt: Math.abs(line) < 0.06 ? "on the cup line" : (Math.abs(line).toFixed(1) + " yd " + (line > 0 ? "right" : "left") + " of the cup"),
+    };
   }
 
   function lieAt(hole, p) {
@@ -1321,10 +1428,20 @@
     draw();
   }
 
+  /* Arriving on the green hands you a putt already dialled to the pin. The skill on
+     the green is the read — line, break, weight — not hunting a percentage off the
+     old marker-distance rule. Nudge the bar down to lag, up to run at it. */
+  function dialPutt() {
+    if (!G.club || !G.club.putt || !G.hole || !G.ball) return;
+    const toPin = dist(G.ball, G.hole.pin);
+    G.power = Math.max(0.02, Math.min(1, toPin / G.club.max));
+  }
+
   function autoClub() {
     const d = dist(G.ball, G.marker);
     const onG = lieAt(G.hole, G.ball) === "green";
     G.club = pickClub(d, onG);
+    if (G.club.putt) dialPutt();
     paintClubs();
   }
 
@@ -1811,14 +1928,18 @@
     const pred = predictDest();
     const caddie = $("caddieHud");
     if (caddie) {
+      const putt = !!(G.club && G.club.putt);
+      const read = puttRead();
       caddie.innerHTML =
         "<p>Pin <b>" + d.toFixed(0) + " yd</b> · marker <b>" + md.toFixed(0) + " yd</b></p>" +
         "<p>Caddie: <b>" + rec.name + "</b> · lie " + lie + "</p>" +
-        "<p>Club " + intendedCarry().toFixed(0) + " yd" +
+        "<p>" + (putt ? "Roll " : "Club ") + intendedCarry().toFixed(0) + " yd" +
         (pred ? " · carry " + pred.actual.toFixed(0) + " yd" : "") +
         (pred && pred.landLie ? " · land " + pred.landLie : "") +
         (pred && pred.roll > 0.6 ? " · roll " + pred.roll.toFixed(0) + " yd" : "") +
         (pred && pred.blocked ? " · blocked" : "") + "</p>" +
+        (read ? "<p class='read'>" + (read.flat ? "Green: flat" : "Break <b>" + read.brk.toFixed(1) + " yd " + read.side + "</b>") +
+          " · " + read.lineTxt + "</p>" : "") +
         "<p>Mulligans <b>" + G.mulligans + "</b> · M to replay the hole</p>";
     }
     if ($("holeCard")) {
@@ -1857,7 +1978,7 @@
     const yd = intendedCarry();
     const putt = !!(G.club && G.club.putt);
     const minLab = putt ? "0 yd" : "chip";
-    const maxLab = putt ? "to marker" : (G.club.max + " yd full");
+    const maxLab = G.club.max + " yd full";
     const fill = pct + "%";
     if ($("powPct")) $("powPct").textContent = pct + "%";
     if ($("powYd")) $("powYd").textContent = yd.toFixed(0) + " yd";
@@ -1883,7 +2004,7 @@
     $("clubs").innerHTML = CLUBS.map(function (c) {
       const bar = c.putt ? 100 : Math.max(8, Math.round((c.max / top) * 100));
       return '<button type="button" class="club' + (c.id === G.club.id ? " on" : "") + '" data-id="' + c.id + '" style="--bar:' + bar + '%">' +
-        c.name + "<small>" + (c.putt ? "to marker" : ("chip–" + c.max + " yd")) + "</small></button>";
+        c.name + "<small>" + (c.putt ? ("0–" + c.max + " yd roll") : ("chip–" + c.max + " yd")) + "</small></button>";
     }).join("");
   }
 
@@ -2219,7 +2340,7 @@
     for (let i = 0; i < n; i++) {
       const src = G.holes[i] || {};
       const played = G.card[i];
-      const par = (played && played.par) || src.par || 4;
+      const par = (played && played.par) || parOf(src) || 4;
       rows.push({
         n: i + 1,
         name: (played && played.name) || src.name || ("Hole " + (i + 1)),
@@ -2857,7 +2978,9 @@
       "<ol class='lore'><li>Do not click the hole. The first marker sits on the next landing. Pick a club that finishes there — 100% driver often flies the corner into trouble.</li>" +
       "<li>Gold ring is this power’s carry. Gold pip is the air landing. Violet pip is rest after roll. Trees stop a cut. Water you must actually carry.</li>" +
       "<li>Power is 0–100% of this club’s full shot. 0% is a short chip (a few yards) — that’s how you get on from close. 100% is max. 1–4 snaps 25/50/75/100. Arrows nudge 1%. Shift+arrow is 5%.</li>" +
-      "<li>On the green, plant the marker on the cup. 100% rolls to the marker. The cup swallows the ball if the path goes through it.</li>" +
+      "<li><b>On the green</b> the putter reads the same way: power is the roll, 0 to 40 yd, and the caddie dials it to the cup for you. Then it is a read — aim the marker off the cup by the break the caddie reports, and give it enough weight.</li>" +
+      "<li>The cup only swallows a ball that is on line <b>and</b> slow enough. Blow it past and it lips out and keeps running; die it at the hole and it drops.</li>" +
+      "<li><b>Par and yardage agree.</b> A landing you have to club is a shot: the card's par is one club to each landing plus two putts on the green. A 751 yard four-landing hole is par 6, not the par 4 it used to claim — a par nobody could make.</li>" +
       "<li>Water and OOB cost a stroke and you drop.</li>" +
       "<li>The hole is a 2.5D course. Click the ground to plant the marker. Gold ring is club carry. Violet pip is the wind landing. Red means trees stop the flight.</li>" +
       "<li>Scroll or +/− zooms the course. Right-drag orbits. Shift-drag or middle-drag pans. R or double-click fits the hole. Z undoes. M is a mulligan. Esc opens the menu.</li>" +
@@ -2907,6 +3030,7 @@
     const club = e.target.closest(".club");
     if (club) {
       G.club = CLUBS.find(function (c) { return c.id === club.getAttribute("data-id"); }) || G.club;
+      if (G.club.putt) dialPutt();
       paintClubs();
       renderHoleCard();
       draw();
@@ -2997,6 +3121,7 @@
       const i = CLUBS.findIndex(function (c) { return c.id === G.club.id; });
       const n = e.key === "]" ? Math.min(CLUBS.length - 1, i + 1) : Math.max(0, i - 1);
       G.club = CLUBS[n];
+      if (G.club.putt) dialPutt();
       paintClubs();
       renderHoleCard();
       draw();

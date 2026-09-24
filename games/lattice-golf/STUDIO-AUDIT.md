@@ -62,3 +62,99 @@ the design notes.
 ## 5. Landing
 
 Committed locally only. Nothing pushed — per standing rule, this waits on an explicit ask.
+
+---
+
+# Phase: maths pass (putting, aiming, par)
+
+## 1. What was wrong (measured, not guessed)
+
+The graphics were fine; the arithmetic behind them was not. Every number below was read
+off the running game through a throwaway debug copy of `game.js` (deleted before commit).
+
+- **The aim marker pointed backwards.** `nextAim()` returned *the first waypoint more
+  than 36 yd away*. The moment the ball passed the first corner, that corner was still
+  >36 yd away, so the gold marker snapped behind the ball and the default shot line led
+  back down the fairway. Measured on Pine Haven 1: from 41% of the hole onward the marker
+  sat 453 yd from the pin (the tee-side elbow) while the ball was 393 yd out. Par 3s hid
+  it — a one-leg hole only ever aimed at the pin.
+- **Par was unmakable.** Pine Haven 1 read `Par 4 · 751 yd`; Twin Pines read par 5 at 1052
+  yd. A 751 yd par 4 needs three perfect 250 yd shots *plus* two putts to make bogey, so
+  every card ran +2…+5 and the campaign rival (`par ± 1`) could never be beaten. The
+  endless generator authors par 4 at 350–450 and par 5 at 510–610, so the authored courses
+  were contradicting the game's own doctrine.
+- **The putter had no weight to judge.** `intendedCarry()` measured the putter off the
+  *marker distance*, and the marker parks on the cup — so 100% power was always exactly the
+  distance to the pin. A pin-seeking magnet nudged the ball toward the cup, the "cup" was a
+  1.2 yd radius, and the roll sim dropped a ball that so much as passed within 2 yd of the
+  pin. Putting was: aim at the flag, drag to 100%, press space.
+- **A putt did not travel what the bar said.** The roll used the stated distance as an
+  initial *velocity*, so the surface divided it: a 12 yd putt from the fringe rolled 2.1 yd
+  on the fairway and a 38 yd putt from the rough travelled 8.7 yd on a 33 yd readout.
+- **Cosmetic arithmetic.** The static HUD shipped `75% · 273 yd` and `220 yd` next to a
+  driver whose 75% shot is 218 yd; the club rail said the putter ran "to marker"; Marsh Pin
+  (248 yd) told the player to hit a 4-iron that carries 220.
+
+## 2. What changed
+
+**`game.js` — model**
+- `nextAim()`: find the leg the ball is standing on, then aim at the next corner past it;
+  past the last corner the pin is the aim. `landingCount()` / `parOf()` keep the authored
+  par inside the real-golf bands (3→250, 4→480, 5→700) and otherwise score the routing:
+  one club per landing plus two putts, capped at 7. `worldHole()` returns the derived par;
+  `cardRows()` reads it too, so an unplayed row and a played one agree.
+- Putting: `CUP` 1.2 → **0.55**, `GIMME` 2.0 → **1.1**, new `LIP` 1.2. `simulateRoll()`
+  now captures on line *and* slow (`v <= LIP * mu`), so a blown putt lips out and keeps
+  running; the roll step is 0.35 yd so a dead-on putt cannot hop the cup. The pin magnet is
+  gone, replaced by one seeded tilt per green (`hole.break`) that curves a rolling ball on
+  the green only.
+- `rollSpeedFor()`: roll distance is the area under the friction curve, so the speed that
+  stops a ball exactly `want` yards is the sum of `mu` along *that line* — sampled every
+  half yard, so the collar is not counted as green. A stated 12 yd putt from the fringe now
+  rolls 12 yd instead of 23.
+- The putter reads like every other club: power × 40 yd roll, honoured on any lie. The
+  marker is the line. `dialPutt()` hands the player a putt already dialled to the cup when
+  they arrive on the green, so the skill is the read, not the arithmetic.
+- `shotHolesOut()` is the flight test only — a putt never uses it, because a putt rolls.
+- `puttRead()` feeds the caddie panel: `Break 0.2 yd right · on the cup line`, computed over
+  the stretch that actually runs on the green.
+
+**`index.html`** — static HUD numbers corrected to the model (`75% · 218 yd`, `chip`),
+`game.js?v=41`.
+
+## 3. Verification
+
+- **`tools/golf_sim_check.js` (new, headless, permanent).** Loads the game module in a `vm`
+  with stubbed globals and asserts, over all 27 authored holes, the Haven Open 18 and 200
+  generated holes: par inside 3..7, par makeable (`ceil(straight/290) + 2 <= par`), authored
+  bands respected, the aim marker always ahead, and on five real greens: the stated putt
+  distance honoured (green, fringe, rough), a short putt missing, a dialled putt dropping, a
+  putt blown 60% past lipping out, and the caddie's break matching the roll (magnitude and
+  side). Latest run: **10383/10383 checks green.** Cards it reports: Pine Haven par 47 ·
+  5639 yd, Coral Lattice par 47 · 5876 yd, Singularity Nine par 47 · 5649 yd.
+- **Live local playthrough** (`http://127.0.0.1:8791/games/lattice-golf/`, no debug hook):
+  card reads `Par 6 · 751 yd`; after the drive the marker is 204 yd away with the pin 464
+  yd away (ahead, where it used to point back at the tee); a dialled 10 yd putt drops for
+  `CUP · 2 strokes · par 6 · -4`; the scorecard sheet shows the full card — 751/218/1053/…,
+  par 6/3/7/6/3/6/7/6/3 = 47, 5638 yd.
+- `node --check` clean on `game.js`; `window.__lg` absent from the shipped file.
+
+## 4. Open items (not done, on purpose)
+
+- The authored 9s are long walks — a card par of 47 over 5639 yd, every hole 6/7 except the
+  three par 3s. That is now *honest* (one club per landing + two putts), not short: the
+  alternative was shrinking the routing, which would collapse the landings the marker
+  doctrine and every hint are written around. Shortening them is a design decision, not a
+  maths fix.
+- `rollSpeedFor()` samples the line rather than solving for the final lie, so a putt whose
+  line crosses three surfaces can still land a few tenths of a yard off its stated distance.
+- The break is one plane per green (no two-tier or ridge read).
+
+## 5. Landing
+
+Committed and pushed on the steward's explicit ask.
+
+## 6. Superseded
+
+- "No automated harness exists for this game" — superseded: `tools/golf_sim_check.js`.
+
