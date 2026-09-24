@@ -1120,7 +1120,7 @@
     const out = { console: { ok: false }, providers: {} };
     const base = consoleBase();
     try {
-      const r = await fetch(base + "/health", { headers: { Accept: "application/json" } });
+      const r = await consoleFetch(base + "/health", { headers: { Accept: "application/json" } });
       const j = await r.json();
       out.console = { ok: true, base: base, image: j.image || null, model: j.model || "" };
     } catch (e) {
@@ -1175,7 +1175,7 @@
 
   async function imgViaConsole(prompt, size) {
     const base = consoleBase();
-    const post = await fetch(base + "/api/image", {
+    const post = await consoleFetch(base + "/api/image", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: prompt, size: Number(size) || 0 }),
     });
@@ -1193,7 +1193,7 @@
       await imgSleep(2000);
       let row = {};
       try {
-        const r = await fetch(base + "/api/image?job=" + encodeURIComponent(started.job));
+        const r = await consoleFetch(base + "/api/image?job=" + encodeURIComponent(started.job));
         row = await r.json();
       } catch (e) {
         return { ok: false, error: "poll_failed", hint: String(e && e.message ? e.message : e) };
@@ -1460,6 +1460,24 @@
     return location.origin;                       // a console serving this page itself
   }
 
+  // Reaching your OWN console from this public page is a "local address" request: Chrome (138+) wants
+  // the caller to say so, and then it can ask the visitor to allow it. Without the option the fetch is
+  // refused with a bare "Failed to fetch" that looks exactly like a dead gateway - MEASURED 2026-09-24,
+  // https://chatagent.ca/portal/ -> http://127.0.0.1:9642, navigator.permissions
+  // .query({name:'local-network-access'}) = denied, while the same request from curl answered 200.
+  // Unknown fetch options are ignored by older browsers, so this is safe to always pass.
+  function isLocalAddress(u) {
+    try {
+      const h = new URL(u, location.href).hostname;
+      return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]" || h === "0.0.0.0";
+    } catch (_) { return false; }
+  }
+  function consoleFetch(u, opts) {
+    const o = Object.assign({}, opts || {});
+    if (isLocalAddress(u) && !("targetAddressSpace" in o)) o.targetAddressSpace = "local";
+    return fetch(u, o);
+  }
+
   function moduleTone(m) {
     const s = String((m.surfaces || {}).web || "");
     if (s.indexOf("FULL") === 0) return { cls: "mod-full", label: "web-ready" };
@@ -1558,7 +1576,7 @@
   async function loadModules() {
     MODULES.base = consoleBase();
     try {
-      const r = await fetch(MODULES.base + "/api/modules", { headers: { Accept: "application/json" } });
+      const r = await consoleFetch(MODULES.base + "/api/modules", { headers: { Accept: "application/json" } });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
       if (!j || !j.ok) throw new Error(j && j.load_error ? j.load_error : "no module table in the answer");
