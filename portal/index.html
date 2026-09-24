@@ -8,7 +8,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
-<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
+<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. ⇄ Compare bench sends one prompt to several models and shows the answers side by side — pick one or blend them. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="creator" content="Justin Helmer">
 <meta name="publisher" content="chatagent.ca">
@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260924b">
+<link rel="stylesheet" href="style.css?v=20260924d">
 <link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
 <script src="/assets/hls.min.js" defer></script>
 <script src="/assets/lygo-tv-ninja.js?v=7" defer></script>
@@ -114,6 +114,33 @@
 </head>
 <body class="public-mode branded">
 <a class="skip" href="#msg">Skip to chat</a>
+<!-- One-time entrance. Markup lives here so it paints before anything else; supporter.js reveals it,
+     types the handshake, and remembers the click. Without JS, the noscript rule below removes it. -->
+<div id="introLayer" class="intro-layer" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <canvas id="introCanvas" class="intro-canvas" aria-hidden="true"></canvas>
+  <div class="intro-card">
+    <p class="intro-kicker">Δ9Φ963 · chatagent.ca · PUBLIC RESOURCE</p>
+    <h2 id="introTitle" class="intro-title">LYGO API PORTAL</h2>
+    <p class="intro-sub">The public gate to the lattice — a ninja console with no GPU, and no model of its own.</p>
+    <pre id="introTerm" class="intro-term" aria-live="polite"></pre>
+    <ul class="intro-terms">
+      <li><strong>You bring the key.</strong> Groq, Gemini, OpenRouter, OpenAI, Claude, Grok, DeepSeek — any OpenAI-compatible key. This page hosts no model.</li>
+      <li><strong>The key stays in this tab.</strong> chatagent.ca never receives it, and no answer is stored anywhere but your own browser.</li>
+      <li><strong>The answer is the vendor's model talking</strong> — not LYGO, not verified truth. Check the important things before you build on them (that is the P0 gate).</li>
+      <li><strong>Free the whole way.</strong> Nothing on this page is locked away. A donation reminder appears every 15 minutes unless you are a supporter.</li>
+    </ul>
+    <div class="intro-actions">
+      <button type="button" id="introEnter" class="intro-cta" disabled>Entering…</button>
+      <button type="button" id="introCode" class="intro-link">I am a supporter — enter my code</button>
+      <a class="intro-link" id="introGuide" href="#start">How to start</a>
+    </div>
+    <p class="intro-supporter" id="introSupporter" hidden></p>
+    <p class="intro-foot">Reminders are the only interruption, and a supporter code switches them off in the browser
+      where you enter it. <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> ·
+      <a href="https://chatagent.ca/about.html">Steward: Justin Helmer</a>.</p>
+  </div>
+</div>
+<noscript><style>#introLayer, #supporterLayer { display: none !important; }</style></noscript>
 <header>
   <div class="brand-lockup">
     <a class="mark" href="https://chatagent.ca/" title="chatagent.ca">
@@ -122,7 +149,7 @@
     <div>
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
-      <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · console line 1.3.2 · assets 2026-09-24</p>
+      <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · console line 1.3.2 · assets 2026-09-24 · ⇄ compare bench <span id="supporterChip" class="sup-chip" hidden>⚿ SUPPORTER</span></p>
       <p class="sub syslabel">One console, three systems — <strong>WEB PORTAL (API ONLY, online — you are here)</strong> · <strong>PC LOCAL</strong> (full admin console on your PC, GPU when present) · <strong>USB LOCAL</strong> (stand-alone stick agent, plug and play, mobile). Same limbs, same P0 gate, same labels; only the brain differs.</p>
       <p class="sub">A <strong>ninja console with no GPU</strong>: bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab — chatagent.ca never sees them. Browser tools + 15 champions are already installed on the page. Want it all offline on your own machine? <a href="https://chatagent.ca/lygo-llm-console.html">Local GGUF console</a> — same V1 bench, no API key at all. Legal: <a href="https://chatagent.ca/portal/legal.html">legal &amp; disclaimers</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
@@ -134,6 +161,7 @@
         <a href="https://asiancoastline.com/listen.html" rel="noopener">Listen</a>
         <a href="https://chatagent.ca/champions.html">Champions</a>
         <a href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">Donate</a>
+        <button type="button" id="supporterOpen" class="nav-btn" title="Enter this month's supporter code — it turns the donation reminders off in this browser">⚿ Supporter</button>
       </nav>
     </div>
   </div>
@@ -233,16 +261,32 @@ steward: Justin Helmer / Excavationpro / Lightfather
       <li>Open that vendor’s key page from <a href="#free-keys">Free and near-free API keys</a>. Copy the key.</li>
       <li>Paste it in the key box. Click <strong>Connect</strong>. The model is chosen for you.</li>
       <li>Then chat. Skills and champions are already on this page — toggle them in the left rail.</li>
+      <li>Optional: press <strong>⇄ Compare</strong> to put one prompt to two or more models at once and read the answers side by side — pick one, or blend them.</li>
     </ol>
     <div id="log" class="log" aria-live="polite"></div>
     <form id="form" class="composer">
       <input id="msg" type="text" placeholder="Connect first, then ask…" autocomplete="off" autofocus>
+      <button type="button" id="cmp-toggle" class="cmp-toggle" aria-pressed="false" title="Send one prompt to two or more models and read the answers side by side">⇄ Compare</button>
       <button type="button" id="attach-file">Attach file</button>
       <button type="submit">Send</button>
     </form>
+    <div class="bench" id="bench" hidden aria-label="Compare bench">
+      <div class="bench-head">
+        <strong>⇄ Compare bench</strong>
+        <span class="hint" id="bench-status">two lanes, one prompt, side by side</span>
+        <span class="bench-tools">
+          <button type="button" id="bench-add" title="Add a lane (up to four)">+ lane</button>
+          <button type="button" id="bench-run" title="Send what is in the box above to every ready lane now">Run on all lanes</button>
+        </span>
+      </div>
+      <div class="bench-lanes" id="bench-lanes"></div>
+      <p class="hint">Put the same prompt to two or more models at once, then read them side by side and pick one or blend them. <strong>Keys pasted in a lane stay in this tab’s memory</strong> — never in browser storage; a lane set to the same provider as the top box shares the key you already pasted there. A custom lane can point at any OpenAI-compatible URL (two self-hosted servers, two labs), and <code>127.0.0.1</code>/<code>localhost</code> is allowed by this page’s own policy. Each run spends one call per ready lane on your keys, and the seconds and tokens of each answer are shown with it.</p>
+      <div class="bench-out" id="bench-out" hidden></div>
+    </div>
     <div class="np-foot" style="margin:0.4rem 0.2rem">
       <button type="button" id="sess-save">Save session as…</button>
       <button type="button" id="sess-load">Load session</button>
+      <button type="button" id="supporterOpenFoot" title="This month's code turns the donation reminders off in this browser">⚿ Supporter code</button>
     </div>
   </section>
   <aside>
@@ -371,9 +415,30 @@ steward: Justin Helmer / Excavationpro / Lightfather
 <noscript>
   <p>LYGO LLM Portal requires JavaScript. Docs: <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a>. Free. No account.</p>
 </noscript>
+<div id="supporterLayer" class="sup-layer" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="supTitle">
+  <div class="sup-card">
+    <p class="kicker">Supporter access · code from this month's Patreon post</p>
+    <h2 id="supTitle">Switch the donation reminders off</h2>
+    <p class="sup-state" id="supState">Checking…</p>
+    <label class="sup-lbl" for="supCode">Your code</label>
+    <input id="supCode" type="text" placeholder="LYGO-2609-XXXX-XXXX" autocomplete="off" spellcheck="false" inputmode="text">
+    <div class="sup-actions">
+      <button type="button" id="supGo" class="btn-gold">Unlock this browser</button>
+      <button type="button" id="supRelock" hidden>Lock this browser again</button>
+      <button type="button" id="supClose">Close</button>
+    </div>
+    <p class="hint" id="supMsg" aria-live="polite"></p>
+    <p class="hint">Straight answers: the code is checked inside your browser and only stops the reminders in
+      <em>this</em> browser — nothing else on the portal is locked, and the free portal keeps working exactly the
+      same without a code. It is a thank-you, not a licence. Codes rotate every month and go up on
+      <a href="https://www.patreon.com/Excavationpro" rel="noopener">Patreon</a>; your code works through the date
+      shown above, then the new month's code arrives. The code itself is never stored — this browser remembers only
+      that it was unlocked, and until when.</p>
+  </div>
+</div>
 <div id="donateLayer" class="donate-layer" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="donateTitle">
   <div class="donate-card">
-    <p class="kicker">Friendly reminder · every 15 minutes</p>
+    <p class="kicker">Friendly reminder · every 15 minutes · off with a supporter code</p>
     <h2 id="donateTitle">Keep the lattice lit</h2>
     <p>This portal is free. You do not have to donate. Opening PayPal or Patreon unlocks Continue — even if you give $0.</p>
     <div class="donate-actions">
@@ -381,11 +446,13 @@ steward: Justin Helmer / Excavationpro / Lightfather
       <a class="btn-gold" id="donatePatreon" href="https://www.patreon.com/Excavationpro">Open Patreon</a>
     </div>
     <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
+    <button type="button" id="donateUnlock" class="donate-alt">Already a supporter? Enter this month's code (turns these reminders off)</button>
   </div>
 </div>
 <script src="tools.js?v=20260924a"></script>
-<script src="app.js?v=20260924e"></script>
+<script src="app.js?v=20260924g"></script>
 <script src="radio.js"></script>
-<script src="donate.js"></script>
+<script src="supporter.js?v=20260924a"></script>
+<script src="donate.js?v=20260924a"></script>
 </body>
 </html>

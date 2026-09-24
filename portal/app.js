@@ -340,14 +340,24 @@
     return { ok: false, error: "unknown_tool" };
   }
 
-  function openaiUrl() {
-    const p = provider();
-    let e = (endpointEl.value || p.url || "").trim().replace(/\/$/, "");
+  function providerOf(pid) {
+    return PROVIDERS[pid] || PROVIDERS.groq;
+  }
+
+  // The URL ladder, for the provider in the top box AND for any compare lane: a lane may carry its own
+  // endpoint, which is how two self-hosted servers or two custom OpenAI-compatible URLs are compared.
+  function urlFor(pid, raw) {
+    const p = providerOf(pid);
+    let e = String(raw || p.url || "").trim().replace(/\/$/, "");
     if (!e) return "";
     if (/\/chat\/completions$/i.test(e) || /\/messages$/i.test(e) || /\/paas\/v4\/chat\/completions$/i.test(e)) return e;
     if (/\/openai\/v1$/i.test(e) || /\/v1$/i.test(e) || /\/v1beta\/openai$/i.test(e) || /\/compatibility\/v1$/i.test(e)) return e + "/chat/completions";
     if (/\/v1\//i.test(e) && /chat/i.test(e)) return e;
     return e + "/v1/chat/completions";
+  }
+
+  function openaiUrl() {
+    return urlFor(modeEl ? modeEl.value : "", (endpointEl && endpointEl.value) || provider().url || "");
   }
 
   const DEAD_MODELS = {
@@ -359,10 +369,13 @@
     groq: ["openai/gpt-oss-20b", "groq/compound-mini", "groq/compound", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"],
   };
 
-  function modelsUrl() {
-    const chat = openaiUrl();
+  function modelsUrlFor(pid, raw) {
+    const chat = urlFor(pid, raw);
     if (!chat) return "";
     return chat.replace(/\/chat\/completions$/i, "/models").replace(/\/messages$/i, "/models");
+  }
+  function modelsUrl() {
+    return modelsUrlFor(modeEl ? modeEl.value : "", (endpointEl && endpointEl.value) || provider().url || "");
   }
   function isChatModel(id) {
     const s = String(id || "").toLowerCase();
@@ -380,8 +393,7 @@
     }
     return cur;
   }
-  function modelHeaders(key) {
-    const pid = modeEl ? modeEl.value : "";
+  function modelHeadersFor(pid, key) {
     const h = { Authorization: "Bearer " + key };
     if (pid === "github") h["api-key"] = key;
     if (pid === "anthropic") {
@@ -404,14 +416,16 @@
     }
   }
 
-  async function listProviderModels() {
-    const u = modelsUrl();
-    const key = readKey();
-    const pid = modeEl ? modeEl.value : "";
+  // One model list, read from whoever holds the key: the provider in the top box, or one compare lane
+  // (spec = { pid, url, key }). Without a spec it behaves exactly as before.
+  async function listProviderModels(spec) {
+    const pid = spec && spec.pid ? spec.pid : (modeEl ? modeEl.value : "");
+    const u = spec ? modelsUrlFor(pid, spec.url || "") : modelsUrl();
+    const key = spec && spec.key !== undefined ? spec.key : readKey();
     if (BROWSER_BLOCKED[pid]) return { ok: false, blocked: true, reason: BROWSER_BLOCKED[pid] };
     if (!u) return { ids: [], ok: false, status: 0, reason: "no endpoint yet", source: "none" };
     if (!key && pid !== "openrouter" && pid !== "llm7") return { ids: [], ok: false, status: 0, reason: "no key yet", source: "none" };
-    const res = await probeJson(u, modelHeaders(key));
+    const res = await probeJson(u, modelHeadersFor(pid, key));
     if (res.blocked) {
       return { ids: [], ok: false, status: 0, blocked: true, source: "live",
                reason: (BROWSER_BLOCKED[pid] || ("the browser refused the call to " + hostOf(u) + " (CORS or page policy)")) };
@@ -526,6 +540,46 @@
       return { ok: false, status: 0, blocked: true, reason: "the browser refused the call to " + hostOf(url) + " (CORS or page policy)" };
     }
   }
+  // One POST, plus the payload ladder that survives a vendor's 400. Shared by the chat path and the
+  // compare bench, so both learn a vendor's field shapes in the same place. opts.signal lets a caller
+  // put a deadline on the whole ladder (a compare lane must not wait forever); opts is optional and the
+  // chat path passes none, which is exactly the behaviour it had before.
+  async function postWithLadder(url, hdrs, payload, opts) {
+    opts = opts || {};
+    async function attempt(body) {                  // one POST; the answer is kept as text, parsed if it can be
+      const rr = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(body), signal: opts.signal });
+      const raw = await rr.text();
+      let jj = null;
+      try { jj = JSON.parse(raw); } catch (_) {}
+      return { r: rr, j: jj || {}, raw: raw };
+    }
+    const retryable = { 400: 1, 404: 1, 422: 1 };
+    let n = 0;
+    let out = await attempt(payload); n++;
+    if (!out.r.ok && retryable[out.r.status] && payload.tools && AGENT_TOOLS_CORE.length && payload.tools.length > AGENT_TOOLS_CORE.length) {
+      payload.tools = AGENT_TOOLS_CORE;
+      out = await attempt(payload); n++;
+    }
+    if (!out.r.ok && retryable[out.r.status] && payload.tools) {
+      delete payload.tools;
+      out = await attempt(payload); n++;
+    }
+    // Google's OpenAI-compatible endpoint is where this bites: a body it does not expect comes back 400
+    // naming the field it will not take, and that field has been max_tokens. Try the newer name, then try
+    // with no cap at all, before telling the visitor anything - and if it still fails, quote the vendor.
+    if (!out.r.ok && out.r.status === 400 && ("max_tokens" in payload)) {
+      delete payload.max_tokens;
+      payload.max_completion_tokens = 1024;
+      out = await attempt(payload); n++;
+    }
+    if (!out.r.ok && out.r.status === 400 && ("max_completion_tokens" in payload)) {
+      delete payload.max_completion_tokens;
+      out = await attempt(payload); n++;
+    }
+    out.attempts = n;                              // what this answer really cost, rungs included
+    return out;
+  }
+
   async function callApi(messages) {
     const p = provider();
     const url = openaiUrl();
@@ -550,35 +604,7 @@
     } else {
       payload = { model: model, messages: messages, max_tokens: 1024, stream: false, tools: AGENT_TOOLS };
     }
-    async function attempt(body) {                  // one POST; the answer is kept as text, parsed if it can be
-      const rr = await fetch(url, { method: "POST", headers: hdrs, body: JSON.stringify(body) });
-      const raw = await rr.text();
-      let jj = null;
-      try { jj = JSON.parse(raw); } catch (_) {}
-      return { r: rr, j: jj || {}, raw: raw };
-    }
-    const retryable = { 400: 1, 404: 1, 422: 1 };
-    let out = await attempt(payload);
-    if (!out.r.ok && retryable[out.r.status] && payload.tools && AGENT_TOOLS_CORE.length && payload.tools.length > AGENT_TOOLS_CORE.length) {
-      payload.tools = AGENT_TOOLS_CORE;
-      out = await attempt(payload);
-    }
-    if (!out.r.ok && retryable[out.r.status] && payload.tools) {
-      delete payload.tools;
-      out = await attempt(payload);
-    }
-    // Google's OpenAI-compatible endpoint is where this bites: a body it does not expect comes back 400
-    // naming the field it will not take, and that field has been max_tokens. Try the newer name, then try
-    // with no cap at all, before telling the visitor anything - and if it still fails, quote the vendor.
-    if (!out.r.ok && out.r.status === 400 && ("max_tokens" in payload)) {
-      delete payload.max_tokens;
-      payload.max_completion_tokens = 1024;
-      out = await attempt(payload);
-    }
-    if (!out.r.ok && out.r.status === 400 && ("max_completion_tokens" in payload)) {
-      delete payload.max_completion_tokens;
-      out = await attempt(payload);
-    }
+    const out = await postWithLadder(url, hdrs, payload);
     let r = out.r;
     let j = out.j;
     if (!r.ok) {
@@ -913,6 +939,13 @@
     }
     msg.value = "";
     bubble("user", text);
+    if (COMPARE) {
+      // The bench answers, not the single model in the top box: the visitor's own turn joins the
+      // conversation, and an assistant turn is added only when they pick a lane or a blend.
+      history.push({ role: "user", content: text });
+      benchRun(text);
+      return;
+    }
     if (!connected) {
       if (readKey()) {
         setHealth("connecting…");
@@ -997,6 +1030,661 @@
   };
 
   bubble("assistant", stewardHowTo("welcome"));
+
+  // ---- ⇄ Compare bench --------------------------------------------------------------------------
+  // The feature the visitors asked for in their own thread: send ONE prompt to two or more connected
+  // models and read the answers side by side, then pick one or blend them - everything inside this tab.
+  // It keeps the promises the rest of this page makes:
+  //   * a lane's key lives in this tab's memory only - never localStorage, never sessionStorage, sent
+  //     to that lane's own vendor and nowhere else. A lane set to the provider in the top box shares
+  //     the key already pasted there, so comparing two Groq models costs one paste;
+  //   * one lane failing quotes that vendor's own words and never blanks or blocks another lane;
+  //   * every lane gets a deadline, so one dead host cannot leave the grid spinning;
+  //   * the bench sends no browser limbs: same system prompt, one shot each, so the answers are the
+  //     models' own rather than a tool round dressed up as a comparison;
+  //   * one pick (or one blend) per run, so the log stays a conversation.
+  const LANE_STORE = "lygo_portal_lanes";
+  const COMPARE_STORE = "lygo_portal_compare";
+  const LANE_MAX = 4;
+  const LANE_TIMEOUT = 120000;      // 2 minutes: a reasoning model may be slow, a dead host must not be forever
+  let LANES = [];                   // [{ id, pid, model, url }] - provider, model, endpoint. Never a key.
+  let LANE_KEYS = {};               // lane id -> key. Memory only, by design.
+  let LANE_RUN = null;              // the last fan-out
+  let COMPARE = false;
+  let BENCH_CALLS = 0;              // POSTs actually spent this session, ladder rungs included
+  let LANE_SEQ = 0;
+
+  function laneId() { return "lane" + (++LANE_SEQ) + "-" + Math.random().toString(36).slice(2, 7); }
+  function laneProvider(l) { return providerOf(l.pid); }
+  function laneUrl(l) { return urlFor(l.pid, l.url || laneProvider(l).url || ""); }
+  function laneModel(l) { return l.model || laneProvider(l).model || ""; }
+  function laneShortName(l) {
+    if (l.pid === "custom") return "custom " + (hostOf(laneUrl(l)) || "url");
+    return String(laneProvider(l).label || l.pid).replace(/\s*\(.*$/, "");
+  }
+  function laneLabel(l) { return laneShortName(l) + " · " + laneModel(l); }
+  function laneKeyOf(l) {
+    const own = String(LANE_KEYS[l.id] || "").trim();
+    if (own) return own;
+    if (modeEl && l.pid === modeEl.value) return readKey();   // the top box covers every lane on that provider
+    return "";
+  }
+  function laneSharesTopKey(l) {
+    return !String(LANE_KEYS[l.id] || "").trim() && !!modeEl && l.pid === modeEl.value && !!readKey();
+  }
+  function laneNeedsKey(l) { return l.pid !== "openrouter" && l.pid !== "llm7"; }
+  function laneReady(l) {
+    if (BROWSER_BLOCKED[l.pid]) return false;
+    if (!laneUrl(l)) return false;
+    if (!laneKeyOf(l) && laneNeedsKey(l)) return false;
+    return true;
+  }
+  function readyLanes() { return LANES.filter(laneReady); }
+  function laneEl(l) { return document.querySelector('[data-lane="' + l.id + '"]'); }
+  function lanePart(l, cls) { const c = laneEl(l); return c ? c.querySelector("." + cls) : null; }
+
+  function laneSave() {
+    try {
+      localStorage.setItem(LANE_STORE, JSON.stringify(LANES.map(function (l) {
+        return { pid: l.pid, model: l.model, url: l.url || "" };
+      })));
+    } catch (_) {}
+  }
+  function laneLoad() {
+    let rows = [];
+    try { rows = JSON.parse(localStorage.getItem(LANE_STORE) || "[]") || []; } catch (_) { rows = []; }
+    const topPid = (modeEl && PROVIDERS[modeEl.value]) ? modeEl.value : "groq";
+    if (!rows.length) rows = [{ pid: topPid, model: "" }, { pid: topPid, model: "" }];
+    LANES = rows.slice(0, LANE_MAX).map(function (r) {
+      return { id: laneId(), pid: PROVIDERS[r.pid] ? r.pid : topPid, model: String(r.model || ""), url: String(r.url || "") };
+    });
+    // Two lanes on the same provider, pointed at that provider's next model, is the cheapest useful
+    // comparison there is (one key, two models) - so seed it instead of leaving both lanes identical.
+    if (LANES.length > 1 && !LANES[1].model) {
+      const p = laneProvider(LANES[0]);
+      if (p.models && p.models.length > 1) LANES[1].model = p.models[1];
+    }
+    LANES.forEach(function (l) {
+      if (!l.model) l.model = laneProvider(l).model || "";
+    });
+  }
+  function compareLoad() {
+    try { COMPARE = localStorage.getItem(COMPARE_STORE) === "1"; } catch (_) {}
+    return COMPARE;
+  }
+  function compareSave() {
+    try { localStorage.setItem(COMPARE_STORE, COMPARE ? "1" : "0"); } catch (_) {}
+  }
+
+  function laneFillModels(l, ids) {
+    const sel = lanePart(l, "lane-model");
+    const p = laneProvider(l);
+    const mem = modelMem()[l.pid];
+    const seed = ((ids && ids.length) ? ids.slice() : (p.models || []).concat([p.model, mem])).filter(Boolean);
+    const list = [];
+    seed.forEach(function (x) { if (list.indexOf(x) < 0) list.push(x); });
+    if (!l.model) l.model = mem || (p.models || [])[0] || p.model || "";
+    if (l.model && list.indexOf(l.model) < 0) list.unshift(l.model);
+    if (!sel) return;
+    if (sel.tagName === "INPUT") {
+      // A custom lane: the list is only a suggestion, and the visitor's own model id always wins.
+      let dl = document.getElementById("lane-models-" + l.id);
+      if (!dl) {
+        dl = document.createElement("datalist");
+        dl.id = "lane-models-" + l.id;
+        document.body.appendChild(dl);
+      }
+      dl.innerHTML = "";
+      list.forEach(function (id) {
+        const o = document.createElement("option");
+        o.value = id;
+        dl.appendChild(o);
+      });
+      if (!sel.value && l.model) sel.value = l.model;
+      l.model = String(sel.value || "").trim();
+      return;
+    }
+    if (!list.length) {
+      sel.innerHTML = "";
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "— press ↻ models from this key —";
+      sel.appendChild(o);
+      return;
+    }
+    sel.innerHTML = "";
+    list.forEach(function (id) {
+      const o = document.createElement("option");
+      o.value = id;
+      o.textContent = id;
+      sel.appendChild(o);
+    });
+    sel.value = l.model || list[0];
+    l.model = sel.value;
+  }
+
+  function laneState(l, note) {
+    const el = lanePart(l, "lane-state");
+    if (!el) return;
+    const p = laneProvider(l);
+    let t = "", cls = "";
+    if (BROWSER_BLOCKED[l.pid]) { t = "browser-blocked · " + BROWSER_BLOCKED[l.pid]; cls = "warn"; }
+    else if (!laneUrl(l)) { t = "no endpoint — a custom lane needs the URL of an OpenAI-compatible /v1"; cls = "warn"; }
+    else if (laneSharesTopKey(l)) { t = "ready · shares the key in the top box"; cls = "ok"; }
+    else if (String(LANE_KEYS[l.id] || "").trim().length >= 8) { t = "ready · its own key, this tab only"; cls = "ok"; }
+    else if (!laneNeedsKey(l)) { t = "ready · that provider answers keyless on its free models"; cls = "ok"; }
+    else { t = "no key yet — paste one here, or put it in the top box and set this lane to " + p.label; cls = "warn"; }
+    if (note) t += " · " + note;
+    el.textContent = t;
+    el.className = "lane-state" + (cls ? " " + cls : "");
+  }
+
+  function benchStatus() {
+    const el = document.getElementById("bench-status");
+    if (!el) return;
+    const n = readyLanes().length;
+    el.textContent = LANES.length + " lane" + (LANES.length === 1 ? "" : "s") + " · " + n + " ready · a run spends 1 call per ready lane on your keys" +
+      (BENCH_CALLS ? " · this session: " + BENCH_CALLS + " call" + (BENCH_CALLS === 1 ? "" : "s") : "");
+  }
+
+  function paintLanes() {
+    const box = document.getElementById("bench-lanes");
+    if (!box) return;
+    box.innerHTML = "";
+    LANES.forEach(function (l, i) {
+      const card = document.createElement("div");
+      card.className = "lane";
+      card.setAttribute("data-lane", l.id);
+
+      const head = document.createElement("div");
+      head.className = "lane-head";
+      const n = document.createElement("span");
+      n.className = "lane-n";
+      n.textContent = "lane " + (i + 1);
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "lane-x";
+      x.textContent = "×";
+      x.title = LANES.length <= 2 ? "two lanes is the minimum" : "remove this lane";
+      x.disabled = LANES.length <= 2;
+      x.onclick = function () {
+        LANES = LANES.filter(function (m) { return m.id !== l.id; });
+        delete LANE_KEYS[l.id];
+        laneSave();
+        paintLanes();
+      };
+      head.appendChild(n);
+      head.appendChild(x);
+      card.appendChild(head);
+
+      const pid = document.createElement("select");
+      pid.className = "lane-pid";
+      pid.setAttribute("aria-label", "lane " + (i + 1) + " provider");
+      Object.keys(PROVIDERS).forEach(function (id) {
+        const o = document.createElement("option");
+        o.value = id;
+        o.textContent = PROVIDERS[id].label + (BROWSER_BLOCKED[id] ? " — browser-blocked" : "");
+        pid.appendChild(o);
+      });
+      pid.value = l.pid;
+      pid.onchange = function () {
+        l.pid = pid.value;
+        l.model = "";
+        if (l.pid !== "custom") l.url = "";
+        laneSave();
+        // Re-paint so the model control matches the new provider (list vs. free text). Lane keys live in
+        // memory, not in the DOM, so nothing is lost but the focus in this one select.
+        paintLanes();
+        if (!BROWSER_BLOCKED[l.pid] && laneKeyOf(l).length >= 8) laneDiscover(l);
+      };
+      card.appendChild(pid);
+
+      // Known vendors get a list to choose from; a custom endpoint gets a text box, because the model id
+      // there belongs to whoever runs the server (llama.cpp and some proxies do not answer /models at all).
+      const sel = document.createElement(l.pid === "custom" ? "input" : "select");
+      sel.className = "lane-model";
+      sel.setAttribute("aria-label", "lane " + (i + 1) + " model");
+      if (l.pid === "custom") {
+        sel.type = "text";
+        sel.autocomplete = "off";
+        sel.placeholder = "model id (as your server names it)";
+        sel.setAttribute("list", "lane-models-" + l.id);
+      }
+      sel.onchange = function () {
+        l.model = String(sel.value || "").trim();
+        laneSave();
+        laneState(l);
+      };
+      sel.oninput = sel.onchange;
+      card.appendChild(sel);
+
+      const url = document.createElement("input");
+      url.type = "text";
+      url.className = "lane-url";
+      url.placeholder = "https://your-host/v1 (custom lanes)";
+      url.autocomplete = "off";
+      url.hidden = l.pid !== "custom";
+      url.value = l.url || "";
+      url.oninput = function () { l.url = url.value; laneSave(); laneState(l); benchStatus(); };
+      card.appendChild(url);
+
+      const key = document.createElement("input");
+      key.type = "password";
+      key.className = "lane-key";
+      key.autocomplete = "off";
+      key.placeholder = "key for this provider (this tab only)";
+      key.value = LANE_KEYS[l.id] || "";
+      key.oninput = function () { LANE_KEYS[l.id] = String(key.value || "").trim(); laneState(l); benchStatus(); };
+      key.onchange = function () {
+        if (laneKeyOf(l).length >= 8 && !BROWSER_BLOCKED[l.pid]) laneDiscover(l);
+      };
+      card.appendChild(key);
+
+      const st = document.createElement("div");
+      st.className = "lane-state";
+      card.appendChild(st);
+
+      const tools = document.createElement("div");
+      tools.className = "lane-tools";
+      const rf = document.createElement("button");
+      rf.type = "button";
+      rf.textContent = "↻ models from this key";
+      rf.onclick = function () { laneDiscover(l); };
+      const ck = document.createElement("button");
+      ck.type = "button";
+      ck.textContent = "forget this key";
+      ck.title = "the lane key lives in this tab's memory only; this clears it";
+      ck.onclick = function () {
+        delete LANE_KEYS[l.id];
+        key.value = "";
+        laneState(l);
+        benchStatus();
+      };
+      tools.appendChild(rf);
+      tools.appendChild(ck);
+      card.appendChild(tools);
+
+      box.appendChild(card);
+      laneFillModels(l);
+      laneState(l);
+    });
+    benchStatus();
+  }
+
+  async function laneDiscover(l) {
+    const note = "reading the model list from " + laneProvider(l).label + " …";
+    laneState(l, note);
+    let r;
+    try {
+      r = await listProviderModels({ pid: l.pid, url: l.url || laneProvider(l).url || "", key: laneKeyOf(l) });
+    } catch (e) {
+      laneState(l, "could not read the list: " + String((e && e.message) || e));
+      return;
+    }
+    const chat = (r.ids || []).filter(isChatModel).sort();
+    if (r.ok && chat.length) {
+      laneFillModels(l, chat);
+      laneSave();
+      laneState(l, chat.length + " models read from that key");
+    } else {
+      laneState(l, r.reason || "no model list — keeping the built-in defaults (not that key's list)");
+    }
+  }
+
+  function copyText(t) {
+    const s = String(t || "");
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s);
+    return new Promise(function (res, rej) {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = s;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        ok ? res() : rej(new Error("the browser refused the copy"));
+      } catch (e) { rej(e); }
+    });
+  }
+
+  // One lane's own call: same system prompt, one shot, its own key and endpoint, with a deadline.
+  async function laneCall(l, messages) {
+    const p = laneProvider(l);
+    const url = laneUrl(l);
+    const key = laneKeyOf(l);
+    const model = laneModel(l);
+    const clock = function () { return (window.performance && performance.now) ? performance.now() : Date.now(); };
+    const t0 = clock();
+    const ms = function () { return Math.round(clock() - t0); };
+    if (BROWSER_BLOCKED[l.pid]) return { ok: false, ms: ms(), error: BROWSER_BLOCKED[l.pid] };
+    if (!url) return { ok: false, ms: ms(), error: "no endpoint for this lane" };
+    if (!model) return { ok: false, ms: ms(), attempts: 1, error: "no model set for this lane — press ↻ models from this key, or type the model id your server uses" };
+    if (!key && laneNeedsKey(l)) return { ok: false, ms: ms(), error: "no key for this lane — " + (p.help || "paste that vendor's key") };
+    const headers = { "Content-Type": "application/json" };
+    if (key) {
+      if (p.kind === "anthropic") {
+        headers["x-api-key"] = key;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
+      } else {
+        headers.Authorization = "Bearer " + key;
+        if (l.pid === "github") headers["api-key"] = key;
+      }
+    }
+    if (p.extra) Object.keys(p.extra).forEach(function (k) { headers[k] = p.extra[k]; });
+    const hdrs = safeHeaders(headers);
+    // No tools: the comparison is the models' own answer to the same prompt. The payload ladder still
+    // runs, so a vendor that rejects a field gets the same second and third try as the main chat.
+    const payload = (p.kind === "anthropic")
+      ? { model: model, max_tokens: 1024, system: messages[0] && messages[0].content,
+          messages: messages.filter(function (m) { return m.role !== "system"; }) }
+      : { model: model, messages: messages, max_tokens: 1024, stream: false };
+    const ctl = window.AbortController ? new AbortController() : null;
+    const timer = ctl ? setTimeout(function () { ctl.abort(); }, LANE_TIMEOUT) : 0;
+    try {
+      const out = await postWithLadder(url, hdrs, payload, { signal: ctl ? ctl.signal : undefined });
+      BENCH_CALLS += out.attempts || 1;
+      benchStatus();
+      const elapsed = ms();
+      if (!out.r.ok) {
+        return { ok: false, status: out.r.status, ms: elapsed, attempts: out.attempts || 1,
+                 error: vendorMessage(out.j, out.raw, out.r.status) };
+      }
+      const got = extractMessage(out.j);
+      return { ok: true, text: got.text, toolCalls: (got.tool_calls || []).length,
+               usage: (out.j && out.j.usage) || null, served: (out.j && out.j.model) || model,
+               ms: elapsed, attempts: out.attempts || 1 };
+    } catch (e) {
+      const m = String((e && e.message) || e);
+      if (ctl && ctl.signal && ctl.signal.aborted) {
+        return { ok: false, ms: ms(), attempts: 1, error: "no answer within " + Math.round(LANE_TIMEOUT / 1000) + " s — I stopped waiting" };
+      }
+      if (/Failed to fetch|NetworkError|CORS/i.test(m)) {
+        return { ok: false, ms: ms(), attempts: 1,
+                 error: "that call never left your browser (" + m + "). " + hostOf(url) + " either sends no CORS header, or this page's own policy blocked it — the page allows https and 127.0.0.1/localhost only, so a plain LAN address like http://192.168.x.x cannot be called from here." };
+      }
+      return { ok: false, ms: ms(), attempts: 1, error: m };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  function cmpMeta(r) {
+    if (r.state === "wait") return "waiting…";
+    if (!r.ok) return "failed · " + (r.error || "no answer");
+    const bits = [(r.ms < 1000 ? r.ms + "ms" : (r.ms / 1000).toFixed(1) + "s")];
+    if (r.usage && r.usage.total_tokens) bits.push(r.usage.total_tokens + " tok");
+    if (r.attempts > 1) bits.push(r.attempts + " attempts");
+    if (r.toolCalls) bits.push("asked for " + r.toolCalls + " tool call(s) — the bench runs none, so that is the model's own text");
+    if (r.served && r.served !== r.model) bits.push("served as " + r.served);
+    return bits.join(" · ");
+  }
+
+  function benchPaintRun() {
+    const out = document.getElementById("bench-out");
+    if (!out) return;
+    out.innerHTML = "";
+    if (!LANE_RUN) { out.hidden = true; return; }
+    out.hidden = false;
+
+    const grid = document.createElement("div");
+    grid.className = "bench-cols";
+    LANE_RUN.results.forEach(function (r) {
+      const col = document.createElement("div");
+      col.className = "cmp-col" + (r.state === "wait" ? " cmp-wait" : (r.ok ? " cmp-ok" : " cmp-no"));
+      const h = document.createElement("div");
+      h.className = "cmp-head";
+      h.textContent = r.label;
+      h.title = r.label;
+      const meta = document.createElement("div");
+      meta.className = "cmp-meta";
+      meta.textContent = cmpMeta(r);
+      const body = document.createElement("div");
+      body.className = "cmp-body";
+      body.textContent = r.ok ? (r.text || "(empty answer)") : "";
+      col.appendChild(h);
+      col.appendChild(meta);
+      col.appendChild(body);
+      if (r.ok) {
+        const bar = document.createElement("div");
+        bar.className = "cmp-bar";
+        const pick = document.createElement("button");
+        pick.type = "button";
+        pick.textContent = (LANE_RUN.picked === r.id) ? "✓ your answer" : "Use this one";
+        pick.disabled = (!!LANE_RUN.picked || !!LANE_RUN.blended) && LANE_RUN.picked !== r.id;
+        pick.title = LANE_RUN.picked && LANE_RUN.picked !== r.id
+          ? "one pick per run — send again to pick another way"
+          : (LANE_RUN.blended ? "this run was blended — the blend is the answer that counts" : "add this reply to the conversation");
+        pick.onclick = function () { benchPick(r); };
+        const cp = document.createElement("button");
+        cp.type = "button";
+        cp.textContent = "Copy";
+        cp.onclick = function () {
+          copyText(r.text).then(function () { cp.textContent = "✓ copied"; },
+                                function () { cp.textContent = "select & copy"; });
+        };
+        bar.appendChild(pick);
+        bar.appendChild(cp);
+        col.appendChild(bar);
+      }
+      grid.appendChild(col);
+    });
+    out.appendChild(grid);
+
+    const good = LANE_RUN.results.filter(function (r) { return r.ok && r.text; });
+    const done = LANE_RUN.results.every(function (r) { return r.state !== "wait"; });
+    const foot = document.createElement("div");
+    foot.className = "cmp-foot";
+    const note = document.createElement("span");
+    note.className = "hint";
+    note.textContent = done
+      ? (good.length + " of " + LANE_RUN.results.length + " lane(s) answered · same system prompt, one shot each, no browser limbs · " +
+         LANE_RUN.results.reduce(function (n, r) { return n + (r.attempts || 1); }, 0) +
+         " request(s) charged to your keys (a lane that needed a payload retry counts every try)" +
+         (LANE_RUN.picked || LANE_RUN.blended ? " · this run is closed" : ""))
+      : "asking " + LANE_RUN.results.length + " lane(s) at once…";
+    foot.appendChild(note);
+
+    if (done && good.length >= 2 && !LANE_RUN.picked && !LANE_RUN.blended) {
+      const pickLane = document.createElement("select");
+      pickLane.id = "bench-blend-lane";
+      pickLane.setAttribute("aria-label", "which lane blends the answers");
+      good.forEach(function (r) {
+        const l = LANES.filter(function (x) { return x.id === r.id; })[0];
+        if (!l) return;
+        const o = document.createElement("option");
+        o.value = l.id;
+        o.textContent = r.label;
+        pickLane.appendChild(o);
+      });
+      const blend = document.createElement("button");
+      blend.type = "button";
+      blend.textContent = "⇄ Blend them into one answer";
+      blend.title = "one more call: the chosen lane reads every answer and blends the strongest one, naming what it leaned on";
+      blend.onclick = function () { benchBlend(); };
+      foot.appendChild(pickLane);
+      foot.appendChild(blend);
+    }
+
+    if (LANE_RUN.blend) {
+      const card = document.createElement("div");
+      card.className = "cmp-blend";
+      const h = document.createElement("div");
+      h.className = "cmp-head";
+      h.textContent = "blend by " + LANE_RUN.blend.label;
+      const meta = document.createElement("div");
+      meta.className = "cmp-meta";
+      meta.textContent = LANE_RUN.blend.ok
+        ? ((LANE_RUN.blend.ms < 1000 ? LANE_RUN.blend.ms + "ms" : (LANE_RUN.blend.ms / 1000).toFixed(1) + "s") +
+           " · one model reading the others — the blend is that model's summary, not a new oracle")
+        : ("failed · " + LANE_RUN.blend.error);
+      const body = document.createElement("div");
+      body.className = "cmp-body";
+      body.textContent = LANE_RUN.blend.ok ? LANE_RUN.blend.text : "";
+      card.appendChild(h);
+      card.appendChild(meta);
+      card.appendChild(body);
+      if (LANE_RUN.blend.ok) {
+        const bar = document.createElement("div");
+        bar.className = "cmp-bar";
+        const pick = document.createElement("button");
+        pick.type = "button";
+        pick.textContent = LANE_RUN.picked === "blend" ? "✓ your answer" : "Use the blend";
+        pick.disabled = !!LANE_RUN.picked;
+        pick.onclick = function () { benchPick({ id: "blend", label: LANE_RUN.blend.label, text: LANE_RUN.blend.text, ok: true }); };
+        bar.appendChild(pick);
+        card.appendChild(bar);
+      }
+      out.appendChild(card);
+    }
+    out.appendChild(foot);
+    out.scrollTop = 0;
+  }
+
+  // The prompt every lane gets: the same conversation the main chat would send, so the comparison is fair.
+  function benchMessages(promptText, extra) {
+    const invoked = Object.keys(CHAMPS).find(function (n) { return promptText.toUpperCase().indexOf(n.toUpperCase()) >= 0; });
+    const sys = systemPrompt(invoked) + (extra ? "\n\n" + extra : "");
+    return [{ role: "system", content: sys }, { role: "user", content: promptText }];
+  }
+
+  async function benchRun(promptText) {
+    const text = String(promptText || "").trim();
+    const run = document.getElementById("bench-run");
+    if (!text) { bubble("assistant", "Type the prompt first, then run it on the lanes."); return; }
+    const lanes = readyLanes();
+    if (!lanes.length) {
+      bubble("assistant", "No lane is ready. Give each lane a provider and a model, and either paste its key in the lane or put that provider's key in the top box — a lane set to the same provider shares it. Blocked vendors are labelled on the lane.");
+      return;
+    }
+    if (P0.test(text)) { bubble("assistant", "P0 blocked that prompt."); return; }
+    if (run) run.disabled = true;
+    LANE_RUN = {
+      prompt: text,
+      at: Date.now(),
+      picked: false,
+      blended: false,
+      results: lanes.map(function (l) {
+        return { id: l.id, label: laneLabel(l), model: laneModel(l), state: "wait", ok: false, text: "", ms: 0, error: "" };
+      }),
+    };
+    benchPaintRun();
+    bubble("assistant", "⇄ compare — the same prompt went to " + lanes.length + " lane(s) at once: " +
+      lanes.map(function (l) { return laneLabel(l); }).join(" · ") +
+      ". The answers are side by side in the bench under the composer; pick one, or blend them.");
+    const messages = benchMessages(text);
+    try {
+      const got = await Promise.all(lanes.map(function (l) { return laneCall(l, messages); }));
+      LANE_RUN.results = lanes.map(function (l, i) {
+        const r = got[i] || { ok: false, error: "no answer" };
+        return {
+          id: l.id, label: laneLabel(l), model: laneModel(l), state: "done",
+          ok: !!r.ok, text: r.text || "", ms: r.ms || 0, error: r.error || "",
+          attempts: r.attempts || 1, usage: r.usage || null, served: r.served || "", toolCalls: r.toolCalls || 0,
+        };
+      });
+    } catch (e) {
+      LANE_RUN.results.forEach(function (r) { r.state = "done"; r.error = r.error || String((e && e.message) || e); });
+    } finally {
+      if (run) run.disabled = false;
+      benchPaintRun();
+    }
+  }
+
+  function benchPick(r) {
+    if (!LANE_RUN || LANE_RUN.picked) return;
+    // One pick OR one blend per run: once the run was blended, the individual answers are closed off,
+    // or the conversation would collect two assistant turns for the same prompt.
+    if (LANE_RUN.blended && (!r || r.id !== "blend")) return;
+    const text = String((r && r.text) || "").trim();
+    if (!text) return;
+    LANE_RUN.picked = r.id;
+    history.push({ role: "assistant", content: text });
+    bubble("assistant", (r.id === "blend" ? "blend by " : "picked: ") + r.label + "\n\n" + text);
+    benchPaintRun();
+  }
+
+  async function benchBlend() {
+    if (!LANE_RUN || LANE_RUN.blended || LANE_RUN.picked) return;
+    const good = LANE_RUN.results.filter(function (r) { return r.ok && r.text; });
+    if (good.length < 2) return;
+    const sel = document.getElementById("bench-blend-lane");
+    const snap = LANES.filter(function (x) { return sel && x.id === sel.value; });
+    const l = snap[0] || LANES.filter(function (x) { return x.id === LANE_RUN.results[0].id; })[0];
+    if (!l) return;
+    const body = good.map(function (r, i) {
+      return "--- ANSWER " + String.fromCharCode(65 + i) + " (" + r.label + ") ---\n" + r.text;
+    }).join("\n\n");
+    const ask = "Several models were each given the same prompt. That prompt was:\n" + LANE_RUN.prompt +
+      "\n\n" + body +
+      "\n\nBlend them into one answer: (1) the strongest single answer, written clean; (2) what each answer adds that the others miss, one line each; (3) any disagreement or uncertainty a reader must know. Name the answer you leaned on. Do not invent anything none of them gave — if they all missed it, say so.";
+    LANE_RUN.blended = l.id;
+    benchPaintRun();
+    bubble("assistant", "⇄ blending " + good.length + " answers with " + laneLabel(l) + "…");
+    const r = await laneCall(l, benchMessages(ask, "You are the bench's blender: you are reading the answers of other models, and your reply is the blend of them. Say which answer you leaned on."));
+    LANE_RUN.blend = {
+      id: l.id, label: laneLabel(l), ok: !!r.ok, text: r.text || "", error: r.error || "", ms: r.ms || 0,
+    };
+    benchPaintRun();
+  }
+
+  function benchShow(on) {
+    const bench = document.getElementById("bench");
+    const tgl = document.getElementById("cmp-toggle");
+    COMPARE = !!on;
+    compareSave();
+    if (bench) bench.hidden = !COMPARE;
+    if (tgl) {
+      tgl.setAttribute("aria-pressed", COMPARE ? "true" : "false");
+      tgl.className = "cmp-toggle" + (COMPARE ? " on" : "");
+    }
+    if (COMPARE) {
+      if (!LANES.length) laneLoad();
+      paintLanes();
+      if (msg) msg.placeholder = "Ask — every ready lane answers side by side…";
+      if (LANE_RUN) benchPaintRun();
+    } else if (msg) {
+      msg.placeholder = connected ? "Ask…" : "Connect first, then ask…";
+    }
+  }
+
+  (function benchWire() {
+    const tgl = document.getElementById("cmp-toggle");
+    const add = document.getElementById("bench-add");
+    const run = document.getElementById("bench-run");
+    if (tgl) {
+      tgl.addEventListener("click", function () { benchShow(!COMPARE); });
+      compareLoad();
+      if (COMPARE) benchShow(true);
+    }
+    if (add) {
+      add.addEventListener("click", function () {
+        if (LANES.length >= LANE_MAX) { benchStatus(); return; }
+        const topPid = (modeEl && PROVIDERS[modeEl.value]) ? modeEl.value : "groq";
+        const l = { id: laneId(), pid: topPid, model: "", url: "" };
+        LANES.push(l);
+        laneFillModels(l);
+        laneSave();
+        paintLanes();
+      });
+    }
+    if (run) {
+      run.addEventListener("click", function () {
+        const text = String((msg && msg.value) || "").trim();
+        if (!text) { bubble("assistant", "Type the prompt in the box first, then run it on the lanes."); return; }
+        // Same record as pressing Send with the bench on: the visitor's turn joins the conversation,
+        // and one assistant turn is added when they pick a lane or a blend.
+        bubble("user", text);
+        history.push({ role: "user", content: text });
+        if (msg) msg.value = "";
+        benchRun(text);
+      });
+    }
+    benchStatus();
+  })();
 
   // ---- Image generation suite ----------------------------------------------------------------
   // ONE owner for "make a picture": the module at the bottom of the page and the agent's

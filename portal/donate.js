@@ -9,9 +9,22 @@
     return document.getElementById(id);
   }
 
+  // A supporter code (from the steward's Patreon post, rotated monthly) switches these reminders off in
+  // the browser where it was entered. Everything else about the page is the same. supporter.js owns the
+  // check; this file only asks it, at every point where a reminder could appear - so unlocking while the
+  // card is open closes it, and an unlock that lapses starts the reminders again.
+  function allowed() {
+    var s = window.LYGO_SUPPORTER;
+    return !(s && s.unlocked && s.unlocked());
+  }
+
   function show() {
     const layer = el("donateLayer");
     if (!layer) return;
+    if (!allowed()) { schedule(); return; }
+    // Never push a reminder over the entrance: a visitor still reading the terms has not started yet.
+    const intro = el("introLayer");
+    if (intro && !intro.hidden) { schedule(); return; }
     opened = false;
     const close = el("donateClose");
     if (close) {
@@ -44,6 +57,8 @@
 
   function schedule() {
     if (timer) clearTimeout(timer);
+    timer = null;
+    if (!allowed()) return;                 // a supporter in this browser: nothing is scheduled at all
     timer = setTimeout(show, EVERY_MS);
   }
 
@@ -71,6 +86,18 @@
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && !layer.hidden && !opened) e.preventDefault();
     });
+    // supporter.js drives these three: unlocking shuts the card and stops the clock, locking again
+    // restarts it, and entering the portal restarts the clock so nobody is interrupted seconds after
+    // they walked in.
+    document.addEventListener("lygo-supporter", function () {
+      if (allowed()) { schedule(); return; }
+      if (!layer.hidden) hide();
+      else schedule();
+    });
+    document.addEventListener("lygo-portal-close-donate", function () {
+      if (!layer.hidden) hide();
+    });
+    document.addEventListener("lygo-intro-entered", function () { schedule(); });
     schedule();
   }
 
