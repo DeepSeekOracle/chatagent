@@ -1509,7 +1509,7 @@
     if (!list || !status) return;
     list.innerHTML = "";
     if (!MODULES.ok) {
-      status.textContent = MODULES.status + " — attach one by opening this page with ?console=http://127.0.0.1:9641 (PC LOCAL) or :9651 (USB CLAW).";
+      status.textContent = MODULES.status + " — attach one by starting the console's public gateway (PUBLIC_GATEWAY.bat) and opening this page with ?console=http://127.0.0.1:9642, then allowing local network access when the browser asks. The gateway carries the headers this page needs; the admin UI on :9641 / :9651 is for you, not for a web page.";
       return;
     }
     const c = MODULES.counts || {};

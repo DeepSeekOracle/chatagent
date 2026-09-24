@@ -39,7 +39,7 @@
 <link rel="stylesheet" href="style.css?v=20260924b">
 <link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
 <script src="/assets/hls.min.js" defer></script>
-<script src="/assets/lygo-tv-ninja.js?v=5" defer></script>
+<script src="/assets/lygo-tv-ninja.js?v=6" defer></script>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
@@ -181,9 +181,11 @@
     <p class="hint" id="skill-pack">Loading pack…</p>
     <h2>Agent limbs</h2>
     <p class="hint">All browser-safe tools are installed on this page. Disk/shell stay on the local console.</p>
-    <p class="sub">No engine attached? <a href="/portal/image-engine.html">Get the image engine</a> — a 12 MB add-on for the
-    <a href="/lygo-llm-console.html">LYGO console</a> that runs the same engine offline, free and unlimited (the checkpoint is
-    fetched once, 6.9 GB). Or use a key route above, which needs no install at all.</p>
+    <p class="sub">No engine attached? The <strong>Image generation</strong> suite at the bottom of this page has two routes:
+    a key you already hold (nothing installed), or <strong>your own console</strong> — running the engine on your machine,
+    free and unlimited. Attach it with <code>?console=http://127.0.0.1:9642</code> from its public gateway, and allow local
+    network access when Chrome asks. Engine inside the kit since 1.3.2 (PC and stick); the checkpoint is fetched once —
+    <a href="/portal/image-engine.html">both routes, in detail</a>.</p>
     <div class="limbs">
       <button type="button" data-limb="wiki">wiki</button>
       <button type="button" data-limb="weather">weather</button>
@@ -201,7 +203,10 @@
     <h2>Modules</h2>
     <p class="hint" id="modules-status">Looking for an attached console…</p>
     <div class="skills-list" id="modules-list"></div>
-    <p class="hint">This page has no kernel of its own, so modules come from a console you attach: run <strong>PC LOCAL</strong> or <strong>USB CLAW</strong>, then open this page with <code>?console=http://127.0.0.1:9641</code> (PC) or <code>:9651</code> (USB). Each row says what that module can do <em>here</em> — anything marked <em>needs your machine</em> is running in your local console, not in this tab.</p>
+    <p class="hint">This page has no kernel of its own, so modules come from a console you attach: run <strong>PC LOCAL</strong> or <strong>USB CLAW</strong>, then start its public gateway (<code>PUBLIC_GATEWAY.bat</code>) and open this page with
+    <code>?console=http://127.0.0.1:9642</code> — the gateway is the address this page can talk to (the admin UI on
+    <code>:9641</code> / <code>:9651</code> is for you, not for a web page), and Chrome will ask to <em>allow access to your
+    local network</em>: say yes, or the console route fails as if nothing were running. Each row says what that module can do <em>here</em> — anything marked <em>needs your machine</em> is running in your local console, not in this tab.</p>
     <h2>Full local console</h2>
     <p class="hint">GGUF scan, folders, SkillHub FULL, USB CLAW — not this webpage.</p>
     <p class="hint">

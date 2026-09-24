@@ -7,6 +7,15 @@
   const POOL_MAX = 12000;
   const MAX_BYTES = 8000000;
   const EMBED = { youtube: 1, rumble: 1, twitch: 1, kick: 1 };
+  const SOUND_KEY = "lygo_tv_sound";
+  // Every channel used to be silent, on every channel, always: the mute was baked into the embed URL
+  // (mute=1 / muted=true) to satisfy the browser's autoplay rule, and nothing ever took it back off.
+  // Sound is a preference here ("want") that only applies once a real click has happened in this
+  // player ("gesture") - that click is what tells the browser this visitor wants audio.
+  let want = false;
+  let gesture = false;
+  try { want = localStorage.getItem(SOUND_KEY) === "1"; } catch (e) {}
+  function mutedNow() { return !(want && gesture); }
   const ROOMS = [
     { id: "rumble_live", title: "Excavationpro Rumble LIVE", kind: "rumble",
       url: "https://rumble.com/embed/v7b5p30/?pub=1th29y", https: true },
@@ -84,7 +93,8 @@
   function embed(ch) {
     if (ch.kind === "twitch" || (ch.url && String(ch.url).indexOf("player.twitch.tv") !== -1)) {
       return "https://player.twitch.tv/?channel=" + encodeURIComponent(ch.channel || "excavationpro") +
-        "&parent=" + encodeURIComponent(location.hostname) + "&autoplay=true&muted=true";
+        "&parent=" + encodeURIComponent(location.hostname) + "&autoplay=true" +
+        (mutedNow() ? "&muted=true" : "");
     }
     let url = ch.url || "";
     if (ch.kind === "rumble" || url.indexOf("rumble.com") !== -1) {
@@ -93,15 +103,17 @@
     }
     if (ch.kind === "youtube" || url.indexOf("youtube") !== -1) {
       url = withParam(url, "autoplay", "1");
-      url = withParam(url, "mute", "1");
+      url = withParam(url, "mute", mutedNow() ? "1" : "0");
       url = withParam(url, "playsinline", "1");
       return url;
     }
     if (ch.kind === "kick" || url.indexOf("kick.com") !== -1) {
       url = withParam(url, "autoplay", "true");
-      url = withParam(url, "muted", "true");
+      url = withParam(url, "muted", mutedNow() ? "true" : "false");
       return url;
     }
+    // Rumble takes no mute parameter from outside: it carries its own control inside the frame, and a
+    // reload that happens inside a click is what lets the browser give it sound.
     return url;
   }
 
@@ -168,7 +180,10 @@
         '<button type="button" class="tv-zap" data-dir="-1" aria-label="Previous channel">Prev</button>' +
         '<p class="tv-meta">Channel</p>' +
         '<button type="button" class="tv-zap" data-dir="1" aria-label="Next channel">Next</button>' +
-      "</div>";
+        '<button type="button" class="tv-zap tv-sound" data-sound aria-pressed="false"' +
+        ' title="Sound on or off">\uD83D\uDD07 Sound</button>' +
+      "</div>" +
+      '<p class="tv-meta tv-hint" data-sound-hint hidden style="font-size:.78em;opacity:.78"></p>';
 
     const list = ROOMS.slice();
     const seen = {};
@@ -191,7 +206,7 @@
       frame.hidden = true;
       frame.removeAttribute("src");
       video.hidden = false;
-      video.muted = true;
+      video.muted = mutedNow();
       if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = url;
         video.play().catch(function () {});
@@ -244,11 +259,36 @@
       if (ch) meta.textContent = ch.title + " · " + (i + 1) + " / " + list.length;
     }
 
-    host.querySelectorAll(".tv-zap").forEach(function (btn) {
+    const soundBtn = host.querySelector("[data-sound]");
+    const hint = host.querySelector("[data-sound-hint]");
+    function paintSound() {
+      if (!soundBtn) return;
+      soundBtn.textContent = (want ? "\uD83D\uDD0A" : "\uD83D\uDD07") + " Sound";
+      soundBtn.setAttribute("aria-pressed", want ? "true" : "false");
+      if (hint) {
+        const pending = want && !gesture;
+        hint.hidden = !pending;
+        hint.textContent = pending
+          ? "Sound is set to on. The browser needs one click here before it will play audio - press Sound, or Prev/Next."
+          : "";
+      }
+    }
+    if (soundBtn) {
+      soundBtn.addEventListener("click", function () {
+        want = !want;
+        gesture = true;                 // a real click: from here the browser allows audio
+        try { localStorage.setItem(SOUND_KEY, want ? "1" : "0"); } catch (e) {}
+        paintSound();
+        play(i);                        // reload the channel under the rule that now applies
+      });
+    }
+    host.querySelectorAll(".tv-zap[data-dir]").forEach(function (btn) {
       btn.addEventListener("click", function () {
+        gesture = true;                 // walking channels is a click too: keep the sound decision
         play(i + parseInt(btn.getAttribute("data-dir"), 10));
       });
     });
+    paintSound();
     video.hidden = true;
     play(i);
     if (window.IntersectionObserver) {
