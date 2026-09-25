@@ -941,7 +941,7 @@
     bubble("user", text);
     if (COMPARE) {
       // The bench answers, not the single model in the top box: the visitor's own turn joins the
-      // conversation, and an assistant turn is added only when they pick a lane or a blend.
+      // conversation, and an assistant turn is added only when they pick an answer or a synthesis.
       history.push({ role: "user", content: text });
       benchRun(text);
       return;
@@ -1047,12 +1047,42 @@
   const COMPARE_STORE = "lygo_portal_compare";
   const LANE_MAX = 4;
   const LANE_TIMEOUT = 120000;      // 2 minutes: a reasoning model may be slow, a dead host must not be forever
+  const LANE_LETTERS = "ABCD";      // the tag a segment carries in the assembled answer and the sources
   let LANES = [];                   // [{ id, pid, model, url }] - provider, model, endpoint. Never a key.
   let LANE_KEYS = {};               // lane id -> key. Memory only, by design.
   let LANE_RUN = null;              // the last fan-out
   let COMPARE = false;
   let BENCH_CALLS = 0;              // POSTs actually spent this session, ladder rungs included
   let LANE_SEQ = 0;
+
+  // The synthesis core is synth.js, loaded before this file, so the splitter, the assembler and the
+  // meta-prompt here are byte-for-byte the functions tools/portal_synth_check.js runs in node. If that
+  // file were missing the bench must still work (one segment per answer, synthesis from whole answers),
+  // so the fallback degrades the feature and says so in the console instead of throwing on first paint.
+  const SY = window.LYGO_SYNTH || (function () {
+    if (window.console && console.error) {
+      console.error("LYGO portal: synth.js did not load — segment picking is off, the bench still runs.");
+    }
+    function seg1(t) { const s = String(t == null ? "" : t).trim(); return s ? [{ i: 1, text: s, kind: "para", para: 1 }] : []; }
+    return {
+      splitSegments: seg1,
+      assemble: function (rows) {
+        const list = (rows || []).filter(function (r) { return r && r.seg && r.seg.text; });
+        return { text: list.map(function (r) { return r.seg.text; }).join("\n\n"), count: list.length, lanes: [], tags: [] };
+      },
+      sourceBlock: function (sources) {
+        return (sources || []).map(function (s, i) {
+          return "--- ANSWER " + String.fromCharCode(65 + i) + " (" + (s.label || "unnamed lane") + ") ---\n" + s.text;
+        }).join("\n\n");
+      },
+      synthPrompt: function (o) {
+        return String(o.body || "") + "\n\nWrite ONE refined answer to that prompt, invent nothing, and end with a line beginning 'Provenance:' naming what you leaned on.";
+      },
+      synthSystem: function () {
+        return "You are reading answers other models wrote to the same prompt. Your reply is one refined answer built from them.";
+      },
+    };
+  })();
 
   function laneId() { return "lane" + (++LANE_SEQ) + "-" + Math.random().toString(36).slice(2, 7); }
   function laneProvider(l) { return providerOf(l.pid); }
@@ -1423,6 +1453,180 @@
     return bits.join(" · ");
   }
 
+  // ---- picking the strongest segments ------------------------------------------------------------
+  // The side-by-side view answers "which is best"; synthesis answers "give me the answer". Two routes,
+  // both one click: keep the segments that earn their place and assemble them verbatim, or hand the
+  // whole bench to one lane and let it write a single refined answer. Selection lives on LANE_RUN only
+  // (never localStorage) and dies with the run, like the lane keys.
+  function pickedOf(id) { return (LANE_RUN && LANE_RUN.picks && LANE_RUN.picks[id]) || []; }
+  function pickToggle(r, idx) {
+    if (!LANE_RUN || LANE_RUN.picked || LANE_RUN.busy) return;
+    const list = LANE_RUN.picks[r.id] || (LANE_RUN.picks[r.id] = []);
+    const at = list.indexOf(idx);
+    if (at < 0) list.push(idx); else list.splice(at, 1);
+    list.sort(function (a, b) { return a - b; });
+    if (!list.length) delete LANE_RUN.picks[r.id];
+    benchPaintRun();
+  }
+  function paintSegments(body, r, segs) {
+    const picked = pickedOf(r.id);
+    segs.forEach(function (s) {
+      const on = picked.indexOf(s.i) >= 0;
+      const d = document.createElement("div");
+      d.className = "seg" + (on ? " on" : "");
+      d.setAttribute("role", "checkbox");
+      d.setAttribute("aria-checked", on ? "true" : "false");
+      d.tabIndex = 0;
+      d.title = on ? "kept — press again to drop it" : "press to keep this segment for the synthesis";
+      const mark = document.createElement("span");
+      mark.className = "seg-mark";
+      mark.textContent = on ? "✓" : "+";
+      const tx = document.createElement("span");
+      tx.className = "seg-tx";
+      tx.textContent = s.text;
+      d.appendChild(mark);
+      d.appendChild(tx);
+      const hit = function (ev) {
+        if (ev && ev.preventDefault) ev.preventDefault();
+        pickToggle(r, s.i);
+      };
+      d.onclick = hit;
+      d.onkeydown = function (ev) {
+        if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") hit(ev);
+      };
+      body.appendChild(d);
+    });
+  }
+  // The picks, lane by lane in reading order, each carrying the live answer text and its tag. Both the
+  // assembler and the meta-prompt read this one list, so what the visitor picked is what gets used.
+  function pickRows() {
+    const rows = [];
+    if (!LANE_RUN) return rows;
+    LANE_RUN.results.forEach(function (r, i) {
+      const idx = pickedOf(r.id);
+      if (!idx.length || !r.ok || !r.text) return;
+      const segs = SY.splitSegments(r.text);
+      idx.forEach(function (n) {
+        const s = segs.filter(function (x) { return x.i === n; })[0];
+        if (s) rows.push({ lane: LANE_LETTERS[i] || "?", label: r.label, seg: s, id: r.id });
+      });
+    });
+    return rows;
+  }
+  function picksStamp() {
+    if (!LANE_RUN || !LANE_RUN.picks) return "";
+    return Object.keys(LANE_RUN.picks).sort().map(function (k) {
+      return k + ":" + LANE_RUN.picks[k].join(",");
+    }).join("|");
+  }
+  // What the synthesizer reads: the picked segments if any were picked (labelled with their segment
+  // number), otherwise every full answer - the meta-prompt route the visitor asked for. Each source
+  // carries the bench's lane letter, so the meta-prompt and the (A2)/(B3) tags name answers the same way.
+  function synthSources(rows) {
+    if (rows && rows.length) {
+      return rows.map(function (r) {
+        return { lane: r.lane, label: r.label + " · segment " + r.seg.i, text: r.seg.text };
+      });
+    }
+    return LANE_RUN.results.filter(function (r) { return r.ok && r.text; })
+      .map(function (r, i) { return { lane: LANE_LETTERS[i] || "?", label: r.label, text: r.text }; });
+  }
+
+  // One card for a routed answer (a synthesis or a hand assembly), with its own pick and copy.
+  function candidateCard(c) {
+    const card = document.createElement("div");
+    card.className = c.cls;
+    const h = document.createElement("div");
+    h.className = "cmp-head";
+    h.textContent = c.head;
+    const meta = document.createElement("div");
+    meta.className = "cmp-meta";
+    meta.textContent = c.meta;
+    const body = document.createElement("div");
+    body.className = "cmp-body";
+    body.textContent = c.text || "";
+    card.appendChild(h);
+    card.appendChild(meta);
+    card.appendChild(body);
+    if (c.text) {
+      const bar = document.createElement("div");
+      bar.className = "cmp-bar";
+      const pick = document.createElement("button");
+      pick.type = "button";
+      pick.textContent = LANE_RUN.picked === c.pick.id ? "✓ your answer" : c.useLabel;
+      pick.disabled = !!LANE_RUN.picked || !!LANE_RUN.busy;
+      pick.onclick = function () { benchPick(c.pick); };
+      const cp = document.createElement("button");
+      cp.type = "button";
+      cp.textContent = "Copy";
+      cp.onclick = function () {
+        copyText(c.text).then(function () { cp.textContent = "✓ copied"; },
+                              function () { cp.textContent = "select & copy"; });
+      };
+      bar.appendChild(pick);
+      bar.appendChild(cp);
+      card.appendChild(bar);
+    }
+    return card;
+  }
+
+  // The synthesis row: which lane writes it, one click to write it, one click to assemble by hand.
+  function synthBar(foot, good) {
+    if (!LANE_RUN || LANE_RUN.picked) return;
+    const rows = pickRows();
+    const n = rows.length;
+    const busy = !!LANE_RUN.busy;
+    if (good.length >= 2) {
+      const pickLane = document.createElement("select");
+      pickLane.id = "bench-synth-lane";
+      pickLane.setAttribute("aria-label", "which lane writes the synthesis");
+      good.forEach(function (r) {
+        const l = LANES.filter(function (x) { return x.id === r.id; })[0];
+        if (!l) return;
+        const o = document.createElement("option");
+        o.value = l.id;
+        o.textContent = r.label;
+        pickLane.appendChild(o);
+      });
+      const sy = document.createElement("button");
+      sy.type = "button";
+      sy.id = "bench-synth";
+      sy.textContent = n
+        ? "⇄ Synthesize from the " + n + " picked segment" + (n === 1 ? "" : "s")
+        : "⇄ Synthesize into one answer";
+      sy.title = n
+        ? "one call to the chosen lane: it reads only the segments you kept and writes one refined answer from them"
+        : "one call to the chosen lane: it reads every answer and writes one refined answer — or press the + on the strongest segments first, and only those are sent";
+      sy.disabled = busy || !!(LANE_RUN.synth && LANE_RUN.synth.ok);
+      sy.onclick = function () { benchSynthesize(); };
+      foot.appendChild(pickLane);
+      foot.appendChild(sy);
+    }
+    if (n) {
+      const asm = document.createElement("button");
+      asm.type = "button";
+      asm.id = "bench-assemble";
+      asm.textContent = "⇄ Assemble the " + n + " picked · no call";
+      asm.title = "no API call, no key, nothing sent anywhere: your picked segments in order, verbatim, with their provenance";
+      asm.disabled = busy;
+      asm.onclick = function () { benchAssemble(); };
+      const clr = document.createElement("button");
+      clr.type = "button";
+      clr.id = "bench-unpick";
+      clr.textContent = "clear picks";
+      clr.title = "drop every segment you kept";
+      clr.disabled = busy;
+      clr.onclick = function () {
+        if (!LANE_RUN) return;
+        LANE_RUN.picks = {};
+        LANE_RUN.assembled = null;
+        benchPaintRun();
+      };
+      foot.appendChild(asm);
+      foot.appendChild(clr);
+    }
+  }
+
   function benchPaintRun() {
     const out = document.getElementById("bench-out");
     if (!out) return;
@@ -1442,22 +1646,33 @@
       const meta = document.createElement("div");
       meta.className = "cmp-meta";
       meta.textContent = cmpMeta(r);
+      const segs = (r.ok && r.text) ? SY.splitSegments(r.text) : [];
       const body = document.createElement("div");
       body.className = "cmp-body";
-      body.textContent = r.ok ? (r.text || "(empty answer)") : "";
+      if (segs.length && !LANE_RUN.picked) paintSegments(body, r, segs);
+      else body.textContent = r.ok ? (r.text || "(empty answer)") : "";
       col.appendChild(h);
       col.appendChild(meta);
       col.appendChild(body);
       if (r.ok) {
+        const kept = pickedOf(r.id).length;
+        if (!LANE_RUN.picked) {
+          const cnt = document.createElement("div");
+          cnt.className = "seg-count" + (kept ? " on" : "");
+          cnt.textContent = kept
+            ? "keeping " + kept + " of " + segs.length + " segment" + (segs.length === 1 ? "" : "s")
+            : segs.length + " segment" + (segs.length === 1 ? "" : "s") + " — press one to keep it";
+          col.appendChild(cnt);
+        }
         const bar = document.createElement("div");
         bar.className = "cmp-bar";
         const pick = document.createElement("button");
         pick.type = "button";
         pick.textContent = (LANE_RUN.picked === r.id) ? "✓ your answer" : "Use this one";
-        pick.disabled = (!!LANE_RUN.picked || !!LANE_RUN.blended) && LANE_RUN.picked !== r.id;
-        pick.title = LANE_RUN.picked && LANE_RUN.picked !== r.id
-          ? "one pick per run — send again to pick another way"
-          : (LANE_RUN.blended ? "this run was blended — the blend is the answer that counts" : "add this reply to the conversation");
+        pick.disabled = (!!LANE_RUN.picked && LANE_RUN.picked !== r.id) || !!LANE_RUN.busy;
+        pick.title = (LANE_RUN.picked && LANE_RUN.picked !== r.id)
+          ? "one answer per run — this run is already closed by another answer; send again to choose differently"
+          : "add this reply to the conversation (one answer per run)";
         pick.onclick = function () { benchPick(r); };
         const cp = document.createElement("button");
         cp.type = "button";
@@ -1484,61 +1699,44 @@
       ? (good.length + " of " + LANE_RUN.results.length + " lane(s) answered · same system prompt, one shot each, no browser limbs · " +
          LANE_RUN.results.reduce(function (n, r) { return n + (r.attempts || 1); }, 0) +
          " request(s) charged to your keys (a lane that needed a payload retry counts every try)" +
-         (LANE_RUN.picked || LANE_RUN.blended ? " · this run is closed" : ""))
+         (LANE_RUN.picked ? " · this run is closed" : " · press a segment and it becomes the material for the synthesis"))
       : "asking " + LANE_RUN.results.length + " lane(s) at once…";
     foot.appendChild(note);
 
-    if (done && good.length >= 2 && !LANE_RUN.picked && !LANE_RUN.blended) {
-      const pickLane = document.createElement("select");
-      pickLane.id = "bench-blend-lane";
-      pickLane.setAttribute("aria-label", "which lane blends the answers");
-      good.forEach(function (r) {
-        const l = LANES.filter(function (x) { return x.id === r.id; })[0];
-        if (!l) return;
-        const o = document.createElement("option");
-        o.value = l.id;
-        o.textContent = r.label;
-        pickLane.appendChild(o);
-      });
-      const blend = document.createElement("button");
-      blend.type = "button";
-      blend.textContent = "⇄ Blend them into one answer";
-      blend.title = "one more call: the chosen lane reads every answer and blends the strongest one, naming what it leaned on";
-      blend.onclick = function () { benchBlend(); };
-      foot.appendChild(pickLane);
-      foot.appendChild(blend);
-    }
+    if (done) synthBar(foot, good);
 
-    if (LANE_RUN.blend) {
-      const card = document.createElement("div");
-      card.className = "cmp-blend";
-      const h = document.createElement("div");
-      h.className = "cmp-head";
-      h.textContent = "blend by " + LANE_RUN.blend.label;
-      const meta = document.createElement("div");
-      meta.className = "cmp-meta";
-      meta.textContent = LANE_RUN.blend.ok
-        ? ((LANE_RUN.blend.ms < 1000 ? LANE_RUN.blend.ms + "ms" : (LANE_RUN.blend.ms / 1000).toFixed(1) + "s") +
-           " · one model reading the others — the blend is that model's summary, not a new oracle")
-        : ("failed · " + LANE_RUN.blend.error);
-      const body = document.createElement("div");
-      body.className = "cmp-body";
-      body.textContent = LANE_RUN.blend.ok ? LANE_RUN.blend.text : "";
-      card.appendChild(h);
-      card.appendChild(meta);
-      card.appendChild(body);
-      if (LANE_RUN.blend.ok) {
-        const bar = document.createElement("div");
-        bar.className = "cmp-bar";
-        const pick = document.createElement("button");
-        pick.type = "button";
-        pick.textContent = LANE_RUN.picked === "blend" ? "✓ your answer" : "Use the blend";
-        pick.disabled = !!LANE_RUN.picked;
-        pick.onclick = function () { benchPick({ id: "blend", label: LANE_RUN.blend.label, text: LANE_RUN.blend.text, ok: true }); };
-        bar.appendChild(pick);
-        card.appendChild(bar);
-      }
-      out.appendChild(card);
+    // The routed answers sit under the grid: a synthesis one lane wrote, and/or the hand assembly of
+    // the picked segments. Either one can be the answer that joins the conversation.
+    if (LANE_RUN.synth) {
+      const s = LANE_RUN.synth;
+      out.appendChild(candidateCard({
+        cls: "cmp-synth",
+        head: "synthesis by " + s.label,
+        meta: s.ok
+          ? ((s.ms < 1000 ? s.ms + "ms" : (s.ms / 1000).toFixed(1) + "s") + " · " +
+             (s.mode === "picks"
+               ? s.count + " picked segment" + (s.count === 1 ? "" : "s") + " — nothing else was sent"
+               : s.count + " answers in full") +
+             " · one model reading the others and writing: the synthesis is that model's writing, not a new oracle")
+          : ("failed · " + s.error),
+        text: s.ok ? s.text : "",
+        useLabel: "Use the synthesis",
+        pick: { id: "synth", label: s.label, text: s.text },
+      }));
+    }
+    if (LANE_RUN.assembled) {
+      const a = LANE_RUN.assembled;
+      const stale = a.stamp !== picksStamp();
+      out.appendChild(candidateCard({
+        cls: "cmp-assembled",
+        head: "assembled by hand — " + a.count + " picked segment" + (a.count === 1 ? "" : "s") + " from " + a.lanes + " answer" + (a.lanes === 1 ? "" : "s"),
+        meta: "kept verbatim, in the order you picked them, tagged to the answer and segment each block came from" +
+          " · no API call, no key, nothing left this tab" +
+          (stale ? " · your picks changed since — press Assemble again to refresh this" : ""),
+        text: a.text,
+        useLabel: "Use this assembly",
+        pick: { id: "assemble", label: a.count + " picked segment(s) from " + a.lanes + " answer(s)", text: a.text, count: a.count, lanes: a.lanes },
+      }));
     }
     out.appendChild(foot);
     out.scrollTop = 0;
@@ -1566,7 +1764,10 @@
       prompt: text,
       at: Date.now(),
       picked: false,
-      blended: false,
+      busy: false,
+      picks: {},            // lane id -> the segment numbers the visitor kept. This run only.
+      synth: null,          // the meta-prompt route's card
+      assembled: null,      // the hand-assembly route's card
       results: lanes.map(function (l) {
         return { id: l.id, label: laneLabel(l), model: laneModel(l), state: "wait", ok: false, text: "", ms: 0, error: "" };
       }),
@@ -1574,7 +1775,7 @@
     benchPaintRun();
     bubble("assistant", "⇄ compare — the same prompt went to " + lanes.length + " lane(s) at once: " +
       lanes.map(function (l) { return laneLabel(l); }).join(" · ") +
-      ". The answers are side by side in the bench under the composer; pick one, or blend them.");
+      ". The answers are side by side in the bench under the composer. Then either pick one, press one segment in each answer to keep the strongest and assemble them, or synthesize all of it into one refined answer.");
     const messages = benchMessages(text);
     try {
       const got = await Promise.all(lanes.map(function (l) { return laneCall(l, messages); }));
@@ -1594,39 +1795,60 @@
     }
   }
 
+  // One answer per run joins the conversation: a lane's own reply, the synthesis, or the hand assembly.
+  // One turn in, one turn out — so the log stays a conversation instead of a pile of variants.
   function benchPick(r) {
     if (!LANE_RUN || LANE_RUN.picked) return;
-    // One pick OR one blend per run: once the run was blended, the individual answers are closed off,
-    // or the conversation would collect two assistant turns for the same prompt.
-    if (LANE_RUN.blended && (!r || r.id !== "blend")) return;
     const text = String((r && r.text) || "").trim();
     if (!text) return;
     LANE_RUN.picked = r.id;
     history.push({ role: "assistant", content: text });
-    bubble("assistant", (r.id === "blend" ? "blend by " : "picked: ") + r.label + "\n\n" + text);
+    let how;
+    if (r.id === "synth") how = "synthesis by " + r.label;
+    else if (r.id === "assemble") how = "assembled by hand — " + r.label;
+    else how = "picked: " + r.label;
+    bubble("assistant", how + "\n\n" + text);
     benchPaintRun();
   }
 
-  async function benchBlend() {
-    if (!LANE_RUN || LANE_RUN.blended || LANE_RUN.picked) return;
+  // Route B: one meta-prompt, one call, one refined answer. It reads the picked segments when there are
+  // any (cheaper and sharper), and every full answer when there are none.
+  async function benchSynthesize() {
+    if (!LANE_RUN || LANE_RUN.picked || LANE_RUN.busy) return;
     const good = LANE_RUN.results.filter(function (r) { return r.ok && r.text; });
     if (good.length < 2) return;
-    const sel = document.getElementById("bench-blend-lane");
+    const sel = document.getElementById("bench-synth-lane");
     const snap = LANES.filter(function (x) { return sel && x.id === sel.value; });
     const l = snap[0] || LANES.filter(function (x) { return x.id === LANE_RUN.results[0].id; })[0];
     if (!l) return;
-    const body = good.map(function (r, i) {
-      return "--- ANSWER " + String.fromCharCode(65 + i) + " (" + r.label + ") ---\n" + r.text;
-    }).join("\n\n");
-    const ask = "Several models were each given the same prompt. That prompt was:\n" + LANE_RUN.prompt +
-      "\n\n" + body +
-      "\n\nBlend them into one answer: (1) the strongest single answer, written clean; (2) what each answer adds that the others miss, one line each; (3) any disagreement or uncertainty a reader must know. Name the answer you leaned on. Do not invent anything none of them gave — if they all missed it, say so.";
-    LANE_RUN.blended = l.id;
+    const rows = pickRows();
+    const mode = rows.length ? "picks" : "all";
+    const ask = SY.synthPrompt({ prompt: LANE_RUN.prompt, mode: mode, body: SY.sourceBlock(synthSources(rows)) });
+    const spent = mode === "picks" ? rows.length : good.length;
+    LANE_RUN.busy = true;
+    LANE_RUN.synth = null;
     benchPaintRun();
-    bubble("assistant", "⇄ blending " + good.length + " answers with " + laneLabel(l) + "…");
-    const r = await laneCall(l, benchMessages(ask, "You are the bench's blender: you are reading the answers of other models, and your reply is the blend of them. Say which answer you leaned on."));
-    LANE_RUN.blend = {
-      id: l.id, label: laneLabel(l), ok: !!r.ok, text: r.text || "", error: r.error || "", ms: r.ms || 0,
+    bubble("assistant", "⇄ synthesizing " + spent + (mode === "picks" ? " picked segment(s)" : " answers") +
+      " with " + laneLabel(l) + " — it writes the one answer, and names what it leaned on…");
+    const r = await laneCall(l, benchMessages(ask, SY.synthSystem(mode)));
+    LANE_RUN.busy = false;
+    LANE_RUN.synth = {
+      id: l.id, label: laneLabel(l), ok: !!r.ok, text: r.text || "", error: r.error || "",
+      ms: r.ms || 0, mode: mode, count: spent,
+    };
+    benchPaintRun();
+  }
+
+  // Route A: the picked segments, verbatim, tagged to the answer and segment each came from. No call.
+  function benchAssemble() {
+    if (!LANE_RUN || LANE_RUN.picked || LANE_RUN.busy) return;
+    const rows = pickRows();
+    if (!rows.length) return;
+    const out = SY.assemble(rows.map(function (r) {
+      return { lane: r.lane, label: r.label, seg: r.seg };
+    }));
+    LANE_RUN.assembled = {
+      text: out.text, count: out.count, lanes: out.lanes.length, stamp: picksStamp(),
     };
     benchPaintRun();
   }
@@ -1676,7 +1898,7 @@
         const text = String((msg && msg.value) || "").trim();
         if (!text) { bubble("assistant", "Type the prompt in the box first, then run it on the lanes."); return; }
         // Same record as pressing Send with the bench on: the visitor's turn joins the conversation,
-        // and one assistant turn is added when they pick a lane or a blend.
+        // and one assistant turn is added when they pick a lane, the synthesis or the assembly.
         bubble("user", text);
         history.push({ role: "user", content: text });
         if (msg) msg.value = "";

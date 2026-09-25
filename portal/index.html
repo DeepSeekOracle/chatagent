@@ -8,7 +8,7 @@
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
-<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. ⇄ Compare bench sends one prompt to several models and shows the answers side by side — pick one or blend them. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
+<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. ⇄ Compare bench sends one prompt to several models and shows the answers side by side — then one click synthesizes them into a single refined answer, or you keep the strongest segments of each and assemble them yourself. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="creator" content="Justin Helmer">
 <meta name="publisher" content="chatagent.ca">
@@ -36,7 +36,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260924e">
+<link rel="stylesheet" href="style.css?v=20260924f">
 <link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=6">
 <script src="/assets/hls.min.js" defer></script>
 <script src="/assets/lygo-tv-ninja.js?v=7" defer></script>
@@ -45,7 +45,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://chatagent.ca/portal/">
 <meta property="og:title" content="LYGO API Portal — free agent studio">
-<meta property="og:description" content="Paste a Groq, OpenAI, Claude, Grok, or any OpenAI-compatible key. Chat with LYGO tools in the browser. No GPU on this page — the FULL local console is a SkillHub download.">
+<meta property="og:description" content="Paste a Groq, OpenAI, Claude, Grok, or any OpenAI-compatible key. Send one prompt to several models side by side, then synthesize their answers into one refined answer in a click. No GPU on this page — the FULL local console is a SkillHub download.">
 <meta property="og:image" content="https://chatagent.ca/portal/x-card.jpg">
 <meta property="og:image:url" content="https://chatagent.ca/portal/x-card.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/portal/x-card.jpg">
@@ -57,7 +57,7 @@
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
 <meta name="twitter:title" content="LYGO API Portal — free agent studio">
-<meta name="twitter:description" content="Paste a Groq, OpenAI, Claude, or Grok key. LYGO tools in the browser. chatagent.ca/portal">
+<meta name="twitter:description" content="Paste a Groq, OpenAI, Claude, or Grok key. Run one prompt through several models side by side, then synthesize one refined answer. chatagent.ca/portal">
 <meta name="twitter:image" content="https://chatagent.ca/portal/x-card.jpg">
 <meta name="twitter:image:src" content="https://chatagent.ca/portal/x-card.jpg">
 <meta name="twitter:image:alt" content="LYGO API Portal — Δ9Φ963 gold and cyan seal">
@@ -91,7 +91,7 @@
       "name": "LYGO LLM Portal",
       "isPartOf": {"@id": "https://chatagent.ca/portal/#app"},
       "inLanguage": "en-US",
-      "dateModified": "2026-09-20"
+      "dateModified": "2026-09-24"
     }
   ]
 }
@@ -151,7 +151,7 @@
     <div>
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
-      <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · console line 1.3.2 · assets 2026-09-24 · ⇄ compare bench <span id="supporterChip" class="sup-chip" hidden>⚿ SUPPORTER</span></p>
+      <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · console line 1.3.2 · assets 2026-09-24 · ⇄ compare bench · ✦ one-click synthesis <span id="supporterChip" class="sup-chip" hidden>⚿ SUPPORTER</span></p>
       <p class="sub syslabel">One console, three systems — <strong>WEB PORTAL (API ONLY, online — you are here)</strong> · <strong>PC LOCAL</strong> (full admin console on your PC, GPU when present) · <strong>USB LOCAL</strong> (stand-alone stick agent, plug and play, mobile). Same limbs, same P0 gate, same labels; only the brain differs.</p>
       <p class="sub">A <strong>ninja console with no GPU</strong>: bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab — chatagent.ca never sees them. Browser tools + 15 champions are already installed on the page. Want it all offline on your own machine? <a href="https://chatagent.ca/lygo-llm-console.html">Local GGUF console</a> — same V1 bench, no API key at all. Legal: <a href="https://chatagent.ca/portal/legal.html">legal &amp; disclaimers</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
@@ -263,26 +263,26 @@ steward: Justin Helmer / Excavationpro / Lightfather
       <li>Open that vendor’s key page from <a href="#free-keys">Free and near-free API keys</a>. Copy the key.</li>
       <li>Paste it in the key box. Click <strong>Connect</strong>. The model is chosen for you.</li>
       <li>Then chat. Skills and champions are already on this page — toggle them in the left rail.</li>
-      <li>Optional: press <strong>⇄ Compare</strong> to put one prompt to two or more models at once and read the answers side by side — pick one, or blend them.</li>
+      <li>Optional: press <strong>⇄ Compare</strong> to put one prompt to two or more models at once and read the answers side by side. Then press the <strong>+</strong> on the strongest segments of each answer and <strong>Assemble</strong> them into one, or leave nothing picked and press <strong>⇄ Synthesize</strong> for one refined answer.</li>
     </ol>
     <div id="log" class="log" aria-live="polite"></div>
     <form id="form" class="composer">
       <input id="msg" type="text" placeholder="Connect first, then ask…" autocomplete="off" autofocus>
-      <button type="button" id="cmp-toggle" class="cmp-toggle" aria-pressed="false" title="Send one prompt to two or more models and read the answers side by side">⇄ Compare</button>
+      <button type="button" id="cmp-toggle" class="cmp-toggle" aria-pressed="false" title="Send one prompt to two or more models, read the answers side by side, then synthesize them into one refined answer">⇄ Compare</button>
       <button type="button" id="attach-file">Attach file</button>
       <button type="submit">Send</button>
     </form>
-    <div class="bench" id="bench" hidden aria-label="Compare bench">
+    <div class="bench" id="bench" hidden aria-label="Compare bench and one-click synthesis">
       <div class="bench-head">
         <strong>⇄ Compare bench</strong>
-        <span class="hint" id="bench-status">two lanes, one prompt, side by side</span>
+        <span class="hint" id="bench-status">two lanes, one prompt, side by side — then one refined answer</span>
         <span class="bench-tools">
           <button type="button" id="bench-add" title="Add a lane (up to four)">+ lane</button>
           <button type="button" id="bench-run" title="Send what is in the box above to every ready lane now">Run on all lanes</button>
         </span>
       </div>
       <div class="bench-lanes" id="bench-lanes"></div>
-      <p class="hint">Put the same prompt to two or more models at once, then read them side by side and pick one or blend them. <strong>Keys pasted in a lane stay in this tab’s memory</strong> — never in browser storage; a lane set to the same provider as the top box shares the key you already pasted there. A custom lane can point at any OpenAI-compatible URL (two self-hosted servers, two labs), and <code>127.0.0.1</code>/<code>localhost</code> is allowed by this page’s own policy. Each run spends one call per ready lane on your keys, and the seconds and tokens of each answer are shown with it.</p>
+      <p class="hint">Put the same prompt to two or more models at once, then read them side by side. From there, <strong>one click</strong> turns the comparison into something you can use: <strong>press the + on the strongest segments</strong> of each answer and <strong>Assemble</strong> them — your own picks, in order, verbatim, tagged to the answer each came from and written without spending a call — or leave nothing picked and press <strong>⇄ Synthesize</strong> to send every answer to one chosen lane and get a single refined answer back, with the line saying what it leaned on. If you have picked segments, Synthesize sends <em>only those</em>, so the fuse is sharp and costs less. One answer per run joins the conversation, so the log stays a conversation. <strong>Keys pasted in a lane stay in this tab’s memory</strong> — never in browser storage; nothing here is uploaded and no answer is stored anywhere but your own browser. A lane set to the same provider as the top box shares the key you already pasted there. A custom lane can point at any OpenAI-compatible URL (two self-hosted servers, two labs), and <code>127.0.0.1</code>/<code>localhost</code> is allowed by this page’s own policy. Each run spends one call per ready lane on your keys (the synthesis spends one more), and the seconds and tokens of each answer are shown with it.</p>
       <div class="bench-out" id="bench-out" hidden></div>
     </div>
     <div class="np-foot" style="margin:0.4rem 0.2rem">
@@ -465,7 +465,8 @@ steward: Justin Helmer / Excavationpro / Lightfather
   </div>
 </div>
 <script src="tools.js?v=20260924a"></script>
-<script src="app.js?v=20260924g"></script>
+<script src="synth.js?v=20260924c"></script>
+<script src="app.js?v=20260924i"></script>
 <script src="radio.js"></script>
 <script src="supporter.js?v=20260924b"></script>
 <script src="donate.js?v=20260924b"></script>
