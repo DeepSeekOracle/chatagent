@@ -117,6 +117,166 @@
 
   function relock() { drop(UNLOCK_STORE); announce(); }
 
+  /* ---- palette: read the game's own colours so the module belongs there ----------------
+     Where the colours come from, in order:
+       * surfaces  — the background of the container the row sits in, then the game's --panel;
+       * accents   — the game's --gold and --cyan (all eight publish gold; six publish cyan);
+       * lines and
+         text      — --line, --text, --mute;
+       * geometry  — corner radius, font family and font size measured from the game's own links
+                     and buttons, so the row is the same shape as the things beside it.
+     A button's fill is never used as a surface: a gold button must not turn the whole module gold.
+     Nothing is written back to the game — the values land on the row and the card only. */
+
+  function cssVar(name) {
+    try { return (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim(); }
+    catch (_) { return ""; }
+  }
+  function opaque(c) { return !!c && c !== "transparent" && !/rgba?\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/.test(c); }
+  function common(list) {
+    var seen = {}, best = "", bestN = 0;
+    for (var i = 0; i < list.length; i++) {
+      seen[list[i]] = (seen[list[i]] || 0) + 1;
+      if (seen[list[i]] > bestN) { bestN = seen[list[i]]; best = list[i]; }
+    }
+    return best;
+  }
+
+  /* A menu item is a button, a link, or something the game made clickable — never an h1, a kicker
+     line or a lore paragraph, which is what a plain size test picks up. */
+  function isItem(k) {
+    if (!k || k === row) return false;
+    if (k.className && String(k.className).indexOf("lyg-") === 0) return false;
+    var b = k.getBoundingClientRect();
+    if (b.width < 90 || b.height < 18 || b.height > 340) return false;
+    var tag = k.tagName.toLowerCase();
+    if (tag === "button" || tag === "a" || tag === "input") return true;
+    if (k.getAttribute && k.getAttribute("role") === "button") return true;
+    return getComputedStyle(k).cursor === "pointer";
+  }
+  function itemScore(node) {
+    var kids = node.children, n = 0;
+    for (var i = 0; i < kids.length; i++) if (isItem(kids[i])) n++;
+    return n;
+  }
+
+  /* A container the row can live in: panel-wide, tall enough, and stacking its children downwards.
+     A horizontal .row would squash the row into a strip of buttons, and the app shell or a nav bar
+     is no place for it either, so both are rejected rather than guessed at. */
+  function stacksDown(n) {
+    var cs = getComputedStyle(n);
+    if (cs.display === "flex") return cs.flexDirection.indexOf("column") === 0 || cs.flexWrap === "wrap";
+    if (cs.display === "grid") return true;
+    return cs.display === "block" || cs.display === "flow-root" || cs.display === "inline-block" || cs.display === "";
+  }
+  function acceptsRow(n) {
+    if (!n || n === document.body) return false;
+    var b = n.getBoundingClientRect();
+    var vw = document.documentElement.clientWidth;
+    return b.width >= 280 && b.width <= Math.max(320, vw * 0.9) && b.height >= 60 && n.children.length >= 1 && stacksDown(n);
+  }
+
+  /* The deepest container holding at least two item-sized children, inside the menu. */
+  function findItemHost(menu) {
+    if (!menu) return null;
+    var best = null, bestScore = 1, bestDepth = -1, vw = document.documentElement.clientWidth;
+    var list = [menu].concat(Array.prototype.slice.call(menu.querySelectorAll("div, section, nav, ul, aside, form")));
+    for (var i = 0; i < list.length; i++) {
+      var node = list[i];
+      if (node.contains(row)) continue;
+      if (!stacksDown(node) && node !== menu) continue;
+      var s = itemScore(node);
+      if (s < 2) continue;
+      if (node.getBoundingClientRect().width > vw * 0.92) s -= 1;
+      var depth = 0, p = node;
+      while (p && p !== menu) { depth++; p = p.parentElement; }
+      if (s > bestScore || (s === bestScore && depth > bestDepth)) { best = node; bestScore = s; bestDepth = depth; }
+    }
+    return best;
+  }
+
+  /* The best home for the row is the one the games already made for it: every hand-written menu
+     carries a .donate-row, so the code row sits beside it at exactly the same width; failing that,
+     the panel that holds the h1, then the block around the game's own PayPal/Patreon link.
+     Only inside a recognised menu root — the two compiled games have none, and for them the fixed
+     tab at the bottom of the screen is the right answer (the row must not live inside a bundle
+     that re-renders and would take it with it). */
+  function anchorSpot() {
+    var menu = findMenu();
+    if (!menu) return null;
+    var d = menu.querySelector('[class*="donate-row"], [class*="donateRow"], [id*="donate-row"]');
+    if (d && acceptsRow(d.parentElement)) return { host: d.parentElement, after: d };
+    var h = menu.querySelector("h1, h2");
+    if (h && acceptsRow(h.parentElement)) return { host: h.parentElement, after: null };
+    var link = menu.querySelector('a[href*="paypal"], a[href*="patreon"], [class*="paypal-mini"], [class*="donate-paypal"]');
+    if (link) {
+      var n = link, hops = 0;
+      while (n && n !== menu.parentElement && hops++ < 10) {
+        if (acceptsRow(n) && n.children.length >= 2) return { host: n, after: null };
+        n = n.parentElement;
+      }
+    }
+    return null;
+  }
+
+  function measureMenu(host) {
+    var out = { items: 0 }, bags = { r: [], fs: [], ff: [] }, seen = 0;
+    if (host) {
+      var cand = host.querySelectorAll("button, a, [role='button'], input[type='button'], input[type='submit']");
+      for (var i = 0; i < cand.length && seen < 40; i++) {
+        var k = cand[i];
+        if (row && row.contains(k)) continue;
+        var b = k.getBoundingClientRect();
+        if (b.width < 60 || b.height < 16 || b.height > 340) continue;
+        var s = getComputedStyle(k);
+        if (s.borderTopLeftRadius && s.borderTopLeftRadius !== "0px") bags.r.push(s.borderTopLeftRadius);
+        if (s.fontSize) bags.fs.push(s.fontSize);
+        if (s.fontFamily) bags.ff.push(s.fontFamily);
+        seen++;
+      }
+    }
+    out.items = seen;
+    out.radius = common(bags.r); out.size = common(bags.fs); out.font = common(bags.ff);
+    return out;
+  }
+
+  function applyTheme(host) {
+    var m = measureMenu(host);
+    var hostBg = "";
+    if (host && host !== document.body) {
+      var hb = getComputedStyle(host).backgroundColor;
+      if (opaque(hb)) hostBg = hb;
+    }
+    var size = parseFloat(m.size || "");
+    var vars = {
+      "--lyg-panel": hostBg || cssVar("--panel"),
+      "--lyg-well": cssVar("--bg"),
+      "--lyg-line": cssVar("--line"),
+      "--lyg-text": cssVar("--text"),
+      "--lyg-mute": cssVar("--mute"),
+      "--lyg-gold": cssVar("--gold"),
+      "--lyg-cyan": cssVar("--cyan"),
+      "--lyg-radius": m.radius,
+      "--lyg-font": m.font,
+      "--lyg-size": (size >= 10 && size <= 17) ? (size + "px") : "",
+      "--lyg-title": (size >= 10 && size <= 17) ? (Math.round(size * 1.08) + "px") : ""
+    };
+    [row, card].forEach(function (n) {
+      if (!n) return;
+      for (var k in vars) { if (vars[k]) n.style.setProperty(k, vars[k]); }
+    });
+    if (row && host) {                       // alignment: sit like the menu's own items
+      var hs = getComputedStyle(host);
+      var gap = parseFloat(hs.rowGap || hs.gap || "0") || 0;
+      if (hs.display.indexOf("flex") === 0 || hs.display.indexOf("grid") === 0) {
+        row.style.marginTop = gap > 0 ? "0px" : "0.6rem";
+        row.style.alignSelf = "stretch";
+      } else {
+        row.style.marginTop = "0.7rem";
+      }
+    }
+  }
+
   /* ---- the supporter row, at the bottom of the game menu ------------------------------ */
 
   var MENU_SELECTORS = ["#menu", "#pauseMenu", "#pause", "[data-lygo-menu]", ".game-menu", "#overlay"];
@@ -194,9 +354,14 @@
 
   function mountRow() {
     if (!row) row = buildRow();
-    var host = findMenu();
+    var spot = anchorSpot();
+    var host = (spot && spot.host) || findItemHost(findMenu());
     if (host) {
-      if (row.parentNode !== host) host.appendChild(row);
+      if (spot && spot.after) {
+        if (spot.after.nextSibling !== row) spot.after.insertAdjacentElement("afterend", row);
+      } else if (row.parentNode !== host) {
+        host.appendChild(row);
+      }
       row.classList.remove("lyg-row-fixed");
       rowHost = host;
     } else {
@@ -204,18 +369,28 @@
       row.classList.add("lyg-row-fixed");
       rowHost = document.body;
     }
+    applyTheme(host);
     paintRow();
   }
 
   /* ---- the reminder --------------------------------------------------------------- */
 
-  function paintRain(cv) {
+  function hexToRgba(hex, a) {
+    var m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || "").trim());
+    if (m) return "rgba(" + parseInt(m[1], 16) + "," + parseInt(m[2], 16) + "," + parseInt(m[3], 16) + "," + a + ")";
+    return "rgba(251,191,36," + a + ")";
+  }
+  function accentOf(node) {
+    try { return (getComputedStyle(node).getPropertyValue("--lyg-gold") || "").trim() || "#fbbf24"; }
+    catch (_) { return "#fbbf24"; }
+  }
+  function paintRain(cv, accent) {
     if (!cv || !cv.getContext) return;
     var c = cv.getContext("2d"), dpr = Math.min(2, g.devicePixelRatio || 1);
     cv.width = Math.floor(cv.clientWidth * dpr); cv.height = Math.floor(cv.clientHeight * dpr);
     var glyphs = "\u0394\u03a6\u03a9\u03a3\u03a8\u2317\u25b3\u25bd\u25cf\u2022\u00b7\u03b1\u03b2\u2207\u2211\u221a\u221e\u2295\u2731\u2732\u2733";
     var fs = 18 * dpr, cols = Math.ceil(cv.width / fs);
-    c.fillStyle = "#060504"; c.fillRect(0, 0, cv.width, cv.height);
+    c.clearRect(0, 0, cv.width, cv.height);       // the layer's own themed backdrop shows through
     c.font = Math.floor(15 * dpr) + "px monospace";
     for (var i = 0; i < cols; i++) {
       var x = i * fs + fs * 0.2, y = -fs;
@@ -223,7 +398,7 @@
       for (var j = 0; j < runs; j++) {
         var ch = glyphs.charAt(Math.floor(Math.random() * glyphs.length));
         var lead = j === runs - 1;
-        c.fillStyle = lead ? "#f0d59a" : ("rgba(224,179,106," + (j / runs * 0.5).toFixed(2) + ")");
+        c.fillStyle = lead ? (accent || "#fbbf24") : hexToRgba(accent, (j / runs * 0.5).toFixed(2));
         c.fillText(ch, x, y); y += fs * 1.05;
       }
     }
@@ -278,13 +453,14 @@
   function showCard() {
     if (state().unlocked) return;
     if (!card) { card = buildCard(); document.body.appendChild(card); }
+    applyTheme(rowHost);
     card.hidden = false;
     card.classList.add("lyg-open");
     lastFocus = document.activeElement;
     rain = el("lygRain");
-    paintRain(rain);
+    paintRain(rain, accentOf(card));
     clearInterval(rainTimer);
-    rainTimer = setInterval(function () { paintRain(rain); }, 900);
+    rainTimer = setInterval(function () { paintRain(rain, accentOf(card)); }, 900);
     try { document.dispatchEvent(new CustomEvent("lygo-gate-open")); } catch (_) {}
   }
 
