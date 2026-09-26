@@ -19,13 +19,18 @@
   ];
   const $ = (id) => document.getElementById(id);
   const el = () => $("radioEl");
+  /* The panel is a corner chip until asked for: expanded on load it covered the
+     build rail. The choice and the volume are remembered per browser. */
+  const VIEW_KEY = "lygo_radio_view", VOL_KEY = "lygo_radio_vol";
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
 
   const st = {
     tracks: [],
     i: 0,
     playing: false,
     muted: false,
-    view: true,
+    view: false,
     vol: 0.55,
     bag: []
   };
@@ -150,6 +155,10 @@
   }
 
   function bootRadio() {
+    const sv = lsGet(VIEW_KEY);
+    if (sv !== null) st.view = sv === "1";
+    const svo = lsGet(VOL_KEY);
+    if (svo !== null && isFinite(Number(svo))) st.vol = Math.max(0, Math.min(1, Number(svo)));
     ensureDsp();
     loadPlaylists().then(paint);
     const a = el();
@@ -164,10 +173,14 @@
     };
     $("radioView").onclick = () => {
       st.view = !st.view;
+      lsSet(VIEW_KEY, st.view ? "1" : "0");
       paint();
     };
     $("radioVol").oninput = (e) => {
       st.vol = Number(e.target.value) / 100;
+      lsSet(VOL_KEY, String(st.vol));
+      const vi = $("radioVol");
+      if (vi) vi.value = String(Math.round(st.vol * 100));
       el().volume = st.vol;
       if (st.vol > 0 && st.muted) {
         st.muted = false;
@@ -178,6 +191,8 @@
     paint();
   }
 
+  const vi0 = document.getElementById("radioVol");
+  if (vi0) vi0.value = String(Math.round(st.vol * 100));
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootRadio);
   else bootRadio();
 })();

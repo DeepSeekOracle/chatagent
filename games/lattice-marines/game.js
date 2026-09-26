@@ -147,6 +147,26 @@
   let overlayMode = "menu";
   let enemyTimer = 0;
 
+  /* The island is static between events, so the terrain layer is painted once
+     into an offscreen canvas and blitted per frame; only occupants, auras, fx
+     and the cursor are redrawn. Every ~350-tile terrain repaint per frame was
+     the whole frame budget on a 48x48 map (measured 15 fps). Anything that
+     changes ground or fog bumps terrV through touchTerrain(). */
+  let terrCanvas = null, terrKey = "", terrV = 0;
+  let visOrder = null, visKey = "";
+  function touchTerrain() { terrV++; visKey = ""; }
+
+  /* The resolve event table is authored in 60 Hz ticks (a shot every 36 ticks).
+     Playback used to advance one tick per rendered frame, so a slow frame rate
+     silently stretched every enemy turn; the loop now advances on real time. */
+  const PLAY_TICK = 1000 / 60;
+  let playAcc = 0, playTs = 0, pace = 1;
+  function an(word) { return (/^[aeiou]/i.test(word) ? "an " : "a ") + word; }
+  /* "You queue" / "Enemy queues" — the log reads as narration, so the verb has
+     to agree with whichever side name the line is reporting. */
+  function agree(owner, verb) { return sideName(owner) === "You" ? verb : verb + "s"; }
+  function lc(word) { return word.charAt(0).toLowerCase() + word.slice(1); }
+
   const persist = {
     name: "Commander",
     unlocks: {},
@@ -157,7 +177,8 @@
     best: 0,
     mapN: 48,
     cmdr: "lightfather",
-    board: []
+    board: [],
+    pace: 1
   };
 
   const CMDRS = [
@@ -819,6 +840,7 @@
         u: u && u.owner !== viewer ? { type: u.type } : null
       };
     }
+    touchTerrain();
   }
 
   function visible(viewer, x, y) {
@@ -1008,8 +1030,8 @@
     }
     pay(owner, BLD[type].cost || 0, 0, BLD[type].people || 0);
     const made = spawnB(type, owner, x, y);
-    if (type === "pad" || S.tiles[y][x] === "water") S.tiles[y][x] = "pontoon";
-    log(`${sideName(owner)} raise a ${BLD[type].name} at ${x},${y}.`);
+    if (type === "pad" || S.tiles[y][x] === "water") { S.tiles[y][x] = "pontoon"; touchTerrain(); }
+    log(`${sideName(owner)} ${agree(owner, "raise")} ${an(BLD[type].name)} at ${x},${y}.`);
     void made;
     if (owner === me()) fx("build");
     return true;
@@ -1183,7 +1205,7 @@
     }
     pay(owner, w.cost, fuelNeed);
     S.queue.push({ owner, kind, x, y, pad: pad ? pad.id : null });
-    log(`${sideName(owner)} queued ${w.name} @ ${x},${y}.`);
+    log(`${sideName(owner)} ${agree(owner, "queue")} ${an(lc(w.name))} at ${x},${y}.`);
     if (owner === me()) fx(w.spawn ? "drop" : (kind === "probe" ? "probe" : "launch"));
     return true;
   }
@@ -1740,6 +1762,7 @@
         }
       }
     }
+    touchTerrain();
     for (const u of S.units) if (u.hp > 0) unitLook(u);
     for (const b of S.buildings) b.offline = false;
     tickEconomy(false);
@@ -2114,22 +2137,52 @@
       for (const k of Object.keys(PAT)) delete PAT[k];
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const sky = ctx.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, "#243656");
-    sky.addColorStop(0.35, "#121c2e");
-    sky.addColorStop(1, "#070b12");
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h);
-    if (!S) return;
-    const order = [];
-    const pad = TW * cam.z * 1.8;
-    for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
-      const p = iso(x, y);
-      if (p.sx < -pad || p.sx > w + pad || p.sy < -pad || p.sy > h + pad) continue;
-      order.push({ x, y, k: x + y });
+    if (!S) {
+      const sky0 = ctx.createLinearGradient(0, 0, 0, h);
+      sky0.addColorStop(0, "#243656");
+      sky0.addColorStop(0.35, "#121c2e");
+      sky0.addColorStop(1, "#070b12");
+      ctx.fillStyle = sky0;
+      ctx.fillRect(0, 0, w, h);
+      return;
     }
-    order.sort((a, b) => a.k - b.k);
-    for (const t of order) drawTile(ctx, t.x, t.y);
+    const pad = TW * cam.z * 1.8;
+    /* MAP and seed belong in the key: a new island reuses the same camera but
+       not the same tile grid, and a stale visible-tile list would index it. */
+    const viewKey = [cam.x | 0, cam.y | 0, cam.z, w, h, dpr, MAP, S.seed || ""].join(",");
+    if (visKey !== viewKey || !visOrder) {
+      const list = [];
+      for (let y = 0; y < MAP; y++) for (let x = 0; x < MAP; x++) {
+        const p = iso(x, y);
+        if (p.sx < -pad || p.sx > w + pad || p.sy < -pad || p.sy > h + pad) continue;
+        list.push({ x, y, k: x + y });
+      }
+      list.sort((a, b) => a.k - b.k);
+      visOrder = list; visKey = viewKey;
+    }
+    const order = visOrder;
+    const key = viewKey + "|" + terrV;
+    if (!terrCanvas || terrCanvas.width !== cv.width || terrCanvas.height !== cv.height) {
+      terrCanvas = document.createElement("canvas");
+      terrCanvas.width = cv.width; terrCanvas.height = cv.height;
+      for (const k of Object.keys(PAT)) delete PAT[k];
+      terrKey = "";
+    }
+    if (terrKey !== key) {
+      const tctx = terrCanvas.getContext("2d");
+      tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const sky = tctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, "#243656");
+      sky.addColorStop(0.35, "#121c2e");
+      sky.addColorStop(1, "#070b12");
+      tctx.fillStyle = sky;
+      tctx.fillRect(0, 0, w, h);
+      for (const t of order) drawTile(tctx, t.x, t.y);
+      terrKey = key;
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(terrCanvas, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (S.phase === "defense" && tool && tool !== "hq") {
       for (const t of order) {
         if (!onHome(me(), t.x, t.y) || !inBuildNet(me(), t.x, t.y)) continue;
@@ -2930,7 +2983,7 @@
       <p><b>Salvo:</b> silos and ICBMs rearm every turn (one rocket per live pad). Hangar and factory sorties stay in the field until they die, then that pad waits one full turn to rearm. Airstrikes also cost a hangar a full-turn rearm. One EMP per tower. Each AA fires once per incoming wave and also shoots grounded jets/drones.</p>
       <p><b>Win:</b> level all three enemy Command Centres. <b>Lose:</b> yours fall. Score rewards wreckage, surviving kit, and a brisk economy; long wars pay a time tax. Wins unlock scouts, drones, tanks, hovercraft, howitzers, jets, shields, ICBMs, EMP, airstrikes, and the spy satellite. After 10 wins you prestige for a score multiplier.</p>
       <p>Units hunt Command Centres. Land units <b>portage</b> water at 3 turns per tile. Hovercraft treat water as land; jets and drones fly it. Forest gives cover. Hills add +1 shot range. Tanks and howitzers slow in woods and mountains. Gun pods out-punch a marine (~24 vs 20 melee).</p>
-      <p><b>Keys:</b> WASD / arrows pan · wheel or pinch zoom · 1–9 pick the left-rail list · Enter ends phase · Space skips playback · Esc cancels tool · R repairs the selected friendly · Home recenters. Drag or one-finger pan on touch.</p>
+      <p><b>Keys:</b> WASD / arrows pan · wheel or pinch zoom · 1–9 pick the left-rail list · Enter ends phase · Space skips playback · F cycles playback speed ×1/×2/×4 · Esc cancels tool · R repairs the selected friendly · Home recenters. Drag or one-finger pan on touch.</p>
       <div class="row"><button class="btn gold" id="ok">Close</button></div>
     `);
     overlayMode = "help";
@@ -3098,6 +3151,7 @@
     if (e.key === "Enter") { e.preventDefault(); $("btnEnd").click(); }
     if (e.key === "Escape") { tool = null; weapon = null; paintUI(); }
     if (e.key === " ") { e.preventDefault(); if (S && S.phase === "resolve") skipPlayback(); }
+    if (e.key === "f" || e.key === "F") { pace = pace === 1 ? 2 : pace === 2 ? 4 : 1; persist.pace = pace; savePersist(); paintPace(); }
     if (e.key === "Home") { e.preventDefault(); if (S) focusHomeLand(me()); }
     if ((e.key === "r" || e.key === "R") && S && sel) {
       const b = buildingAt(sel.x, sel.y);
@@ -3108,6 +3162,11 @@
       const it = items[Number(e.key) - 1];
       if (it) it.click();
     }
+  }
+
+  function paintPace() {
+    const b = $("btnPace");
+    if (b) b.textContent = "Speed ×" + pace;
   }
 
   function skipPlayback() {
@@ -3178,26 +3237,40 @@
   function bang() { fx("boom"); }
 
   /* ---------- loop / boot ---------- */
-  function loop() {
+  function loop(ts) {
+    const now = typeof ts === "number" ? ts : performance.now();
+    if (!playTs) playTs = now;
+    const dt = Math.min(120, Math.max(0, now - playTs));
+    playTs = now;
     if (S && S.phase === "resolve") {
-      stepResolve();
+      playAcc += dt * pace;
+      let steps = 0;
+      while (playAcc >= PLAY_TICK && steps < 8 && S && S.phase === "resolve") {
+        playAcc -= PLAY_TICK;
+        stepResolve();
+        steps++;
+      }
+      if (playAcc > PLAY_TICK * 8) playAcc = 0;
       if (S && S.t % 8 === 0) {
         const el = $("log");
         if (el) el.textContent = (S.log || []).join("\n");
       }
-    }
+    } else playAcc = 0;
     draw();
     raf = requestAnimationFrame(loop);
   }
 
   async function boot() {
     loadPersist();
+    pace = persist.pace === 2 || persist.pace === 4 ? persist.pace : 1;
+    paintPace();
     autoUnlock();
     ledgerFlush();
     document.addEventListener("visibilitychange", () => { if (!document.hidden) ledgerFlush(); });
     const names = Object.keys(SPR_FILES);
     let n = 0;
     function keySprite(img, tile, kind) {
+      touchTerrain();
       const c = document.createElement("canvas");
       c.width = img.naturalWidth || img.width;
       c.height = img.naturalHeight || img.height;
@@ -3268,6 +3341,12 @@
       else if (S.phase === "offense") endOffense();
     };
     $("btnSkip").onclick = skipPlayback;
+    $("btnPace").onclick = () => {
+      pace = pace === 1 ? 2 : pace === 2 ? 4 : 1;
+      persist.pace = pace;
+      savePersist();
+      paintPace();
+    };
     $("btnHelp").onclick = showHelp;
     $("btnMenu").onclick = () => {
       if (enemyTimer) { clearTimeout(enemyTimer); enemyTimer = 0; }
