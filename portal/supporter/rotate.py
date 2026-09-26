@@ -162,6 +162,31 @@ def save_block(path, raw, start, end, rows):
     return out
 
 
+def apply_mirror(path, rows, labels):
+    """Write the same hashes into a second file that keeps its own copy of the table.
+
+    The games carry their own table in games/lygo-gate.js (no fetch, so a game works offline), and
+    that table ages independently: rotate only the portal and every game keeps accepting the code
+    you just retired. This copies the touched labels across verbatim, in the mirror's own order,
+    and leaves its other entries (the steward, older rotated-out months) exactly where they are.
+    """
+    labels = set(labels)
+    m_raw, m_start, m_end, m_rows = load_block(path)
+    fresh = dict((r.get("label"), r) for r in rows if r.get("label") in labels)
+    seen, out = set(), []
+    for r in m_rows:
+        lab = r.get("label")
+        if lab in fresh:
+            out.append(fresh[lab])
+            seen.add(lab)
+        else:
+            out.append(r)
+    for lab in sorted(set(fresh) - seen):
+        out.append(fresh[lab])
+    save_block(path, m_raw, m_start, m_end, out)
+    return len(fresh)
+
+
 def print_rows(rows):
     if not rows:
         print("  (no hashes yet — run --add)")
@@ -190,6 +215,9 @@ def main():
     ap.add_argument("--list", action="store_true", help="show the entries (labels, expiry, hash prefix)")
     ap.add_argument("--selftest", action="store_true", help="prove normalize/hash/expiry logic")
     ap.add_argument("--outdir", default=STORE_DEFAULT, help="where the plaintext code is written (outside the repo)")
+    ap.add_argument("--mirror", action="append", default=[], metavar="PATH",
+                    help="also write the same hashes into this file (the games keep their own table "
+                         "in games/lygo-gate.js) \u2014 repeatable")
     args = ap.parse_args()
 
     path = os.path.abspath(args.file)
@@ -242,6 +270,8 @@ def main():
             pairs.append((mo, code, until))
             codes.append({"month": mo, "code": code, "until": until, "sha256": entry["sha256"]})
         save_block(path, raw, blk_start, blk_end, rows)
+        for mirror in args.mirror:
+            print("mirror: %s (%d hashes)" % (mirror, apply_mirror(mirror, rows, [mo for mo, _, _ in pairs])))
         today = date.today().isoformat()
         os.makedirs(args.outdir, exist_ok=True)
         shelf = os.path.join(args.outdir, "supporter-code-series-%s_%s.txt" % (pairs[0][0], pairs[-1][0]))
@@ -281,6 +311,8 @@ def main():
                      "note": args.note or ("this month's code" if month >= today_month else "rotated out")}
         rows = [r for r in rows if r.get("label") != entry["label"]] + [entry]
         save_block(path, raw, blk_start, blk_end, rows)
+        for mirror in args.mirror:
+            print("mirror: %s (%d hashes)" % (mirror, apply_mirror(mirror, rows, [entry["label"]])))
         os.makedirs(args.outdir, exist_ok=True)
         keep = os.path.join(args.outdir, "supporter-code-%s.txt" % entry["label"])
         with open(keep, "w", encoding="utf-8") as f:
