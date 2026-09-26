@@ -10,6 +10,14 @@
   const el = () => $("radioEl");
   const st = { tracks: [], i: 0, playing: false, muted: false, vol: 0.45, bag: [], wantPlay: true, unlocked: false };
 
+  /* A page can name its own opening volume — the games open at 55%, the portal at 45%, the SkillHub
+     at 50%. A volume this visitor already chose for themselves still wins over the page default. */
+  try {
+    if (typeof window.LYGO_RADIO_DEFAULT_VOL === "number") {
+      st.vol = Math.max(0, Math.min(1, window.LYGO_RADIO_DEFAULT_VOL));
+    }
+  } catch (_) {}
+
   try {
     const s = JSON.parse(localStorage.getItem("lygo_console_radio") || "{}");
     if (typeof s.vol === "number") st.vol = Math.max(0, Math.min(1, s.vol));
