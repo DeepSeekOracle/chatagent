@@ -1,13 +1,17 @@
-"""Keep the games' supporter code list identical to the portal's.
+"""Keep every page's supporter code list identical to the portal's.
 
 The portal's table (`portal/supporter.js`) is the source of truth: it is written by
-`portal/supporter/rotate.py`. The eight games carry the same list so one supporter code works
-everywhere, and this tool is what keeps the two from drifting apart.
+`portal/supporter/rotate.py`. The games gate and the SkillHub download gate carry the same list,
+because one supporter code has to work everywhere, and this tool is what keeps the copies from
+drifting apart.
 
-    python tools/sync_supporter_codes.py           # copy the portal table into the games gate
-    python tools/sync_supporter_codes.py --check    # verify only; exit 1 when they differ
+    python tools/sync_supporter_codes.py           # copy the portal table into every target
+    python tools/sync_supporter_codes.py --check    # verify only; exit 1 when any target differs
 
-Both files mark their table with the same pair of comments, so the copy is literal.
+Every file marks its table with the same pair of comments, so the copy is literal. A target with
+more than one marker pair is refused rather than guessed at: a stray marker makes the copy
+ambiguous, and a naive splice would duplicate the block silently — it still parses, so only the
+assertion catches it.
 """
 from __future__ import annotations
 
@@ -17,8 +21,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-PORTAL = ROOT / "portal" / "supporter.js"
-GATE = ROOT / "games" / "lygo-gate.js"
+SOURCE = ROOT / "portal" / "supporter.js"
+TARGETS = (
+    ROOT / "games" / "lygo-gate.js",              # the eight games' donation gate
+    ROOT / "supporter" / "download-gate.js",      # the SkillHub download buttons
+)
 START = "/* @supporter-hashes:start */"
 END = "/* @supporter-hashes:end */"
 
@@ -50,22 +57,32 @@ def count(source: str) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true", help="do not write; fail when the two differ")
+    ap.add_argument("--check", action="store_true", help="do not write; fail when any target differs")
     args = ap.parse_args()
 
-    portal_doc = PORTAL.read_text(encoding="utf-8")
-    gate_source = block(GATE)
-    portal_source = block(PORTAL)
-    same = portal_source == gate_source
-    print(f"portal codes: {count(portal_doc)}   games codes: {count(gate_source)}")
-    if same:
-        print("in sync: the games gate carries exactly the portal's table")
+    source_block = block(SOURCE)
+    print(f"source {SOURCE.relative_to(ROOT)}: {count(source_block)} codes")
+    differing = []
+    for target in TARGETS:
+        if not target.exists():
+            print(f"  MISSING  {target.relative_to(ROOT)}")
+            differing.append(target)
+            continue
+        same = block(target) == source_block
+        print(f"  {'in sync ' if same else 'OUT OF SYNC'}  {target.relative_to(ROOT)} ({count(block(target))} codes)")
+        if not same:
+            differing.append(target)
+
+    if not differing:
+        print("all targets carry exactly the portal's table")
         return 0
-    print("OUT OF SYNC: the games gate does not match the portal's table")
     if args.check:
+        print(f"FAIL: {len(differing)} target(s) differ from the portal table")
         return 1
-    patch(GATE, portal_source)
-    print(f"copied the portal table into {GATE.relative_to(ROOT)} ({count(portal_source)} codes)")
+    for target in differing:
+        if target.exists():
+            patch(target, source_block)
+            print(f"copied the portal table into {target.relative_to(ROOT)} ({count(source_block)} codes)")
     return 0
 
 
