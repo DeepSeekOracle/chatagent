@@ -61,7 +61,16 @@
   /* @supporter-hashes:end */
 
   var card = null, rain = null, rainTimer = null, row = null, rowHost = null, lastFocus = null;
-  var nagTimer = null, suppressUntil = 0;
+  var nagTimer = null, suppressUntil = 0, held = false;
+
+  /* A host that renders its own supporter UI (a compiled app with no menu root
+     to anchor a row to, e.g. games/eternal-lattice) sets window.LYGO_GATE_EMBED
+     before this file runs. Then nothing is injected into the page at all: the
+     reminder still exists, it just arrives with no furniture of ours on the
+     board, and its "enter the code" door asks the host to open its own pane
+     instead of dropping a fixed bar over the host's controls. */
+  var EMBED = !!(g.LYGO_GATE_EMBED ||
+    (document.documentElement && document.documentElement.hasAttribute("data-lygo-gate-embed")));
 
   function el(id) { return document.getElementById(id); }
   function store(k) { try { return g.localStorage.getItem(k); } catch (_) { return null; } }
@@ -353,6 +362,7 @@
   }
 
   function mountRow() {
+    if (EMBED) return;                       // the host owns the door
     if (!row) row = buildRow();
     var spot = anchorSpot();
     var host = (spot && spot.host) || findItemHost(findMenu());
@@ -437,21 +447,32 @@
     cta.addEventListener("click", function () { hideCard(NAG_MS); });
     lay.querySelector("#lygDoor").addEventListener("click", function () {
       hideCard(NAG_MS);
-      mountRow();
-      if (row) {
-        row.classList.add("lyg-flash");
-        setTimeout(function () { row.classList.remove("lyg-flash"); }, 1600);
-        row.scrollIntoView({ block: "center", behavior: "smooth" });
-        var inp = el("lygCode");
-        if (inp && !inp.disabled) setTimeout(function () { inp.focus(); }, 350);
-      }
+      openRow();
     });
     lay.addEventListener("click", function (ev) { if (ev.target === lay) ev.stopPropagation(); });
     return lay;
   }
 
+  /* Where the door leads differs by host: normally the row we injected, and on
+     an embedded host its own pane, which hears the event and opens it. */
+  function openRow() {
+    if (EMBED) {
+      try { document.dispatchEvent(new CustomEvent("lygo-gate-door")); } catch (_) {}
+      return;
+    }
+    mountRow();
+    if (row) {
+      row.classList.add("lyg-flash");
+      setTimeout(function () { row.classList.remove("lyg-flash"); }, 1600);
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      var inp = el("lygCode");
+      if (inp && !inp.disabled) setTimeout(function () { inp.focus(); }, 350);
+    }
+  }
+
   function showCard() {
     if (state().unlocked) return;
+    if (held || Date.now() < suppressUntil) return;
     if (!card) { card = buildCard(); document.body.appendChild(card); }
     applyTheme(rowHost);
     card.hidden = false;
@@ -476,9 +497,26 @@
     nagTimer = setTimeout(function () {
       if (state().unlocked) return schedule(NAG_MS);
       if (document.hidden) return schedule(60 * 1000);
+      // A held or suppressed reminder is not a dropped one: come back for it.
+      if (held) return schedule(30 * 1000);
+      if (Date.now() < suppressUntil) return schedule(Math.min(60 * 1000, suppressUntil - Date.now() + 1000));
       if (!card || card.hidden) showCard();
       schedule(NAG_MS);
     }, ms);
+  }
+
+  /* Hold the reminder (a live match, a modal flow) and let it go again; the
+     gate is the only thing that knows when it may interrupt. */
+  function hold(on) {
+    held = !!on;
+    if (held) hideCard();
+    else schedule(1500);
+  }
+
+  /* Suspended for a while (a match just ended, a first-run tour is open). */
+  function suppress(ms) {
+    suppressUntil = ms ? Date.now() + ms : 0;
+    if (card && !card.hidden) hideCard(ms ? ms : undefined);
   }
 
   function boot() {
@@ -489,9 +527,10 @@
 
   g.LYGO_GATE = {
     version: GATE_VERSION, storeKey: UNLOCK_STORE, patreon: PATREON, paypal: PAYPAL,
-    nagMs: NAG_MS, codeCount: CODE_HASHES.length,
+    nagMs: NAG_MS, codeCount: CODE_HASHES.length, embed: EMBED,
     state: state, unlock: tryCode, relock: relock, open: showCard, close: hideCard,
     mount: mountRow, host: function () { return rowHost; },
+    hold: hold, suppress: suppress, openRow: openRow,
     hashes: function () { return CODE_HASHES.map(function (c) { return c.sha256; }); }
   };
 

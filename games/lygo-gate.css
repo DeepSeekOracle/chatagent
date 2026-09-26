@@ -130,11 +130,20 @@
   background: var(--lyg-gold); border: 0; border-radius: calc(var(--lyg-radius) - 2px);
   padding: 0.5rem 0.7rem;
 }
+/* the fixed variant: for the compiled games that have no menu element of their own.
+   It parks in the bottom-RIGHT corner on purpose. It used to sit bottom-centre at
+   30rem wide, which on games/eternal-lattice put it straight across the match
+   footer — wide enough to cover Log and End dawn, and being on top of them it
+   swallowed the clicks meant for those buttons. A compact corner tab stays clear
+   of a centred control strip, and only the tab itself takes pointer events so
+   nothing beside or behind it can be blocked. */
 .lyg-row.lyg-row-fixed {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: 0.6rem; z-index: 99990;
-  width: min(30rem, calc(100vw - 1.2rem)); margin: 0; padding: 0.5rem;
+  position: fixed; right: 0.75rem; bottom: 0.6rem; left: auto; transform: none; z-index: 99990;
+  width: auto; max-width: min(22rem, calc(100vw - 1.5rem)); margin: 0; padding: 0.3rem;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
 }
+.lyg-row.lyg-row-fixed:not(.is-open) { pointer-events: none; }
+.lyg-row.lyg-row-fixed:not(.is-open) .lyg-row-tab { pointer-events: auto; }
 .lyg-row.lyg-row-fixed .lyg-row-tab { display: block; }
 .lyg-row.lyg-row-fixed .lyg-row-head,
 .lyg-row.lyg-row-fixed .lyg-row-note,
