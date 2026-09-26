@@ -1210,6 +1210,7 @@
     paintMpHud();
   }
   function mpRoundOver(msg) {
+    gateRoundEnd();          // live card closed, same as a solo round
     applyRoom(msg);
     const rows = (msg.players || []).map(function (p) {
       const t = (p.card || []).reduce(function (n, h) { return n + (h.strokes || 0); }, 0);
@@ -2252,6 +2253,7 @@
   }
 
   function roundOver() {
+    gateRoundEnd();          // the card is closed: no longer a live round
     const t = total(G.card);
     const v = vsPar(G.card);
     G.save.games += 1;
@@ -2716,8 +2718,37 @@
     });
   }
 
+  /* Donation gate. The reminder card is a full-screen layer, so it must never land on a
+     live hole, and a golfer who has just walked off the course should get a beat before
+     the next one. So the game holds the reminder from the first tee until the card is
+     closed, and relaxes it for two minutes after that. lygo-gate.js is loaded deferred
+     and may not have run yet when this file does, so guard and retry. */
+  let gateBusy = false;   // a round is on the course — its own flag, never read back off G.mode
+  function gate() { return window.LYGO_GATE || null; }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = function () {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
+  /* Every exit from play funnels through here: quit-to-menu (HUD button, Esc, the
+     scorecard's Menu, the live card's Menu, the lobby's Back) and round-over itself
+     (solo 9/18, the live card, and the endless walk's own end path). Keyed off the flag,
+     because those endings leave G.mode on the play mode — only menu() clears it. */
+  function gateRoundEnd() {
+    if (!gateBusy) return;
+    gateBusy = false;
+    gateHold(false, 2 * 60 * 1000);
+  }
+
   function startRound(mode, course, campaign, opts) {
     opts = opts || {};
+    gateBusy = true;
+    gateHold(true);
     G.mode = mode;
     G.course = course || null;
     G.campaign = campaign || 0;
@@ -2788,6 +2819,7 @@
   function finishEndless() {
     if (G.mode !== "endless") return;
     if (!G.card.length) return;
+    gateRoundEnd();          // the walk's own end path, before this round posts
     G.holes = G.holes.slice(0, G.card.length);
     G.hi = G.card.length;
     roundOver();
@@ -2959,6 +2991,8 @@
         if (b) b.click();
       };
     }
+    // back at a menu: the reminder may resume, but not for two minutes
+    gateRoundEnd();
   }
 
   function startCampaign() {

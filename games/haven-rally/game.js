@@ -1458,6 +1458,31 @@
   const use3d = !!(window.Rally3D && window.THREE && window.Rally3D.init(canvas));
   const ctx = use3d ? null : canvas.getContext("2d");
 
+  /* ---- donation gate: hold the reminder while a heat is on the board ----
+     games/lygo-gate.js is deferred, so window.LYGO_GATE may not exist yet —
+     gateHold retries. gateBusy is the source of truth for "in play": it is set
+     on the way in and read on the way out, so the order of a teardown cannot
+     strand the hold (every exit — finish, restart, quit, game over — calls
+     gateLeavePlay). */
+  let gateBusy = false;
+  function gate() { return window.LYGO_GATE || null; }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = () => {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
+  function gateEnterPlay() { gateBusy = true; gateHold(true); }
+  function gateLeavePlay() {
+    if (!gateBusy) return;
+    gateBusy = false;
+    gateHold(false, 2 * 60 * 1000);   // back at a menu/results: quiet for two minutes
+  }
+
   function log(t) {
     G.log.unshift(t);
     if (G.log.length > 24) G.log.length = 24;
@@ -1511,6 +1536,7 @@
   }
 
   function spawnOnGrid() {
+    gateEnterPlay();
     if (G.track && G.track.kind === "drag") {
       G.field = "solo";
       G.racers = [];
@@ -1752,6 +1778,7 @@
   }
 
   function spawnDrag(runTree) {
+    gateEnterPlay();
     const tr = G.track;
     const lane = tr.lane;
     const x0 = runTree ? tr.startX : tr.startX - 22;
@@ -1930,6 +1957,7 @@
   function finishDrag() {
     if (G.phase === "done") return;
     G.phase = "done";
+    gateLeavePlay();
     const st = G.tree;
     const pMs = st.playerMs;
     const aMs = st.aiMs;
@@ -3032,6 +3060,7 @@
   function finishHeat(ms) {
     if (G.phase === "done") return;
     G.phase = "done";
+    gateLeavePlay();
     const key = G.track.id + "|" + G.craft.id;
     let beat = false;
     const fieldOn = G.racers && G.racers.length > 1;
@@ -3655,6 +3684,7 @@
   function menu() {
     G.mode = "menu";
     G.phase = "idle";
+    gateLeavePlay();
     G.keys = {};
     G.gunOn = false;
     G.field = "solo";

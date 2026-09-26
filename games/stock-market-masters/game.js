@@ -44,6 +44,26 @@
   let spinTimer = null;
   let holdTimer = null;
 
+  /* ---- donation-gate hold ----------------------------------------------------------
+     The shared gate (games/lygo-gate.js) is loaded deferred, so window.LYGO_GATE may not
+     exist yet when this script runs — gateHold retries until it appears. A reminder must
+     never land on a live floor, so the game holds the reminder while a session is up and
+     relaxes it for two minutes once the player is back at the menu. gateBusy is its own
+     flag rather than a read of S: the menu is reached from several paths (menu button,
+     the bell screen's "New floor") and S may be stale or null by then. */
+  let gateBusy = false;   // a floor session is on the board
+  function gate() { return window.LYGO_GATE || null; }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = () => {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
+
   function emptyHold() {
     const h = {};
     STOCKS.forEach((st) => { h[st.id] = 0; });
@@ -898,6 +918,8 @@
     clearAuto();
     clearHold();
     if (spinTimer) { clearTimeout(spinTimer); spinTimer = null; }
+    gateBusy = true;                 // a session is on the board
+    gateHold(true);                  // no donation reminder over a live floor
     const players = gatherSeats();
     saveName(players[0].name);
     const prices = {};
@@ -921,6 +943,7 @@
   }
 
   function showMenu() {
+    if (gateBusy) { gateBusy = false; gateHold(false, 2 * 60 * 1000); }  // back at a menu: release and relax
     $("app").classList.add("hidden");
     const n0 = persistName();
     const seat = (i) => {

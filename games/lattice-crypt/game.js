@@ -3102,6 +3102,8 @@
   }
   function newRun(opts) {
     opts = opts || {};
+    gateBusy = true;      // board is live from here: no reminder until this run ends
+    gateHold(true);
     cleanupGameState();
     const seed = ((opts.seed != null ? opts.seed : (Math.random() * 0xFFFFFFFF)) ^ Date.now()) >>> 0;
     G = {
@@ -4019,6 +4021,7 @@
     const humans = G.players.filter((p) => !p.ai);
     if ((humans.length ? humans : G.players).every((p) => p.dead)) {
       G.over = true;
+      gateRest();          // run closed: hand the reminder back after a quiet window
       const gained = grantSeals();
       persist.runs++;
       persist.best = Math.max(persist.best, G.score);
@@ -4469,6 +4472,7 @@
 
   function winCampaign() {
     G.over = true;
+    gateRest();            // level-complete sheet: 'Enter endless' re-holds in newRun
     const gained = grantSeals();
     persist.runs++;
     persist.best = Math.max(persist.best, G.score);
@@ -5297,7 +5301,37 @@
     });
     return h + "</div>";
   }
+  /* ---- supporter gate ----------------------------------------------------------------
+     The shared gate (games/lygo-gate.js) is loaded with `defer`, so window.LYGO_GATE may
+     not exist yet when this script runs — gateHold retries until it shows up. Two things
+     the gate cannot know on its own: a donation reminder must never land on a live board,
+     and a player who has just come out of a run should get a beat before the next one.
+     So every run holds the reminder (frame of the board) and every way out of a run
+     releases it with a two-minute quiet window. nextFloor() deliberately touches neither:
+     the next floor is the same run. */
+  let gateBusy = false;   // a run is on the board
+  function gate() { return window.LYGO_GATE || null; }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = () => {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
+  /* Release the hold if a run put one up. Idempotent and independent of G on purpose:
+     menu() marks the run over on its way in, and the death/win sheets fire in the same
+     frame as the board teardown, so an `if (G ...)` guard here is exactly the bug that
+     leaves the reminder held forever. */
+  function gateRest() {
+    if (!gateBusy) return;
+    gateBusy = false;
+    gateHold(false, 2 * 60 * 1000);
+  }
   function menu() {
+    gateRest();
     if (G) { G.over = true; cleanupGameState(); }
     overlayMode = "menu";
     const pl = $("pauseLayer"); if (pl) pl.classList.add("hidden");

@@ -1038,6 +1038,26 @@
   let menuTheme = "river";
   let menuPicks = ["glimmer", "dart", "puff"];
   let heldOpts = null;
+  /* ---- donation gate -------------------------------------------------------
+     games/lygo-gate.js rides in with defer, so window.LYGO_GATE can land after
+     this script has already run: every call is guarded and retried. The gate
+     cannot know when a tank is live, so the keeper holds the reminder while a
+     tank is on screen and gets two quiet minutes after coming back out.
+     The flag is separate from `playing` on purpose: showMenu() clears `playing`
+     before anything else in it runs, so an `if (playing) relax(...)` would
+     never fire and the reminder would stay held for the rest of the session. */
+  let gateBusy = false;   // a tank is on screen (showMenu() nulls `playing` first)
+  function gate() { return window.LYGO_GATE || null; }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = () => {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
   function themeOf(id) { return THEMES[id] || THEMES.river; }
   function tankAge(now) { return Math.max(0, now - (state.openedAt || now)); }
   function fresh(picks, mode, ownerName, themeId) {
@@ -5322,9 +5342,14 @@
     document.getElementById("menu").classList.remove("hidden");
     document.getElementById("app").classList.add("hidden");
     paintCast();
+    /* back at the menu: reminders may return, but not for two minutes. `playing`
+       is already false above, so the flag carries this instead. */
+    if (gateBusy) { gateBusy = false; gateHold(false, 2 * 60 * 1000); }
   }
   function enterTank() {
     playing = true;
+    gateBusy = true;
+    gateHold(true);
     last = performance.now();
     document.getElementById("menu").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
