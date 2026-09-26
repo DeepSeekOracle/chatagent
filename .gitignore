@@ -14,3 +14,6 @@ Thumbs.db
 __pycache__/
 .vscode/
 .idea/
+
+# plaintext supporter rotation shelf — lives in E:\Data Vault, never in a public repo
+portal/SUPPORTER_CODES.md

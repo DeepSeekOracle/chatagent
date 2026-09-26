@@ -2890,6 +2890,102 @@
   }
   function hideOverlay() { $("overlay").className = "overlay"; $("overlay").innerHTML = ""; }
 
+  /* ---- supporter access ------------------------------------------------------------
+     The shared gate (games/lygo-gate.js) runs in embed mode here, so it injects no
+     banner of its own and this game offers the code entry itself, in the island's
+     palette, at the bottom of the menu. Two things the gate cannot know on its own:
+     a reminder must never land on a live board, and a player who has just come out of
+     a match should get a beat before the next one — so the game holds the reminder
+     while a match is running and relaxes it for two minutes afterwards. */
+  let gateBusy = false;   // a match is on the board (the abort path nulls S first)
+  function gate() { return window.LYGO_GATE || null; }
+  function gateState() {
+    const g = gate();
+    return g ? g.state() : { unlocked: false, label: "", until: "", lapsed: false };
+  }
+  function gateHold(on, relaxMs) {
+    let tries = 0;
+    const apply = () => {
+      const g = gate();
+      if (!g || !g.hold) { if (tries++ < 24) setTimeout(apply, 250); return; }
+      g.hold(on);
+      if (!on && relaxMs) g.suppress(relaxMs);
+    };
+    apply();
+  }
+  function supHTML() {
+    const s = gateState();
+    const url = (gate() && gate().patreon) || "https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961";
+    return `
+          <details class="sup-panel${s.unlocked ? " is-unlocked" : ""}" id="supPanel">
+            <summary><span>Supporter access</span><span class="sup-chip" id="supChip">${s.unlocked ? "active" : "enter a code"}</span></summary>
+            <p class="sup-note" id="supState"></p>
+            <div class="sup-row">
+              <input id="supCode" type="text" inputmode="latin" autocomplete="off" spellcheck="false"
+                     placeholder="LYGO-2609-XXXX-XXXX" aria-label="Supporter code">
+              <button class="btn gold" id="supGo" type="button">Unlock</button>
+              <button class="btn" id="supRelock" type="button">Lock again</button>
+            </div>
+            <p class="sup-msg" id="supMsg" role="status" aria-live="polite"></p>
+            <a class="sup-get" href="${url}" target="_blank" rel="noopener">Get this month's code — Patreon post →</a>
+          </details>`;
+  }
+  function paintSup() {
+    const chip = $("supChip"), note = $("supState"), go = $("supGo"), rl = $("supRelock");
+    const inp = $("supCode"), panel = $("supPanel");
+    if (!note) return;
+    const s = gateState();
+    if (chip) chip.textContent = s.unlocked ? "active" : "enter a code";
+    if (panel) panel.classList.toggle("is-unlocked", !!s.unlocked);
+    note.textContent = s.unlocked
+      ? ("Reminders are off in this browser · code " + (s.label || "supporter") +
+         (s.until ? " · good through " + s.until : " · permanent"))
+      : (s.lapsed
+          ? ("The code from " + s.label + " ran through " + s.until + " and has lapsed, so the reminders are back.")
+          : "Every mode here plays the same with or without one. A monthly code from the Patreon post switches the donation reminders off in this browser.");
+    if (go) go.hidden = !!s.unlocked;
+    if (rl) rl.hidden = !s.unlocked;
+    if (inp) inp.disabled = !!s.unlocked;
+  }
+  function wireSup() {
+    const go = $("supGo"), inp = $("supCode"), rl = $("supRelock"), msg = () => $("supMsg");
+    if (!go || !inp) return;
+    const submit = async () => {
+      const g = gate();
+      if (!g) { if (msg()) msg().textContent = "The code module has not loaded yet — try again in a moment."; return; }
+      const r = await g.unlock(inp.value);
+      if (r.ok) inp.value = "";
+      if (msg()) msg().textContent = r.ok
+        ? ("Unlocked — the reminders stay off in this browser" + (r.until ? " through " + r.until : "") + ". Thank you for keeping the lattice lit.")
+        : r.why;
+      paintSup();
+    };
+    go.onclick = submit;
+    inp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } };
+    if (rl) rl.onclick = () => {
+      const g = gate();
+      if (g) g.relock();
+      if (msg()) msg().textContent = "Locked again in this browser. The reminders will come back.";
+      paintSup();
+    };
+  }
+  document.addEventListener("lygo-supporter", () => paintSup());
+  document.addEventListener("lygo-gate-door", () => {
+    if (overlayMode !== "menu") showMenu();
+    setTimeout(() => {
+      const p = $("supPanel");
+      if (p) {
+        p.open = true;
+        p.classList.add("fly");
+        setTimeout(() => p.classList.remove("fly"), 1400);
+        p.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+      const i = $("supCode");
+      if (i && !i.disabled) i.focus();
+      paintSup();
+    }, 260);
+  });
+
   function showMenu() {
     overlayMode = "menu";
     const sizeOpts = MAP_SIZES.map((m) =>
@@ -2927,6 +3023,7 @@
             <button class="btn" id="menuCmdr">Commander: ${esc(commander().name)}</button>
             <a class="btn ghost" href="/games/">All games</a>
             <a class="btn ghost" href="${LEDGER_PAGE}" target="_blank" rel="noopener">Eternal ledger</a>
+            <a class="btn ghost" id="menuSupporter" href="#supPanel">Supporter access</a>
           </div>
           <p class="sel-meta">Wins ${persist.wins} · Best ${persist.best} · Prestige ${persist.prestige} · Unlocks: ${Object.keys(persist.unlocks).filter((k) => persist.unlocks[k]).join(", ") || "starter kit"}</p>
           <p class="sel-meta"><b>Deploy</b> 3 HQs → <b>Defense</b> build → <b>Offense</b> probe the black → <b>Playback</b>.</p>
@@ -2935,14 +3032,34 @@
             <a class="btn ghost" href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener">Listen portal</a>
             <a class="btn ghost" href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html" target="_blank" rel="noopener">Star Chart</a>
           </div>
+          ${supHTML()}
         </div>
       </div>
     `, "menu");
     $("go").onclick = () => startFromForm(false);
     $("fresh").onclick = () => startFromForm(true);
     $("menuRadio").onclick = () => { const b = $("radioPlay"); if (b) b.click(); };
+    const supBtn = $("menuSupporter");
+    if (supBtn) supBtn.onclick = (ev) => {
+      ev.preventDefault();
+      const p = $("supPanel");
+      if (!p) return;
+      p.open = true;
+      paintSup();
+      p.scrollIntoView({ block: "center", behavior: "smooth" });
+      const i = $("supCode");
+      if (i && !i.disabled) setTimeout(() => i.focus(), 320);
+    };
     const mc = $("menuCmdr");
     if (mc) mc.onclick = () => { if (!cmdrLocked()) { cycleCmdr(1); showMenu(); } };
+    paintSup();
+    wireSup();
+    // the gate script is deferred, so it can land after this menu is painted
+    setTimeout(paintSup, 400);
+    setTimeout(paintSup, 1500);
+    // coming back from a match: reminders may resume, but not for two minutes.
+    // (S is already null on the abort path, so a flag carries this instead.)
+    if (gateBusy) { gateBusy = false; gateHold(false, 2 * 60 * 1000); }
   }
   function startFromForm(resetCamp) {
     persist.name = ($("nm").value || "Commander").slice(0, 18);
@@ -2961,6 +3078,8 @@
   }
   function beginMatch(opts) {
     const n = Number(opts && opts.mapN) || persist.mapN || 48;
+    gateBusy = true;
+    gateHold(true);
     overlayMode = "help";
     showOverlay(`
       <h2>Shaping island</h2>

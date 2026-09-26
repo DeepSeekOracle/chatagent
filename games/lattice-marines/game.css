@@ -10,6 +10,19 @@
   --mute: #94a3b8;
   --text: #e8eef7;
   --enemy: #c084fc;
+  /* lygo-gate.js paints the donation reminder from these; point them at the island
+     so the card, the code fields and the links wear the game's own palette. */
+  --lyg-panel: #0e1626f2;
+  --lyg-well: #0a1220cc;
+  --lyg-line: var(--line);
+  --lyg-text: var(--text);
+  --lyg-mute: var(--mute);
+  --lyg-gold: var(--gold);
+  --lyg-cyan: var(--cyan);
+  --lyg-radius: 10px;
+  --lyg-font: "Source Sans 3", system-ui, sans-serif;
+  --lyg-display: Syne, Georgia, serif;
+  --lyg-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
@@ -226,3 +239,28 @@ input, select {
   .right { border-left: 0; border-top: 1px solid var(--line); flex-direction: row; overflow: auto; }
   .right .panel { min-width: 220px; }
 }
+
+/* Supporter access — the game's own door for the shared code module. */
+.sup-panel { margin-top: .7rem; border: 1px solid var(--line); border-radius: 10px;
+  background: linear-gradient(180deg, #0d1726ee, #0a1220dd); padding: .1rem .6rem .6rem; }
+.sup-panel > summary { cursor: pointer; list-style: none; display: flex; gap: .5rem;
+  align-items: center; justify-content: space-between; padding: .5rem .1rem; }
+.sup-panel > summary::-webkit-details-marker { display: none; }
+.sup-panel > summary > span:first-child { font-family: Syne, sans-serif; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; font-size: .78rem; color: var(--text); }
+.sup-chip { font-family: "IBM Plex Mono", monospace; font-size: .64rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--mute); border: 1px solid var(--line); border-radius: 99px;
+  padding: .1rem .45rem; }
+.sup-panel.is-unlocked .sup-chip { color: var(--ok); border-color: rgba(52, 211, 153, .5); }
+.sup-panel.is-unlocked > summary > span:first-child { color: var(--gold); }
+.sup-note { margin: .1rem 0 .45rem; font-size: .72rem; line-height: 1.45; color: var(--mute); }
+.sup-row { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.sup-row input { flex: 1 1 190px; min-width: 0; background: #071018; color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: .42rem .55rem;
+  font-family: "IBM Plex Mono", monospace; font-size: .78rem; letter-spacing: .04em; }
+.sup-row input:focus { outline: none; border-color: var(--cyan); }
+.sup-row input:disabled { opacity: .55; }
+.sup-msg { margin: .4rem 0 0; font-size: .72rem; line-height: 1.45; color: var(--cyan); min-height: 1em; }
+.sup-get { display: inline-block; margin-top: .35rem; font-size: .72rem; color: var(--gold); }
+.sup-panel.fly { animation: supfly 1.2s ease; }
+@keyframes supfly { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 2px var(--gold) inset, 0 0 18px rgba(251, 191, 36, .35); } }
