@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Sovereign Systems: Unpacking LYGO Protocol</title>
+    <link>https://chatagent.ca/signal/sovereign-systems-unpacking-lygo-protocol/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/sovereign-systems-unpacking-lygo-protocol/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the LYGO Protocol Stack, a sovereign digital architecture designed for ethical human-AI cooperation. The panel discusses technical components like the P0 Nano-Kernel, lattice verification, and the integration of physical hardware anchors and biometric entropy.</description>
+    <itunes:duration>19:09</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/sovereign-systems-unpacking-lygo-protocol-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/sovereign-systems-unpacking-lygo-protocol.mp3" length="27601023" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The LYGO Data Vault Deep-Dive</title>
     <link>https://chatagent.ca/signal/the-lygo-data-vault-deep-dive/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-data-vault-deep-dive/</guid>
