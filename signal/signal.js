@@ -209,8 +209,58 @@
         } else { p.pause(); }
       });
     });
+    initYouTube();
     initShare();
     oneStreamAtATime();
+  }
+
+  /* ── the archive: YouTube plays in place, one embed at a time, audio stops first ── */
+  function initYouTube() {
+    function stopAudio() {
+      Array.prototype.forEach.call(players, function (p) { p.pause(); });
+      if (window.SignalRadio && window.SignalRadio.pause) {
+        try { window.SignalRadio.pause(); } catch (e) {}
+      }
+    }
+    function dropEmbed(frame) {
+      var iframe = frame.querySelector("iframe");
+      if (iframe) frame.removeChild(iframe);
+      var img = frame.querySelector("img"), btn = frame.querySelector(".yt-play");
+      if (img) img.hidden = false;
+      if (btn) btn.hidden = false;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-yt-frame]"), function (frame) {
+      var btn = frame.querySelector("[data-yt-play]");
+      if (!btn) return;
+      btn.addEventListener("click", function () {
+        if (frame.querySelector("iframe")) return;
+        Array.prototype.forEach.call(document.querySelectorAll("[data-yt-frame]"), function (other) {
+          if (other !== frame) dropEmbed(other);
+        });
+        stopAudio();
+        var iframe = document.createElement("iframe");
+        iframe.className = "yt-iframe";
+        iframe.setAttribute("src", "https://www.youtube-nocookie.com/embed/" + btn.getAttribute("data-yt-play") +
+          "?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&playsinline=1");
+        iframe.setAttribute("title", btn.getAttribute("data-yt-title") || "YouTube player");
+        iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; " +
+          "picture-in-picture; web-share");
+        iframe.setAttribute("allowfullscreen", "");
+        frame.appendChild(iframe);
+        var im = frame.querySelector("img");
+        if (im) im.hidden = true;
+        btn.hidden = true;
+      });
+    });
+  }
+
+  /* an embed cannot be told to stop through the DOM alone: talk to it through the iframe API */
+  function pauseEmbeds() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-yt-frame] iframe"), function (f) {
+      try {
+        f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', "*");
+      } catch (e) {}
+    });
   }
 
   /* radio dock (hub) + episode players must never play over each other */
@@ -219,6 +269,7 @@
     all.forEach(function (a) {
       a.addEventListener("play", function () {
         all.forEach(function (b) { if (b !== a && !b.paused) b.pause(); });
+        pauseEmbeds();
       });
     });
   }
