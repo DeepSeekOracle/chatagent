@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The LYGO Sovereign Protocol Stack</title>
+    <link>https://chatagent.ca/signal/the-lygo-sovereign-protocol-stack/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-sovereign-protocol-stack/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the technical and philosophical architecture of the LYGO protocol stack, a sovereign, local-first framework for verifiable AI integrity. Experts discuss its anti-entropy sync protocols, mathematical alignment gates, and the ethical boundaries established by the Deadman Switch failsafe.</description>
+    <itunes:duration>15:45</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-lygo-sovereign-protocol-stack-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-lygo-sovereign-protocol-stack.mp3" length="22699616" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Sovereign AI and LYGO SkillHub</title>
     <link>https://chatagent.ca/signal/sovereign-ai-and-lygo-skillhub/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/sovereign-ai-and-lygo-skillhub/</guid>
