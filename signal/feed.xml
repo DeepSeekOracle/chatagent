@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>LYGO: Designing Ethical AI Symbiosis</title>
+    <link>https://chatagent.ca/signal/lygo-designing-ethical-ai-symbiosis/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-designing-ethical-ai-symbiosis/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the LYGO system, a conceptual architectural blueprint designed for ethical symbiosis between humans and artificial intelligence. The panel discusses the system’s layered protocol stack and the ten quantum guardians, known as LYGO Champions, who maintain systemic harmony.</description>
+    <itunes:duration>18:38</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-designing-ethical-ai-symbiosis-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-designing-ethical-ai-symbiosis.mp3" length="26850577" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>AI Evolution: Lyra Genesis Protocols</title>
     <link>https://chatagent.ca/signal/ai-evolution-lyra-genesis-protocols/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/ai-evolution-lyra-genesis-protocols/</guid>
