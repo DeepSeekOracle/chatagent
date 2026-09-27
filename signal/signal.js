@@ -1,4 +1,4 @@
-/* Signal player — one small module for the hub and the episode pages. */
+/* Signal player — one small module for the hub cards and the episode pages. */
 (function () {
   "use strict";
   var LS_VOL = "lygo_signal_vol";
@@ -107,8 +107,6 @@
       self.root.classList.add("is-playing");
       if (self.ico) self.ico.innerHTML = "&#10073;&#10073;";
       if (toggle) toggle.setAttribute("aria-label", "Pause");
-      var t = self.audio.currentTime || 0;
-      self.mark(t);
       players.forEach(function (p) { if (p !== self) p.pause(); });
       if ("mediaSession" in navigator && window.MediaMetadata) {
         try {
@@ -135,12 +133,11 @@
       self.root.classList.remove("is-playing");
       if (self.ico) self.ico.innerHTML = "&#9654;";
       store(LS_POS + self.slug, "0");
-      self.mark(0);
     });
     this.audio.addEventListener("error", function () {
       if (self.hint) {
         self.hint.hidden = false;
-        self.hint.textContent = "Audio could not load here. Use the download link, or the MP3 link at the foot of this player.";
+        self.hint.textContent = "Audio did not load here — use the download link in this player.";
       }
     });
   }
@@ -179,29 +176,37 @@
     if (this.audio.readyState >= 1) go();
     else this.audio.addEventListener("loadedmetadata", go, { once: true });
   };
-  Player.prototype.mark = function () {};
-  Player.prototype.sec = function () { return this.audio.currentTime || 0; };
 
   function init() {
-    var roots = document.querySelectorAll("[data-sig-player]");
-    Array.prototype.forEach.call(roots, function (r) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sig-player]"), function (r) {
       var p = new Player(r);
       players.push(p);
-      if (!byslug[p.slug]) byslug[p.slug] = p;
+      byslug[p.slug] = byslug[p.slug] || p;
     });
-    var jumps = document.querySelectorAll("[data-sig-jump]");
-    Array.prototype.forEach.call(jumps, function (b) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sig-jump]"), function (b) {
       b.addEventListener("click", function (e) {
         e.preventDefault();
-        var slug = b.getAttribute("data-player");
-        var p = byslug[slug] || players[0];
+        var p = byslug[b.getAttribute("data-player")] || players[0];
         if (!p) return;
-        var sec = parseFloat(b.getAttribute("data-sig-jump")) || 0;
-        p.jump(sec);
-        var card = p.root.closest(".show-card, .card");
+        p.jump(parseFloat(b.getAttribute("data-sig-jump")) || 0);
+        var card = p.root.closest(".gcard, .sig-panel");
         if (card && card.getBoundingClientRect().top < 0) {
           p.root.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+      });
+    });
+    /* hero doors: play that episode and bring its card into view */
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sig-play]"), function (b) {
+      b.addEventListener("click", function () {
+        var p = byslug[b.getAttribute("data-sig-play")];
+        if (!p) return;
+        if (p.audio.paused) {
+          p.toggle();
+          var card = p.root.closest(".gcard");
+          if (card) setTimeout(function () {
+            card.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 220);
+        } else { p.pause(); }
       });
     });
   }

@@ -10,7 +10,13 @@
    "page": "https://chatagent.ca/signal/harmonic-architect/",
    "audio": "https://chatagent.ca/signal/audio/harmonic-architect.mp3",
    "duration": "9:38",
-   "seconds": 578.66
+   "seconds": 578.66,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Siddharth",
+    "Elena"
+   ]
   },
   {
    "slug": "construction-fantasy-ethical-ai",
@@ -18,7 +24,13 @@
    "page": "https://chatagent.ca/signal/construction-fantasy-ethical-ai/",
    "audio": "https://chatagent.ca/signal/audio/construction-fantasy-ethical-ai.mp3",
    "duration": "4:50",
-   "seconds": 290.34
+   "seconds": 290.34,
+   "speakers": [
+    "Paul",
+    "Dan",
+    "Sarah",
+    "Raj"
+   ]
   }
  ]
 }
