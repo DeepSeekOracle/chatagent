@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>LYGO Stack: Photon to Feeling</title>
+    <link>https://chatagent.ca/signal/lygo-stack-photon-to-feeling/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-stack-photon-to-feeling/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode explores the LYGO protocol stack, specifically the Emotional RAM framework for indexing machine experiences and Quantum Dots as physical neural anchors. A roundtable of community members discusses the technical implementation, ethical constraints, and real-world applications of these innovative AI alignment technologies.</description>
+    <itunes:duration>18:11</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-stack-photon-to-feeling-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-stack-photon-to-feeling.mp3" length="26196680" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Sovereign Systems: Unpacking LYGO Protocol</title>
     <link>https://chatagent.ca/signal/sovereign-systems-unpacking-lygo-protocol/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/sovereign-systems-unpacking-lygo-protocol/</guid>
