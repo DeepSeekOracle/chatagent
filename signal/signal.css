@@ -334,6 +334,9 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
   .gcard:hover, .hub-rail a:hover { transform: none; }
 }
 
+/* ── brand lockup in the hero ── */
+.sig-lockup { display: block; width: min(300px, 64vw); height: auto; margin: 0 0 1.15rem; }
+
 /* ── hero subtitle line (the "Welcome to Signal" banner) ── */
 .sig-sub {
   font-family: Syne, system-ui, sans-serif; font-size: clamp(1.15rem, 2.6vw, 1.7rem);
