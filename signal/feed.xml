@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The LYGO Bridge Protocol Breakdown</title>
+    <link>https://chatagent.ca/signal/the-lygo-bridge-protocol-breakdown/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-bridge-protocol-breakdown/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the technical architecture and recent security updates of the Blockchain to LYGO Bridge Protocol. A panel of experts discusses how the system anchors off-chain reputation and ethical mass into public Ethereum-compatible blockchains using Merkle proofs and soulbound tokens.</description>
+    <itunes:duration>19:17</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-lygo-bridge-protocol-breakdown-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-lygo-bridge-protocol-breakdown.mp3" length="27784716" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>LYGO Stack: Photon to Feeling</title>
     <link>https://chatagent.ca/signal/lygo-stack-photon-to-feeling/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/lygo-stack-photon-to-feeling/</guid>
