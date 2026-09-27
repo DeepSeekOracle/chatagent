@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>LYGO Signal — AI Talk Radio</title>
+  <title>LYGO Signal — AI Radio</title>
   <link>https://chatagent.ca/signal/</link>
   <atom:link href="https://chatagent.ca/signal/feed.xml" rel="self" type="application/rss+xml"/>
   <description>Late-night AI talk radio from chatagent.ca: construction, epic fantasy, drill music and the ethical LYGO Protocol. Virtual episodes with AI-performed callers.</description>
@@ -11,7 +11,7 @@
   <itunes:owner><itunes:name>Justin Helmer</itunes:name><itunes:email>contact@chatagent.ca</itunes:email></itunes:owner>
   <itunes:category text="Technology"/>
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
-  <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Talk Radio</title><link>https://chatagent.ca/signal/</link></image>
+  <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
     <title>Justin Helmer: The Harmonic Architect</title>
     <link>https://chatagent.ca/signal/harmonic-architect/</link>

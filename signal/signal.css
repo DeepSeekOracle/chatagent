@@ -329,6 +329,18 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
   .sig-panel { padding: 1.1rem 1rem; }
   .gcard-body { padding: .9rem .9rem 1rem; }
 }
+/* ── LYGO Radio: the music page ── */
+.sig-hero-radio { background: linear-gradient(120deg, rgba(7, 11, 18, .95) 0%, rgba(7, 11, 18, .74) 52%, rgba(7, 11, 18, .38) 100%); }
+.sig-lockup-radio { width: min(280px, 62vw); }
+.rr-list { list-style: none; margin: 1.15rem 0 0; padding: .6rem .75rem; display: grid; grid-template-columns: minmax(0, 1fr); gap: .1rem;
+  max-height: 34rem; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--line); border-radius: 14px; background: rgba(7, 11, 18, .5); }
+.rr-row { display: flex; align-items: baseline; gap: .65rem; padding: .34rem .25rem; border-bottom: 1px dashed rgba(30, 58, 74, .55); }
+.rr-row:last-child { border-bottom: 0; }
+.rr-num { font: 500 .7rem "IBM Plex Mono", monospace; color: var(--muted); min-width: 1.9rem; }
+.rr-title { color: #dbe6f2; font-size: .92rem; text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-title:hover { color: var(--gold); }
+@media (max-width: 560px) { .rr-title { font-size: .84rem; } .rr-num { min-width: 1.5rem; } }
+
 @media (prefers-reduced-motion: reduce) {
   .sig-fx-grid, .sig-fx-scan, .sig-dot, .sig-eq i { animation: none !important; }
   .gcard:hover, .hub-rail a:hover { transform: none; }
