@@ -403,7 +403,7 @@ input[type="search"]:focus, input[type="url"]:focus {
 .chip-room[data-room="twitch_live"].on { border-color: #bf94ff; color: #e9d8ff; background: rgba(191, 148, 255, .12); }
 .chip-room[data-room^="yt_"].on { border-color: #f87171; color: #fecaca; background: rgba(248, 113, 113, .12); }
 .list {
-  list-style: none; margin: 0; padding: 0 .12rem 0 0; flex: 1; min-height: 0;
+  list-style: none; margin: 0; padding: 0 .12rem 0 0; flex: 1; min-height: 6rem;
   overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: .28rem;
   scrollbar-width: thin;
@@ -434,6 +434,10 @@ input[type="search"]:focus, input[type="url"]:focus {
 .num { font-family: var(--mono); font-size: .68rem; color: var(--muted); width: 1.7rem; flex: none; text-align: right; }
 .list li.on .num { color: var(--gold); }
 .donate { display: flex; flex-wrap: wrap; gap: .4rem; margin: .55rem 0 0; flex: none; }
+.rooms { margin: .45rem 0 0; padding-top: .45rem; border-top: 1px solid var(--line); flex: none;
+  font-size: .8rem; color: var(--muted); line-height: 1.4; }
+.rooms a { color: var(--gold); text-decoration: none; }
+.rooms a:hover { text-decoration: underline; }
 .add { margin-top: .55rem; padding-top: .55rem; border-top: 1px solid var(--line); flex: none; }
 .add summary { cursor: pointer; color: var(--muted); font-size: .8rem; }
 .add summary:hover { color: var(--ink); }
