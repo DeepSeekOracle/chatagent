@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Sovereign AI and LYGO SkillHub</title>
+    <link>https://chatagent.ca/signal/sovereign-ai-and-lygo-skillhub/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/sovereign-ai-and-lygo-skillhub/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the LYGO SkillHub and Console, focusing on the importance of sovereign, local-first artificial intelligence running entirely offline on personal hardware. A roundtable of tech experts discusses the project's core philosophy of transparency, security through manual consent, and its community-driven distribution model.</description>
+    <itunes:duration>14:13</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/sovereign-ai-and-lygo-skillhub-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/sovereign-ai-and-lygo-skillhub.mp3" length="20483387" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The LYGO Bridge Protocol Breakdown</title>
     <link>https://chatagent.ca/signal/the-lygo-bridge-protocol-breakdown/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-bridge-protocol-breakdown/</guid>
