@@ -32,5 +32,15 @@
     <itunes:image href="https://chatagent.ca/signal/art/construction-fantasy-ethical-ai-cover.jpg"/>
     <enclosure url="https://chatagent.ca/signal/audio/construction-fantasy-ethical-ai.mp3" length="6969722" type="audio/mpeg"/>
   </item>
+  <item>
+    <title>The LYGO Protocol Stack Explained</title>
+    <link>https://chatagent.ca/signal/the-lygo-protocol-stack-explained/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-protocol-stack-explained/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the LYGO Protocol Stack, an open-source framework that uses mathematical patterns like the golden ratio and vortex math to align AI with human ethics. Guests explain the stack’s layered architecture, from its ethical 'Nano-Kernel' to self-repairing mechanisms based on harmonic frequencies.</description>
+    <itunes:duration>9:40</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-lygo-protocol-stack-explained-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-lygo-protocol-stack-explained.mp3" length="13930623" type="audio/mpeg"/>
+  </item>
 </channel>
 </rss>
