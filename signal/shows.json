@@ -87,6 +87,20 @@
     "Maeve",
     "Aaron"
    ]
+  },
+  {
+   "slug": "the-lygo-data-vault-deep-dive",
+   "title": "The LYGO Data Vault Deep-Dive",
+   "page": "https://chatagent.ca/signal/the-lygo-data-vault-deep-dive/",
+   "audio": "https://chatagent.ca/signal/audio/the-lygo-data-vault-deep-dive.mp3",
+   "duration": "18:15",
+   "seconds": 1095.5,
+   "speakers": [
+    "Paul",
+    "Sam",
+    "Elena",
+    "Raj"
+   ]
   }
  ]
 }
