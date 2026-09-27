@@ -1,0 +1,24 @@
+{
+ "network": "Signal — AI Talk Radio",
+ "hub": "https://chatagent.ca/signal/",
+ "feed": "https://chatagent.ca/signal/feed.xml",
+ "updated": "2026-09-27",
+ "shows": [
+  {
+   "slug": "harmonic-architect",
+   "title": "Justin Helmer: The Harmonic Architect",
+   "page": "https://chatagent.ca/signal/harmonic-architect/",
+   "audio": "https://chatagent.ca/signal/audio/harmonic-architect.mp3",
+   "duration": "9:38",
+   "seconds": 578.66
+  },
+  {
+   "slug": "construction-fantasy-ethical-ai",
+   "title": "Construction, Fantasy, and Ethical AI",
+   "page": "https://chatagent.ca/signal/construction-fantasy-ethical-ai/",
+   "audio": "https://chatagent.ca/signal/audio/construction-fantasy-ethical-ai.mp3",
+   "duration": "4:50",
+   "seconds": 290.34
+  }
+ ]
+}

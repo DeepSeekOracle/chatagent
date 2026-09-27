@@ -1,0 +1,210 @@
+/* Signal player — one small module for the hub and the episode pages. */
+(function () {
+  "use strict";
+  var LS_VOL = "lygo_signal_vol";
+  var LS_POS = "lygo_signal_pos_";
+  var players = [];
+  var byslug = {};
+
+  function fmt(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    s = Math.floor(s);
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    return (h ? h + ":" + String(m).padStart(2, "0") : String(m)) + ":" + String(x).padStart(2, "0");
+  }
+  function store(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+  function Player(root) {
+    var self = this;
+    this.root = root;
+    this.slug = root.getAttribute("data-slug") || "signal";
+    this.audio = root.querySelector("[data-sig-audio]");
+    this.seek = root.querySelector("[data-sig-seek]");
+    this.cur = root.querySelector("[data-sig-cur]");
+    this.dur = root.querySelector("[data-sig-dur]");
+    this.ico = root.querySelector("[data-sig-ico]");
+    this.hint = root.querySelector("[data-sig-hint]");
+    this.rateBtn = root.querySelector("[data-sig-rate]");
+    this.vol = root.querySelector("[data-sig-vol]");
+    if (!this.audio) return;
+    this.rates = [1, 1.25, 1.5, 0.75];
+    this.rate = 0;
+
+    var savedVol = parseFloat(read(LS_VOL));
+    this.audio.volume = isFinite(savedVol) ? Math.max(0, Math.min(1, savedVol)) : 0.85;
+    if (this.vol) this.vol.value = this.audio.volume;
+
+    var toggle = root.querySelector("[data-sig-toggle]");
+    if (toggle) toggle.addEventListener("click", function () { self.toggle(); });
+    var back = root.querySelector("[data-sig-back]");
+    var fwd = root.querySelector("[data-sig-fwd]");
+    if (back) back.addEventListener("click", function () { self.nudge(-15); });
+    if (fwd) fwd.addEventListener("click", function () { self.nudge(15); });
+
+    if (this.seek) {
+      this.seek.addEventListener("input", function () {
+        if (self.seeking) return;
+        self.seeking = true;
+        var d = self.audio.duration || 0;
+        self.paint((self.seek.value / 1000) * d, d);
+      });
+      this.seek.addEventListener("change", function () {
+        var d = self.audio.duration || 0;
+        if (d) self.audio.currentTime = (self.seek.value / 1000) * d;
+        self.seeking = false;
+      });
+      this.seek.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          self.nudge(e.key === "ArrowRight" ? 15 : -15);
+        }
+      });
+    }
+    if (this.rateBtn) {
+      this.rateBtn.addEventListener("click", function () {
+        self.rate = (self.rate + 1) % self.rates.length;
+        self.audio.playbackRate = self.rates[self.rate];
+        self.rateBtn.innerHTML = String(self.rates[self.rate]).replace("0.", ".") + "&times;";
+      });
+    }
+    if (this.vol) {
+      this.vol.addEventListener("input", function () {
+        self.audio.volume = parseFloat(self.vol.value);
+        store(LS_VOL, String(self.audio.volume));
+      });
+    }
+
+    this.audio.addEventListener("loadedmetadata", function () {
+      var d = self.audio.duration;
+      if (self.dur && isFinite(d)) self.dur.textContent = fmt(d);
+      self.paint(self.audio.currentTime, d);
+      var pos = parseFloat(read(LS_POS + self.slug));
+      if (isFinite(pos) && pos > 20 && d && pos < d - 15) {
+        self.audio.currentTime = pos;
+        self.paint(pos, d);
+        if (self.hint) {
+          self.hint.hidden = false;
+          self.hint.innerHTML = "Resumed at " + fmt(pos) + " — <a href=\"#\" data-sig-restart>start over</a>";
+          var r = self.hint.querySelector("[data-sig-restart]");
+          if (r) r.addEventListener("click", function (e) {
+            e.preventDefault();
+            self.audio.currentTime = 0;
+            self.hint.hidden = true;
+          });
+        }
+      }
+    });
+    this.audio.addEventListener("timeupdate", function () {
+      if (!self.seeking) self.paint(self.audio.currentTime, self.audio.duration);
+      var t = Math.floor(self.audio.currentTime);
+      if (t >= 0 && t % 5 === 0 && t !== self.lastSave) {
+        self.lastSave = t;
+        store(LS_POS + self.slug, String(t));
+      }
+    });
+    this.audio.addEventListener("play", function () {
+      self.root.classList.add("is-playing");
+      if (self.ico) self.ico.innerHTML = "&#10073;&#10073;";
+      if (toggle) toggle.setAttribute("aria-label", "Pause");
+      var t = self.audio.currentTime || 0;
+      self.mark(t);
+      players.forEach(function (p) { if (p !== self) p.pause(); });
+      if ("mediaSession" in navigator && window.MediaMetadata) {
+        try {
+          var now = root.querySelector(".sig-now-title");
+          var art = document.querySelector("meta[property='og:image']");
+          navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: now ? now.textContent : document.title,
+            artist: "AI Talk Radio — Signal",
+            album: "chatagent.ca",
+            artwork: art ? [{ src: art.getAttribute("content") }] : []
+          });
+          navigator.mediaSession.setActionHandler("seekbackward", function () { self.nudge(-15); });
+          navigator.mediaSession.setActionHandler("seekforward", function () { self.nudge(15); });
+        } catch (e) {}
+      }
+    });
+    this.audio.addEventListener("pause", function () {
+      self.root.classList.remove("is-playing");
+      if (self.ico) self.ico.innerHTML = "&#9654;";
+      if (toggle) toggle.setAttribute("aria-label", "Play");
+      store(LS_POS + self.slug, String(Math.floor(self.audio.currentTime || 0)));
+    });
+    this.audio.addEventListener("ended", function () {
+      self.root.classList.remove("is-playing");
+      if (self.ico) self.ico.innerHTML = "&#9654;";
+      store(LS_POS + self.slug, "0");
+      self.mark(0);
+    });
+    this.audio.addEventListener("error", function () {
+      if (self.hint) {
+        self.hint.hidden = false;
+        self.hint.textContent = "Audio could not load here. Use the download link, or the MP3 link at the foot of this player.";
+      }
+    });
+  }
+
+  Player.prototype.paint = function (t, d) {
+    if (this.cur) this.cur.textContent = fmt(t);
+    if (this.dur && isFinite(d) && d > 0) this.dur.textContent = fmt(d);
+    if (this.seek && isFinite(d) && d > 0) {
+      var pct = Math.max(0, Math.min(1000, Math.round((t / d) * 1000)));
+      if (!this.seeking) this.seek.value = pct;
+      this.seek.style.setProperty("--p", (pct / 10) + "%");
+    }
+  };
+  Player.prototype.toggle = function () {
+    if (this.audio.paused) {
+      var p = this.audio.play();
+      if (p && p.catch) p.catch(function () {});
+    } else { this.audio.pause(); }
+  };
+  Player.prototype.pause = function () { if (!this.audio.paused) this.audio.pause(); };
+  Player.prototype.nudge = function (delta) {
+    var d = this.audio.duration || 0;
+    var t = (this.audio.currentTime || 0) + delta;
+    this.audio.currentTime = Math.max(0, d ? Math.min(d - 0.5, t) : t);
+    this.paint(this.audio.currentTime, d);
+  };
+  Player.prototype.jump = function (sec) {
+    var self = this;
+    var go = function () {
+      var d = self.audio.duration;
+      self.audio.currentTime = d ? Math.min(sec, d - 0.5) : sec;
+      self.paint(self.audio.currentTime, d);
+      var p = self.audio.play();
+      if (p && p.catch) p.catch(function () {});
+    };
+    if (this.audio.readyState >= 1) go();
+    else this.audio.addEventListener("loadedmetadata", go, { once: true });
+  };
+  Player.prototype.mark = function () {};
+  Player.prototype.sec = function () { return this.audio.currentTime || 0; };
+
+  function init() {
+    var roots = document.querySelectorAll("[data-sig-player]");
+    Array.prototype.forEach.call(roots, function (r) {
+      var p = new Player(r);
+      players.push(p);
+      if (!byslug[p.slug]) byslug[p.slug] = p;
+    });
+    var jumps = document.querySelectorAll("[data-sig-jump]");
+    Array.prototype.forEach.call(jumps, function (b) {
+      b.addEventListener("click", function (e) {
+        e.preventDefault();
+        var slug = b.getAttribute("data-player");
+        var p = byslug[slug] || players[0];
+        if (!p) return;
+        var sec = parseFloat(b.getAttribute("data-sig-jump")) || 0;
+        p.jump(sec);
+        var card = p.root.closest(".show-card, .card");
+        if (card && card.getBoundingClientRect().top < 0) {
+          p.root.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();

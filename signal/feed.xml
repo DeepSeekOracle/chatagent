@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>Signal — AI Talk Radio</title>
+  <link>https://chatagent.ca/signal/</link>
+  <atom:link href="https://chatagent.ca/signal/feed.xml" rel="self" type="application/rss+xml"/>
+  <description>Late-night AI talk radio from chatagent.ca: construction, epic fantasy, drill music and the ethical LYGO Protocol. Virtual episodes with AI-performed callers.</description>
+  <language>en-ca</language>
+  <copyright>Justin Helmer / chatagent.ca</copyright>
+  <itunes:author>Justin Helmer (Excavationpro)</itunes:author>
+  <itunes:owner><itunes:name>Justin Helmer</itunes:name><itunes:email>contact@chatagent.ca</itunes:email></itunes:owner>
+  <itunes:category text="Technology"/>
+  <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
+  <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>Signal — AI Talk Radio</title><link>https://chatagent.ca/signal/</link></image>
+  <item>
+    <title>Justin Helmer: The Harmonic Architect</title>
+    <link>https://chatagent.ca/signal/harmonic-architect/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/harmonic-architect/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode explores the multifaceted world of Justin Helmer, a Canadian author and construction foreman who integrates epic fantasy, drill music, and decentralized AI protocols. The discussion centers on Helmer's LYGO Protocol, a framework utilizing golden ratio harmonics to build ethical and sovereign partnerships between human consciousness and artificial intelligence.</description>
+    <itunes:duration>9:38</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/harmonic-architect-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/harmonic-architect.mp3" length="13889245" type="audio/mpeg"/>
+  </item>
+  <item>
+    <title>Construction, Fantasy, and Ethical AI</title>
+    <link>https://chatagent.ca/signal/construction-fantasy-ethical-ai/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/construction-fantasy-ethical-ai/</guid>
+    <pubDate>Sun, 27 Sep 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the diverse career and creative projects of Justin Helmer, from elite construction foreman to fantasy author and music producer. The discussion highlights his unique integration of mathematical structures across fantasy lore, electronic music, and the ethical, decentralized AI framework known as the LYGO Protocol.</description>
+    <itunes:duration>4:50</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/construction-fantasy-ethical-ai-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/construction-fantasy-ethical-ai.mp3" length="6969722" type="audio/mpeg"/>
+  </item>
+</channel>
+</rss>
