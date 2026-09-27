@@ -209,7 +209,68 @@
         } else { p.pause(); }
       });
     });
+    initShare();
+    oneStreamAtATime();
   }
+
+  /* radio dock (hub) + episode players must never play over each other */
+  function oneStreamAtATime() {
+    var all = Array.prototype.slice.call(document.querySelectorAll("audio"));
+    all.forEach(function (a) {
+      a.addEventListener("play", function () {
+        all.forEach(function (b) { if (b !== a && !b.paused) b.pause(); });
+      });
+    });
+  }
+
+  /* ── share: native sheet where the device has one, plus copy-to-clipboard ── */
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function initShare() {
+    var native = document.querySelector("[data-native-share]");
+    if (native && navigator.share) {
+      native.hidden = false;
+      native.addEventListener("click", function () {
+        navigator.share({
+          title: document.title,
+          text: native.getAttribute("data-share-text") || document.title,
+          url: window.location.href
+        }).catch(function () {});
+      });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll("[data-copy-link]"), function (b) {
+      b.addEventListener("click", function () {
+        var url = b.getAttribute("data-share-url") || window.location.href;
+        var label = b.getAttribute("data-label") || b.textContent;
+        b.setAttribute("data-label", label);
+        var done = function () {
+          b.textContent = "Link copied ✓";
+          b.classList.add("copied");
+          window.setTimeout(function () {
+            b.textContent = label;
+            b.classList.remove("copied");
+          }, 2200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done, function () { fallbackCopy(url); done(); });
+        } else {
+          fallbackCopy(url);
+          done();
+        }
+      });
+    });
+  }
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();

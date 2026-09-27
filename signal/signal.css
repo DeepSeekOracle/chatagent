@@ -81,7 +81,7 @@ body.sig-portal[data-page="episode"] .sig-fx-photo { opacity: .11; }
 .sig-pill {
   display: inline-flex; align-items: center; gap: .5rem; margin: 0 0 .9rem; padding: .34rem .78rem;
   border: 1px solid var(--line); border-radius: 999px; background: rgba(94, 234, 212, .07);
-  font-family: "IBM Plex Mono", monospace; font-size: .7rem; letter-spacing: .2em;
+  font-family: "IBM Plex Mono", "Segoe UI Emoji", "Noto Color Emoji", monospace; font-size: .7rem; letter-spacing: .2em;
   text-transform: uppercase; color: var(--accent2);
 }
 .sig-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); animation: sig-pulse 2.6s ease-out infinite; }
@@ -91,7 +91,7 @@ body.sig-portal[data-page="episode"] .sig-fx-photo { opacity: .11; }
   100% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0); }
 }
 .sig-hero h1 {
-  font-family: Syne, system-ui, sans-serif; font-size: clamp(2.05rem, 5.6vw, 3.5rem); line-height: 1.02;
+  font-family: Syne, "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif; font-size: clamp(2.05rem, 5.6vw, 3.5rem); line-height: 1.02;
   letter-spacing: .01em; margin: 0 0 .8rem; color: #fff8e8; text-shadow: 0 0 44px rgba(94, 234, 212, .22);
 }
 .sig-hero h1 em { font-style: normal; color: var(--gold); }
@@ -332,4 +332,62 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
 @media (prefers-reduced-motion: reduce) {
   .sig-fx-grid, .sig-fx-scan, .sig-dot, .sig-eq i { animation: none !important; }
   .gcard:hover, .hub-rail a:hover { transform: none; }
+}
+
+/* ── hero subtitle line (the "Welcome to Signal" banner) ── */
+.sig-sub {
+  font-family: Syne, system-ui, sans-serif; font-size: clamp(1.15rem, 2.6vw, 1.7rem);
+  line-height: 1.25; color: var(--gold); margin: 0 0 .75rem; letter-spacing: .01em;
+}
+
+/* ── share row ── */
+.sig-share {
+  margin: 1.7rem 0 0; padding: 1.15rem 1.2rem 1.2rem; border: 1px solid var(--line);
+  border-radius: 16px; background: linear-gradient(180deg, #101826, #0c121c);
+}
+.sig-share-row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 0; }
+.sig-share-btn {
+  display: inline-flex; align-items: center; gap: .38rem; padding: .5rem .82rem;
+  border: 1px solid var(--line); border-radius: 999px; background: rgba(94, 234, 212, .07);
+  color: #e8eef5; font: 600 .84rem "Source Sans 3", system-ui, sans-serif;
+  text-decoration: none !important; cursor: pointer; transition: border-color .18s ease, transform .18s ease;
+}
+.sig-share-btn:hover { border-color: var(--gold); color: var(--gold); transform: translateY(-1px); }
+.sig-share-btn.x { border-color: rgba(251, 191, 36, .5); color: var(--gold); }
+.sig-share-btn.copied { border-color: var(--accent2); color: var(--accent2); }
+.sig-share-note { margin: .7rem 0 0; font-size: .8rem; color: var(--muted); }
+
+/* ── LYGO Radio mini dock (same ids the station radio module drives) ── */
+.sig-radiodock {
+  margin: 1.1rem 0 0; padding: .95rem 1.05rem; border: 1px solid var(--line);
+  border-radius: 14px; background: linear-gradient(180deg, #0d1522, #0b121c);
+  box-shadow: inset 0 1px 0 rgba(94, 234, 212, .06);
+}
+.sig-radiodock .radio-inline { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+.sig-radiodock .radio-inline button {
+  font: 700 .82rem "Source Sans 3", system-ui, sans-serif; padding: .45rem .7rem;
+  border: 1px solid var(--line); border-radius: 9px; background: rgba(94, 234, 212, .08);
+  color: #e8eef5; cursor: pointer;
+}
+.sig-radiodock .radio-inline button:hover { background: rgba(94, 234, 212, .18); border-color: var(--accent2); }
+.sig-radiodock .radio-inline #radioPlay { background: var(--gold); border-color: var(--gold); color: #1a1408; }
+.sig-radiodock .radio-inline #radioPlay:hover { background: #fcd34d; border-color: #fcd34d; }
+.sig-radiodock .radio-title-inline {
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem; color: var(--accent2);
+  max-width: min(28rem, 62vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sig-radiodock .radio-vol {
+  display: inline-flex; align-items: center; gap: .3rem;
+  font: 700 .66rem "IBM Plex Mono", monospace; color: var(--muted);
+}
+.sig-radiodock .radio-vol input[type="range"] { width: 88px; accent-color: var(--gold); cursor: pointer; }
+.sig-radiodock .radio-dsp { margin: .7rem 0 0; font-size: .78rem; color: var(--muted); }
+.sig-radiodock .radio-dsp a { color: var(--accent2); }
+
+/* ── LYGO TV mount (the ninja player styles itself) ── */
+.sig-tv .ad-slot.lygo-tv-wrap { margin: 1.2rem auto 0; background: #0b121c; border-color: var(--line); }
+
+@media (max-width: 560px) {
+  .sig-share { padding: 1rem .95rem; }
+  .sig-share-btn { font-size: .8rem; padding: .45rem .7rem; }
 }
