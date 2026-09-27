@@ -114,7 +114,7 @@
           var art = document.querySelector("meta[property='og:image']");
           navigator.mediaSession.metadata = new window.MediaMetadata({
             title: now ? now.textContent : document.title,
-            artist: "AI Talk Radio — Signal",
+            artist: "LYGO Signal — AI Radio",
             album: "chatagent.ca",
             artwork: art ? [{ src: art.getAttribute("content") }] : []
           });
