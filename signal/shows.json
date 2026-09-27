@@ -45,6 +45,20 @@
     "Marcus",
     "Alistair"
    ]
+  },
+  {
+   "slug": "the-harmonic-mind-machine-symphony",
+   "title": "The Harmonic Mind-Machine Symphony",
+   "page": "https://chatagent.ca/signal/the-harmonic-mind-machine-symphony/",
+   "audio": "https://chatagent.ca/signal/audio/the-harmonic-mind-machine-symphony.mp3",
+   "duration": "15:40",
+   "seconds": 940.78,
+   "speakers": [
+    "Paul",
+    "Julian",
+    "Maeve",
+    "Silas"
+   ]
   }
  ]
 }
