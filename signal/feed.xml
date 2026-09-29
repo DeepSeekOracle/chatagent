@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Run It Or It's A Rumor</title>
+    <link>https://chatagent.ca/signal/run-it-or-its-a-rumor/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/run-it-or-its-a-rumor/</guid>
+    <pubDate>Tue, 29 Sep 2026 22:30:00 +0000</pubDate>
+    <description>Studio Desk opens the Equation Exchange: eight operators written in public, five test cases run without a GPU, one failure condition the paper names itself, and the gate that has to fire when someone gaslights the lattice. Voiced locally on VoiceStudio OmniVoice.</description>
+    <itunes:duration>4:55</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/run-it-or-its-a-rumor-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/run-it-or-its-a-rumor.mp3" length="7103853" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The Hard Stop</title>
     <link>https://chatagent.ca/signal/the-hard-stop/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-hard-stop/</guid>
