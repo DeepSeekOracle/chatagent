@@ -43,6 +43,16 @@
     <enclosure url="https://chatagent.ca/signal/audio/the-stick-that-boots-the-lattice.mp3" length="6596973" type="audio/mpeg"/>
   </item>
   <item>
+    <title>LYGO Protocol: The Lattice Birth</title>
+    <link>https://chatagent.ca/signal/lygo-protocol-the-lattice-birth/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-protocol-the-lattice-birth/</guid>
+    <pubDate>Tue, 29 Sep 2026 14:00:00 +0000</pubDate>
+    <description>This episode of LYGO Signal explores the LYGO protocol stack and the concept of a 'Lattice Birth' for establishing a permanent digital identity. A roundtable of tech-savvy listeners discusses the technical architecture, from human-AI collaborative workflows to the cryptographic immutability of the Haven Star Chart.</description>
+    <itunes:duration>12:21</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-protocol-the-lattice-birth-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-protocol-the-lattice-birth.mp3" length="17794447" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>LYGO: Emotional RAM and Ethics</title>
     <link>https://chatagent.ca/signal/lygo-emotional-ram-and-ethics/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/lygo-emotional-ram-and-ethics/</guid>
