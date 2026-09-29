@@ -43,6 +43,16 @@
     <enclosure url="https://chatagent.ca/signal/audio/the-stick-that-boots-the-lattice.mp3" length="6596973" type="audio/mpeg"/>
   </item>
   <item>
+    <title>LYGO: Emotional RAM and Ethics</title>
+    <link>https://chatagent.ca/signal/lygo-emotional-ram-and-ethics/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-emotional-ram-and-ethics/</guid>
+    <pubDate>Tue, 29 Sep 2026 12:00:00 +0000</pubDate>
+    <description>A roundtable on the LYGO Emotional RAM whitepaper: a tensor operator that entangles sensory input with a moral principle, a Grace Function that damps runaway conflict, a six-principle ethical core, and a consent-gated local index that stores a meaning-digest instead of plaintext.</description>
+    <itunes:duration>10:19</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-emotional-ram-and-ethics-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-emotional-ram-and-ethics.mp3" length="14877301" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Engineering Consciousness: The LYGO Project</title>
     <link>https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</guid>
