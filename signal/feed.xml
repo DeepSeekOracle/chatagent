@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The Stick That Boots the Lattice</title>
+    <link>https://chatagent.ca/signal/the-stick-that-boots-the-lattice/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-stick-that-boots-the-lattice/</guid>
+    <pubDate>Tue, 29 Sep 2026 18:00:00 +0000</pubDate>
+    <description>Studio Desk opens the LYGO USB BUILDR and LYGO-Claw master whitepaper: two products on one lattice, a daemon on loopback port 9630, six of six Phase 1 gates, and a retail path that refuses WMI auto-start. Voiced locally on VoiceStudio OmniVoice.</description>
+    <itunes:duration>4:35</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-stick-that-boots-the-lattice-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-stick-that-boots-the-lattice.mp3" length="6596973" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Engineering Consciousness: The LYGO Project</title>
     <link>https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</guid>

@@ -2,7 +2,7 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-09-28",
+ "updated": "2026-09-29",
  "shows": [
   {
    "slug": "harmonic-architect",
@@ -184,6 +184,21 @@
     "Clara",
     "Leo",
     "Sarah"
+   ]
+  },
+  {
+   "slug": "the-stick-that-boots-the-lattice",
+   "title": "The Stick That Boots the Lattice",
+   "desk": "studio-desk",
+   "page": "https://chatagent.ca/signal/the-stick-that-boots-the-lattice/",
+   "audio": "https://chatagent.ca/signal/audio/the-stick-that-boots-the-lattice.mp3",
+   "duration": "4:35",
+   "seconds": 274.81,
+   "speakers": [
+    "Paul",
+    "Maya",
+    "Theo",
+    "Priya"
    ]
   }
  ]
