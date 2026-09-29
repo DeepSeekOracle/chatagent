@@ -401,6 +401,23 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
 .sig-share-btn.copied { border-color: var(--accent2); color: var(--accent2); }
 .sig-share-note { margin: .7rem 0 0; font-size: .8rem; color: var(--muted); }
 
+/* ── Embed codes: cards that hand a third party a working player ── */
+.emb-grid { display: grid; gap: .7rem; margin: .9rem 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
+.emb-card { border: 1px solid var(--line); border-radius: 12px; padding: .85rem .9rem;
+  background: var(--soft); }
+.emb-card h3 { margin: 0; font-size: .98rem; }
+.emb-what { margin: .35rem 0 .7rem; font-size: .82rem; color: var(--muted); }
+.emb-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.emb-open { font-size: .8rem; color: var(--gold); text-decoration: none; }
+.emb-open:hover { text-decoration: underline; }
+.emb-code { margin: .7rem 0 0; }
+.emb-code summary { cursor: pointer; font-size: .8rem; color: var(--muted); }
+.emb-code summary:hover { color: var(--gold); }
+.emb-code textarea { width: 100%; margin: .45rem 0 0; padding: .55rem .6rem;
+  font-family: "IBM Plex Mono", monospace; font-size: .72rem; line-height: 1.5; color: #cfe3ff;
+  background: #05080e; border: 1px solid var(--line); border-radius: 8px; resize: vertical; }
+
 /* ── LYGO Radio mini dock (same ids the station radio module drives) ── */
 .sig-radiodock {
   margin: 1.1rem 0 0; padding: .95rem 1.05rem; border: 1px solid var(--line);

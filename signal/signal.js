@@ -287,6 +287,19 @@
     document.body.removeChild(ta);
   }
 
+  /* ── one copy handler for every button: the page URL by default, whatever data-copy-text names, or
+     the value of the element data-copy-from points at (the embed-code boxes) ── */
+  function copyTextFor(b) {
+    var text = b.getAttribute("data-copy-text");
+    if (text) return text;
+    var sel = b.getAttribute("data-copy-from");
+    if (sel) {
+      var src = document.querySelector(sel);
+      if (src) return (typeof src.value === "string" ? src.value : src.textContent) || "";
+    }
+    return b.getAttribute("data-share-url") || window.location.href;
+  }
+
   function initShare() {
     var native = document.querySelector("[data-native-share]");
     if (native && navigator.share) {
@@ -301,11 +314,12 @@
     }
     Array.prototype.forEach.call(document.querySelectorAll("[data-copy-link]"), function (b) {
       b.addEventListener("click", function () {
-        var url = b.getAttribute("data-share-url") || window.location.href;
+        var url = copyTextFor(b);
         var label = b.getAttribute("data-label") || b.textContent;
+        var copied = b.getAttribute("data-copied") || "Link copied ✓";
         b.setAttribute("data-label", label);
         var done = function () {
-          b.textContent = "Link copied ✓";
+          b.textContent = copied;
           b.classList.add("copied");
           window.setTimeout(function () {
             b.textContent = label;
