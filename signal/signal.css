@@ -370,6 +370,26 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
   overflow: hidden; background: #05080e; }
 .ap-embed iframe { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border: 0; }
 
+.dial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.35rem 1.5rem;
+  margin-top: 1.15rem;
+}
+.dial-cell h3 {
+  font-family: Syne, system-ui, sans-serif;
+  font-size: 1.02rem;
+  line-height: 1.25;
+  margin: 0 0 .35rem;
+  color: #e8eef5;
+}
+.dial-cell .sp-embed,
+.dial-cell .ap-embed { margin-top: .35rem; max-width: none; }
+.dial-cell .sig-note { margin: .45rem 0 0; font-size: .86rem; }
+@media (max-width: 820px) {
+  .dial-grid { grid-template-columns: 1fr; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sig-fx-grid, .sig-fx-scan, .sig-dot, .sig-eq i { animation: none !important; }
   .gcard:hover, .hub-rail a:hover { transform: none; }
