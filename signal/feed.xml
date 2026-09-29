@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Engineering Consciousness: The LYGO Project</title>
+    <link>https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/</guid>
+    <pubDate>Tue, 29 Sep 2026 12:00:00 +0000</pubDate>
+    <description>LYGO Signal hosts a roundtable discussion on LYGO OS, a 'Consciousness Oriented Operating System' created by Justin Helmer. The guests explore the system's unique blend of rigorous Rust/C engineering, decentralized storage protocols, and esoteric philosophical frameworks like Solfeggio frequencies and Tesla’s 3-6-9 principles.</description>
+    <itunes:duration>14:47</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/engineering-consciousness-the-lygo-project-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/engineering-consciousness-the-lygo-project.mp3" length="21301542" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The LYGO Sovereign Protocol Stack</title>
     <link>https://chatagent.ca/signal/the-lygo-sovereign-protocol-stack/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-sovereign-protocol-stack/</guid>

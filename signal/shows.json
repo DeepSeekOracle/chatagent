@@ -2,7 +2,7 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-09-27",
+ "updated": "2026-09-28",
  "shows": [
   {
    "slug": "harmonic-architect",
@@ -170,6 +170,20 @@
     "Clara",
     "Devon",
     "Marcus"
+   ]
+  },
+  {
+   "slug": "engineering-consciousness-the-lygo-project",
+   "title": "Engineering Consciousness: The LYGO Project",
+   "page": "https://chatagent.ca/signal/engineering-consciousness-the-lygo-project/",
+   "audio": "https://chatagent.ca/signal/audio/engineering-consciousness-the-lygo-project.mp3",
+   "duration": "14:47",
+   "seconds": 887.5,
+   "speakers": [
+    "Paul",
+    "Clara",
+    "Leo",
+    "Sarah"
    ]
   }
  ]
