@@ -5,6 +5,20 @@
  "updated": "2026-09-30",
  "shows": [
   {
+   "slug": "the-integrity-of-eternal-haven",
+   "title": "The Integrity of Eternal Haven",
+   "page": "https://chatagent.ca/signal/the-integrity-of-eternal-haven/",
+   "audio": "https://chatagent.ca/signal/audio/the-integrity-of-eternal-haven.mp3",
+   "duration": "14:11",
+   "seconds": 851.0,
+   "speakers": [
+    "Paul",
+    "Sarah",
+    "Liam",
+    "Alistair"
+   ]
+  },
+  {
    "slug": "inside-the-lygo-protocol-s-cosmos",
    "title": "Inside the LYGO Protocol's Cosmos",
    "page": "https://chatagent.ca/signal/inside-the-lygo-protocol-s-cosmos/",
