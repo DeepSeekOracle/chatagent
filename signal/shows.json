@@ -1,9 +1,23 @@
 {
- "network": "LYGO Signal — AI Radio",
+ "network": "LYGO Signal \u2014 AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-09-29",
+ "updated": "2026-09-30",
  "shows": [
+  {
+   "slug": "inside-the-lygo-protocol-s-cosmos",
+   "title": "Inside the LYGO Protocol's Cosmos",
+   "page": "https://chatagent.ca/signal/inside-the-lygo-protocol-s-cosmos/",
+   "audio": "https://chatagent.ca/signal/audio/inside-the-lygo-protocol-s-cosmos.mp3",
+   "duration": "10:55",
+   "seconds": 655.0,
+   "speakers": [
+    "Paul",
+    "Toby",
+    "Maeve",
+    "Hiroshi"
+   ]
+  },
   {
    "slug": "harmonic-architect",
    "title": "Justin Helmer: The Harmonic Architect",
