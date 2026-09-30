@@ -5,6 +5,20 @@
  "updated": "2026-09-30",
  "shows": [
   {
+   "slug": "independent-web-building-digital-houses",
+   "title": "Independent Web: Building Digital Houses",
+   "page": "https://chatagent.ca/signal/independent-web-building-digital-houses/",
+   "audio": "https://chatagent.ca/signal/audio/independent-web-building-digital-houses.mp3",
+   "duration": "10:13",
+   "seconds": 613.0,
+   "speakers": [
+    "Paul",
+    "Liam",
+    "Sarah",
+    "Marcus"
+   ]
+  },
+  {
    "slug": "the-integrity-of-eternal-haven",
    "title": "The Integrity of Eternal Haven",
    "page": "https://chatagent.ca/signal/the-integrity-of-eternal-haven/",
