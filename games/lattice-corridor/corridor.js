@@ -140,6 +140,36 @@
     if (touchWanted && window.olyOn) window.olyOn();
   }
 
+  function patchJumpFile(path) {
+    var raw;
+    try {
+      raw = FS.readFile(path, { encoding: "utf8" });
+    } catch (err) {
+      return false;
+    }
+    var next = raw;
+    if (/^comperr_allowjump[ \t]+\d+/m.test(next)) {
+      next = next.replace(/^comperr_allowjump[ \t]+\d+/m, "comperr_allowjump 2");
+    } else {
+      if (next.length && !/[\n\r]$/.test(next)) next += "\n";
+      next += "comperr_allowjump 2\n";
+    }
+    if (next !== raw) FS.writeFile(path, next);
+    return true;
+  }
+
+  function patchJump() {
+    var saw = false;
+    ["/defaults/prboomX.cfg", "/dwasm/prboomX.cfg"].forEach(function (path) {
+      if (patchJumpFile(path)) saw = true;
+    });
+    if (saw) {
+      var line = "Lattice Corridor: ALLOW JUMP set to High";
+      console.info(line);
+      output.value += line + "\n";
+    }
+  }
+
   function installModule(wad) {
     var pointerArmed = true;
     window.Module = {
@@ -161,6 +191,18 @@
         var handle = FS.open("/" + wad.name, "w");
         FS.write(handle, wad.bytes, 0, wad.bytes.length, 0);
         FS.close(handle);
+        patchJump();
+        var nativeSync = FS.syncfs.bind(FS);
+        FS.syncfs = function (populate, callback) {
+          if (typeof populate === "function") {
+            callback = populate;
+            populate = false;
+          }
+          return nativeSync(populate, function (err) {
+            if (populate) patchJump();
+            if (typeof callback === "function") callback(err);
+          });
+        };
         say("");
       },
       hideConsole: function () {
