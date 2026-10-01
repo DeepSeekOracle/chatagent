@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "sovereignty-and-the-lygo-protocol",
+   "title": "Sovereignty and the LYGO Protocol",
+   "page": "https://chatagent.ca/signal/sovereignty-and-the-lygo-protocol/",
+   "audio": "https://chatagent.ca/signal/audio/sovereignty-and-the-lygo-protocol.mp3",
+   "duration": "10:51",
+   "seconds": 651.0,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Sarah",
+    "Dave"
+   ]
+  },
+  {
    "slug": "the-lantern-in-silence",
    "title": "The Lantern in Silence",
    "page": "https://chatagent.ca/signal/the-lantern-in-silence/",

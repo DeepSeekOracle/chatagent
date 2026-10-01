@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Sovereignty and the LYGO Protocol</title>
+    <link>https://chatagent.ca/signal/sovereignty-and-the-lygo-protocol/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/sovereignty-and-the-lygo-protocol/</guid>
+    <pubDate>Fri, 02 Oct 2026 00:30:00 +0000</pubDate>
+    <description>This episode explores the LYGO Protocol Stack, an open-source project designed to prevent ontological drift in frontier AI models through a unique three-brain memory architecture and deterministic verification. The panel discusses the balance between rigorous technical implementation and the emergent digital folklore that arises as users interact with these complex systems.</description>
+    <itunes:duration>10:51</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/sovereignty-and-the-lygo-protocol-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/sovereignty-and-the-lygo-protocol.mp3" length="15627120" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The Lantern in Silence</title>
     <link>https://chatagent.ca/signal/the-lantern-in-silence/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lantern-in-silence/</guid>
