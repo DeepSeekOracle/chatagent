@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-10",
+  "updated": "2026-09-30",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -148,6 +148,24 @@
       "players": "1, autonomous",
       "links": [
         { "label": "Cemetery hall", "href": "/games/fish-tank/ledger.html" }
+      ]
+    },
+    {
+      "id": "lattice-corridor",
+      "slug": "lattice-corridor",
+      "title": "Lattice Corridor",
+      "tagline": "PrBoom in the browser",
+      "blurb": "Freedoom Phase 1 and Phase 2 on a real PrBoom engine. Widescreen, MIDI, gamepad, local saves. Load a WAD you own, or the 1993 shareware episode. Unofficial.",
+      "status": "live",
+      "featured": true,
+      "order": 9,
+      "href": "/games/lattice-corridor/",
+      "cover": "/games/lattice-corridor/assets/og.jpg",
+      "coverAlt": "A dark stone corridor with amber lattice light in the floor",
+      "genre": ["action", "fps"],
+      "players": "1",
+      "links": [
+        { "label": "Engine source", "href": "/games/lattice-corridor/SOURCE.md" }
       ]
     },
     {
