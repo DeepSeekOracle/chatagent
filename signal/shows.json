@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "inside-the-lygo-protocol-stack",
+   "title": "Inside the LYGO Protocol Stack",
+   "page": "https://chatagent.ca/signal/inside-the-lygo-protocol-stack/",
+   "audio": "https://chatagent.ca/signal/audio/inside-the-lygo-protocol-stack.mp3",
+   "duration": "11:08",
+   "seconds": 668.0,
+   "speakers": [
+    "Paul",
+    "Sarah",
+    "Dieter",
+    "Priya"
+   ]
+  },
+  {
    "slug": "the-lygo-protocol-ai-stack",
    "title": "The LYGO Protocol AI Stack",
    "page": "https://chatagent.ca/signal/the-lygo-protocol-ai-stack/",

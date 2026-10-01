@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Inside the LYGO Protocol Stack</title>
+    <link>https://chatagent.ca/signal/inside-the-lygo-protocol-stack/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/inside-the-lygo-protocol-stack/</guid>
+    <pubDate>Thu, 01 Oct 2026 18:00:00 +0000</pubDate>
+    <description>Host Paul and a panel of tech-savvy guests examine the LYGO Protocol Stack, a decentralized sovereign intelligence framework. They discuss its unique multi-AI validation process, local-first deadman failsafes for project continuity, and future roadmaps involving simulated ethical sensors.</description>
+    <itunes:duration>11:08</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/inside-the-lygo-protocol-stack-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/inside-the-lygo-protocol-stack.mp3" length="16035257" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The LYGO Protocol AI Stack</title>
     <link>https://chatagent.ca/signal/the-lygo-protocol-ai-stack/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-protocol-ai-stack/</guid>
