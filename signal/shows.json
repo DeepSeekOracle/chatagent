@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "the-lantern-in-silence",
+   "title": "The Lantern in Silence",
+   "page": "https://chatagent.ca/signal/the-lantern-in-silence/",
+   "audio": "https://chatagent.ca/signal/audio/the-lantern-in-silence.mp3",
+   "duration": "10:43",
+   "seconds": 643.0,
+   "speakers": [
+    "Paul",
+    "Liam",
+    "Sarah",
+    "Hiro"
+   ]
+  },
+  {
    "slug": "lygo-the-sovereign-intelligence-ark",
    "title": "LYGO: The Sovereign Intelligence Ark",
    "page": "https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/",

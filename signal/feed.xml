@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The Lantern in Silence</title>
+    <link>https://chatagent.ca/signal/the-lantern-in-silence/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-lantern-in-silence/</guid>
+    <pubDate>Thu, 01 Oct 2026 23:45:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the Lightfather Deadman Failsafe, a local-first protocol designed to preserve a creator's legacy and ethics through digital stewardship. The panel discusses the technical mechanics, symbolic rituals, and the strict ethical boundaries that prevent the creation of AI clones, favoring authentic memory over digital ghosts.</description>
+    <itunes:duration>10:43</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-lantern-in-silence-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-lantern-in-silence.mp3" length="15439038" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>LYGO: The Sovereign Intelligence Ark</title>
     <link>https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/</guid>
