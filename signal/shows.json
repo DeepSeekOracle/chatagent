@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "lygo-the-sovereign-intelligence-ark",
+   "title": "LYGO: The Sovereign Intelligence Ark",
+   "page": "https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/",
+   "audio": "https://chatagent.ca/signal/audio/lygo-the-sovereign-intelligence-ark.mp3",
+   "duration": "11:03",
+   "seconds": 663.0,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Elena",
+    "Rajesh"
+   ]
+  },
+  {
    "slug": "exploring-the-lygo-protocol-stack",
    "title": "Exploring the LYGO Protocol Stack",
    "page": "https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/",

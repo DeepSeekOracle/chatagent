@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>LYGO: The Sovereign Intelligence Ark</title>
+    <link>https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-the-sovereign-intelligence-ark/</guid>
+    <pubDate>Thu, 01 Oct 2026 23:30:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the LYGO Protocol Stack, an intricate open-source project designed for sovereign, local-first intelligence. The panel discusses its multi-layered architecture, vision-token compression, and a deeply personal 'Deadman Failsafe' system intended to preserve the creator's ethical framework.</description>
+    <itunes:duration>11:03</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-the-sovereign-intelligence-ark-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-the-sovereign-intelligence-ark.mp3" length="15921781" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Exploring the LYGO Protocol Stack</title>
     <link>https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/</guid>
