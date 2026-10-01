@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Decoding the LYGO Protocol Stack</title>
+    <link>https://chatagent.ca/signal/decoding-the-lygo-protocol-stack/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/decoding-the-lygo-protocol-stack/</guid>
+    <pubDate>Thu, 01 Oct 2026 20:00:00 +0000</pubDate>
+    <description>AI Talk Radio investigates the LYGO Protocol Stack, a GitHub repository that integrates cypherpunk cryptography, AI ethics, and digital folklore. The discussion explores technical mechanisms like cryptographic anchors and 'CANON LOCK,' alongside philosophical concepts such as the Chaos Bloom protocol and a human-centered deadman's switch.</description>
+    <itunes:duration>10:02</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/decoding-the-lygo-protocol-stack-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/decoding-the-lygo-protocol-stack.mp3" length="14448475" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Inside the LYGO Protocol Stack</title>
     <link>https://chatagent.ca/signal/inside-the-lygo-protocol-stack/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/inside-the-lygo-protocol-stack/</guid>
