@@ -155,7 +155,7 @@
       "slug": "lattice-corridor",
       "title": "Lattice Corridor",
       "tagline": "PrBoom in the browser",
-      "blurb": "Freedoom Phase 1 and Phase 2 on a real PrBoom engine. Widescreen, MIDI, gamepad, local saves. Load a WAD you own, or the 1993 shareware episode. Unofficial.",
+      "blurb": "Freedoom Phase 1, Phase 2, and FreeDM, plus Lotan's Tomb, on a real PrBoom engine. Fast, respawn, and coop rules. Load a WAD you own, or the 1993 shareware episode. Unofficial.",
       "status": "live",
       "featured": true,
       "order": 9,

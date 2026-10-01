@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lattice Corridor — free campaign | chatagent.ca</title>
-<meta name="description" content="Lattice Corridor is a free browser campaign on the PrBoom engine. Play Freedoom Phase 1 or Phase 2, load a WAD you own, or run the 1993 shareware episode. Widescreen, MIDI, gamepad, local saves. No account.">
+<meta name="description" content="Lattice Corridor is a free browser campaign on the PrBoom engine. Play Freedoom Phase 1, Phase 2, and FreeDM, or Lotan's Tomb, plus fast, respawn, and coop rules. Load a WAD you own, or run the 1993 shareware episode. No account.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#070b12">
@@ -15,7 +15,7 @@
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/games/lattice-corridor/">
 <meta property="og:title" content="Lattice Corridor — free campaign">
-<meta property="og:description" content="Freedoom Phase 1 and Phase 2 in the browser, on a real PrBoom engine. Load a WAD you own. Unofficial. No account.">
+<meta property="og:description" content="Freedoom, FreeDM, and Lotan's Tomb in the browser, on a real PrBoom engine. Load a WAD you own. Unofficial. No account.">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-corridor/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,7 +23,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:title" content="Lattice Corridor — free campaign">
-<meta name="twitter:description" content="Freedoom in the browser on PrBoom. Load a WAD you own. Unofficial fan project. No account.">
+<meta name="twitter:description" content="Freedoom, FreeDM, and Lotan's Tomb in the browser on PrBoom. Load a WAD you own. Unofficial fan project. No account.">
 <meta name="twitter:image" content="https://chatagent.ca/games/lattice-corridor/assets/og.jpg">
 <meta name="twitter:image:alt" content="A dark stone corridor with amber lattice light in the floor">
 <script type="application/ld+json">
@@ -33,7 +33,7 @@
   "name": "Lattice Corridor",
   "url": "https://chatagent.ca/games/lattice-corridor/",
   "image": "https://chatagent.ca/games/lattice-corridor/assets/og.jpg",
-  "description": "Free browser campaigns on the PrBoom engine: Freedoom Phase 1, Freedoom Phase 2, a local WAD you own, or the 1993 shareware episode extracted in the browser.",
+  "description": "Free browser campaigns on the PrBoom engine: Freedoom Phase 1, Phase 2, and FreeDM, Lotan's Tomb, a local WAD you own, or the 1993 shareware episode extracted in the browser.",
   "genre": ["Action", "Shooter"],
   "playMode": "SinglePlayer",
   "applicationCategory": "Game",
@@ -75,12 +75,22 @@
   <section class="panel">
     <p class="kicker">Δ9Φ963 · chatagent.ca</p>
     <h1>Lattice Corridor</h1>
-    <p class="lead">A real PrBoom engine in the browser. Freedoom is the campaign on the shelf. Anything you already own stays on this machine.</p>
+    <p class="lead">A real PrBoom engine in the browser. Freedoom is the campaign on the shelf, with FreeDM arenas and the Lotan's Tomb fork beside it. Anything you already own stays on this machine.</p>
     <div class="modes" role="listbox" aria-label="Campaign">
       <button type="button" class="mode on" data-mode="freedoom1" role="option" aria-selected="true"><b>Phase 1</b><span>Freedoom. Four episodes, thirty-six maps. The default run.</span></button>
       <button type="button" class="mode" data-mode="freedoom2" role="option" aria-selected="false"><b>Phase 2</b><span>Freedoom's second campaign. One long chain of maps.</span></button>
+      <button type="button" class="mode" data-mode="freedm" role="option" aria-selected="false"><b>FreeDM</b><span>Freedoom's thirty-two deathmatch arenas. No monsters are placed in these maps.</span></button>
+      <button type="button" class="mode" data-mode="lt1" role="option" aria-selected="false"><b>Jailbreak</b><span>Lotan's Tomb, phase one. A Freedoom fork with replaced late-episode maps.</span></button>
+      <button type="button" class="mode" data-mode="lt2" role="option" aria-selected="false"><b>Judgment</b><span>Lotan's Tomb, phase two. New closing map, new creature sprites, same engine.</span></button>
+      <button type="button" class="mode" data-mode="ltdemo" role="option" aria-selected="false"><b>Demonstration</b><span>Lotan's Tomb short episode. Nine maps, one sitting.</span></button>
       <button type="button" class="mode" data-mode="shareware" role="option" aria-selected="false"><b>Shareware episode</b><span>The 1993 Knee-Deep episode, fetched as the original archive and opened in this browser.</span></button>
       <button type="button" class="mode" data-mode="own" role="option" aria-selected="false"><b>A file you own</b><span>Pick an IWAD on this computer. It is not uploaded.</span></button>
+    </div>
+    <div class="row rules">
+      <label class="check"><input id="ruleFast" type="checkbox"> Fast monsters</label>
+      <label class="check"><input id="ruleRespawn" type="checkbox"> Monsters respawn</label>
+      <label class="check"><input id="ruleCoop" type="checkbox"> Coop weapons and extra enemies</label>
+      <label class="check"><input id="ruleEmpty" type="checkbox"> No monsters</label>
     </div>
     <label class="file" id="fileLabel">IWAD
       <input id="wadFile" type="file" accept=".wad,application/octet-stream">
@@ -106,7 +116,7 @@
       <button type="button" class="play" id="play" disabled>Enter the corridor</button>
       <a class="ghost" href="/games/">All games</a>
     </div>
-    <p class="legal">Unofficial fan project by Justin Helmer (Excavationpro / Lightfather). Not affiliated with id Software, Bethesda, or ZeniMax. Doom is a trademark of id Software. Freedoom is a separate free game. Engine: Dwasm / PrBoom+ / PrBoomX, GPL-2.0, by Gregory Maynard-Hoare. Saves stay in this browser. <a href="./SOURCE.md">Engine source</a>.</p>
+    <p class="legal">Unofficial fan project by Justin Helmer (Excavationpro / Lightfather). Not affiliated with id Software, Bethesda, ZeniMax, the Freedoom project, or Lotan's Tomb. Doom is a trademark of id Software. Freedoom, FreeDM, and Lotan's Tomb are separate free games under the BSD license. Engine: Dwasm / PrBoom+ / PrBoomX, GPL-2.0, by Gregory Maynard-Hoare. Saves stay in this browser. <a href="./SOURCE.md">Engine source</a>.</p>
   </section>
 </main>
 
@@ -120,6 +130,6 @@
     <button type="button" id="btnBack">Briefing</button>
   </div>
 </div>
-<script src="./corridor.js?v=3"></script>
+<script src="./corridor.js?v=4"></script>
 </body>
 </html>

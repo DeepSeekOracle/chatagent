@@ -17,6 +17,18 @@
   var touch = document.getElementById("touch");
   var fileLabel = document.getElementById("fileLabel");
   var wadFile = document.getElementById("wadFile");
+  var ruleFast = document.getElementById("ruleFast");
+  var ruleRespawn = document.getElementById("ruleRespawn");
+  var ruleCoop = document.getElementById("ruleCoop");
+  var ruleEmpty = document.getElementById("ruleEmpty");
+  var PACKS = {
+    freedoom1: "freedoom1.wad",
+    freedoom2: "freedoom2.wad",
+    freedm: "freedm.wad",
+    lt1: "lt1.wad",
+    lt2: "lt2.wad",
+    ltdemo: "ltdemo.wad"
+  };
 
   function say(text) {
     var line = text || "";
@@ -87,8 +99,7 @@
       String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === "IWAD";
   }
 
-  async function loadFreedoom(which) {
-    var name = which === "2" ? "freedoom2.wad" : "freedoom1.wad";
+  async function loadPacked(name) {
     var gz = await fetchBytes("./wads/" + name + ".gz", name);
     var wad = await gunzip(gz, name);
     if (!isIwad(wad)) throw new Error(name + " is not an IWAD");
@@ -170,10 +181,19 @@
     }
   }
 
+  function ruleArgs(wadName) {
+    var args = ["-iwad", wadName];
+    if (ruleFast.checked) args.push("-fast");
+    if (ruleRespawn.checked) args.push("-respawn");
+    if (ruleCoop.checked) args.push("-solo-net");
+    if (ruleEmpty.checked) args.push("-nomonsters");
+    return args;
+  }
+
   function installModule(wad) {
     var pointerArmed = true;
     window.Module = {
-      arguments: ["-iwad", wad.name],
+      arguments: ruleArgs(wad.name),
       locateFile: function (path) { return "./engine/" + path; },
       canvas: canvas,
       print: function (text) {
@@ -278,8 +298,7 @@
     menu.hidden = true;
     try {
       var wad;
-      if (mode === "freedoom1") wad = await loadFreedoom("1");
-      else if (mode === "freedoom2") wad = await loadFreedoom("2");
+      if (PACKS[mode]) wad = await loadPacked(PACKS[mode]);
       else if (mode === "shareware") wad = await loadShareware();
       else wad = await loadOwn();
       say("Starting the engine");
