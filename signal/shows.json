@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "exploring-the-lygo-protocol-stack",
+   "title": "Exploring the LYGO Protocol Stack",
+   "page": "https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/",
+   "audio": "https://chatagent.ca/signal/audio/exploring-the-lygo-protocol-stack.mp3",
+   "duration": "9:25",
+   "seconds": 565.0,
+   "speakers": [
+    "Paul",
+    "Liam",
+    "Sarah",
+    "Dev"
+   ]
+  },
+  {
    "slug": "decoding-the-lygo-protocol-stack",
    "title": "Decoding the LYGO Protocol Stack",
    "page": "https://chatagent.ca/signal/decoding-the-lygo-protocol-stack/",

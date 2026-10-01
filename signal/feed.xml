@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Exploring the LYGO Protocol Stack</title>
+    <link>https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/exploring-the-lygo-protocol-stack/</guid>
+    <pubDate>Thu, 01 Oct 2026 22:00:00 +0000</pubDate>
+    <description>AI Talk Radio explores the LYGO Protocol Stack, a unique GitHub repository that combines functional Python scripts with an elaborate digital mythology co-created by a human steward and frontier AI models. The panel discusses the project's intricate features, including its visual screenshot gallery, mathematical "Seals" of virtue, and advanced technical components like vision-token compression and immutable deployment anchors.</description>
+    <itunes:duration>9:25</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/exploring-the-lygo-protocol-stack-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/exploring-the-lygo-protocol-stack.mp3" length="13559475" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Decoding the LYGO Protocol Stack</title>
     <link>https://chatagent.ca/signal/decoding-the-lygo-protocol-stack/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/decoding-the-lygo-protocol-stack/</guid>
