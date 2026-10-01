@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The LYGO Protocol AI Stack</title>
+    <link>https://chatagent.ca/signal/the-lygo-protocol-ai-stack/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-protocol-ai-stack/</guid>
+    <pubDate>Thu, 01 Oct 2026 12:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the innovative and decentralized LYGO Protocol Stack, which utilizes a recursion architecture and cryptographic seal chains for AI alignment. Experts Marcus, Sarah, and Dev discuss the system's mathematical foundations, fail-safes, and its unique approach to handling chaos and paradoxes.</description>
+    <itunes:duration>10:21</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-lygo-protocol-ai-stack-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-lygo-protocol-ai-stack.mp3" length="14895482" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Independent Web: Building Digital Houses</title>
     <link>https://chatagent.ca/signal/independent-web-building-digital-houses/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/independent-web-building-digital-houses/</guid>

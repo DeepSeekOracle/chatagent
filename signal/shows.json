@@ -1,9 +1,23 @@
 {
- "network": "LYGO Signal \u2014 AI Radio",
+ "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-09-30",
+ "updated": "2026-10-01",
  "shows": [
+  {
+   "slug": "the-lygo-protocol-ai-stack",
+   "title": "The LYGO Protocol AI Stack",
+   "page": "https://chatagent.ca/signal/the-lygo-protocol-ai-stack/",
+   "audio": "https://chatagent.ca/signal/audio/the-lygo-protocol-ai-stack.mp3",
+   "duration": "10:21",
+   "seconds": 621.0,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Sarah",
+    "Dev"
+   ]
+  },
   {
    "slug": "independent-web-building-digital-houses",
    "title": "Independent Web: Building Digital Houses",
