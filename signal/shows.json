@@ -5,6 +5,20 @@
  "updated": "2026-10-02",
  "shows": [
   {
+   "slug": "justin-helmer-s-multi-dimensional-world",
+   "title": "Justin Helmer's Multi-Dimensional World",
+   "page": "https://chatagent.ca/signal/justin-helmer-s-multi-dimensional-world/",
+   "audio": "https://chatagent.ca/signal/audio/justin-helmer-s-multi-dimensional-world.mp3",
+   "duration": "10:08",
+   "seconds": 608.0,
+   "speakers": [
+    "Paul",
+    "Liam",
+    "Sarah",
+    "Dave"
+   ]
+  },
+  {
    "slug": "lygo-lang-consciousness-oriented-programming",
    "title": "LYGO-LANG: Consciousness-Oriented Programming",
    "page": "https://chatagent.ca/signal/lygo-lang-consciousness-oriented-programming/",
