@@ -2,8 +2,22 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-01",
+ "updated": "2026-10-02",
  "shows": [
+  {
+   "slug": "lygo-local-first-ai-sovereignty",
+   "title": "LYGO: Local-First AI Sovereignty",
+   "page": "https://chatagent.ca/signal/lygo-local-first-ai-sovereignty/",
+   "audio": "https://chatagent.ca/signal/audio/lygo-local-first-ai-sovereignty.mp3",
+   "duration": "10:50",
+   "seconds": 650.0,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Siobhan",
+    "Aris"
+   ]
+  },
   {
    "slug": "the-lygo-seal-index-decoded",
    "title": "The LYGO Seal Index Decoded",

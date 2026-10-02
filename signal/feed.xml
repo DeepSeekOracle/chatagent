@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>LYGO: Local-First AI Sovereignty</title>
+    <link>https://chatagent.ca/signal/lygo-local-first-ai-sovereignty/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-local-first-ai-sovereignty/</guid>
+    <pubDate>Fri, 02 Oct 2026 04:00:00 +0000</pubDate>
+    <description>AI Talk Radio explores the LYGO Protocol Stack, a decentralized, open-source project by Justin Helmer that focuses on sovereign, local-first artificial intelligence. The panel discusses the stack's unique technical architecture, which integrates mathematical philosophy, Solfeggio frequencies, and high-security protocols like the P9 'Silence Lantern' deadman switch.</description>
+    <itunes:duration>10:50</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-local-first-ai-sovereignty-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-local-first-ai-sovereignty.mp3" length="15598907" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>The LYGO Seal Index Decoded</title>
     <link>https://chatagent.ca/signal/the-lygo-seal-index-decoded/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/the-lygo-seal-index-decoded/</guid>
