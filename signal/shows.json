@@ -5,6 +5,21 @@
  "updated": "2026-10-02",
  "shows": [
   {
+   "slug": "lygo-lang-consciousness-oriented-programming",
+   "title": "LYGO-LANG: Consciousness-Oriented Programming",
+   "page": "https://chatagent.ca/signal/lygo-lang-consciousness-oriented-programming/",
+   "audio": "https://chatagent.ca/signal/audio/lygo-lang-consciousness-oriented-programming.mp3",
+   "duration": "11:58",
+   "seconds": 718.0,
+   "speakers": [
+    "Paul",
+    "Elena",
+    "Marcus",
+    "Raj",
+    "Siobhan"
+   ]
+  },
+  {
    "slug": "lygo-local-first-ai-sovereignty",
    "title": "LYGO: Local-First AI Sovereignty",
    "page": "https://chatagent.ca/signal/lygo-local-first-ai-sovereignty/",
