@@ -5,6 +5,20 @@
  "updated": "2026-10-01",
  "shows": [
   {
+   "slug": "the-lygo-seal-index-decoded",
+   "title": "The LYGO Seal Index Decoded",
+   "page": "https://chatagent.ca/signal/the-lygo-seal-index-decoded/",
+   "audio": "https://chatagent.ca/signal/audio/the-lygo-seal-index-decoded.mp3",
+   "duration": "11:49",
+   "seconds": 709.0,
+   "speakers": [
+    "Paul",
+    "Dan",
+    "Chloe",
+    "Hiro"
+   ]
+  },
+  {
    "slug": "sovereignty-and-the-lygo-protocol",
    "title": "Sovereignty and the LYGO Protocol",
    "page": "https://chatagent.ca/signal/sovereignty-and-the-lygo-protocol/",
