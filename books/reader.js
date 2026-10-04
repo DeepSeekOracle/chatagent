@@ -48,10 +48,25 @@
       c1: ["5155E8BPbeA", "This chapter on film"],
       c2: ["FGmDeClTF74", "This chapter on film"],
       c4: ["2UXLKfKcS7g", "This chapter on film"],
+      c5: ["vSrZzRx7Wy0", "This chapter on film"],
+      c6: ["dB27Cc0jeo4", "This chapter on film"],
+      c7: ["nLQ516_xZEU", "This chapter on film"],
+      c8: ["-OmK7Op-tuQ", "This chapter on film"],
+      c9: ["LZNJyjm2J88", "This chapter on film"],
+      c10: ["8hBkukGPl68", "This chapter on film"],
+      c11: ["AnohS4STT3k", "This chapter on film"],
+      c12: ["fcOCAkIL094", "This chapter on film"],
+      c13: ["kFMzzNZc9BY", "This chapter on film"],
+      c14: ["dcfK3AypZKk", "This chapter on film"],
+      c15: ["4cGjmoTUFjg", "This chapter on film"],
       "*": ["EC8GRmLG3Us", "Full Book II film"]
     },
     "ascension-war": {
-      c1: ["kDI91J3QYtc", "Prologue on film"]
+      c1: ["P5edn-7X3Vo", "This chapter on film", "kDI91J3QYtc"],
+      "*": ["kwrfjf2U0Qc", "Full Book III film"]
+    },
+    "eternal-dawns": {
+      "*": ["KIOv53YBZg4", "Full Book IV film"]
     }
   };
 
@@ -81,11 +96,27 @@
     ytPoster.alt = film[1] === "This chapter on film" ? ch.title + " on film" : film[1];
     ytPlay.setAttribute("aria-label", "Play " + (film[1] === "This chapter on film" ? ch.title : film[1]));
     cinemaOut.href = "https://youtu.be/" + film[0];
-    cinemaOut.textContent = film[1] === "Full Book II film"
+    cinemaOut.textContent = film[1].indexOf("Full ") === 0
       ? "Open the full film on YouTube"
       : film[1] === "Prologue on film"
         ? "Open the prologue on YouTube"
         : "Open this chapter on YouTube";
+    var extra = document.getElementById("cinema-extra");
+    if (!extra) {
+      extra = document.createElement("a");
+      extra.id = "cinema-extra";
+      extra.className = "cinema-out";
+      extra.target = "_blank";
+      extra.rel = "noopener noreferrer";
+      cinema.appendChild(extra);
+    }
+    if (film[2]) {
+      extra.hidden = false;
+      extra.href = "https://youtu.be/" + film[2];
+      extra.textContent = "Open the prologue on YouTube";
+    } else {
+      extra.hidden = true;
+    }
   }
 
   function playFilm() {
