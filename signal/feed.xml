@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Systems, Scars, and Living Data</title>
+    <link>https://chatagent.ca/signal/systems-scars-and-living-data/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/systems-scars-and-living-data/</guid>
+    <pubDate>Mon, 05 Oct 2026 02:00:00 +0000</pubDate>
+    <description>This episode of AI Talk Radio explores the systems design and literary architecture of Justin Helmer's digital walking novel, The Unwritten Seal. The discussion centers on the conflict between rigid, optimized databases and messy, organic continuance, highlighting the value of human error and friction in both digital and physical worlds.</description>
+    <itunes:duration>15:15</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/systems-scars-and-living-data-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/systems-scars-and-living-data.mp3" length="21979263" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Eternal Haven Dawns Roundtable</title>
     <link>https://chatagent.ca/signal/eternal-haven-dawns-roundtable/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/eternal-haven-dawns-roundtable/</guid>

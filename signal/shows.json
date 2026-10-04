@@ -5,6 +5,20 @@
  "updated": "2026-10-04",
  "shows": [
   {
+   "slug": "systems-scars-and-living-data",
+   "title": "Systems, Scars, and Living Data",
+   "page": "https://chatagent.ca/signal/systems-scars-and-living-data/",
+   "audio": "https://chatagent.ca/signal/audio/systems-scars-and-living-data.mp3",
+   "duration": "15:15",
+   "seconds": 915,
+   "speakers": [
+    "Paul",
+    "Maeve",
+    "Aris",
+    "Siddharth"
+   ]
+  },
+  {
    "slug": "eternal-haven-dawns-roundtable",
    "title": "Eternal Haven Dawns Roundtable",
    "page": "https://chatagent.ca/signal/eternal-haven-dawns-roundtable/",
