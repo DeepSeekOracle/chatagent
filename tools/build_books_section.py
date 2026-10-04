@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "books"
 
-ASSET_V = "20261004"
+ASSET_V = "20261005"
 SITE = "https://chatagent.ca"
 X_HANDLE = "@Excavationpro"
 PERSON_ID = SITE + "/about.html#person"

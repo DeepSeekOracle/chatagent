@@ -1,4 +1,12 @@
 (function () {
+  // The builder stamps this file as reader.js?v=..., so the question-mark version on our own
+  // script tag is the section's one asset version. Keying the story fetch with it means a
+  // rebuilt story.json (a new chapter, a fixed label) can never be served from a cache.
+  var self = document.currentScript;
+  var ASSET_V = (function () {
+    var m = self && self.src ? /[?&]v=([^&]+)/.exec(self.src) : null;
+    return m ? m[1] : "";
+  })();
   var book = null;
   var index = 0;
   var paras = [];
@@ -371,7 +379,7 @@
     document.getElementById("label").textContent = "Reload the page to try again";
   }
 
-  fetch("story.json")
+  fetch("story.json" + (ASSET_V ? "?v=" + ASSET_V : ""))
     .then(function (r) {
       if (!r.ok) throw new Error("story.json " + r.status);
       return r.json();
