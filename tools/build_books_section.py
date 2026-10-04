@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "books"
 
-ASSET_V = "20261005"
+ASSET_V = "20261006"
 SITE = "https://chatagent.ca"
 X_HANDLE = "@Excavationpro"
 PERSON_ID = SITE + "/about.html#person"
@@ -170,7 +170,7 @@ def normalize_story(check: bool) -> list:
 
 
 # The date the section's own copy/markup last changed, stamped into the sitemap.
-CONTENT_DATE = "2026-10-05"
+CONTENT_DATE = "2026-10-06"
 
 
 def stamp_sitemap(check: bool) -> list:
