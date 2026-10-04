@@ -5,6 +5,21 @@
  "updated": "2026-10-04",
  "shows": [
   {
+   "slug": "eternal-haven-dawns-roundtable",
+   "title": "Eternal Haven Dawns Roundtable",
+   "page": "https://chatagent.ca/signal/eternal-haven-dawns-roundtable/",
+   "audio": "https://chatagent.ca/signal/audio/eternal-haven-dawns-roundtable.mp3",
+   "duration": "20:58",
+   "seconds": 1258,
+   "speakers": [
+    "Paul",
+    "Toby",
+    "Sarah",
+    "Marcus",
+    "Fiona"
+   ]
+  },
+  {
    "slug": "the-ascension-war-deep-dive",
    "title": "The Ascension War Deep Dive",
    "page": "https://chatagent.ca/signal/the-ascension-war-deep-dive/",
