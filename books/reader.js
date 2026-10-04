@@ -38,22 +38,108 @@
     document.title = ch.title + " — " + book.title;
   }
 
-  function speak() {
+  var havenVoice = null;
+  var arming = false;
+
+  function voiceName(v) {
+    return String(v && v.name || "").toLowerCase();
+  }
+
+  function isMaleVoice(n) {
+    if (/\bfemale\b/.test(n)) return false;
+    if (/\bmale\b/.test(n)) return true;
+    return /\bdavid\b|\bmark\b|\bguy\b|\bandrew\b|\bchristopher\b|\bsteffan\b|\beric\b|\btony\b|\bdaniel\b|\balex\b|\bjames\b|\bthomas\b|\bbrian\b|\barthur\b|\bryan\b|\broger\b|\bgeorge\b|\bravi\b/.test(n);
+  }
+
+  function isFemaleVoice(n) {
+    if (isMaleVoice(n)) return false;
+    if (/\bfemale\b/.test(n)) return true;
+    return /samantha|\baria\b|\bjenny\b|\bzira\b|\bserena\b|\bkaren\b|\bvictoria\b|\bsonia\b|\bsusan\b|\bhazel\b|\bcatherine\b|\bmichelle\b|\bana\b|\blibby\b|\bmaisie\b|\bnatasha\b|\bsara\b|\bemma\b|\bava\b|\bnova\b|\bfiona\b|\bmoira\b|\btessa\b|\bveena\b|\bkate\b|\ballison\b|\bashley\b|\bbridget\b|\beva\b/.test(n);
+  }
+
+  function scoreFemaleVoice(v) {
+    var n = voiceName(v);
+    var l = String(v && v.lang || "").toLowerCase().replace("_", "-");
+    if (l.indexOf("en") !== 0 || !isFemaleVoice(n)) return -1000;
+    var s = 6;
+    if (l.indexOf("en-us") === 0) s += 4;
+    if (/natural|neural|online/.test(n)) s += 45;
+    if (v.localService === false) s += 12;
+    if (/espeak|compact|hazel desktop/.test(n)) s -= 35;
+    if (/desktop/.test(n)) s -= 20;
+    if (/samantha|\baria\b|\bjenny\b|\bzira\b|\bserena\b|\bkaren\b|\bvictoria\b|\bsonia\b|\bsusan\b|\bmichelle\b|\bana\b|\blibby\b|\beva\b/.test(n)) s += 32;
+    if (/\bfemale\b/.test(n)) s += 18;
+    if (/google/.test(n) && /female/.test(n)) s += 10;
+    if (/\baria\b|\bjenny\b/.test(n)) s += 6;
+    return s;
+  }
+
+  function considerVoices() {
     if (!window.speechSynthesis) return;
-    if (speechSynthesis.speaking) {
+    var list = speechSynthesis.getVoices() || [];
+    var best = havenVoice;
+    var bestScore = best ? scoreFemaleVoice(best) : -1000;
+    for (var i = 0; i < list.length; i++) {
+      var sc = scoreFemaleVoice(list[i]);
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = list[i];
+      }
+    }
+    if (best && bestScore > -1000) {
+      havenVoice = best;
+      readBtn.setAttribute("data-voice", best.name);
+      readBtn.title = "Read aloud · " + best.name;
+    }
+  }
+
+  function whenVoice(cb) {
+    considerVoices();
+    if (havenVoice) { cb(); return; }
+    var waited = 0;
+    var timer = setInterval(function () {
+      considerVoices();
+      waited += 80;
+      if (havenVoice || waited > 1600) {
+        clearInterval(timer);
+        cb();
+      }
+    }, 80);
+  }
+
+  function speak() {
+    if (!window.speechSynthesis || !book) return;
+    if (speechSynthesis.speaking || speechSynthesis.pending || arming) {
+      arming = false;
       stopVoice();
       return;
     }
-    var ch = book.chapters[index];
-    var utter = new SpeechSynthesisUtterance(ch.paragraphs.join("\n\n"));
-    utter.rate = 0.92;
-    utter.onend = function () {
-      readBtn.classList.remove("on");
-      readBtn.textContent = "Read aloud";
-    };
+    arming = true;
     readBtn.classList.add("on");
     readBtn.textContent = "Stop voice";
-    speechSynthesis.speak(utter);
+    whenVoice(function () {
+      if (!arming || !book) return;
+      arming = false;
+      var ch = book.chapters[index];
+      var utter = new SpeechSynthesisUtterance(ch.paragraphs.join("\n\n"));
+      utter.rate = 0.92;
+      utter.pitch = 1;
+      if (havenVoice) {
+        utter.voice = havenVoice;
+        if (havenVoice.lang) utter.lang = havenVoice.lang;
+      }
+      utter.onend = function () {
+        readBtn.classList.remove("on");
+        readBtn.textContent = "Read aloud";
+      };
+      speechSynthesis.speak(utter);
+    });
+  }
+
+  if (window.speechSynthesis) {
+    speechSynthesis.addEventListener("voiceschanged", considerVoices);
+    speechSynthesis.getVoices();
+    considerVoices();
   }
 
   function motes() {
