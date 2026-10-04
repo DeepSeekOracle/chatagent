@@ -2,8 +2,22 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-02",
+ "updated": "2026-10-04",
  "shows": [
+  {
+   "slug": "exploring-independent-ai-and-fantasy",
+   "title": "Exploring Independent AI and Fantasy",
+   "page": "https://chatagent.ca/signal/exploring-independent-ai-and-fantasy/",
+   "audio": "https://chatagent.ca/signal/audio/exploring-independent-ai-and-fantasy.mp3",
+   "duration": "17:17",
+   "seconds": 1037,
+   "speakers": [
+    "Paul",
+    "Liam",
+    "Sarah",
+    "David"
+   ]
+  },
   {
    "slug": "justin-helmer-s-multi-dimensional-world",
    "title": "Justin Helmer's Multi-Dimensional World",
