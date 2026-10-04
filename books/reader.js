@@ -49,6 +49,9 @@
       c2: ["FGmDeClTF74", "This chapter on film"],
       c4: ["2UXLKfKcS7g", "This chapter on film"],
       "*": ["EC8GRmLG3Us", "Full Book II film"]
+    },
+    "ascension-war": {
+      c1: ["kDI91J3QYtc", "Prologue on film"]
     }
   };
 
@@ -75,10 +78,14 @@
     cinema.hidden = false;
     cinemaKicker.textContent = film[1];
     ytPoster.src = "https://i.ytimg.com/vi/" + film[0] + "/hqdefault.jpg";
-    ytPoster.alt = ch.title + " on film";
-    ytPlay.setAttribute("aria-label", "Play " + ch.title);
+    ytPoster.alt = film[1] === "This chapter on film" ? ch.title + " on film" : film[1];
+    ytPlay.setAttribute("aria-label", "Play " + (film[1] === "This chapter on film" ? ch.title : film[1]));
     cinemaOut.href = "https://youtu.be/" + film[0];
-    cinemaOut.textContent = film[1] === "Full Book II film" ? "Open the full film on YouTube" : "Open this chapter on YouTube";
+    cinemaOut.textContent = film[1] === "Full Book II film"
+      ? "Open the full film on YouTube"
+      : film[1] === "Prologue on film"
+        ? "Open the prologue on YouTube"
+        : "Open this chapter on YouTube";
   }
 
   function playFilm() {
@@ -89,7 +96,7 @@
     var iframe = document.createElement("iframe");
     iframe.className = "yt-iframe";
     iframe.setAttribute("src", "https://www.youtube-nocookie.com/embed/" + film[0] + "?autoplay=1&rel=0&modestbranding=1&playsinline=1");
-    iframe.setAttribute("title", ch.title);
+    iframe.setAttribute("title", film[1] === "This chapter on film" ? ch.title : film[1]);
     iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     iframe.setAttribute("allowfullscreen", "");
     ytFrame.appendChild(iframe);
