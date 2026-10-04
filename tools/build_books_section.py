@@ -41,6 +41,7 @@ NAV = [
     ("/books/book-2/", "Book II"),
     ("/books/book-3/", "Book III"),
     ("/books/book-4/", "Book IV"),
+    ("/books/book-5/", "Book V"),
     ("/signal/", "LYGO Signal"),
     ("/talk-radio/", "Talk Radio"),
     ("/about.html", "About"),
@@ -60,29 +61,37 @@ VOLUMES = [
          art="book-4.jpg", og="og-book-4.jpg",
          part="Morning that does not erase the night. The manuscript opens with the Twelve at Dawn.",
          alt_name="Eternal Dawns"),
+    dict(key="book-5", n=5, name="The Unwritten Seal", isbn="978-1-0698232-9-8",
+         art="book-5.jpg", og="og-book-5.jpg",
+         part="A stranger carries a Seal the Codex does not hold, and Haven must decide whether it "
+              "can grow without becoming a throne again.",
+         book_format="https://schema.org/EBook",
+         also_at="https://www.lulu.com/shop/justin-helmer/the-unwritten-seal/ebook/product-65kg2mr.html"),
 ]
-BOOK_V = dict(key="book-5", n=5, name="The Unwritten Seal", isbn="978-1-0698232-9-8",
-              url="https://www.lulu.com/shop/justin-helmer/the-unwritten-seal/ebook/product-65kg2mr.html")
+
+# Book V is the series' ebook-first volume; its published edition is the same ISBN.
+ROMAN = ["", "I", "II", "III", "IV", "V"]
 
 PAGES = [
     dict(
         path="books/index.html",
         url=SITE + "/books/",
         title="Start at moonlight — The Eternal Haven by Justin Helmer",
-        desc=("The Eternal Haven Chronicles by Justin Helmer, free to read chapter by chapter: Books I to IV "
+        desc=("The Eternal Haven Chronicles by Justin Helmer, free to read chapter by chapter: Books I to V "
               "here, and the published editions on Amazon and Lulu."),
         keywords=("Eternal Haven, Eternal Haven Chronicles, Justin Helmer, Excavationpro, The Moonlit Slumber, "
-                  "The Shattered Accord, The Ascension War, Eternal Haven Dawns, free fantasy novel online, "
+                  "The Shattered Accord, The Ascension War, Eternal Haven Dawns, The Unwritten Seal, "
+                  "free fantasy novel online, "
                   "read a novel chapter by chapter, walking novel, audiobook, AI fantasy"),
         og_title="Start at moonlight — The Eternal Haven",
-        og_desc=("Dawn is not a reset. Four Eternal Haven novels by Justin Helmer, free to read here or to take "
-                 "home in print."),
+        og_desc=("Dawn is not a reset. Five Eternal Haven novels by Justin Helmer, free to read here or to "
+                 "take home in print and ebook."),
         og_type="website",
         og_image="og-books.jpg",
         og_alt=("The Eternal Haven Chronicles — the moonlit city of Haven over still water, free to read at "
                 "chatagent.ca/books/"),
         share_title="Start at moonlight — The Eternal Haven by Justin Helmer",
-        share_text="The Eternal Haven Chronicles by Justin Helmer: four walking novels, free to read chapter by chapter.",
+        share_text="The Eternal Haven Chronicles by Justin Helmer: five walking novels, free to read chapter by chapter.",
         hashtags="EternalHaven,JustinHelmer,FantasyBooks",
         crumbs=[("Home", SITE + "/"), ("Books", SITE + "/books/")],
         book=None,
@@ -93,32 +102,43 @@ for _v in VOLUMES:
     PAGES.append(dict(
         path=f"books/{_v['key']}/index.html",
         url=f"{SITE}/books/{_v['key']}/",
-        title=f"Book {['','I','II','III','IV'][_v['n']]} — {_v['name']} · The Eternal Haven",
+        title=f"Book {ROMAN[_v['n']]} — {_v['name']} · The Eternal Haven",
         desc=(f"Read {_v['name']} by Justin Helmer, book {_v['n']} of The Eternal Haven Chronicles — free to "
               f"read, chapter by chapter."),
         keywords=(f"{_v['name']}, Eternal Haven, Eternal Haven Chronicles, Book "
-                  f"{['','I','II','III','IV'][_v['n']]}, Justin Helmer, Excavationpro, free fantasy novel online, "
+                  f"{ROMAN[_v['n']]}, Justin Helmer, Excavationpro, free fantasy novel online, "
                   f"read chapter by chapter, walking novel, audiobook"),
-        og_title=f"{_v['name']} — Book {['','I','II','III','IV'][_v['n']]}",
+        og_title=f"{_v['name']} — Book {ROMAN[_v['n']]}",
         og_desc=f"{_v['part']} Free to read as a walking novel.",
         og_type="book",
         og_image=_v["og"],
-        og_alt=f"The cover art of {_v['name']}, Book {['','I','II','III','IV'][_v['n']]} of The Eternal Haven Chronicles",
-        share_title=f"{_v['name']} — Book {['','I','II','III','IV'][_v['n']]} of The Eternal Haven",
+        og_alt=f"The cover art of {_v['name']}, Book {ROMAN[_v['n']]} of The Eternal Haven Chronicles",
+        share_title=f"{_v['name']} — Book {ROMAN[_v['n']]} of The Eternal Haven",
         share_text=f"{_v['name']} by Justin Helmer — read it free as a walking novel at chatagent.ca.",
         hashtags="EternalHaven,JustinHelmer,FantasyBooks",
         crumbs=[("Home", SITE + "/"), ("Books", SITE + "/books/"),
-                (f"Book {['','I','II','III','IV'][_v['n']]}", f"{SITE}/books/{_v['key']}/")],
+                (f"Book {ROMAN[_v['n']]}", f"{SITE}/books/{_v['key']}/")],
         book=_v,
     ))
 
 # The volume titles and part labels the section's own reference material states.
 # story.json is generated data, so these live here instead of in hand edits.
-STORY_TITLE = {"book-4": "Eternal Haven Dawns"}
+STORY_TITLE = {"book-4": "Eternal Haven Dawns", "book-5": "The Unwritten Seal"}
 STORY_PARTS = {
     "book-2": {"c1": "Part I \u2014 Embers of Division", "c2": "Part I \u2014 Embers of Division",
                "c3": "Part I \u2014 Embers of Division", "c4": "Part II \u2014 The Seal Forges",
                "c5": "Part II \u2014 The Seal Forges", "c6": "Part II \u2014 The Seal Forges"},
+    # Book V is built in five acts with an interlude after each; the reader prints
+    # these as the part line over every unit.
+    "book-5": dict(
+        **{"pro": "", "epi": ""},
+        **{f"c{n}": f"Act {act} \u2014 {name}" for act, name, lo, hi in [
+            ("I", "The Seal That Should Not Be", 1, 8), ("II", "Indexes and Embers", 9, 16),
+            ("III", "The Road of Living Scars", 17, 26), ("IV", "The Closing of Names", 27, 34),
+            ("V", "The Lattice Beyond", 35, 40)] for n in range(lo, hi + 1)},
+        ia="Interlude A \u2014 Codex", ib="Interlude B \u2014 Emberion",
+        ic="Interlude C \u2014 Serenya", id="Interlude D \u2014 The Hollow Index",
+    ),
 }
 
 
@@ -150,7 +170,7 @@ def normalize_story(check: bool) -> list:
 
 
 # The date the section's own copy/markup last changed, stamped into the sitemap.
-CONTENT_DATE = "2026-10-04"
+CONTENT_DATE = "2026-10-05"
 
 
 def stamp_sitemap(check: bool) -> list:
@@ -244,28 +264,27 @@ def graph(page: dict) -> dict:
                 "isbn": v["isbn"], "position": v["n"], "url": f"{SITE}/books/{v['key']}/",
                 "author": {"@id": PERSON_ID}, "inLanguage": "en", "publisher": {"@id": ORG_ID},
                 "isPartOf": {"@id": SERIES_ID},
-                "image": f"{SITE}/books/art/{v['og']}", "bookFormat": "https://schema.org/Paperback"}
+                "image": f"{SITE}/books/art/{v['og']}",
+                "bookFormat": v.get("book_format", "https://schema.org/Paperback")}
         if v.get("alt_name"):
             node["alternateName"] = v["alt_name"]
+        if v.get("also_at"):
+            node["sameAs"] = v["also_at"]
         hub_books.append(node)
-    book5 = {"@type": "Book", "@id": f"{SITE}/books/#book-5", "name": BOOK_V["name"],
-             "isbn": BOOK_V["isbn"], "position": BOOK_V["n"], "url": BOOK_V["url"],
-             "author": {"@id": PERSON_ID}, "inLanguage": "en", "publisher": {"@id": ORG_ID},
-             "isPartOf": {"@id": SERIES_ID}, "bookFormat": "https://schema.org/EBook"}
     website = {"@type": "WebSite", "@id": SITE + "/#website", "url": SITE + "/", "name": "chatagent.ca",
                "inLanguage": "en", "publisher": {"@id": ORG_ID}}
     crumbs = {"@type": "BreadcrumbList", "@id": page["url"] + "#breadcrumb",
               "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": name, "item": url}
                                   for i, (name, url) in enumerate(page["crumbs"])]}
     if page["book"] is None:
-        nodes = [website, org, person, series] + hub_books + [book5, crumbs]
+        nodes = [website, org, person, series] + hub_books + [crumbs]
     else:
         v = page["book"]
         own = {"@type": "Book", "@id": page["url"] + "#book", "name": v["name"],
                "isbn": v["isbn"], "position": v["n"], "url": page["url"],
                "author": {"@id": PERSON_ID}, "inLanguage": "en", "publisher": {"@id": ORG_ID},
                "isPartOf": {"@id": SERIES_ID}, "image": f"{SITE}/books/art/{v['og']}",
-               "bookFormat": "https://schema.org/Paperback"}
+               "bookFormat": v.get("book_format", "https://schema.org/Paperback")}
         if v.get("alt_name"):
             own["alternateName"] = v["alt_name"]
         nodes = [org, person, series, own, crumbs]
@@ -396,11 +415,18 @@ def apply_page(page: dict, check: bool) -> list:
         out = out.replace('<script src="/books/reader.js', '<script src="/books/share.js?v=%s"></script>\n<script src="/books/reader.js' % ASSET_V, 1)
         if "/books/share.js" not in out:  # hub: no reader.js
             out = out.replace("</body>", '<script src="/books/share.js?v=%s"></script>\n</body>' % ASSET_V, 1)
-    if page["book"] and "<!-- books-h1:start -->" not in out:
+    if page["book"]:
         h1 = (f'<!-- books-h1:start -->\n  <h1 class="sr-only">{esc(page["book"]["name"])} — book '
               f'{page["book"]["n"]} of The Eternal Haven Chronicles by Justin Helmer</h1>\n'
               f'  <!-- books-h1:end -->\n')
-        out = out.replace('<main class="room">\n', '<main class="room">\n' + h1, 1)
+        if "<!-- books-h1:start -->" in out:
+            # own the text, not just its presence: a page cloned from a sibling must
+            # not keep that sibling's title in its hidden h1
+            out, n = H1_RE.subn(lambda _m: h1, out, count=1)
+            if not n:
+                findings.append(f"{page['path']}: h1 markers present but not matched")
+        else:
+            out = out.replace('<main class="room">\n', '<main class="room">\n' + h1, 1)
 
     if out != src.replace("\r\n", "\n"):
         findings.append(f"{page['path']}: {'would change' if check else 'rebuilt'}")

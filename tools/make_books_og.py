@@ -146,7 +146,7 @@ def draw_card(out_name: str, art: str, kicker: str, title: str, sub: str, foot: 
 CARDS = [
     ("og-books.jpg", "hero.jpg", "Justin Helmer · The Eternal Haven",
      "Start at moonlight",
-     "Four walking novels, free to read, with the published editions in print.", ""),
+     "Five walking novels, free to read, with the published editions in print and ebook.", ""),
     ("og-book-1.jpg", "book-1.jpg", "The Eternal Haven Chronicles · Book I",
      "The Moonlit Slumber",
      "Serenya, the bronze Emberion, and the lullaby that keeps the Vale awake.", "Read free on chatagent.ca"),
@@ -160,6 +160,11 @@ CARDS = [
     ("og-book-4.jpg", "book-4.jpg", "The Eternal Haven Chronicles · Book IV",
      "Eternal Dawns",
      "Morning that does not erase the night. The manuscript opens with the Twelve at Dawn.",
+     "Read free on chatagent.ca"),
+    ("og-book-5.jpg", "book-5.jpg", "The Eternal Haven Chronicles · Book V",
+     "The Unwritten Seal",
+     "A stranger carries a Seal the Codex does not hold, and Haven must decide whether it can grow "
+     "without becoming a throne again.",
      "Read free on chatagent.ca"),
 ]
 
