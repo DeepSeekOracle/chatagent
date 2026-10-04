@@ -5,6 +5,20 @@
  "updated": "2026-10-04",
  "shows": [
   {
+   "slug": "the-magic-of-systems-design",
+   "title": "The Magic of Systems Design",
+   "page": "https://chatagent.ca/signal/the-magic-of-systems-design/",
+   "audio": "https://chatagent.ca/signal/audio/the-magic-of-systems-design.mp3",
+   "duration": "10:57",
+   "seconds": 657,
+   "speakers": [
+    "Paul",
+    "Elena",
+    "Marcus",
+    "Nikhil"
+   ]
+  },
+  {
    "slug": "exploring-independent-ai-and-fantasy",
    "title": "Exploring Independent AI and Fantasy",
    "page": "https://chatagent.ca/signal/exploring-independent-ai-and-fantasy/",

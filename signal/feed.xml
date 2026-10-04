@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>The Magic of Systems Design</title>
+    <link>https://chatagent.ca/signal/the-magic-of-systems-design/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/the-magic-of-systems-design/</guid>
+    <pubDate>Sun, 04 Oct 2026 18:00:00 +0000</pubDate>
+    <description>Host Paul and three regular listeners discuss the technical and mathematical world-building in Justin Helmer's The Moonlit Slumber. The conversation highlights the book's unique fusion of high fantasy with software architecture and systems theory.</description>
+    <itunes:duration>10:57</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/the-magic-of-systems-design-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/the-magic-of-systems-design.mp3" length="15744984" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Exploring Independent AI and Fantasy</title>
     <link>https://chatagent.ca/signal/exploring-independent-ai-and-fantasy/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/exploring-independent-ai-and-fantasy/</guid>
