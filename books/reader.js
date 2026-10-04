@@ -47,6 +47,7 @@
       c0: ["8wbN0KK9Jz4", "This chapter on film"],
       c1: ["5155E8BPbeA", "This chapter on film"],
       c2: ["FGmDeClTF74", "This chapter on film"],
+      c3: ["0aFKZ7fjiVc", "This chapter on film"],
       c4: ["2UXLKfKcS7g", "This chapter on film"],
       c5: ["vSrZzRx7Wy0", "This chapter on film"],
       c6: ["dB27Cc0jeo4", "This chapter on film"],
@@ -358,9 +359,25 @@
     frame();
   }
 
+  function loadFailed() {
+    sheet.innerHTML = "";
+    var p = document.createElement("p");
+    p.textContent = "The chapter text did not load. Reload the page, or read the book from " +
+      "the shelf at /books/.";
+    sheet.appendChild(p);
+    readBtn.disabled = true;
+    readBtn.textContent = "Read aloud";
+    titleEl.textContent = "The chapter text did not load";
+    document.getElementById("label").textContent = "Reload the page to try again";
+  }
+
   fetch("story.json")
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+      if (!r.ok) throw new Error("story.json " + r.status);
+      return r.json();
+    })
     .then(function (data) {
+      if (!data || !data.chapters || !data.chapters.length) throw new Error("story.json empty");
       book = data;
       book.chapters.forEach(function (ch, i) {
         var btn = document.createElement("button");
@@ -374,7 +391,8 @@
       book.chapters.forEach(function (ch, i) { if (ch.id === hash) start = i; });
       show(start, false);
       motes();
-    });
+    })
+    .catch(loadFailed);
 
   document.getElementById("prev").addEventListener("click", function () { show(index - 1, true); });
   document.getElementById("next").addEventListener("click", function () { show(index + 1, true); });
