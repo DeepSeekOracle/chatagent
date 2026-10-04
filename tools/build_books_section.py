@@ -287,6 +287,8 @@ def graph(page: dict) -> dict:
                "bookFormat": v.get("book_format", "https://schema.org/Paperback")}
         if v.get("alt_name"):
             own["alternateName"] = v["alt_name"]
+        if v.get("also_at"):
+            own["sameAs"] = v["also_at"]
         nodes = [org, person, series, own, crumbs]
     return {"@context": "https://schema.org", "@graph": nodes}
 
