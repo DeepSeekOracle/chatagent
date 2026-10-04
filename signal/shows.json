@@ -5,6 +5,20 @@
  "updated": "2026-10-04",
  "shows": [
   {
+   "slug": "the-ascension-war-deep-dive",
+   "title": "The Ascension War Deep Dive",
+   "page": "https://chatagent.ca/signal/the-ascension-war-deep-dive/",
+   "audio": "https://chatagent.ca/signal/audio/the-ascension-war-deep-dive.mp3",
+   "duration": "17:25",
+   "seconds": 1045,
+   "speakers": [
+    "Paul",
+    "Alistair",
+    "Chloe",
+    "Marcus"
+   ]
+  },
+  {
    "slug": "metaphysical-mastery-the-shattered-accord",
    "title": "Metaphysical Mastery: The Shattered Accord",
    "page": "https://chatagent.ca/signal/metaphysical-mastery-the-shattered-accord/",
