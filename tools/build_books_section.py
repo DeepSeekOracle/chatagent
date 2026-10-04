@@ -69,9 +69,8 @@ PAGES = [
         path="books/index.html",
         url=SITE + "/books/",
         title="Start at moonlight — The Eternal Haven by Justin Helmer",
-        desc=("The Eternal Haven Chronicles by Justin Helmer. Read The Moonlit Slumber, The Shattered Accord, "
-              "The Ascension War, and Eternal Haven Dawns here for free, and find the published editions on "
-              "Amazon and Lulu."),
+        desc=("The Eternal Haven Chronicles by Justin Helmer, free to read chapter by chapter: Books I to IV "
+              "here, and the published editions on Amazon and Lulu."),
         keywords=("Eternal Haven, Eternal Haven Chronicles, Justin Helmer, Excavationpro, The Moonlit Slumber, "
                   "The Shattered Accord, The Ascension War, Eternal Haven Dawns, free fantasy novel online, "
                   "read a novel chapter by chapter, walking novel, audiobook, AI fantasy"),
@@ -95,8 +94,8 @@ for _v in VOLUMES:
         path=f"books/{_v['key']}/index.html",
         url=f"{SITE}/books/{_v['key']}/",
         title=f"Book {['','I','II','III','IV'][_v['n']]} — {_v['name']} · The Eternal Haven",
-        desc=(f"Read {_v['name']} by Justin Helmer, book {_v['n']} of The Eternal Haven Chronicles, free and "
-              f"chapter by chapter as a walking novel. {_v['part']} ISBN {_v['isbn']} in print."),
+        desc=(f"Read {_v['name']} by Justin Helmer, book {_v['n']} of The Eternal Haven Chronicles — free to "
+              f"read, chapter by chapter."),
         keywords=(f"{_v['name']}, Eternal Haven, Eternal Haven Chronicles, Book "
                   f"{['','I','II','III','IV'][_v['n']]}, Justin Helmer, Excavationpro, free fantasy novel online, "
                   f"read chapter by chapter, walking novel, audiobook"),
@@ -362,6 +361,9 @@ def apply_page(page: dict, check: bool) -> list:
         return findings
     new_head = head_for(page)
     out = out[:m.start()] + new_head + out[m.end():]
+    if len(page["desc"]) > 158:
+        findings.append(f"{page['path']}: meta description is {len(page['desc'])} chars "
+                        f"(search snippets truncate past ~158)")
 
     # 2. section nav inside <header class="top">
     hm = re.search(r'(<header class="top">\n.*?</a>\n)(.*?)(</header>)', out, re.S)
@@ -401,7 +403,7 @@ def apply_page(page: dict, check: bool) -> list:
         out = out.replace('<main class="room">\n', '<main class="room">\n' + h1, 1)
 
     if out != src.replace("\r\n", "\n"):
-        findings.append(f"{page['path']}: would change")
+        findings.append(f"{page['path']}: {'would change' if check else 'rebuilt'}")
         if not check:
             p.write_text(out.replace("\n", "\r\n") if crlf else out, encoding="utf-8", newline="")
     return findings

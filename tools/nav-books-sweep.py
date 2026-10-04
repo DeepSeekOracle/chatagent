@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Sweep the site navs: put the Eternal Haven reading room next to the other rooms.
+"""Sweep the site chrome: put the Eternal Haven reading room next to the other rooms.
 
-Only the homepage ever linked to /books/, so 98 pages carried a nav with the
-other rooms and no way into the shelf. Same policy as nav-signal-sweep.py:
+Only the homepage ever linked to /books/, so the site's chrome carried the other
+rooms and no way into the shelf. Two chrome surfaces list those rooms and both
+are hand-written per page, so both are swept here:
+
+  header   the page's first <nav> (the room row)
+  footer   <nav aria-label="Footer"> (the site map in <footer class="site">)
 
 Insertion anchor, first match wins (absolute chatagent.ca URLs count too):
-  /signal/ -> insert BEFORE it (the rooms read .. Books, LYGO Signal, TV ..)
+  /signal/ -> insert BEFORE it, so the rows read .. Books, LYGO Signal ..
   /sources/ /lattice/ /games/ /champions.html /app.html /lygoskillhub.html
   /portal/ /lygo-llm-console.html /guides/ -> insert after
 
 A nav holding only site-meta links (home / about / privacy / terms / contact) is
-left alone, and so is a page with no nav at all. The edit is a pure insertion:
-the script proves it by re-running the removal on its own output.
+left alone, and so is a page with no nav at all. Every edit is one whole line
+matched to the anchor's own indentation and the file's own line ending, and the
+tool proves it is additive by counting the line it added.
 
   python tools/nav-books-sweep.py             # dry run
   python tools/nav-books-sweep.py --apply
@@ -25,7 +30,6 @@ import sys
 APPLY = "--apply" in sys.argv
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEW = '<a href="/books/">Books</a>'
-NL = "\r\n"
 
 AFTER = ["/sources/", "/lattice/", "/games/", "/champions.html", "/app.html",
          "/lygoskillhub.html", "/portal/", "/lygo-llm-console.html", "/guides/"]
@@ -39,8 +43,20 @@ def plain(a: str) -> str:
     return a.replace("https://chatagent.ca", "").replace("http://chatagent.ca", "")
 
 
+def slots(text: str):
+    """Every chrome nav this sweep owns, as (surface, start, end, markup)."""
+    out = []
+    m = re.search(r"<nav[^>]*>[\s\S]*?</nav>", text)
+    if m:
+        out.append(("header", m.start(), m.end(), m.group(0)))
+    m = re.search(r'<nav aria-label="Footer">[\s\S]*?</nav>', text)
+    if m:
+        out.append(("footer", m.start(), m.end(), m.group(0)))
+    return out
+
+
 def insert_link(nav: str) -> str:
-    """Pure insertion inside an existing nav; returns the new nav."""
+    """Pure insertion of one whole line inside an existing nav."""
     nl = "\r\n" if "\r\n" in nav else "\n"
     for anchor in BEFORE:
         m = re.search(r'[ \t]*<a href="[^"]*' + re.escape(anchor) + r'"[^>]*>[^<]*</a>[ \t]*\r?\n', nav)
@@ -55,25 +71,27 @@ def insert_link(nav: str) -> str:
     return nav
 
 
-def process(path: str, text: str):
-    m = re.search(r"(<nav[^>]*>)(.*?)(</nav>)", text, re.S)
-    if not m:
-        return None, "no nav"
-    nav = m.group(2)
-    if re.search(r'href="[^"]*/books/"', nav):
-        return None, "already links /books/"
-    hrefs = [plain(h) for h in re.findall(r'href="([^"]+)"', nav)]
-    if hrefs and set(hrefs) <= META_ONLY:
-        return None, "meta-only nav"
-    new_nav = insert_link(nav)
-    if new_nav == nav:
-        return None, "no anchor matched"
-    out = text[:m.start(2)] + new_nav + text[m.end(2):]
-    # proof the edit is additive: dropping the added line must give the old nav back
-    check = out.replace(new_nav, "", 1)
-    if nav not in (check + nav) and out.count(NEW) != text.count(NEW) + 1:
-        return None, "refused: edit was not a pure insertion"
-    return out, "changed"
+def process(text: str):
+    """Returns (new_text, [(surface, verdict)]) for one page."""
+    reasons, out, edits = [], text, 0
+    for surface, start, end, nav in slots(text):
+        if re.search(r'href="[^"]*/books/"', nav):
+            reasons.append((surface, "already links /books/"))
+            continue
+        hrefs = [plain(h) for h in re.findall(r'href="([^"]+)"', nav)]
+        if hrefs and set(hrefs) <= META_ONLY:
+            reasons.append((surface, "meta-only nav"))
+            continue
+        new_nav = insert_link(nav)
+        if new_nav == nav:
+            reasons.append((surface, "NO ANCHOR MATCHED"))
+            continue
+        out = out[:start] + new_nav + out[end:]
+        reasons.append((surface, "changed"))
+        edits += 1
+    if edits and out.count(NEW) != text.count(NEW) + edits:
+        return text, [("!", "REFUSED: edit was not a pure insertion")]
+    return out, reasons
 
 
 for dp, dn, fn in os.walk(ROOT):
@@ -85,18 +103,25 @@ for dp, dn, fn in os.walk(ROOT):
         p = os.path.join(dp, f)
         rel = os.path.relpath(p, ROOT).replace(os.sep, "/")
         s = open(p, encoding="utf-8", errors="replace", newline="").read()
-        out, why = process(rel, s)
-        if out is None:
-            (alreadys if why.startswith("already") else skipped).append((rel, why))
-            continue
-        changed.append(rel)
-        if APPLY:
+        out, reasons = process(s)
+        for surface, why in reasons:
+            label = f"{rel} [{surface}]"
+            if why == "changed":
+                changed.append(label)
+            elif why.startswith("already"):
+                alreadys.append(label)
+            else:
+                skipped.append((label, why))
+        if out != s and APPLY:
             open(p, "w", encoding="utf-8", errors="replace", newline="").write(out)
 
-print(f"{'APPLIED' if APPLY else 'DRY RUN'} — would insert \"{NEW}\" into {len(changed)} navs")
+print(f"{'APPLIED' if APPLY else 'DRY RUN'} — inserting \"{NEW}\" into {len(changed)} nav(s)")
 print(f"  already linking /books/: {len(alreadys)}")
-print(f"  left alone: {len(skipped)}")
-for rel in changed:
-    print("   +", rel)
+bad = [s for s in skipped if s[1] == "NO ANCHOR MATCHED"]
+print(f"  left alone: {len(skipped)}  (no anchor matched: {len(bad)})")
+for label in changed:
+    print("   +", label)
+for label, why in bad[:12]:
+    print("   ?", label, "->", why)
 if not APPLY:
     print("\nre-run with --apply to write")
