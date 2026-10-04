@@ -5,6 +5,20 @@
  "updated": "2026-10-04",
  "shows": [
   {
+   "slug": "metaphysical-mastery-the-shattered-accord",
+   "title": "Metaphysical Mastery: The Shattered Accord",
+   "page": "https://chatagent.ca/signal/metaphysical-mastery-the-shattered-accord/",
+   "audio": "https://chatagent.ca/signal/audio/metaphysical-mastery-the-shattered-accord.mp3",
+   "duration": "22:11",
+   "seconds": 1331,
+   "speakers": [
+    "Paul",
+    "Maeve",
+    "Jax",
+    "Liam"
+   ]
+  },
+  {
    "slug": "the-magic-of-systems-design",
    "title": "The Magic of Systems Design",
    "page": "https://chatagent.ca/signal/the-magic-of-systems-design/",
