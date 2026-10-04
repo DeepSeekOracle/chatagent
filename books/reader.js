@@ -16,8 +16,86 @@
   var chapters = document.getElementById("chapters");
   var chaptersBtn = document.getElementById("chapters-btn");
   var titleEl = document.getElementById("title");
+  var cinema = document.getElementById("cinema");
+  var cinemaKicker = document.getElementById("cinema-kicker");
+  var ytFrame = document.getElementById("yt-frame");
+  var ytPoster = document.getElementById("yt-poster");
+  var ytPlay = document.getElementById("yt-play");
+  var cinemaOut = document.getElementById("cinema-out");
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var wideQuery = window.matchMedia("(min-width: 861px)");
+  var FILMS = {
+    "moonlit-slumber": {
+      c0: ["A3lxB1p-ZEc", "This chapter on film"],
+      c1: ["hs2oNUxqk0Q", "This chapter on film"],
+      c2: ["-nlKb4PouwE", "This chapter on film"],
+      c3: ["muVEgQ7DUs4", "This chapter on film"],
+      c4: ["dbqzL8OB_bM", "This chapter on film"],
+      c5: ["giVYclNkw0g", "This chapter on film"],
+      c6: ["tcZfL9VVmNY", "This chapter on film"],
+      c7: ["ZGNNs7C_ZoI", "This chapter on film"],
+      c8: ["amWGcz-QmTg", "This chapter on film"],
+      c9: ["8Inj2N5_3lY", "This chapter on film"],
+      c10: ["VDWDlGVLsP0", "This chapter on film"],
+      c11: ["8fCpVkmqxGU", "This chapter on film"],
+      c12: ["MRbXUm5QLSs", "This chapter on film"],
+      c13: ["s6wpn3bVNZ4", "This chapter on film"],
+      c14: ["A7PRdxfbY0k", "This chapter on film"],
+      c15: ["Dfce5gp5-YE", "This chapter on film"]
+    },
+    "shattered-accord": {
+      c0: ["8wbN0KK9Jz4", "This chapter on film"],
+      c1: ["5155E8BPbeA", "This chapter on film"],
+      c2: ["FGmDeClTF74", "This chapter on film"],
+      c4: ["2UXLKfKcS7g", "This chapter on film"],
+      "*": ["EC8GRmLG3Us", "Full Book II film"]
+    }
+  };
+
+  function filmFor(ch) {
+    var pack = book && FILMS[book.id];
+    if (!pack) return null;
+    return pack[ch.id] || pack["*"] || null;
+  }
+
+  function dropFilm() {
+    var iframe = ytFrame.querySelector("iframe");
+    if (iframe) ytFrame.removeChild(iframe);
+    ytPoster.hidden = false;
+    ytPlay.hidden = false;
+  }
+
+  function paintFilm(ch) {
+    dropFilm();
+    var film = filmFor(ch);
+    if (!film) {
+      cinema.hidden = true;
+      return;
+    }
+    cinema.hidden = false;
+    cinemaKicker.textContent = film[1];
+    ytPoster.src = "https://i.ytimg.com/vi/" + film[0] + "/hqdefault.jpg";
+    ytPoster.alt = ch.title + " on film";
+    ytPlay.setAttribute("aria-label", "Play " + ch.title);
+    cinemaOut.href = "https://youtu.be/" + film[0];
+    cinemaOut.textContent = film[1] === "Full Book II film" ? "Open the full film on YouTube" : "Open this chapter on YouTube";
+  }
+
+  function playFilm() {
+    var ch = book && book.chapters[index];
+    var film = ch && filmFor(ch);
+    if (!film || ytFrame.querySelector("iframe")) return;
+    stopVoice();
+    var iframe = document.createElement("iframe");
+    iframe.className = "yt-iframe";
+    iframe.setAttribute("src", "https://www.youtube-nocookie.com/embed/" + film[0] + "?autoplay=1&rel=0&modestbranding=1&playsinline=1");
+    iframe.setAttribute("title", ch.title);
+    iframe.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+    iframe.setAttribute("allowfullscreen", "");
+    ytFrame.appendChild(iframe);
+    ytPoster.hidden = true;
+    ytPlay.hidden = true;
+  }
 
   function voiceName(v) {
     return String(v && v.name || "").toLowerCase();
@@ -145,6 +223,7 @@
     var next = book.chapters[(index + 1) % book.chapters.length];
     door.style.backgroundImage = "url('" + next.scene + "')";
     door.querySelector(".door-title").textContent = next.title;
+    paintFilm(ch);
     Array.prototype.forEach.call(rail.children, function (btn, n) {
       btn.classList.toggle("on", n === index);
     });
@@ -262,6 +341,7 @@
   document.getElementById("prev").addEventListener("click", function () { show(index - 1, true); });
   document.getElementById("next").addEventListener("click", function () { show(index + 1, true); });
   door.addEventListener("click", function () { show(index + 1, true); });
+  ytPlay.addEventListener("click", playFilm);
   readBtn.addEventListener("click", speak);
   chaptersBtn.addEventListener("click", function () {
     var open = chapters.hasAttribute("hidden");
@@ -273,6 +353,13 @@
   window.addEventListener("scroll", paintProgress, { passive: true });
   window.addEventListener("resize", paintProgress);
   window.addEventListener("pagehide", stopVoice);
+  window.addEventListener("hashchange", function () {
+    if (!book) return;
+    var hash = location.hash.replace("#", "");
+    var found = -1;
+    book.chapters.forEach(function (ch, i) { if (ch.id === hash) found = i; });
+    if (found >= 0 && found !== index) show(found, false);
+  });
   document.addEventListener("keydown", function (e) {
     if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
     if (e.key === "Escape") closeChapters();
