@@ -61,6 +61,11 @@ h1 { font-size: clamp(3rem, 7vw, 5.6rem); line-height: .92; margin: 0 0 .6rem; }
 .gate small { display: block; color: var(--muted); margin-top: .45rem; line-height: 1.4; }
 .gate.open { outline: 1px solid var(--gold); }
 .editions { padding-top: 0; scroll-margin-top: 4.5rem; }
+.houses { padding-top: .5rem; }
+.house-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.house-grid h3 { margin: 0 0 .45rem; font-size: 1.7rem; }
+.house-grid p { margin: 0; display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
+.house-grid a { text-decoration: none; }
 .edition-list { list-style: none; margin: 0; padding: 0; }
 .edition-list li {
   display: grid; grid-template-columns: minmax(16rem, 24rem) 1fr;
@@ -131,6 +136,7 @@ body.book .lore { padding: .35rem 1rem .65rem; }
 @media (max-width: 980px) {
   .gates { grid-template-columns: 1fr 1fr; }
   .gate { min-height: 22rem; }
+  .house-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .gates { grid-template-columns: 1fr; }
