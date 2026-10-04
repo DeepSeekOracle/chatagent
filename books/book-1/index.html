@@ -35,39 +35,45 @@
     <a href="/about.html">About</a>
   </nav>
 </header>
-<main class="reader">
-  <div class="rail" id="rail" aria-label="Chapters"></div>
+<main class="room">
   <section class="stage" aria-label="The chapter">
     <div class="sky go" id="sky"><b id="skyb"></b></div>
     <canvas class="motes" id="motes" aria-hidden="true"></canvas>
-    <div class="veil"></div>
     <div class="scene-copy">
       <div class="part" id="part"></div>
-      <h2 id="title">The Moonlit Slumber</h2>
-      <p class="lead" id="label">Book I · Justin Helmer</p>
+      <h2 id="title" tabindex="-1">The Moonlit Slumber</h2>
+      <p class="byline" id="label">Book I · Justin Helmer</p>
     </div>
   </section>
-  <article class="sheet" id="sheet"></article>
-  <div class="bar">
-    <button type="button" id="prev">Previous</button>
-    <button type="button" id="read">Read aloud</button>
-    <button type="button" id="next">Next chapter</button>
-    <a class="btn" href="https://youtu.be/_WwSb4JlRBQ" target="_blank" rel="noopener noreferrer">Full audiobook</a>
-    <a class="btn" href="/talk-radio/">Talk Radio voice</a>
+  <div class="readcol" id="readcol">
+    <div class="hair" id="hair" aria-hidden="true"><i id="hairbar"></i></div>
+    <article class="prose" id="sheet"></article>
+    <button type="button" class="door" id="door"><span class="door-kicker">Next</span><span class="door-title"></span></button>
+    <nav class="lore" aria-label="The wider haven">
+      <a href="/books/">All four books</a>
+      <a href="/books/book-2/">Book II</a>
+      <a href="/champions.html">Champions</a>
+      <a href="/lattice/">Lattice</a>
+      <a href="/starchart/">Star Chart</a>
+      <a href="/signal/">LYGO Signal</a>
+      <a href="/sources/">LYGO TV</a>
+      <a href="https://eternalhaven.ca" target="_blank" rel="noopener noreferrer">eternalhaven.ca</a>
+      <a href="https://lulu.com/shop/justin-helmer/the-eternal-haven/paperback/product-yvg9w9r.html?page=1&amp;pageSize=4" target="_blank" rel="noopener noreferrer">Paperback</a>
+      <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Support</a>
+    </nav>
   </div>
 </main>
-<nav class="lore" aria-label="The wider haven">
-  <a href="/books/">All four books</a>
-  <a href="/books/book-2/">Book II</a>
-  <a href="/champions.html">Champions</a>
-  <a href="/lattice/">Lattice</a>
-  <a href="/starchart/">Star Chart</a>
-  <a href="/signal/">LYGO Signal</a>
-  <a href="/sources/">LYGO TV</a>
-  <a href="https://eternalhaven.ca" target="_blank" rel="noopener noreferrer">eternalhaven.ca</a>
-  <a href="https://lulu.com/shop/justin-helmer/the-eternal-haven/paperback/product-yvg9w9r.html?page=1&amp;pageSize=4" target="_blank" rel="noopener noreferrer">Paperback</a>
-  <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">Support</a>
-</nav>
-<script src="/books/book-1/reader.js"></script>
+<div class="chapters" id="chapters" hidden>
+  <div class="rail" id="rail" aria-label="Chapters"></div>
+</div>
+<div class="bar">
+  <button type="button" id="chapters-btn" aria-expanded="false" aria-controls="chapters">Chapters</button>
+  <button type="button" id="prev">Previous</button>
+  <button type="button" id="read">Read aloud</button>
+  <button type="button" id="next">Next</button>
+  <a href="https://youtu.be/_WwSb4JlRBQ" target="_blank" rel="noopener noreferrer">Full audiobook</a>
+  <a href="/talk-radio/">Talk Radio</a>
+</div>
+<script src="/books/reader.js"></script>
 </body>
 </html>

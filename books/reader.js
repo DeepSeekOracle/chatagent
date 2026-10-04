@@ -1,45 +1,23 @@
 (function () {
   var book = null;
   var index = 0;
+  var paras = [];
+  var followRanges = [];
+  var havenVoice = null;
+  var arming = false;
   var sky = document.getElementById("sky");
   var skyb = document.getElementById("skyb");
   var sheet = document.getElementById("sheet");
   var rail = document.getElementById("rail");
   var readBtn = document.getElementById("read");
-
-  function stopVoice() {
-    if (window.speechSynthesis) speechSynthesis.cancel();
-    readBtn.classList.remove("on");
-    readBtn.textContent = "Read aloud";
-  }
-
-  function show(i, push) {
-    stopVoice();
-    index = (i + book.chapters.length) % book.chapters.length;
-    var ch = book.chapters[index];
-    skyb.style.backgroundImage = sky.style.backgroundImage;
-    skyb.style.opacity = "1";
-    sky.style.backgroundImage = "url('" + ch.scene + "')";
-    requestAnimationFrame(function () { skyb.style.opacity = "0"; });
-    document.getElementById("part").textContent = ch.part || book.series || "The Eternal Haven";
-    document.getElementById("title").textContent = ch.title;
-    document.getElementById("label").textContent = ch.label + " · " + (book.author || "Justin Helmer");
-    sheet.innerHTML = "";
-    sheet.scrollTop = 0;
-    ch.paragraphs.forEach(function (text) {
-      var p = document.createElement("p");
-      p.textContent = text;
-      sheet.appendChild(p);
-    });
-    Array.prototype.forEach.call(rail.children, function (btn, n) {
-      btn.classList.toggle("on", n === index);
-    });
-    if (push) history.replaceState(null, "", "#" + ch.id);
-    document.title = ch.title + " — " + book.title;
-  }
-
-  var havenVoice = null;
-  var arming = false;
+  var readcol = document.getElementById("readcol");
+  var hairbar = document.getElementById("hairbar");
+  var door = document.getElementById("door");
+  var chapters = document.getElementById("chapters");
+  var chaptersBtn = document.getElementById("chapters-btn");
+  var titleEl = document.getElementById("title");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var wideQuery = window.matchMedia("(min-width: 861px)");
 
   function voiceName(v) {
     return String(v && v.name || "").toLowerCase();
@@ -107,10 +85,92 @@
     }, 80);
   }
 
+  function clearSpeaking() {
+    var nodes = sheet.querySelectorAll(".speaking");
+    for (var i = 0; i < nodes.length; i++) nodes[i].classList.remove("speaking");
+  }
+
+  function stopVoice() {
+    arming = false;
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    clearSpeaking();
+    readBtn.classList.remove("on");
+    readBtn.textContent = "Read aloud";
+  }
+
+  function closeChapters() {
+    chapters.setAttribute("hidden", "");
+    chaptersBtn.setAttribute("aria-expanded", "false");
+  }
+
+  function scrollToStart() {
+    readcol.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }
+
+  function paintProgress() {
+    var el = wideQuery.matches ? readcol : document.documentElement;
+    var view = wideQuery.matches ? readcol.clientHeight : window.innerHeight;
+    var max = el.scrollHeight - view;
+    var top = wideQuery.matches ? readcol.scrollTop : window.scrollY;
+    var ratio = max > 8 ? Math.min(1, Math.max(0, top / max)) : 0;
+    hairbar.style.width = (ratio * 100) + "%";
+  }
+
+  function show(i, push) {
+    stopVoice();
+    closeChapters();
+    index = (i + book.chapters.length) % book.chapters.length;
+    var ch = book.chapters[index];
+    if (reduce) {
+      sky.style.backgroundImage = "url('" + ch.scene + "')";
+      skyb.style.opacity = "0";
+    } else {
+      skyb.style.backgroundImage = sky.style.backgroundImage;
+      skyb.style.opacity = "1";
+      sky.style.backgroundImage = "url('" + ch.scene + "')";
+      requestAnimationFrame(function () { skyb.style.opacity = "0"; });
+    }
+    document.getElementById("part").textContent = ch.part || book.series || "The Eternal Haven";
+    titleEl.textContent = ch.title;
+    document.getElementById("label").textContent = ch.label + " · " + (book.author || "Justin Helmer");
+    sheet.innerHTML = "";
+    paras = [];
+    ch.paragraphs.forEach(function (text) {
+      var p = document.createElement("p");
+      p.textContent = text;
+      sheet.appendChild(p);
+      paras.push(p);
+    });
+    var next = book.chapters[(index + 1) % book.chapters.length];
+    door.style.backgroundImage = "url('" + next.scene + "')";
+    door.querySelector(".door-title").textContent = next.title;
+    Array.prototype.forEach.call(rail.children, function (btn, n) {
+      btn.classList.toggle("on", n === index);
+    });
+    scrollToStart();
+    paintProgress();
+    if (push) {
+      history.replaceState(null, "", "#" + ch.id);
+      titleEl.focus({ preventScroll: true });
+    }
+    document.title = ch.title + " — " + book.title;
+  }
+
+  function markAt(charIndex) {
+    var hit = null;
+    for (var i = 0; i < followRanges.length; i++) {
+      if (charIndex >= followRanges[i].start && charIndex < followRanges[i].end) hit = followRanges[i];
+    }
+    if (!hit || hit.el.classList.contains("speaking")) return;
+    clearSpeaking();
+    hit.el.classList.add("speaking");
+    hit.el.scrollIntoView({ block: "center", inline: "nearest" });
+  }
+
   function speak() {
     if (!window.speechSynthesis || !book) return;
     if (speechSynthesis.speaking || speechSynthesis.pending || arming) {
-      arming = false;
       stopVoice();
       return;
     }
@@ -120,31 +180,41 @@
     whenVoice(function () {
       if (!arming || !book) return;
       arming = false;
-      var ch = book.chapters[index];
-      var utter = new SpeechSynthesisUtterance(ch.paragraphs.join("\n\n"));
+      var parts = [];
+      followRanges = [];
+      var cursor = 0;
+      paras.forEach(function (el, n) {
+        var text = el.textContent;
+        if (n) {
+          parts.push("\n\n");
+          cursor += 2;
+        }
+        var start = cursor;
+        parts.push(text);
+        cursor += text.length;
+        followRanges.push({ start: start, end: cursor + 1, el: el });
+      });
+      var utter = new SpeechSynthesisUtterance(parts.join(""));
       utter.rate = 0.92;
       utter.pitch = 1;
       if (havenVoice) {
         utter.voice = havenVoice;
         if (havenVoice.lang) utter.lang = havenVoice.lang;
       }
+      utter.onboundary = function (ev) { markAt(ev.charIndex || 0); };
       utter.onend = function () {
+        clearSpeaking();
         readBtn.classList.remove("on");
         readBtn.textContent = "Read aloud";
       };
+      markAt(0);
       speechSynthesis.speak(utter);
     });
   }
 
-  if (window.speechSynthesis) {
-    speechSynthesis.addEventListener("voiceschanged", considerVoices);
-    speechSynthesis.getVoices();
-    considerVoices();
-  }
-
   function motes() {
     var c = document.getElementById("motes");
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (reduce) return;
     var ctx = c.getContext("2d");
     var dots = [];
     function size() {
@@ -191,10 +261,28 @@
 
   document.getElementById("prev").addEventListener("click", function () { show(index - 1, true); });
   document.getElementById("next").addEventListener("click", function () { show(index + 1, true); });
+  door.addEventListener("click", function () { show(index + 1, true); });
   readBtn.addEventListener("click", speak);
+  chaptersBtn.addEventListener("click", function () {
+    var open = chapters.hasAttribute("hidden");
+    if (open) chapters.removeAttribute("hidden");
+    else chapters.setAttribute("hidden", "");
+    chaptersBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  readcol.addEventListener("scroll", paintProgress, { passive: true });
+  window.addEventListener("scroll", paintProgress, { passive: true });
+  window.addEventListener("resize", paintProgress);
+  window.addEventListener("pagehide", stopVoice);
   document.addEventListener("keydown", function (e) {
     if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    if (e.key === "Escape") closeChapters();
     if (e.key === "ArrowRight") show(index + 1, true);
     if (e.key === "ArrowLeft") show(index - 1, true);
   });
+
+  if (window.speechSynthesis) {
+    speechSynthesis.addEventListener("voiceschanged", considerVoices);
+    speechSynthesis.getVoices();
+    considerVoices();
+  }
 })();
