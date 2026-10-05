@@ -297,7 +297,7 @@
       history.replaceState(null, "", "#" + ch.id);
       titleEl.focus({ preventScroll: true });
     }
-    document.title = ch.title + " — " + book.title;
+    document.title = ch.title + " \u00b7 " + book.title;
   }
 
   function markAt(charIndex) {
