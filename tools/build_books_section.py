@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "books"
 
-ASSET_V = "20261009"
+ASSET_V = "20261010"
 SITE = "https://chatagent.ca"
 X_HANDLE = "@Excavationpro"
 PERSON_ID = SITE + "/about.html#person"
@@ -73,7 +73,7 @@ VOLUMES = [
     dict(key="book-6", n=6, name="The Uncounted",
          art="book-6.jpg", og="og-book-6.jpg",
          part="A company of eight and a goat walk out of the counties carrying a page no clerk "
-              "will ever file — and the counties come to the room to count what they cannot enter."),
+              "will ever file, and the counties come to the room to count what they cannot enter."),
 ]
 
 # Book V is the series' ebook-first volume; its published edition is the same ISBN.
@@ -149,19 +149,20 @@ STORY_PARTS = {
         ic="Interlude C \u2014 Serenya", id="Interlude D \u2014 The Hollow Index",
     ),
     # Book VI is built in five acts with six interludes threaded through them; the reader
-    # prints these as the part line over every unit.
+    # prints these as the part line over every unit. Book VI uses a middot, not a dash:
+    # the author's ruling is that this volume carries no em dashes anywhere.
     "book-6": dict(
         **{"pro": "", "epi": ""},
-        **{f"c{n}": f"Act {act} \u2014 {name}" for act, name, lo, hi in [
+        **{f"c{n}": f"Act {act} \u00b7 {name}" for act, name, lo, hi in [
             ("I", "The Road Out", 1, 9), ("II", "The Inside", 10, 16),
             ("III", "The Ascent", 17, 22), ("IV", "The Preparation", 23, 34),
             ("V", "The Return and the Counting", 35, 38)] for n in range(lo, hi + 1)},
-        ia="Interlude A \u2014 The Deletion Log",
-        ib="Interlude B \u2014 The Arithmetic of Forgetting",
-        ic="Interlude C \u2014 The Clerk",
-        id="Interlude D \u2014 The Counting House",
-        ie="Interlude E \u2014 The Long Column",
-        **{"if": "Interlude F \u2014 The Third Column"},
+        ia="Interlude A \u00b7 The Deletion Log",
+        ib="Interlude B \u00b7 The Arithmetic of Forgetting",
+        ic="Interlude C \u00b7 The Clerk",
+        id="Interlude D \u00b7 The Counting House",
+        ie="Interlude E \u00b7 The Long Column",
+        **{"if": "Interlude F \u00b7 The Third Column"},
     ),
 }
 

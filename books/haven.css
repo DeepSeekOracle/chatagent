@@ -161,6 +161,10 @@ body.book .prose p {
   font-size: 1.35rem; line-height: 1.7;
   max-width: 68ch; margin: 0 0 1.05rem;
 }
+/* Book setting: paragraphs carry a first-line indent; the opening paragraph of a unit
+   stays flush, the way a printed book sets it. */
+body.book .prose#sheet > p { text-indent: 1.4em; }
+body.book .prose#sheet > p:first-child { text-indent: 0; }
 body.book .prose p.speaking {
   background: linear-gradient(90deg, rgba(224,179,106,.16), transparent 78%);
   box-shadow: inset 3px 0 0 var(--gold);
