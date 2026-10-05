@@ -242,6 +242,23 @@
     hairbar.style.width = (ratio * 100) + "%";
   }
 
+  // The manuscripts carry *emphasis* and **strong** markers. Fill the paragraph so they
+  // render as em/strong instead of printing the asterisks; text without markers comes out
+  // byte-for-byte as before, one text node.
+  function paintParagraph(node, text) {
+    var re = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    var last = 0, m;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) node.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var strong = m[0].indexOf("**") === 0;
+      var el = document.createElement(strong ? "strong" : "em");
+      el.textContent = m[0].slice(strong ? 2 : 1, strong ? -2 : -1);
+      node.appendChild(el);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) node.appendChild(document.createTextNode(text.slice(last)));
+  }
+
   function show(i, push) {
     stopVoice();
     closeChapters();
@@ -263,7 +280,7 @@
     paras = [];
     ch.paragraphs.forEach(function (text) {
       var p = document.createElement("p");
-      p.textContent = text;
+      paintParagraph(p, text);
       sheet.appendChild(p);
       paras.push(p);
     });
