@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 BOOKS = ROOT / "books"
 
-ASSET_V = "20261006"
+ASSET_V = "20261007"
 SITE = "https://chatagent.ca"
 X_HANDLE = "@Excavationpro"
 PERSON_ID = SITE + "/about.html#person"
@@ -42,6 +42,7 @@ NAV = [
     ("/books/book-3/", "Book III"),
     ("/books/book-4/", "Book IV"),
     ("/books/book-5/", "Book V"),
+    ("/books/book-6/", "Book VI"),
     ("/signal/", "LYGO Signal"),
     ("/talk-radio/", "Talk Radio"),
     ("/about.html", "About"),
@@ -67,31 +68,38 @@ VOLUMES = [
               "can grow without becoming a throne again.",
          book_format="https://schema.org/EBook",
          also_at="https://www.lulu.com/shop/justin-helmer/the-unwritten-seal/ebook/product-65kg2mr.html"),
+    # Book VI is readable here in full; it has no published edition yet, so no isbn,
+    # no sameAs and no og:book:isbn meta (the builder guards all three on isbn).
+    dict(key="book-6", n=6, name="The Uncounted",
+         art="book-6.jpg", og="og-book-6.jpg",
+         part="A company of eight and a goat walk out of the counties carrying a page no clerk "
+              "will ever file — and the counties come to the room to count what they cannot enter."),
 ]
 
 # Book V is the series' ebook-first volume; its published edition is the same ISBN.
-ROMAN = ["", "I", "II", "III", "IV", "V"]
+ROMAN = ["", "I", "II", "III", "IV", "V", "VI"]
 
 PAGES = [
     dict(
         path="books/index.html",
         url=SITE + "/books/",
         title="Start at moonlight — The Eternal Haven by Justin Helmer",
-        desc=("The Eternal Haven Chronicles by Justin Helmer, free to read chapter by chapter: Books I to V "
+        desc=("The Eternal Haven Chronicles by Justin Helmer, free to read chapter by chapter: Books I to VI "
               "here, and the published editions on Amazon and Lulu."),
         keywords=("Eternal Haven, Eternal Haven Chronicles, Justin Helmer, Excavationpro, The Moonlit Slumber, "
                   "The Shattered Accord, The Ascension War, Eternal Haven Dawns, The Unwritten Seal, "
+                  "The Uncounted, "
                   "free fantasy novel online, "
                   "read a novel chapter by chapter, walking novel, audiobook, AI fantasy"),
         og_title="Start at moonlight — The Eternal Haven",
-        og_desc=("Dawn is not a reset. Five Eternal Haven novels by Justin Helmer, free to read here or to "
+        og_desc=("Dawn is not a reset. Six Eternal Haven novels by Justin Helmer, free to read here or to "
                  "take home in print and ebook."),
         og_type="website",
         og_image="og-books.jpg",
         og_alt=("The Eternal Haven Chronicles — the moonlit city of Haven over still water, free to read at "
                 "chatagent.ca/books/"),
         share_title="Start at moonlight — The Eternal Haven by Justin Helmer",
-        share_text="The Eternal Haven Chronicles by Justin Helmer: five walking novels, free to read chapter by chapter.",
+        share_text="The Eternal Haven Chronicles by Justin Helmer: six walking novels, free to read chapter by chapter.",
         hashtags="EternalHaven,JustinHelmer,FantasyBooks",
         crumbs=[("Home", SITE + "/"), ("Books", SITE + "/books/")],
         book=None,
@@ -123,7 +131,8 @@ for _v in VOLUMES:
 
 # The volume titles and part labels the section's own reference material states.
 # story.json is generated data, so these live here instead of in hand edits.
-STORY_TITLE = {"book-4": "Eternal Haven Dawns", "book-5": "The Unwritten Seal"}
+STORY_TITLE = {"book-4": "Eternal Haven Dawns", "book-5": "The Unwritten Seal",
+               "book-6": "The Uncounted"}
 STORY_PARTS = {
     "book-2": {"c1": "Part I \u2014 Embers of Division", "c2": "Part I \u2014 Embers of Division",
                "c3": "Part I \u2014 Embers of Division", "c4": "Part II \u2014 The Seal Forges",
@@ -138,6 +147,21 @@ STORY_PARTS = {
             ("V", "The Lattice Beyond", 35, 40)] for n in range(lo, hi + 1)},
         ia="Interlude A \u2014 Codex", ib="Interlude B \u2014 Emberion",
         ic="Interlude C \u2014 Serenya", id="Interlude D \u2014 The Hollow Index",
+    ),
+    # Book VI is built in five acts with six interludes threaded through them; the reader
+    # prints these as the part line over every unit.
+    "book-6": dict(
+        **{"pro": "", "epi": ""},
+        **{f"c{n}": f"Act {act} \u2014 {name}" for act, name, lo, hi in [
+            ("I", "The Road Out", 1, 9), ("II", "The Inside", 10, 16),
+            ("III", "The Ascent", 17, 22), ("IV", "The Preparation", 23, 34),
+            ("V", "The Return and the Counting", 35, 38)] for n in range(lo, hi + 1)},
+        ia="Interlude A \u2014 The Deletion Log",
+        ib="Interlude B \u2014 The Arithmetic of Forgetting",
+        ic="Interlude C \u2014 The Clerk",
+        id="Interlude D \u2014 The Counting House",
+        ie="Interlude E \u2014 The Long Column",
+        **{"if": "Interlude F \u2014 The Third Column"},
     ),
 }
 
@@ -170,7 +194,7 @@ def normalize_story(check: bool) -> list:
 
 
 # The date the section's own copy/markup last changed, stamped into the sitemap.
-CONTENT_DATE = "2026-10-06"
+CONTENT_DATE = "2026-10-06"  # Book VI added 2026-10-05
 
 
 def stamp_sitemap(check: bool) -> list:
@@ -261,11 +285,13 @@ def graph(page: dict) -> dict:
     hub_books = []
     for v in VOLUMES:
         node = {"@type": "Book", "@id": f"{SITE}/books/{v['key']}/#book", "name": v["name"],
-                "isbn": v["isbn"], "position": v["n"], "url": f"{SITE}/books/{v['key']}/",
+                **({"isbn": v["isbn"]} if v.get("isbn") else {}),
+                "position": v["n"], "url": f"{SITE}/books/{v['key']}/",
                 "author": {"@id": PERSON_ID}, "inLanguage": "en", "publisher": {"@id": ORG_ID},
                 "isPartOf": {"@id": SERIES_ID},
                 "image": f"{SITE}/books/art/{v['og']}",
-                "bookFormat": v.get("book_format", "https://schema.org/Paperback")}
+                **({"bookFormat": v.get("book_format") or "https://schema.org/Paperback"}
+                   if (v.get("isbn") or v.get("book_format")) else {})}
         if v.get("alt_name"):
             node["alternateName"] = v["alt_name"]
         if v.get("also_at"):
@@ -281,10 +307,12 @@ def graph(page: dict) -> dict:
     else:
         v = page["book"]
         own = {"@type": "Book", "@id": page["url"] + "#book", "name": v["name"],
-               "isbn": v["isbn"], "position": v["n"], "url": page["url"],
+               **({"isbn": v["isbn"]} if v.get("isbn") else {}),
+               "position": v["n"], "url": page["url"],
                "author": {"@id": PERSON_ID}, "inLanguage": "en", "publisher": {"@id": ORG_ID},
                "isPartOf": {"@id": SERIES_ID}, "image": f"{SITE}/books/art/{v['og']}",
-               "bookFormat": v.get("book_format", "https://schema.org/Paperback")}
+               **({"bookFormat": v.get("book_format") or "https://schema.org/Paperback"}
+                  if (v.get("isbn") or v.get("book_format")) else {})}
         if v.get("alt_name"):
             own["alternateName"] = v["alt_name"]
         if v.get("also_at"):
@@ -297,7 +325,8 @@ def head_for(page: dict) -> str:
     og_book = ""
     if page["book"]:
         og_book = (f'<meta property="og:book:author" content="Justin Helmer">\n'
-                   f'<meta property="og:book:isbn" content="{page["book"]["isbn"]}">\n')
+                   f'<meta property="og:book:isbn" content="{page["book"]["isbn"]}">\n'
+                   if page["book"].get("isbn") else "")
     return HEAD.format(
         title=esc(page["title"]), desc=esc(page["desc"]), keywords=esc(page["keywords"]),
         url=page["url"], og_type=page["og_type"], og_title=esc(page["og_title"]),

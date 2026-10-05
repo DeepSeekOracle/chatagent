@@ -166,6 +166,11 @@ CARDS = [
      "A stranger carries a Seal the Codex does not hold, and Haven must decide whether it can grow "
      "without becoming a throne again.",
      "Read free on chatagent.ca"),
+    ("og-book-6.jpg", "book-6.jpg", "The Eternal Haven Chronicles · Book VI",
+     "The Uncounted",
+     "A company of eight and a goat walk out of the counties carrying a page no clerk will ever file, "
+     "and the counties come to the room to count what they cannot enter.",
+     "Read free on chatagent.ca"),
 ]
 
 if __name__ == "__main__":
