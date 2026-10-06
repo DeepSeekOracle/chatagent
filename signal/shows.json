@@ -2,8 +2,22 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-04",
+ "updated": "2026-10-06",
  "shows": [
+  {
+   "slug": "refusniks-of-the-uncounted-ledger",
+   "title": "Refusniks of the Uncounted Ledger",
+   "page": "https://chatagent.ca/signal/refusniks-of-the-uncounted-ledger/",
+   "audio": "https://chatagent.ca/signal/audio/refusniks-of-the-uncounted-ledger.mp3",
+   "duration": "10:27",
+   "seconds": 627,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Elena",
+    "Silas"
+   ]
+  },
   {
    "slug": "systems-scars-and-living-data",
    "title": "Systems, Scars, and Living Data",
