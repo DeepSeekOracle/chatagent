@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-30",
+  "updated": "2026-10-08",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -166,6 +166,24 @@
       "players": "1",
       "links": [
         { "label": "Engine source", "href": "/games/lattice-corridor/SOURCE.md" }
+      ]
+    },
+    {
+      "id": "moonlit-tactics",
+      "slug": "moonlit-tactics",
+      "title": "Vale Tactics",
+      "tagline": "The Moonlit Slumber",
+      "blurb": "Book I. Serenya wakes in the loft. Choose Cantor, Warden, or Kindler. Painted pages carry the morning, and the 8×8 grid opens when someone has to be faced. The story stays in this browser.",
+      "status": "live",
+      "featured": true,
+      "order": 10,
+      "href": "/games/moonlit-tactics/",
+      "cover": "/games/moonlit-tactics/assets/og.jpg",
+      "coverAlt": "Serenya and a small bronze-green dragon on a moonlit harbor balcony",
+      "genre": ["tactics", "story"],
+      "players": "1",
+      "links": [
+        { "label": "Hall", "href": "/games/moonlit-tactics/ledger.html" }
       ]
     },
     {

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-10",
+  "updated": "2026-10-08",
   "hub": "https://chatagent.ca/games/",
   "board": "https://chatagent.ca/games/board.html",
   "space": "https://deepseekoracle-lattice-marines-ledger.hf.space",
@@ -76,6 +76,14 @@
         "https://deepseekoracle-lattice-marines-ledger.hf.space/eternal/ledger.json",
         "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/eternal-lattice.json",
         "/games/eternal-lattice/ledger.json"
+      ]
+    },
+    {
+      "id": "moonlit-tactics",
+      "play": "/games/moonlit-tactics/",
+      "ledger": "/games/moonlit-tactics/ledger.html",
+      "feeds": [
+        "/games/moonlit-tactics/ledger.json"
       ]
     }
   ]
