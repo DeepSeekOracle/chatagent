@@ -362,7 +362,7 @@ a.games-mini {
 }
 #off { display: block; }
 #off h1 { font-family: Tahoma, "MS Sans Serif", Verdana, sans-serif; font-size: 16px; font-weight: normal; margin: 0 0 8px; }
-.lygo-mark {
+#off .lygo-mark {
   width: 72px;
   height: 72px;
   margin: 0 auto 12px;
@@ -379,10 +379,20 @@ a.games-mini {
   font: 700 64px Tahoma, Verdana, sans-serif;
   letter-spacing: 0.12em;
   color: #e8fffb;
+  text-shadow: 0 0 18px rgba(94, 234, 212, 0.55), 0 2px 0 #000;
+}
+.lygo-mark, .lygo-brand { animation: lygo-drift 8s ease-in-out infinite; }
+.lygo-brand { animation-duration: 10s; }
+@keyframes lygo-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lygo-mark, .lygo-brand { animation: none; }
 }
 @media (max-width: 720px) {
   .lygo-brand { font-size: 36px; letter-spacing: 0.08em; }
-  .lygo-mark { width: 56px; height: 56px; line-height: 56px; font-size: 32px; }
+  #off .lygo-mark { width: 56px; height: 56px; line-height: 56px; font-size: 32px; }
 }
 #saver { position: absolute; inset: 0; width: 100%; height: 100%; }
 .saver-copy {

@@ -72,6 +72,7 @@
   var renderHooks = [];
   var saverWord = "GLASS";
   var saverRAF = 0;
+  var saverResize = null;
   var idleAt = Date.now();
   var bootClicked = false;
 
@@ -1485,45 +1486,123 @@
     if (word) word.textContent = "";
     var ctx = canvas.getContext("2d");
     var stars = [];
+    var dust = [];
     var i;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    for (i = 0; i < 90; i++) stars.push({ x: Math.random(), y: Math.random(), z: Math.random() });
+    var banner = "LYGO 98    ·    a late-90s desk    ·    Truth Is. Light Becomes.    ·    ";
+    function fit() {
+      var host = canvas.parentElement;
+      var nextW = host ? host.clientWidth : window.innerWidth;
+      var nextH = host ? host.clientHeight : window.innerHeight;
+      if (nextW < 1) nextW = window.innerWidth;
+      if (nextH < 1) nextH = window.innerHeight;
+      if (canvas.width !== nextW || canvas.height !== nextH) {
+        canvas.width = nextW;
+        canvas.height = nextH;
+      }
+    }
+    fit();
+    for (i = 0; i < 180; i++) {
+      stars.push({
+        x: Math.random(),
+        y: Math.random(),
+        z: Math.random(),
+        tint: i % 7 === 0 ? "#d4b483" : (i % 3 === 0 ? "#5eead4" : "#d7fff8")
+      });
+    }
+    for (i = 0; i < 40; i++) dust.push({ x: Math.random(), y: Math.random(), v: 0.00015 + Math.random() * 0.00035 });
     var t0 = Date.now();
     var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function ring(cx, cy, radius, count, spin, color) {
+      var n;
+      var pts = [];
+      for (n = 0; n < count; n++) {
+        var a = spin + (Math.PI * 2 * n) / count;
+        pts.push([cx + Math.cos(a) * radius, cy + Math.sin(a) * radius * 0.62]);
+      }
+      ctx.beginPath();
+      pts.forEach(function (p, idx) {
+        if (idx === 0) ctx.moveTo(p[0], p[1]);
+        else ctx.lineTo(p[0], p[1]);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      pts.forEach(function (p) {
+        ctx.fillStyle = color;
+        ctx.fillRect(p[0] - 2, p[1] - 2, 4, 4);
+      });
+    }
     function frame() {
+      fit();
       var w = canvas.width;
       var h = canvas.height;
-      ctx.fillStyle = "#000010";
+      var now = Date.now() - t0;
+      var sky = ctx.createRadialGradient(w / 2, h * 0.42, 40, w / 2, h / 2, Math.max(w, h) * 0.72);
+      sky.addColorStop(0, "#062c32");
+      sky.addColorStop(0.45, "#021018");
+      sky.addColorStop(1, "#000008");
+      ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, h);
       stars.forEach(function (s) {
         if (!reduce) {
-          s.z -= 0.01;
+          s.z -= 0.0045;
           if (s.z <= 0) { s.x = Math.random(); s.y = Math.random(); s.z = 1; }
         }
-        var k = (1 - s.z) * 2.2;
-        ctx.fillStyle = "#9ee";
-        ctx.fillRect((s.x - 0.5) * k * w + w / 2, (s.y - 0.5) * k * h + h / 2, 2, 2);
+        var k = (1 - s.z) * 2.4;
+        var x = (s.x - 0.5) * k * w + w / 2;
+        var y = (s.y - 0.5) * k * h + h / 2;
+        var size = 1 + (1 - s.z) * 2.2;
+        ctx.globalAlpha = 0.35 + (1 - s.z) * 0.65;
+        ctx.fillStyle = s.tint;
+        ctx.fillRect(x, y, size, size);
       });
-      var bx = (Math.sin(Date.now() / 700) * 0.32 + 0.5) * w;
-      var by = (Math.cos(Date.now() / 900) * 0.28 + 0.42) * h;
-      ctx.fillStyle = "#071018";
-      ctx.fillRect(bx, by, 36, 36);
-      ctx.strokeStyle = "#d4b483";
+      ctx.globalAlpha = 0.45;
+      dust.forEach(function (d) {
+        if (!reduce) {
+          d.x += d.v;
+          if (d.x > 1) d.x = 0;
+        }
+        ctx.fillStyle = "#7ee0d0";
+        ctx.fillRect(d.x * w, d.y * h, 1.5, 1.5);
+      });
+      ctx.globalAlpha = 0.55;
+      var cx = w / 2;
+      var cy = h * 0.46;
+      var pulse = reduce ? 0 : Math.sin(now / 1400) * 8;
+      ring(cx, cy, Math.min(w, h) * 0.34 + pulse, 18, now / 6000, "rgba(212,180,131,0.85)");
+      ring(cx, cy, Math.min(w, h) * 0.22, 11, -now / 4200, "rgba(94,234,212,0.9)");
+      ctx.globalAlpha = 0.22;
+      ctx.strokeStyle = "#5eead4";
       ctx.lineWidth = 2;
-      ctx.strokeRect(bx + 1, by + 1, 34, 34);
-      ctx.fillStyle = "#5eead4";
-      ctx.fillRect(bx + 8, by + 8, 6, 20);
-      ctx.fillRect(bx + 8, by + 22, 16, 6);
-      if (word && (reduce || Date.now() - t0 > 3200)) word.textContent = saverWord;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, Math.min(w, h) * 0.16, Math.min(w, h) * 0.1, now / 8000, 0, Math.PI * 1.35);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.font = "13px Tahoma, Verdana, sans-serif";
+      ctx.fillStyle = "rgba(232,255,251,0.72)";
+      var bw = ctx.measureText(banner).width;
+      var shift = reduce ? 0 : (now / 45) % bw;
+      var bx = -shift;
+      while (bx < w) {
+        ctx.fillText(banner, bx, h - 22);
+        bx += bw;
+      }
+      if (word && (reduce || now > 3200)) word.textContent = saverWord;
       if (!reduce) saverRAF = requestAnimationFrame(frame);
     }
+    saverResize = function () { frame(); };
+    window.addEventListener("resize", saverResize);
     frame();
   }
 
   function stopSaver() {
     if (saverRAF) cancelAnimationFrame(saverRAF);
     saverRAF = 0;
+    if (saverResize) {
+      window.removeEventListener("resize", saverResize);
+      saverResize = null;
+    }
   }
 
   function wake() {
