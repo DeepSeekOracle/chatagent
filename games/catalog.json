@@ -187,6 +187,24 @@
       ]
     },
     {
+      "id": "haven-desk",
+      "slug": "haven-desk",
+      "title": "Haven Desk",
+      "tagline": "Desk 98",
+      "blurb": "An original teal desk with gray windows, a Desk menu, and programs that run. Lattice Corridor and Vale Tactics open from the desktop. Notes and guest leaves stay in this browser.",
+      "status": "live",
+      "featured": true,
+      "order": 11,
+      "href": "/games/haven-desk/",
+      "cover": "/games/haven-desk/assets/og.jpg",
+      "coverAlt": "Haven Desk 98 on a teal field, with a gray window and a Desk button",
+      "genre": ["desk", "retro"],
+      "players": "1",
+      "links": [
+        { "label": "Hall", "href": "/games/haven-desk/ledger.html" }
+      ]
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",

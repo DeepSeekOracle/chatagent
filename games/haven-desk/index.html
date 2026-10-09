@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haven Desk — Desk 98 | chatagent.ca</title>
+<meta name="description" content="Haven Desk is an original Desk 98 page by Justin Helmer. A teal field, gray windows, a Desk menu, a prompt, and the chatagent games sitting on the desktop.">
+<meta name="author" content="Justin Helmer / Excavationpro">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#008080">
+<link rel="canonical" href="https://chatagent.ca/games/haven-desk/">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="chatagent.ca">
+<meta property="og:title" content="Haven Desk — Desk 98">
+<meta property="og:description" content="An original teal desk with gray windows, a working Desk menu, and chatagent games on the desktop.">
+<meta property="og:url" content="https://chatagent.ca/games/haven-desk/">
+<meta property="og:image" content="https://chatagent.ca/games/haven-desk/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="Haven Desk — Desk 98">
+<meta name="twitter:description" content="An original teal desk with gray windows, a working Desk menu, and chatagent games on the desktop.">
+<meta name="twitter:image" content="https://chatagent.ca/games/haven-desk/assets/og.jpg">
+<link rel="stylesheet" href="./desk.css?v=20261008-desk2">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "Haven Desk",
+  "alternateName": "Desk 98",
+  "url": "https://chatagent.ca/games/haven-desk/",
+  "description": "An original nostalgic desk with programs, a prompt, and chatagent games opened in windows.",
+  "genre": "Desk",
+  "playMode": "SinglePlayer",
+  "applicationCategory": "Game",
+  "operatingSystem": "Web",
+  "softwareVersion": "Desk 98",
+  "image": "https://chatagent.ca/games/haven-desk/assets/og.jpg",
+  "author": {
+    "@type": "Person",
+    "name": "Justin Helmer",
+    "alternateName": ["Excavationpro", "Lightfather"],
+    "url": "https://chatagent.ca/about.html"
+  }
+}
+</script>
+</head>
+<body>
+<div id="boot">
+  <p>Haven Hearth BIOS 1.0</p>
+  <p id="boot-line">Checking field memory&nbsp;&nbsp;640K OK</p>
+  <p>Haven Desk 98</p>
+  <p class="hint">Click to sit down.</p>
+  <p><a class="games-mini" href="/games/">All games</a></p>
+</div>
+
+<div id="desk" hidden>
+  <div id="stage">
+    <div id="desktop"></div>
+    <div id="windows"></div>
+  </div>
+  <nav id="taskbar" aria-label="Desk bar">
+    <button id="desk-btn" class="raised" type="button" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 18 18" aria-hidden="true">
+        <rect x="1" y="1" width="16" height="16" fill="#c0c0c0" stroke="#000"/>
+        <rect x="3" y="3" width="12" height="4" fill="#000080"/>
+        <rect x="7" y="9" width="4" height="5" fill="#c45a12"/>
+      </svg>
+      <span>Desk</span>
+    </button>
+    <div id="tasks"></div>
+    <a class="games-mini" href="/games/">All games</a>
+    <div id="clock" class="sunken"></div>
+  </nav>
+  <div id="desk-menu" class="raised" hidden role="menu"></div>
+</div>
+
+<div id="off" hidden>
+  <h1>It is now safe to leave the desk.</h1>
+  <p><button id="on-again" class="raised" type="button">Turn the desk back on</button></p>
+  <p><a class="games-mini" href="/games/">All games</a></p>
+</div>
+
+<script src="./desk.js?v=20261008-desk1"></script>
+</body>
+</html>

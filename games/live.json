@@ -85,6 +85,14 @@
       "feeds": [
         "/games/moonlit-tactics/ledger.json"
       ]
+    },
+    {
+      "id": "haven-desk",
+      "play": "/games/haven-desk/",
+      "ledger": "/games/haven-desk/ledger.html",
+      "feeds": [
+        "/games/haven-desk/ledger.json"
+      ]
     }
   ]
 }
