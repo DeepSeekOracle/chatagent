@@ -1,4 +1,4 @@
-/* Haven Desk 98
+/* LYGO 98
    Add a later desktop file by inserting one object in FILES:
    { id, name, kind: "text" | "app" | "frame", icon, x, y, body or href }
    kind "app" also needs a branch in mountApp().
@@ -8,7 +8,7 @@
 
   var STORE_KEY = "haven-desk-v1";
   var README = [
-    "HAVEN DESK 98",
+    "LYGO 98",
     "",
     "An original desk by Justin Helmer.",
     "Teal field. Gray windows. A Desk button.",
@@ -42,7 +42,7 @@
     { id: "corridor", name: "Lattice Corridor", kind: "frame", icon: "door", href: "/games/lattice-corridor/", x: 200, y: 164 },
     { id: "vale", name: "Vale Tactics", kind: "frame", icon: "moon", href: "/games/moonlit-tactics/", x: 200, y: 242 },
     { id: "games", name: "All Games", kind: "frame", icon: "grid", href: "/games/", x: 296, y: 320, desk: false },
-    { id: "about", name: "About Haven", kind: "app", icon: "about", x: 200, y: 398 }
+    { id: "about", name: "About LYGO", kind: "app", icon: "about", x: 200, y: 398 }
   ];
 
   var PLAYLISTS = [
@@ -57,7 +57,7 @@
   var store = loadStore();
   var zTop = 10;
   var selected = "";
-  var promptLog = "Haven Desk 98\nType help and press Enter.\n";
+  var promptLog = "LYGO 98\nType help and press Enter.\n";
   var promptHist = [];
   var histAt = -1;
   var tracks = [];
@@ -219,7 +219,7 @@
         "Kind: " + (file.kind || "file"),
         inBin(file) ? "Place: The Bin" : "Place: the desk",
         "",
-        "Haven Desk keeps this on this computer only."
+        "LYGO 98 keeps this on this computer only."
       ].join("\n");
       body.appendChild(pre);
     });
@@ -612,12 +612,12 @@
       var shown = FILES.filter(function (f) { return !inBin(f); });
       return shown.map(function (f) { return f.name; }).join("\n") + "\n" + shown.length + " file(s)";
     }
-    if (cmd === "ver") return "Haven Desk 98\nHearth build 2";
+    if (cmd === "ver") return "LYGO 98\nHearth build 3";
     if (cmd === "date") return new Date().toDateString();
     if (cmd === "time") return new Date().toLocaleTimeString();
     if (cmd === "cls") return "";
     if (cmd === "echo") return rest;
-    if (cmd === "desk") return "You are at Haven Desk 98.";
+    if (cmd === "desk") return "You are at LYGO 98.";
     if (cmd === "beep") { beep(); return "Beep."; }
     if (cmd === "shutdown") { askLeave(); return "The desk is asking."; }
     if (cmd === "games") {
@@ -1239,8 +1239,8 @@
     var box = document.createElement("div");
     box.className = "about-copy sunken";
     var lines = [
-      "Haven Desk is an original desk made for chatagent.ca by Justin Helmer (Excavationpro / Lightfather).",
-      "Desk 98 uses a teal field and gray windows because that shape is familiar. The names, pictures, and programs on this page are new. It is not Windows, and it does not ship Microsoft pictures or font files.",
+      "LYGO 98 is a late-90s desk made for chatagent.ca by Justin Helmer (Excavationpro / Lightfather).",
+      "The teal field and gray windows follow that era. The LYGO mark, the names, and the pictures are original. This is an unofficial spin-off. It is not Windows, and it does not use Microsoft's flag, pictures, or font files.",
       "Lattice Corridor and Vale Tactics are the same games as on the hub. They open in a window here.",
       "Notes and guest leaves stay in this browser."
     ];
@@ -1299,7 +1299,7 @@
     item("The Drawer", function () { openFile("drawer"); });
     item("The Bin", function () { openFile("bin"); });
     item("Guest Leaf", function () { openFile("leaf"); });
-    item("About Haven", function () { openFile("about"); });
+    item("About LYGO", function () { openFile("about"); });
     label("Games");
     item("Ash Cells", function () { openFile("ash"); });
     item("Ember Pairs", function () { openFile("pairs"); });
@@ -1421,7 +1421,7 @@
         var found = findFile(input.value);
         closeWin("run-box");
         if (Array.isArray(found)) deskAlert("Run", "More than one match.");
-        else if (!found) deskAlert("Run", "Haven Desk cannot find that.");
+        else if (!found) deskAlert("Run", "LYGO 98 cannot find that.");
         else openFile(found.id);
       });
       body.appendChild(p);
@@ -1472,10 +1472,14 @@
       });
       var bx = (Math.sin(Date.now() / 700) * 0.32 + 0.5) * w;
       var by = (Math.cos(Date.now() / 900) * 0.28 + 0.42) * h;
-      ctx.fillStyle = "#c45a12";
-      ctx.fillRect(bx, by, 26, 26);
-      ctx.fillStyle = "#000080";
-      ctx.fillRect(bx + 4, by + 4, 18, 7);
+      ctx.fillStyle = "#071018";
+      ctx.fillRect(bx, by, 36, 36);
+      ctx.strokeStyle = "#d4b483";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 1, by + 1, 34, 34);
+      ctx.fillStyle = "#5eead4";
+      ctx.fillRect(bx + 8, by + 8, 6, 20);
+      ctx.fillRect(bx + 8, by + 22, 16, 6);
       if (word && (reduce || Date.now() - t0 > 3200)) word.textContent = saverWord;
       if (!reduce) saverRAF = requestAnimationFrame(frame);
     }
@@ -1555,7 +1559,7 @@
       ["Cascade windows", cascade],
       ["Run", openRun],
       ["Screen saver", function () { power(false); }],
-      ["About Haven", function () { openFile("about"); }]
+      ["About LYGO", function () { openFile("about"); }]
     ]);
   });
   document.addEventListener("keydown", function (e) {

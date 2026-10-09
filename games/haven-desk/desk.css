@@ -51,7 +51,7 @@ button { cursor: pointer; }
 }
 #boot p, #off p { margin: 0 0 8px; }
 #boot .hint, #off .hint { color: #7a7a7a; margin-top: 18px; }
-#off { text-align: center; padding-top: 18vh; }
+#off { text-align: center; padding-top: 0; }
 #off h1 {
   font-weight: normal;
   font-size: 18px;
@@ -358,7 +358,29 @@ a.games-mini {
   width: 140px;
 }
 #off { display: block; }
-#off h1 { font-family: "Courier New", Courier, monospace; font-size: 18px; font-weight: normal; }
+#off h1 { font-family: Tahoma, "MS Sans Serif", Verdana, sans-serif; font-size: 16px; font-weight: normal; margin: 0 0 8px; }
+.lygo-mark {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 12px;
+  background: #071018;
+  color: #5eead4;
+  border: 3px solid #d4b483;
+  box-shadow: 4px 4px 0 #000;
+  font: 700 42px Tahoma, Verdana, sans-serif;
+  line-height: 72px;
+  text-align: center;
+}
+.lygo-brand {
+  margin: 0 0 6px;
+  font: 700 64px Tahoma, Verdana, sans-serif;
+  letter-spacing: 0.12em;
+  color: #e8fffb;
+}
+@media (max-width: 720px) {
+  .lygo-brand { font-size: 36px; letter-spacing: 0.08em; }
+  .lygo-mark { width: 56px; height: 56px; line-height: 56px; font-size: 32px; }
+}
 #saver { position: absolute; inset: 0; width: 100%; height: 100%; }
 .saver-copy {
   position: relative;
