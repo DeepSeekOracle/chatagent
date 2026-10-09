@@ -316,8 +316,11 @@
   });
 
   H.register("chat", function (body) {
+    var WIRE = "https://deepseekoracle-lygo-public-witness-agent.hf.space";
     var log = document.createElement("div");
     log.className = "chat-log sunken";
+    var history = [];
+    var pending = false;
     var seed = [
       ["lin", "you up? read the mail before you guess."],
       ["rook", "the cat is on the keys again."],
@@ -327,17 +330,116 @@
       var p = document.createElement("p");
       var b = document.createElement("b");
       b.textContent = who + ": ";
+      var span = document.createElement("span");
+      span.textContent = text;
       p.appendChild(b);
-      p.appendChild(document.createTextNode(text));
+      p.appendChild(span);
       log.appendChild(p);
       log.scrollTop = log.scrollHeight;
+      return span;
     }
-    seed.forEach(function (row) { line(row[0], row[1]); });
+    function boardReply(text) {
+      var low = text.toLowerCase();
+      if (low.indexOf("cat") !== -1) return "the cat is not the password. lin was clear.";
+      if (low.indexOf("marrow") !== -1) return "you have scrap one. the bin has the next errand.";
+      if (low.indexOf("bin") !== -1) return "open The Bin. rook throws clues out on purpose.";
+      if (low.indexOf("picnic") !== -1 || low.indexOf("map") !== -1) return "the red X is sandwiches. wrong trail.";
+      if (low.indexOf("saver") !== -1 || low.indexOf("off") !== -1) return "hit Off and watch the dark.";
+      if (low.indexOf("paper") !== -1 || low.indexOf("seam") !== -1) return "open Papers. the prompt line is seam lightfather.";
+      return "mm. the kettle is loud.";
+    }
+    var wireFn = null;
+    function askWire(text, transcript) {
+      var timer;
+      var timed = new Promise(function (_, reject) {
+        timer = setTimeout(function () { reject(new Error("slow")); }, 150000);
+      });
+      var session = "desk" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+      var eventId = "";
+      function fnIndex() {
+        if (wireFn !== null) return Promise.resolve(wireFn);
+        return fetch(WIRE + "/config").then(function (res) {
+          if (!res.ok) throw new Error("config");
+          return res.json();
+        }).then(function (cfg) {
+          var deps = cfg && cfg.dependencies ? cfg.dependencies : [];
+          var i;
+          for (i = 0; i < deps.length; i++) {
+            if (deps[i] && deps[i].api_name === "wire") {
+              wireFn = typeof deps[i].id === "number" ? deps[i].id : i;
+              return wireFn;
+            }
+          }
+          throw new Error("fn");
+        });
+      }
+      var call = fnIndex().then(function (fn) {
+        return fetch(WIRE + "/gradio_api/queue/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data: [text.slice(0, 400), transcript.slice(0, 900)],
+            fn_index: fn,
+            session_hash: session
+          })
+        });
+      }).then(function (res) {
+        if (!res.ok) throw new Error("post");
+        return res.json();
+      }).then(function (started) {
+        if (!started || !started.event_id) throw new Error("event");
+        eventId = started.event_id;
+        return fetch(WIRE + "/gradio_api/queue/data?session_hash=" + encodeURIComponent(session));
+      }).then(function (res) {
+        if (!res.ok || !res.body || !res.body.getReader) throw new Error("read");
+        var reader = res.body.getReader();
+        var dec = new TextDecoder();
+        var buf = "";
+        function pump() {
+          return reader.read().then(function (part) {
+            if (part.value) buf += dec.decode(part.value, { stream: !part.done });
+            var lines = buf.split("\n");
+            buf = lines.pop();
+            var i;
+            for (i = 0; i < lines.length; i++) {
+              var ln = lines[i].replace(/\r$/, "");
+              if (ln.indexOf("data:") !== 0) continue;
+              var msg;
+              try { msg = JSON.parse(ln.slice(5).trim()); } catch (ignore) { continue; }
+              if (!msg || msg.msg !== "process_completed") continue;
+              if (eventId && msg.event_id && msg.event_id !== eventId) continue;
+              reader.cancel();
+              if (!msg.success) throw new Error("drop");
+              var reply = msg.output && msg.output.data && msg.output.data[0] ? String(msg.output.data[0]) : "";
+              if (!reply || reply.indexOf("the wire dropped") === 0) throw new Error("drop");
+              return reply.slice(0, 280);
+            }
+            if (part.done) throw new Error("end");
+            return pump();
+          });
+        }
+        return pump();
+      });
+      return Promise.race([call, timed]).then(function (reply) {
+        clearTimeout(timer);
+        return reply;
+      }, function (err) {
+        clearTimeout(timer);
+        throw err;
+      });
+    }
+    seed.forEach(function (row) {
+      line(row[0], row[1]);
+      history.push(row[0] + ": " + row[1]);
+    });
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Lin answers on the public Hugging Face wire. The first line after a nap can take a minute. If the wire misses, the old board still answers.";
     var form = document.createElement("form");
     form.className = "prompt-row";
     var input = document.createElement("input");
     input.setAttribute("aria-label", "Say something");
-    input.maxLength = 160;
+    input.maxLength = 240;
     var go = document.createElement("button");
     go.className = "raised";
     go.type = "submit";
@@ -347,19 +449,29 @@
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var text = input.value.trim();
-      if (!text) return;
+      if (!text || pending) return;
       input.value = "";
       line("you", text);
-      var low = text.toLowerCase();
-      var reply = "mm. the kettle is loud.";
-      if (low.indexOf("cat") !== -1) reply = "the cat is not the password. lin was clear.";
-      else if (low.indexOf("marrow") !== -1) reply = "you have scrap one. the bin has the next errand.";
-      else if (low.indexOf("bin") !== -1) reply = "open The Bin. rook throws clues out on purpose.";
-      else if (low.indexOf("picnic") !== -1 || low.indexOf("map") !== -1) reply = "the red X is sandwiches. wrong trail.";
-      else if (low.indexOf("saver") !== -1 || low.indexOf("off") !== -1) reply = "hit Off and watch the dark.";
-      line("lin", reply);
+      history.push("you: " + text);
+      if (history.length > 8) history = history.slice(history.length - 8);
+      var status = line("lin", "the wire is reaching the board...");
+      pending = true;
+      go.disabled = true;
+      askWire(text, history.join("\n")).then(function (reply) {
+        status.textContent = reply;
+        history.push("lin: " + reply);
+      }).catch(function () {
+        var fallback = boardReply(text);
+        status.textContent = fallback + " (the live wire missed.)";
+        history.push("lin: " + fallback);
+      }).then(function () {
+        pending = false;
+        go.disabled = false;
+        log.scrollTop = log.scrollHeight;
+      });
     });
     body.appendChild(log);
+    body.appendChild(note);
     body.appendChild(form);
   });
 
