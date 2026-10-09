@@ -464,6 +464,18 @@ a.games-mini {
 }
 .meter > span { display: block; height: 100%; width: 0; background: #000080; }
 .lime-list { background: #e9ffe4; }
+.term {
+  flex: 1;
+  min-height: 150px;
+  margin: 0;
+  padding: 6px;
+  overflow: auto;
+  background: #06120c;
+  color: #b7f5c8;
+  font-family: "Courier New", Courier, monospace;
+  white-space: pre-wrap;
+}
+.term-in { font-family: "Courier New", Courier, monospace; }
 .wire-hit { display: block; margin: 0 0 6px; text-align: left; }
 
 @media (max-width: 720px) {

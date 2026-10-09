@@ -189,6 +189,12 @@
     ["wireweb", "Night Wire", "wire", 296, 398, 560, 460],
     ["swap", "Night Swap", "swap", 392, 398, 520, 420],
     ["lime", "Lime Line", "lime", 488, 8, 520, 420],
+    ["oldlines", "Old Lines", "old", 488, 86, 460, 440],
+    ["bbs", "Harbor Board", "bbs", 0, 0, 520, 440],
+    ["ftp", "File Pier", "ftp", 0, 0, 520, 420],
+    ["news", "News Spool", "news", 0, 0, 520, 420],
+    ["relay", "Relay Room", "irc", 0, 0, 520, 420],
+    ["discs", "Basement Discs", "discs", 0, 0, 480, 420],
     ["tidy", "Disk Tidy", "tidy", 0, 0],
     ["find", "Find", "find", 0, 0],
     ["calendar", "Day Page", "about", 0, 0],
@@ -635,7 +641,7 @@
     show("hearth://home");
   });
 
-  var modem = { up: false, job: 0, ctx: null, nodes: [], timer: null };
+  var modem = { up: false, bbs: false, job: 0, ctx: null, nodes: [], timer: null, showBoard: null };
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var DTMF = {
     "1": [697, 1209], "2": [697, 1336], "3": [697, 1477],
@@ -716,7 +722,7 @@
     modem.nodes.push(src);
   }
 
-  function handshake() {
+  function handshake(number) {
     var ctx = lineCtx();
     if (!ctx || reduceMotion) {
       if (ctx) tone(ctx, 440, ctx.currentTime, 0.12, "square", 0.03);
@@ -726,7 +732,8 @@
     tone(ctx, 350, t, 0.55, "sine", 0.03);
     tone(ctx, 440, t, 0.55, "sine", 0.03);
     t += 0.65;
-    "5550198".split("").forEach(function (digit) {
+    String(number || "5550198").replace(/\D/g, "").split("").forEach(function (digit) {
+      if (!DTMF[digit]) return;
       tone(ctx, DTMF[digit][0], t, 0.1, "sine", 0.035);
       tone(ctx, DTMF[digit][1], t, 0.1, "sine", 0.035);
       t += 0.16;
@@ -755,32 +762,109 @@
     });
   }
 
+  function lineLabel() {
+    if (modem.up) return "connected at 28800";
+    if (modem.bbs) return "Harbor Board, no internet";
+    return "on the hook";
+  }
+
   function paintLine() {
+    var busy = modem.up || modem.bbs;
     document.querySelectorAll("[data-modem-lamp]").forEach(function (el) {
-      el.classList.toggle("is-on", modem.up);
+      el.classList.toggle("is-on", busy);
     });
     document.querySelectorAll("[data-modem-state]").forEach(function (el) {
-      el.textContent = modem.up ? "connected at 28800" : "on the hook";
+      el.textContent = lineLabel();
     });
     document.querySelectorAll("[data-modem-call]").forEach(function (el) {
-      el.textContent = modem.up ? "Hang up" : "Call";
+      el.textContent = busy ? "Hang up" : "Call";
+    });
+    document.querySelectorAll("[data-modem-board]").forEach(function (el) {
+      el.textContent = busy ? "Hang up" : "Harbor Board";
     });
   }
 
   function hangUp(quiet) {
     modem.job += 1;
     modem.up = false;
+    modem.bbs = false;
     if (modem.timer) clearInterval(modem.timer);
     modem.timer = null;
     silence();
     paintLine();
     if (!quiet && modem.log && modem.log.isConnected) modem.log.textContent += "click. the line is down.\n";
+    if (modem.showBoard) modem.showBoard();
   }
 
   function needLine(status) {
     if (modem.up) return true;
-    status.textContent = "The modem is on the hook. Open Dial Tone and call.";
+    status.textContent = modem.bbs
+      ? "The phone is on the Harbor Board. Hang up, then call the wire."
+      : "The modem is on the hook. Open Dial Tone and call.";
     return false;
+  }
+
+  function placeCall(mode) {
+    if (modem.up || modem.bbs) {
+      hangUp(false);
+      return;
+    }
+    var board = mode === "bbs";
+    var job = modem.job + 1;
+    modem.job = job;
+    if (modem.timer) clearInterval(modem.timer);
+    silence();
+    if (modem.log && modem.log.isConnected) modem.log.textContent = "";
+    var lines = reduceMotion
+      ? [[0, "off the hook"], [80, board ? "Harbor Board answered." : "carrier 28800"], [160, board ? "You are on the board." : "The Night Wire is up."]]
+      : board
+        ? [
+          [0, "off the hook"],
+          [500, "dial tone"],
+          [1200, "dialing 555-0147"],
+          [2500, "ringing a local board"],
+          [3600, "answer"],
+          [3900, "this call is direct, no internet"],
+          [4500, "Harbor Board says hello."]
+        ]
+        : [
+          [0, "off the hook"],
+          [500, "dial tone"],
+          [1200, "dialing 555-0198"],
+          [2500, "ringing the night board"],
+          [3600, "answer"],
+          [3900, "handshake"],
+          [5000, "carrier 28800"],
+          [5400, "The Night Wire is up."]
+        ];
+    var step = 0;
+    var started = Date.now();
+    try { handshake(board ? "5550147" : "5550198"); } catch (e) { /* this browser has no tone */ }
+    modem.timer = setInterval(function () {
+      if (modem.job !== job) {
+        clearInterval(modem.timer);
+        return;
+      }
+      var elapsed = Date.now() - started;
+      var log = modem.log;
+      while (step < lines.length && elapsed >= lines[step][0]) {
+        if (log && log.isConnected) {
+          log.textContent += lines[step][1] + "\n";
+          log.scrollTop = log.scrollHeight;
+        }
+        step += 1;
+      }
+      if (step >= lines.length) {
+        clearInterval(modem.timer);
+        modem.timer = null;
+        if (modem.job !== job) return;
+        modem.up = !board;
+        modem.bbs = board;
+        paintLine();
+        if (board && modem.showBoard) modem.showBoard();
+        else if (board) H.open("bbs");
+      }
+    }, 40);
   }
 
   function pour(bar, done) {
@@ -811,7 +895,7 @@
   H.register("dial", function (body) {
     var log = document.createElement("pre");
     log.className = "prompt-out sunken";
-    log.textContent = "Hearth modem\nFictional number 555-0198\nPress Call. The squeal is synthesized in this browser.\n";
+    log.textContent = "Hearth modem. One phone line.\nCall reaches the internet at 555-0198.\nHarbor Board is a direct call at 555-0147. That one has no internet.\n";
     modem.log = log;
     var row = document.createElement("div");
     row.className = "row";
@@ -825,70 +909,31 @@
     call.type = "button";
     call.className = "raised";
     call.dataset.modemCall = "1";
-    call.textContent = modem.up ? "Hang up" : "Call";
+    call.textContent = (modem.up || modem.bbs) ? "Hang up" : "Call";
+    var boardBtn = document.createElement("button");
+    boardBtn.type = "button";
+    boardBtn.className = "raised";
+    boardBtn.dataset.modemBoard = "1";
+    boardBtn.textContent = (modem.up || modem.bbs) ? "Hang up" : "Harbor Board";
     var openWire = document.createElement("button");
     openWire.type = "button";
     openWire.className = "raised";
     openWire.textContent = "Night Wire";
     openWire.addEventListener("click", function () { H.open("wireweb"); });
-    function stamp() {
-      call.textContent = modem.up ? "Hang up" : "Call";
-      lamp.classList.toggle("is-on", modem.up);
-      state.textContent = modem.up ? "connected at 28800" : "on the hook";
-    }
-    call.addEventListener("click", function () {
-      if (modem.up) {
-        hangUp(false);
-        stamp();
-        return;
-      }
-      var job = modem.job + 1;
-      modem.job = job;
-      if (modem.timer) clearInterval(modem.timer);
-      silence();
-      log.textContent = "";
-      var lines = reduceMotion
-        ? [[0, "off the hook"], [80, "carrier 28800"], [160, "The Night Wire is up."]]
-        : [
-          [0, "off the hook"],
-          [500, "dial tone"],
-          [1200, "dialing 555-0198"],
-          [2500, "ringing the night board"],
-          [3600, "answer"],
-          [3900, "handshake"],
-          [5000, "carrier 28800"],
-          [5400, "The Night Wire is up."]
-        ];
-      var step = 0;
-      var started = Date.now();
-      try { handshake(); } catch (e) { /* this browser has no tone */ }
-      modem.timer = setInterval(function () {
-        if (modem.job !== job) {
-          clearInterval(modem.timer);
-          return;
-        }
-        var elapsed = Date.now() - started;
-        while (step < lines.length && elapsed >= lines[step][0]) {
-          log.textContent += lines[step][1] + "\n";
-          log.scrollTop = log.scrollHeight;
-          step += 1;
-        }
-        if (step >= lines.length) {
-          clearInterval(modem.timer);
-          modem.timer = null;
-          if (modem.job === job) {
-            modem.up = true;
-            stamp();
-            paintLine();
-          }
-        }
-      }, 40);
-    });
-    stamp();
+    var openOld = document.createElement("button");
+    openOld.type = "button";
+    openOld.className = "raised";
+    openOld.textContent = "Old Lines";
+    openOld.addEventListener("click", function () { H.open("oldlines"); });
+    call.addEventListener("click", function () { placeCall("net"); });
+    boardBtn.addEventListener("click", function () { placeCall("bbs"); });
+    paintLine();
     row.appendChild(call);
+    row.appendChild(boardBtn);
     row.appendChild(lamp);
     row.appendChild(state);
     row.appendChild(openWire);
+    row.appendChild(openOld);
     body.appendChild(row);
     body.appendChild(log);
   });
@@ -1143,6 +1188,509 @@
     body.appendChild(note);
     body.appendChild(state);
     body.appendChild(form);
+    body.appendChild(meter);
+    body.appendChild(list);
+  });
+
+  H.register("oldlines", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Before the pretend song boards, files moved in older ways. Harbor Board is a direct phone call. The other rooms need the internet from Dial Tone. These are desk fictions, not those old networks.";
+    var list = document.createElement("div");
+    list.className = "page-view sunken";
+    [
+      ["Harbor Board", "bbs", "A local board. Messages, a short file list, and a one-room text game."],
+      ["File Pier", "ftp", "Walk a directory with dir, cd, and get. That is the old file-transfer shape."],
+      ["News Spool", "news", "Public notes. One group splits a short file into parts you join."],
+      ["Relay Room", "relay", "A chat room. A shelf bot hands you a tone if you ask."],
+      ["Basement Discs", "discs", "One page of desk artists. The file comes from the site, not from a stranger's computer."]
+    ].forEach(function (row) {
+      var line = document.createElement("div");
+      line.className = "row";
+      var label = document.createElement("span");
+      label.textContent = row[0] + " — " + row[2];
+      var open = document.createElement("button");
+      open.type = "button";
+      open.className = "raised";
+      open.textContent = "Open";
+      open.addEventListener("click", function () { H.open(row[1]); });
+      line.appendChild(label);
+      line.appendChild(open);
+      list.appendChild(line);
+    });
+    body.appendChild(note);
+    body.appendChild(list);
+  });
+
+  H.register("bbs", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Harbor Board is a pretend local bulletin board. Calling it uses the phone by itself, so the internet drops. It does not carry anyone else's game or records.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = lineLabel();
+    var row = document.createElement("div");
+    row.className = "row";
+    var dial = document.createElement("button");
+    dial.type = "button";
+    dial.className = "raised";
+    dial.dataset.modemBoard = "1";
+    dial.textContent = (modem.up || modem.bbs) ? "Hang up" : "Harbor Board";
+    row.appendChild(dial);
+    dial.addEventListener("click", function () { placeCall("bbs"); });
+    var screen = document.createElement("pre");
+    screen.className = "term";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.className = "term-in";
+    input.setAttribute("aria-label", "Board command");
+    input.placeholder = "n, f, g, look, q";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Send";
+    form.appendChild(input);
+    form.appendChild(go);
+    var room = "office";
+    var lampOn = false;
+    function write(text) { screen.textContent = text; }
+    function menuText() {
+      return [
+        "HARBOR BOARD",
+        "March 1998. You are the only caller.",
+        "",
+        "N  notes",
+        "F  files",
+        "G  gate, a one-room game",
+        "Q  goodbye",
+        "",
+        "Type a letter."
+      ].join("\n");
+    }
+    function filesText() {
+      return [
+        "FILE LIST",
+        "readme.txt     a note from the sysop",
+        "kettle.ton     an original desk tone",
+        "ash.txt        points at Ash Cells on this desk",
+        "",
+        "Type get readme, get kettle, or get ash."
+      ].join("\n");
+    }
+    function draw() {
+      state.textContent = lineLabel();
+      dial.textContent = (modem.up || modem.bbs) ? "Hang up" : "Harbor Board";
+      if (!modem.bbs) {
+        write("The board is dark.\nPress Harbor Board.\n555-0147 is a story. One phone line.");
+        return;
+      }
+      write(menuText());
+    }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!modem.bbs) {
+        state.textContent = "The board is not on the line.";
+        return;
+      }
+      var cmd = input.value.trim().toLowerCase();
+      input.value = "";
+      if (cmd === "n" || cmd === "notes") {
+        write("NOTES\nLin: the cat is still not a password.\nRook: I left the lamp on in the gate.\nSysop: files are desk fiction. Take one with get.");
+        return;
+      }
+      if (cmd === "f" || cmd === "files") {
+        write(filesText());
+        return;
+      }
+      if (cmd === "get readme" || cmd === "get readme.txt") {
+        write("SYSOP NOTE\nThis board hangs off one phone line.\nWhen you want the internet again, hang up and call 555-0198.");
+        return;
+      }
+      if (cmd === "get kettle" || cmd === "get kettle.ton") {
+        playNotes([523, 659, 784, 659, 523]);
+        write("kettle.ton played. It was written for this desk.");
+        return;
+      }
+      if (cmd === "get ash" || cmd === "get ash.txt") {
+        write("ash.txt\nAsh Cells is already on the desk. Opening it.");
+        H.open("ash");
+        return;
+      }
+      if (cmd === "g" || cmd === "gate" || cmd === "game") {
+        room = "office";
+        lampOn = false;
+        write("GATE\nYou are in a small office. A lamp is dark. A door leads to the pier.\nType look, lamp, pier, or leave.");
+        return;
+      }
+      if (cmd === "look") {
+        write(room === "pier"
+          ? "The water is black. A bell buoy clanks. Type office or leave."
+          : "The office is " + (lampOn ? "lit." : "dark.") + " The door faces the pier.\nType lamp, pier, or leave.");
+        return;
+      }
+      if (cmd === "lamp") {
+        lampOn = !lampOn;
+        write(lampOn ? "You turn the lamp on." : "You turn the lamp off.");
+        return;
+      }
+      if (cmd === "pier" || cmd === "door") {
+        room = "pier";
+        write("You step onto the pier. Type look, office, or leave.");
+        return;
+      }
+      if (cmd === "office") {
+        room = "office";
+        write("Back in the office. Type look.");
+        return;
+      }
+      if (cmd === "q" || cmd === "quit" || cmd === "leave" || cmd === "goodbye") {
+        write("The board says goodbye.");
+        hangUp(false);
+        return;
+      }
+      write("The board does not know \"" + cmd + "\".\nTry n, f, g, or q.");
+    });
+    modem.showBoard = draw;
+    draw();
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(row);
+    body.appendChild(screen);
+    body.appendChild(form);
+  });
+
+  H.register("ftp", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "File Pier is a pretend file-transfer directory. The folders are fiction on this desk. Nothing is fetched from a university or a company.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = lineLabel();
+    var screen = document.createElement("pre");
+    screen.className = "term";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.className = "term-in";
+    input.setAttribute("aria-label", "File Pier command");
+    input.placeholder = "dir, cd pub, get welcome.txt";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Send";
+    form.appendChild(input);
+    form.appendChild(go);
+    var cwd = "/";
+    var dirs = {
+      "/": ["pub"],
+      "/pub": ["notes", "tones", "software"],
+      "/pub/notes": [],
+      "/pub/tones": [],
+      "/pub/software": []
+    };
+    var files = {
+      "/": [],
+      "/pub": [],
+      "/pub/notes": ["welcome.txt"],
+      "/pub/tones": ["kettle.txt"],
+      "/pub/software": ["ash.txt"]
+    };
+    function parentOf(path) {
+      if (path === "/") return "/";
+      var cut = path.lastIndexOf("/");
+      return cut <= 0 ? "/" : path.slice(0, cut);
+    }
+    function listing() {
+      var lines = ["ftp harbor.desk", "cwd " + cwd];
+      (dirs[cwd] || []).forEach(function (name) { lines.push("dir   " + name); });
+      (files[cwd] || []).forEach(function (name) { lines.push("file  " + name); });
+      if (cwd !== "/") lines.push("dir   ..");
+      lines.push("", "dir, cd name, cd .., get file");
+      return lines.join("\n");
+    }
+    function draw() {
+      state.textContent = lineLabel();
+      screen.textContent = modem.up ? listing() : "The pier is closed.\nCall the wire from Dial Tone first.\nThis room needs the internet, not the Harbor Board.";
+    }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!needLine(state)) {
+        draw();
+        return;
+      }
+      var parts = input.value.trim().toLowerCase().split(/\s+/);
+      input.value = "";
+      var cmd = parts[0] || "";
+      var arg = parts.slice(1).join(" ");
+      if (cmd === "dir" || cmd === "ls" || cmd === "") {
+        draw();
+        return;
+      }
+      if (cmd === "cd") {
+        var next = arg === ".." ? parentOf(cwd) : (cwd === "/" ? "/" + arg : cwd + "/" + arg);
+        if (!dirs[next]) {
+          screen.textContent = listing() + "\n\nNo directory named " + (arg || "(blank)") + ".";
+          return;
+        }
+        cwd = next;
+        draw();
+        return;
+      }
+      if (cmd === "get") {
+        var have = (files[cwd] || []).indexOf(arg) !== -1;
+        if (!have) {
+          screen.textContent = listing() + "\n\nNo file named " + (arg || "(blank)") + ".";
+          return;
+        }
+        if (arg === "welcome.txt") {
+          screen.textContent = "welcome.txt\nPeople moved files this way before the web was common.\nOn this desk the files were written for the game.";
+          return;
+        }
+        if (arg === "kettle.txt") {
+          playNotes([523, 659, 784, 659]);
+          screen.textContent = "kettle.txt\nPlayed an original tone. The pier did not send a record.";
+          return;
+        }
+        screen.textContent = "ash.txt\nAsh Cells is on the desk already.";
+        H.open("ash");
+        return;
+      }
+      screen.textContent = listing() + "\n\nTry dir, cd, or get.";
+    });
+    draw();
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(screen);
+    body.appendChild(form);
+  });
+
+  H.register("news", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "News Spool is a pretend public note system. The posts were written for this desk. The split file is three lines of text, not someone else's program.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = lineLabel();
+    var view = document.createElement("div");
+    view.className = "page-view sunken";
+    var saved = {};
+    var groups = [
+      { id: "desk.talk", posts: ["Lin: the kettle is loud again.", "Rook: leave the board if you want the internet."] },
+      { id: "desk.audio", posts: ["Sysop: tones on this desk are original. Do not look for other people's songs here."] },
+      { id: "desk.parts", posts: [] }
+    ];
+    var parts = {
+      a: "the board was here ",
+      b: "before the swap. ",
+      c: "the line is still one phone."
+    };
+    function barrier() {
+      view.innerHTML = "";
+      addP(view, modem.bbs ? "The phone is on the Harbor Board. Hang up, then call the wire." : "Call the wire from Dial Tone. The spool needs the internet.");
+      var again = document.createElement("button");
+      again.type = "button";
+      again.className = "raised";
+      again.textContent = "Look again";
+      again.addEventListener("click", showGroups);
+      view.appendChild(again);
+    }
+    function showGroups() {
+      if (!modem.up) {
+        barrier();
+        return;
+      }
+      view.innerHTML = "";
+      var h = document.createElement("h2");
+      h.textContent = "Groups";
+      view.appendChild(h);
+      groups.forEach(function (group) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "track";
+        b.textContent = group.id;
+        b.addEventListener("click", function () { showGroup(group); });
+        view.appendChild(b);
+      });
+    }
+    function showGroup(group) {
+      view.innerHTML = "";
+      var h = document.createElement("h2");
+      h.textContent = group.id;
+      view.appendChild(h);
+      group.posts.forEach(function (text) { addP(view, text); });
+      if (group.id === "desk.parts") {
+        addP(view, "Three text parts. Save each one, then join them.");
+        Object.keys(parts).forEach(function (key) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "raised";
+          b.textContent = saved[key] ? "part " + key + " saved" : "Save part " + key;
+          b.addEventListener("click", function () {
+            if (!needLine(state)) return;
+            saved[key] = true;
+            b.textContent = "part " + key + " saved";
+          });
+          view.appendChild(b);
+        });
+        var join = document.createElement("button");
+        join.type = "button";
+        join.className = "raised";
+        join.textContent = "Join the parts";
+        join.addEventListener("click", function () {
+          if (!needLine(state)) return;
+          if (!saved.a || !saved.b || !saved.c) {
+            state.textContent = "Save part a, part b, and part c.";
+            return;
+          }
+          addP(view, parts.a + parts.b + parts.c);
+          state.textContent = "The parts sat back together.";
+        });
+        view.appendChild(join);
+      }
+      var back = document.createElement("button");
+      back.type = "button";
+      back.className = "raised";
+      back.textContent = "Groups";
+      back.addEventListener("click", showGroups);
+      view.appendChild(back);
+    }
+    showGroups();
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(view);
+  });
+
+  H.register("relay", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Relay Room is a pretend chat. The shelf bot only has original desk tones. It is not a real relay network.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = lineLabel();
+    var screen = document.createElement("pre");
+    screen.className = "term";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.className = "term-in";
+    input.setAttribute("aria-label", "Say something");
+    input.placeholder = "!list  or  !get kettle";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Send";
+    form.appendChild(input);
+    form.appendChild(go);
+    var lines = [];
+    function push(text) {
+      lines.push(text);
+      if (lines.length > 14) lines = lines.slice(lines.length - 14);
+      screen.textContent = lines.join("\n");
+      screen.scrollTop = screen.scrollHeight;
+    }
+    function hello() {
+      lines = [];
+      if (!modem.up) {
+        push(modem.bbs ? "The phone is on the Harbor Board." : "The relay is quiet. Call the wire first.");
+        return;
+      }
+      push("* you join #harbor");
+      push("<lin> you made it past the squeal");
+      push("<shelfbot> tones: kettle, harbor, glass. say !get kettle");
+    }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!needLine(state)) {
+        hello();
+        return;
+      }
+      var text = input.value.trim();
+      input.value = "";
+      if (!text) return;
+      if (!lines.length || lines[0].indexOf("quiet") !== -1 || lines[0].indexOf("Harbor") !== -1) hello();
+      push("<you> " + text);
+      var low = text.toLowerCase();
+      if (low === "!list" || low === "!help") {
+        push("<shelfbot> !get kettle, !get harbor, !get glass");
+        return;
+      }
+      if (low.indexOf("!get kettle") !== -1) {
+        playNotes([523, 659, 784, 659]);
+        push("<shelfbot> sent kettle. an original tone.");
+        return;
+      }
+      if (low.indexOf("!get harbor") !== -1) {
+        playNotes([392, 440, 494, 440]);
+        push("<shelfbot> sent harbor.");
+        return;
+      }
+      if (low.indexOf("!get glass") !== -1) {
+        playNotes([880, 988, 1046, 880]);
+        push("<shelfbot> sent glass.");
+        return;
+      }
+      push("<rook> mm. the kettle is loud.");
+    });
+    hello();
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(screen);
+    body.appendChild(form);
+  });
+
+  H.register("discs", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Basement Discs is a pretend artist page. The file comes from this one site. It is not a peer board, and it is not a real archive from that decade. The tones were written for this desk.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = lineLabel();
+    var list = document.createElement("div");
+    list.className = "page-view sunken";
+    var meter = document.createElement("div");
+    meter.className = "meter";
+    var fill = document.createElement("span");
+    meter.appendChild(fill);
+    var artists = [
+      { who: "Lin Park", title: "Kettle at 2am", notes: [523, 659, 784, 659, 523] },
+      { who: "Rook Pell", title: "Harbor Late", notes: [392, 440, 494, 440, 349] },
+      { who: "Mara", title: "Picnic Wrong", notes: [330, 392, 330, 294] }
+    ];
+    artists.forEach(function (row) {
+      var line = document.createElement("div");
+      line.className = "row";
+      var label = document.createElement("span");
+      label.textContent = row.who + " — " + row.title;
+      var get = document.createElement("button");
+      get.type = "button";
+      get.className = "raised";
+      get.textContent = "Get";
+      get.addEventListener("click", function () {
+        if (!needLine(state)) return;
+        Array.prototype.forEach.call(line.querySelectorAll("button"), function (b) {
+          if (b !== get) b.remove();
+        });
+        get.disabled = true;
+        fill.style.width = "0";
+        state.textContent = "the site is sending " + row.title + "...";
+        pour(fill, function () {
+          get.disabled = false;
+          state.textContent = row.title + " came from Basement Discs.";
+          var play = document.createElement("button");
+          play.type = "button";
+          play.className = "raised";
+          play.textContent = "Play";
+          play.addEventListener("click", function () { playNotes(row.notes); });
+          line.appendChild(play);
+        });
+      });
+      line.appendChild(label);
+      line.appendChild(get);
+      list.appendChild(line);
+    });
+    body.appendChild(note);
+    body.appendChild(state);
     body.appendChild(meter);
     body.appendChild(list);
   });
