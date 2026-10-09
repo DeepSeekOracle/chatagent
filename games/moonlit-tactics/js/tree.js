@@ -64,7 +64,20 @@ export function prepareTree(json) {
     byId[row.id] = { id: row.id, name: row.name, kind: "anchor", x: row.x, y: row.y, calling: row.calling, requires: [], ops: [] };
   });
   json.nodes.forEach((row) => { byId[row.id] = row; });
-  return { id: json.id, anchors: json.anchors, nodes: json.nodes, byId, list: json.nodes };
+  const extra = [];
+  (json.extensions || []).forEach((ext) => {
+    if (!ext || ext.locked !== false || !Array.isArray(ext.nodes)) return;
+    ext.nodes.forEach((row) => {
+      if (!row || !row.id || byId[row.id]) return;
+      if (row.kind !== "small" && row.kind !== "notable" && row.kind !== "keystone") return;
+      if (!Array.isArray(row.requires) || !row.requires.length) return;
+      if (row.requires.some((id) => !byId[id])) return;
+      if (!Array.isArray(row.ops)) return;
+      byId[row.id] = row;
+      extra.push(row);
+    });
+  });
+  return { id: json.id, anchors: json.anchors, nodes: json.nodes, extra, byId, list: json.nodes.concat(extra) };
 }
 
 export function route(book, anchorId, goalId) {
@@ -447,7 +460,7 @@ export function mountWheel(parent, opts) {
     svg.textContent = "";
     drawGuides();
     const seen = {};
-    book.nodes.forEach((row) => {
+    book.list.forEach((row) => {
       row.requires.forEach((id) => {
         const other = book.byId[id];
         if (!other) return;
@@ -457,7 +470,7 @@ export function mountWheel(parent, opts) {
         drawEdge(row, other);
       });
     });
-    book.anchors.map((row) => book.byId[row.id]).concat(book.nodes).forEach(drawNode);
+    book.anchors.map((row) => book.byId[row.id]).concat(book.list).forEach(drawNode);
   }
 
   function paint() {

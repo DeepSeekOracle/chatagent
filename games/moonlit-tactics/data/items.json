@@ -4,7 +4,7 @@
     "book": 1,
     "chapters": [0, 15],
     "nextChapter": 16,
-    "rule": "A later book appends sellable rows whose chapter is 16 or higher. The save keeps the bag, worn gear, Embers, Measures, wheel, and Emberion's stage. The counter stocks every sellable row at or below the save's chapter."
+    "rule": "Book II appends rows whose chapter is 16 or higher. The save keeps the bag, worn gear, Embers, Measures, wheel, and Emberion's stage. The counter stocks every sellable row at or below the save's chapter."
   },
   "items": [
     {
@@ -603,6 +603,36 @@
       "trim": null,
       "effect": "haste",
       "overlay": "self"
+    },
+    {
+      "id": "root-wrap",
+      "name": "Root Wrap",
+      "kind": "body",
+      "slot": "body",
+      "family": null,
+      "element": "none",
+      "chapter": 20,
+      "price": 280,
+      "sellable": true,
+      "mods": { "DEF": 8, "RES": 8 },
+      "plate": null,
+      "recolor": false,
+      "trim": "cloth"
+    },
+    {
+      "id": "accord-shard",
+      "name": "Accord Shard",
+      "kind": "key",
+      "slot": null,
+      "family": null,
+      "element": "none",
+      "chapter": 16,
+      "price": 0,
+      "sellable": false,
+      "mods": {},
+      "plate": null,
+      "recolor": false,
+      "trim": null
     },
     {
       "id": "kairos-wheel-broken",

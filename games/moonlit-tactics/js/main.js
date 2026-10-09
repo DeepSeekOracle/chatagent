@@ -5,7 +5,7 @@ import { bindHooks, bindTravel, closeWindow, escapeWindow, isOpen, openWindow, s
 import { writeFresh } from "./card.js?v=20261008-newgame4";
 import { openTown } from "./town.js?v=20261008-gear";
 import { mineLeaveCell, openDungeon } from "./dungeon.js";
-import { armLoft, currentBeat, hideScene, openScenes, releaseLoft, resumeAfterFight, showScene } from "./scene.js?v=20261008-newgame5";
+import { armLoft, currentBeat, hideScene, openScenes, releaseLoft, resumeAfterFight, showScene } from "./scene.js?v=20261008-books2";
 import {
   callingSlot,
   confirmRoadPlate,
@@ -135,8 +135,8 @@ function companyIds(slot) {
   const id = sceneSpec && sceneSpec.id ? sceneSpec.id : "";
   const flags = slot && slot.flags ? slot.flags : {};
   const ids = [];
-  if (chapter >= 3 && !flags.lyraFallen) ids.push("lyra");
-  if (chapter >= 7 || id === "h3-drill") ids.push("bram", "nessa");
+  if (chapter >= 3 && chapter < 16 && !flags.lyraFallen) ids.push("lyra");
+  if ((chapter >= 7 && chapter <= 20) || id === "h3-drill") ids.push("bram", "nessa");
   if (chapter >= 7 && chapter <= 10 && !flags.miralisTaken) ids.push("miralis");
   return ids;
 }
@@ -226,7 +226,7 @@ function makeTiles(plate) {
   if (file === "thicket.jpg" || file === "dream.jpg") {
     scenic = "thicket";
     note = "Thicket. The path is the open lane.";
-  } else if (file === "peaks.jpg" || file === "ridge.jpg") {
+  } else if (file === "peaks.jpg" || file === "ridge.jpg" || file === "b2-c01.jpg" || file === "b2-c04.jpg") {
     scenic = "rock";
     note = "Ridge stone. The far edge sits higher.";
     high = true;
@@ -291,7 +291,10 @@ function makeBattle(card) {
     pushSceneFoes(puppets, sceneSpec);
     return battleState(tiles, puppets, "adept", false, laid.note);
   }
-  const units = [unit(serenya), emberion];
+  const flags = card && card.flags ? card.flags : {};
+  const units = [];
+  if (!(storyFoes && flags.serenyaPassed)) units.push(unit(serenya));
+  if (!flags.emberionAscended) units.push(emberion);
   if (!storyFoes) {
     units.push(unit({
       id: "shade", name: "Shade-beast", team: "foe", x: 5, y: 1, face: 2,

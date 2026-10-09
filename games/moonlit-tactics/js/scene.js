@@ -10,7 +10,19 @@ const NAMES = {
   nessa: "Nessa",
   miralis: "Miralis",
   corvath: "Corvath",
-  shade: "Shade"
+  shade: "Shade",
+  kaelion: "Kaelion",
+  harmonix: "Harmonix",
+  aetheris: "Ætheris",
+  sancora: "Sancora",
+  lightfather: "Lightfather",
+  eternis: "Eternis",
+  orphiel: "Orphiel",
+  arval: "Arval",
+  aureon: "Aureon",
+  genesis: "Genesis Bloom",
+  volaris: "Volaris",
+  mirror: "Infinity Mirror"
 };
 
 let beats = [];
@@ -34,6 +46,17 @@ function cue(name) {
 
 function $(id) {
   return document.getElementById(id);
+}
+
+function novelFor(chapter) {
+  if (chapter >= 49) return "book-4";
+  if (chapter >= 33) return "book-3";
+  if (chapter >= 16) return "book-2";
+  return "book-1";
+}
+
+function loadBook(file) {
+  return fetch(file).then((res) => (res.ok ? res.json() : { beats: [] })).catch(() => ({ beats: [] }));
 }
 
 function bind() {
@@ -123,7 +146,11 @@ function paint() {
     next.textContent = beat.next;
   } else next.hidden = true;
   const read = $("scene-read");
-  if (read) read.hidden = !beat.read;
+  if (read) {
+    const novel = beat.novel || novelFor(beat.chapter || 0);
+    read.href = "https://chatagent.ca/books/" + novel + "/";
+    read.hidden = !beat.read;
+  }
   const banner = $("scene-banner");
   if (banner) banner.hidden = !loftLocked();
   if (hooks.onMark) hooks.onMark(beat.id);
@@ -165,10 +192,15 @@ export function openScenes(nextHooks, startId) {
     index = 0;
     paint();
   }
-  return fetch("data/scenes/book.json?v=20261008-flow2").then((res) => res.json()).then((doc) => {
+  const stamp = "20261008-books2";
+  const book1 = fetch("data/scenes/book.json?v=" + stamp).then((res) => res.json());
+  const book2 = loadBook("data/scenes/book-2.json?v=" + stamp);
+  const book3 = loadBook("data/scenes/book-3.json?v=" + stamp);
+  const book4 = loadBook("data/scenes/book-4.json?v=" + stamp);
+  return Promise.all([book1, book2, book3, book4]).then((docs) => {
     if (token !== openToken || gen !== playGen) return;
     const resumeId = blocked || loftLocked() ? null : startId;
-    beats = doc.beats || [];
+    beats = docs.reduce((all, doc) => all.concat((doc && doc.beats) || []), []);
     index = 0;
     if (resumeId) {
       const at = beats.findIndex((beat) => beat.id === resumeId);

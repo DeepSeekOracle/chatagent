@@ -14,7 +14,9 @@
     "c10-moonrise": ["kairos-wheel-broken"],
     "c12-crack": ["cracked-stone"],
     "c13-song": ["skylark-rod"],
-    "c14-gate": ["ash-mantle"]
+    "c14-gate": ["ash-mantle"],
+    "b2-c1-fires": ["accord-shard"],
+    "b2-c4-forge": ["root-wrap"]
   },
   "equipIfEmpty": {
     "ash-mantle": "serenya"

@@ -1559,13 +1559,13 @@
       "chapter": 15,
       "kicker": "The Moonlit Slumber",
       "plate": "assets/scenes/dawn.jpg",
-      "line": "Haven leans once more and takes its hand back for good. The song that remains is one the Vale can keep without being carried. Serenya and Emberion are still here. Miralis is still taken. Lyra is still gone. Nobody is crowned. The Shattered Accord is the next book, and it is not in this release. The slumber is an ending, not a dungeon.",
+      "line": "Haven leans once more and takes its hand back for good. The song that remains is one the Vale can keep without being carried. Serenya and Emberion are still here. Miralis is still taken. Lyra is still gone. Nobody is crowned. The slumber keeps this save. The Shattered Accord opens on the next page.",
       "cast": [
         "serenya",
         "emberion"
       ],
       "flag": "book1Clear",
-      "next": "Menu",
+      "next": "The Shattered Accord",
       "speak": [
         {
           "who": "serenya",

@@ -1637,8 +1637,63 @@
   "extensions": [
     {
       "id": "book-2",
-      "locked": true,
-      "nodes": []
+      "locked": false,
+      "nodes": [
+        {
+          "id": "b2-s1",
+          "name": "Ash Measure",
+          "kind": "small",
+          "x": 430,
+          "y": 640,
+          "requires": ["shared-coal"],
+          "ops": [{ "op": "stat", "stat": "maxHp", "n": 2 }]
+        },
+        {
+          "id": "b2-s2",
+          "name": "Open Coal",
+          "kind": "small",
+          "x": 500,
+          "y": 668,
+          "requires": ["b2-s1"],
+          "ops": [{ "op": "stat", "stat": "mag", "n": 1 }]
+        },
+        {
+          "id": "b2-s3",
+          "name": "Root Brace",
+          "kind": "small",
+          "x": 570,
+          "y": 640,
+          "requires": ["b2-s1"],
+          "ops": [{ "op": "stat", "stat": "def", "n": 1 }]
+        },
+        {
+          "id": "b2-s4",
+          "name": "Held Name",
+          "kind": "small",
+          "x": 430,
+          "y": 730,
+          "requires": ["b2-s2"],
+          "ops": [{ "op": "stat", "stat": "res", "n": 1 }]
+        },
+        {
+          "id": "b2-s5",
+          "name": "Second Interval",
+          "kind": "small",
+          "x": 570,
+          "y": 730,
+          "requires": ["b2-s3"],
+          "ops": [{ "op": "stat", "stat": "atk", "n": 1 }]
+        },
+        {
+          "id": "b2-s6",
+          "name": "Living Rim",
+          "kind": "small",
+          "x": 500,
+          "y": 790,
+          "requires": ["b2-s4", "b2-s5"],
+          "ops": [{ "op": "stat", "stat": "maxHp", "n": 2 }]
+        }
+      ]
     }
   ]
 }
