@@ -23,7 +23,7 @@
 <meta name="twitter:title" content="Haven Desk — Desk 98">
 <meta name="twitter:description" content="An original teal desk with gray windows, a working Desk menu, and chatagent games on the desktop.">
 <meta name="twitter:image" content="https://chatagent.ca/games/haven-desk/assets/og.jpg">
-<link rel="stylesheet" href="./desk.css?v=20261008-desk2">
+<link rel="stylesheet" href="./desk.css?v=20261008-desk3">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -50,7 +50,8 @@
 <body>
 <div id="boot">
   <p>Haven Hearth BIOS 1.0</p>
-  <p id="boot-line">Checking field memory&nbsp;&nbsp;640K OK</p>
+  <p id="boot-line">CPU Hearth-90 &nbsp; memory 640K OK</p>
+  <p>Floppy A: not ready &nbsp; Hearth Line waiting</p>
   <p>Haven Desk 98</p>
   <p class="hint">Click to sit down.</p>
   <p><a class="games-mini" href="/games/">All games</a></p>
@@ -72,17 +73,27 @@
     </button>
     <div id="tasks"></div>
     <a class="games-mini" href="/games/">All games</a>
-    <div id="clock" class="sunken"></div>
+    <button id="vol-btn" class="raised tray" type="button" aria-label="Volume">Vol</button>
+    <button id="power-btn" class="raised tray" type="button" aria-label="Power off">Off</button>
+    <button id="clock" class="sunken" type="button"></button>
+    <div id="vol-pop" class="raised" hidden>
+      <input id="vol-slider" type="range" min="0" max="100" value="70" aria-label="Volume">
+    </div>
   </nav>
   <div id="desk-menu" class="raised" hidden role="menu"></div>
 </div>
 
 <div id="off" hidden>
-  <h1>It is now safe to leave the desk.</h1>
-  <p><button id="on-again" class="raised" type="button">Turn the desk back on</button></p>
-  <p><a class="games-mini" href="/games/">All games</a></p>
+  <canvas id="saver"></canvas>
+  <div class="saver-copy">
+    <h1>It is now safe to leave the desk.</h1>
+    <p id="saver-word"></p>
+    <p><button id="on-again" class="raised" type="button">Boot the desk</button></p>
+    <p><a class="games-mini" href="/games/">All games</a></p>
+  </div>
 </div>
 
-<script src="./desk.js?v=20261008-desk1"></script>
+<script src="./desk.js?v=20261008-desk3"></script>
+<script src="./desk-more.js?v=20261008-desk3"></script>
 </body>
 </html>

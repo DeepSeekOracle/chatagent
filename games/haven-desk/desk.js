@@ -22,7 +22,11 @@
     "They are the same games as on the games hub.",
     "",
     "Notes and guest leaves stay in this browser.",
-    "Type help in Hearth Prompt."
+    "Type help in Hearth Prompt.",
+    "",
+    "This copy of the desk was left on by Rook Pell,",
+    "a night archivist who invented the notes.",
+    "The scraps are fiction. Poke around."
   ].join("\n");
 
   var FILES = [
@@ -31,14 +35,14 @@
     { id: "prompt", name: "Hearth Prompt", kind: "app", icon: "prompt", x: 8, y: 164 },
     { id: "paint", name: "Hearth Paint", kind: "app", icon: "paint", x: 8, y: 242 },
     { id: "player", name: "Hearth Player", kind: "app", icon: "player", x: 8, y: 320 },
-    { id: "drawer", name: "The Drawer", kind: "app", icon: "drawer", x: 8, y: 398 },
+    { id: "drawer", name: "The Drawer", kind: "app", icon: "drawer", x: 200, y: 320 },
     { id: "ash", name: "Ash Cells", kind: "app", icon: "ash", x: 104, y: 8 },
-    { id: "pairs", name: "Ember Pairs", kind: "app", icon: "pairs", x: 104, y: 86 },
-    { id: "leaf", name: "Guest Leaf", kind: "app", icon: "leaf", x: 104, y: 164 },
-    { id: "corridor", name: "Lattice Corridor", kind: "frame", icon: "door", href: "/games/lattice-corridor/", x: 104, y: 242 },
-    { id: "vale", name: "Vale Tactics", kind: "frame", icon: "moon", href: "/games/moonlit-tactics/", x: 104, y: 320 },
-    { id: "games", name: "All Games", kind: "frame", icon: "grid", href: "/games/", x: 104, y: 398 },
-    { id: "about", name: "About Haven", kind: "app", icon: "about", x: 200, y: 8 }
+    { id: "pairs", name: "Ember Pairs", kind: "app", icon: "pairs", x: 104, y: 86, desk: false },
+    { id: "leaf", name: "Guest Leaf", kind: "app", icon: "leaf", x: 296, y: 242 },
+    { id: "corridor", name: "Lattice Corridor", kind: "frame", icon: "door", href: "/games/lattice-corridor/", x: 200, y: 164 },
+    { id: "vale", name: "Vale Tactics", kind: "frame", icon: "moon", href: "/games/moonlit-tactics/", x: 200, y: 242 },
+    { id: "games", name: "All Games", kind: "frame", icon: "grid", href: "/games/", x: 296, y: 320, desk: false },
+    { id: "about", name: "About Haven", kind: "app", icon: "about", x: 200, y: 398 }
   ];
 
   var PLAYLISTS = [
@@ -63,6 +67,13 @@
   var audioCtx = null;
   var msgN = 0;
   var booted = false;
+  var APP_MOUNT = {};
+  var EXTRA_CMD = {};
+  var renderHooks = [];
+  var saverWord = "GLASS";
+  var saverRAF = 0;
+  var idleAt = Date.now();
+  var bootClicked = false;
 
   var desktop = document.getElementById("desktop");
   var windows = document.getElementById("windows");
@@ -72,7 +83,7 @@
   var clock = document.getElementById("clock");
 
   function loadStore() {
-    var blank = { icons: {}, leaves: [], note: "", vol: 0.7, seen: false };
+    var blank = { icons: {}, leaves: [], note: "", vol: 0.7, seen: false, bin: {}, sticks: {} };
     try {
       var raw = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
       if (!raw || typeof raw !== "object") return blank;
@@ -81,6 +92,8 @@
       raw.note = typeof raw.note === "string" ? raw.note : "";
       raw.vol = typeof raw.vol === "number" ? raw.vol : 0.7;
       raw.seen = !!raw.seen;
+      raw.bin = raw.bin && typeof raw.bin === "object" ? raw.bin : {};
+      raw.sticks = raw.sticks && typeof raw.sticks === "object" ? raw.sticks : {};
       return raw;
     } catch (e) {
       return blank;
@@ -126,7 +139,19 @@
       door: '<rect x="8" y="3" width="16" height="24" fill="#303038" stroke="#c0c0c0"/><rect x="11" y="8" width="10" height="14" fill="#1a140c"/><rect x="18" y="14" width="2" height="2" fill="#e0b050"/>',
       moon: '<rect x="5" y="5" width="22" height="22" fill="#0c1830" stroke="#c0c0c0"/><rect x="12" y="8" width="8" height="8" fill="#f0e6c0"/><rect x="16" y="8" width="6" height="8" fill="#0c1830"/><rect x="8" y="20" width="16" height="3" fill="#208060"/>',
       grid: '<rect x="4" y="4" width="10" height="10" fill="#000080" stroke="#fff"/><rect x="18" y="4" width="10" height="10" fill="#008080" stroke="#fff"/><rect x="4" y="18" width="10" height="10" fill="#808000" stroke="#fff"/><rect x="18" y="18" width="10" height="10" fill="#800000" stroke="#fff"/>',
-      about: '<rect x="6" y="4" width="20" height="24" fill="#fff" stroke="#000"/><rect x="14" y="8" width="4" height="8" fill="#000080"/><rect x="14" y="18" width="4" height="4" fill="#000080"/>'
+      about: '<rect x="6" y="4" width="20" height="24" fill="#fff" stroke="#000"/><rect x="14" y="8" width="4" height="8" fill="#000080"/><rect x="14" y="18" width="4" height="4" fill="#000080"/>',
+      calc: '<rect x="6" y="3" width="20" height="26" fill="#d0d0d0" stroke="#000"/><rect x="9" y="6" width="14" height="5" fill="#b7d7b0"/><rect x="9" y="14" width="4" height="3" fill="#404040"/><rect x="15" y="14" width="4" height="3" fill="#404040"/><rect x="21" y="14" width="4" height="3" fill="#000080"/><rect x="9" y="19" width="4" height="3" fill="#404040"/><rect x="15" y="19" width="4" height="3" fill="#404040"/><rect x="21" y="19" width="4" height="3" fill="#800000"/>',
+      mail: '<rect x="4" y="8" width="24" height="16" fill="#f4f0e0" stroke="#000"/><path d="M4 8 L16 18 L28 8" fill="none" stroke="#000080" stroke-width="2"/>',
+      chat: '<rect x="4" y="6" width="18" height="14" fill="#fff" stroke="#000"/><rect x="10" y="14" width="16" height="12" fill="#e7f0ff" stroke="#000080"/>',
+      cards: '<rect x="6" y="4" width="14" height="20" fill="#fff" stroke="#000"/><rect x="12" y="8" width="14" height="20" fill="#000080" stroke="#fff"/><rect x="16" y="14" width="6" height="8" fill="#c45a12"/>',
+      bin: '<rect x="8" y="8" width="16" height="16" fill="#c0c0c0" stroke="#000"/><rect x="6" y="6" width="20" height="3" fill="#808080"/><rect x="12" y="12" width="8" height="2" fill="#000"/><rect x="12" y="16" width="8" height="2" fill="#000"/>',
+      photo: '<rect x="5" y="5" width="22" height="18" fill="#203040" stroke="#fff"/><rect x="8" y="14" width="16" height="6" fill="#208060"/><rect x="16" y="8" width="5" height="5" fill="#f0e6a0"/><rect x="7" y="24" width="18" height="3" fill="#c0c0c0"/>',
+      dial: '<rect x="5" y="8" width="22" height="14" fill="#202020" stroke="#c0c0c0"/><rect x="8" y="12" width="10" height="2" fill="#3cff7a"/><rect x="12" y="22" width="8" height="4" fill="#808080"/>',
+      tidy: '<rect x="4" y="6" width="24" height="18" fill="#000" stroke="#808080"/><rect x="6" y="8" width="4" height="4" fill="#000080"/><rect x="11" y="8" width="4" height="4" fill="#008080"/><rect x="16" y="8" width="4" height="4" fill="#808000"/><rect x="21" y="8" width="4" height="4" fill="#800000"/><rect x="6" y="14" width="8" height="4" fill="#000080"/><rect x="15" y="14" width="10" height="4" fill="#008080"/>',
+      find: '<rect x="6" y="6" width="14" height="14" fill="none" stroke="#000" stroke-width="2"/><rect x="17" y="17" width="8" height="3" fill="#000"/>',
+      browse: '<rect x="4" y="5" width="24" height="20" fill="#fff" stroke="#000"/><rect x="4" y="5" width="24" height="5" fill="#000080"/><rect x="7" y="13" width="18" height="2" fill="#404040"/><rect x="7" y="17" width="12" height="2" fill="#000080"/>',
+      key: '<rect x="6" y="12" width="12" height="8" fill="#e0b050" stroke="#000"/><rect x="16" y="14" width="10" height="3" fill="#e0b050"/><rect x="22" y="14" width="2" height="6" fill="#e0b050"/>',
+      floppy: '<rect x="7" y="3" width="18" height="24" fill="#204080" stroke="#000"/><rect x="10" y="5" width="12" height="8" fill="#f4f0e0"/><rect x="12" y="18" width="8" height="6" fill="#c0c0c0"/>'
     };
     return "<svg " + common + ">" + (body[name] || body.page) + "</svg>";
   }
@@ -138,9 +163,15 @@
     return { x: x, y: y };
   }
 
+  function inBin(file) {
+    if (store.bin && Object.prototype.hasOwnProperty.call(store.bin, file.id)) return !!store.bin[file.id];
+    return !!file.startsInBin;
+  }
+
   function renderIcons() {
     desktop.innerHTML = "";
     FILES.forEach(function (file) {
+      if (inBin(file) || file.desk === false) return;
       var p = posOf(file);
       var el = document.createElement("button");
       el.type = "button";
@@ -156,11 +187,54 @@
         ev.stopPropagation();
         selectIcon(file.id);
         showCtx(ev.clientX, ev.clientY, [
-          ["Open", function () { openFile(file.id); }]
+          ["Open", function () { openFile(file.id); }],
+          ["Send to the Bin", function () { sendToBin(file.id); }],
+          ["Properties", function () { showProps(file); }]
         ]);
       });
       desktop.appendChild(el);
     });
+    renderHooks.forEach(function (fn) { fn(); });
+  }
+
+  function sendToBin(id) {
+    store.bin[id] = true;
+    save();
+    closeWin(id);
+    renderIcons();
+  }
+
+  function restoreFile(id) {
+    store.bin[id] = false;
+    save();
+    renderIcons();
+  }
+
+  function showProps(file) {
+    openWindow("prop-" + file.id, "Properties", 300, 180, function (body) {
+      var pre = document.createElement("pre");
+      pre.className = "sheet sunken";
+      pre.textContent = [
+        file.name,
+        "Kind: " + (file.kind || "file"),
+        inBin(file) ? "Place: The Bin" : "Place: the desk",
+        "",
+        "Haven Desk keeps this on this computer only."
+      ].join("\n");
+      body.appendChild(pre);
+    });
+  }
+
+  function fillPhoto(file, body) {
+    var img = document.createElement("img");
+    img.src = file.src;
+    img.alt = file.name;
+    img.className = "shot";
+    var cap = document.createElement("p");
+    cap.className = "about-copy";
+    cap.textContent = file.body || "";
+    body.appendChild(img);
+    body.appendChild(cap);
   }
 
   function escapeHtml(s) {
@@ -218,12 +292,19 @@
   function openFile(id) {
     var file = fileById(id);
     if (!file) return "No such file.";
+    if (inBin(file)) {
+      deskAlert("The Bin", file.name + " is in the Bin. Open The Bin to put it back.");
+      return "That file is in the Bin.";
+    }
     var wide = file.kind === "frame" ? 760 : 460;
     var high = file.kind === "frame" ? 520 : 360;
     if (file.id === "ash" || file.id === "pairs") { wide = 320; high = 340; }
-    if (file.id === "about" || file.id === "readme") { wide = 420; high = 320; }
+    if (file.id === "about" || file.id === "readme") { wide = 420; high = 340; }
+    if (file.kind === "photo") { wide = 460; high = 480; }
+    if (file.id === "mail" || file.id === "browse" || file.id === "cards") { wide = 560; high = 420; }
     openWindow(file.id, file.name, wide, high, function (body) {
       if (file.kind === "text") fillText(file, body);
+      else if (file.kind === "photo") fillPhoto(file, body);
       else if (file.kind === "frame") fillFrame(file, body);
       else mountApp(file, body);
     });
@@ -430,6 +511,7 @@
     if (file.id === "pairs") return mountPairs(body);
     if (file.id === "leaf") return mountLeaf(body);
     if (file.id === "about") return mountAbout(body);
+    if (APP_MOUNT[file.id]) return APP_MOUNT[file.id](body, file);
     body.textContent = "This program is not on the desk yet.";
   }
 
@@ -527,9 +609,10 @@
       ].join("\n");
     }
     if (cmd === "dir") {
-      return FILES.map(function (f) { return f.name; }).join("\n") + "\n" + FILES.length + " file(s)";
+      var shown = FILES.filter(function (f) { return !inBin(f); });
+      return shown.map(function (f) { return f.name; }).join("\n") + "\n" + shown.length + " file(s)";
     }
-    if (cmd === "ver") return "Haven Desk 98\nHearth build 1";
+    if (cmd === "ver") return "Haven Desk 98\nHearth build 2";
     if (cmd === "date") return new Date().toDateString();
     if (cmd === "time") return new Date().toLocaleTimeString();
     if (cmd === "cls") return "";
@@ -553,9 +636,11 @@
       var file = findFile(rest);
       if (Array.isArray(file)) return "More than one match.";
       if (!file) return "No file named " + rest + ".";
-      if (file.kind !== "text") return file.name + " is a program. Use open.";
+      if (inBin(file)) return file.name + " is in the Bin.";
+      if (file.kind !== "text" && file.kind !== "photo") return file.name + " is a program. Use open.";
       return file.body || "";
     }
+    if (EXTRA_CMD[cmd]) return EXTRA_CMD[cmd](rest);
     deskAlert("Hearth Prompt", "The prompt does not know \"" + cmd + "\". Type help.");
     return "Unknown command.";
   }
@@ -1203,12 +1288,22 @@
     item("Hearth Prompt", function () { openFile("prompt"); });
     item("Hearth Paint", function () { openFile("paint"); });
     item("Hearth Player", function () { openFile("player"); });
+    item("Hearth Calc", function () { openFile("calc"); });
+    item("Leaf Mail", function () { openFile("mail"); });
+    item("Wire Chat", function () { openFile("chat"); });
+    item("Picture Box", function () { openFile("photos"); });
+    item("Hearth Browse", function () { openFile("browse"); });
+    item("Dial Tone", function () { openFile("dial"); });
+    item("Disk Tidy", function () { openFile("tidy"); });
+    item("Find", function () { openFile("find"); });
     item("The Drawer", function () { openFile("drawer"); });
+    item("The Bin", function () { openFile("bin"); });
     item("Guest Leaf", function () { openFile("leaf"); });
     item("About Haven", function () { openFile("about"); });
     label("Games");
     item("Ash Cells", function () { openFile("ash"); });
     item("Ember Pairs", function () { openFile("pairs"); });
+    item("Hearth Stack", function () { openFile("cards"); });
     item("Lattice Corridor", function () { openFile("corridor"); });
     item("Vale Tactics", function () { openFile("vale"); });
     var rule = document.createElement("div");
@@ -1220,6 +1315,9 @@
     link.textContent = "All games";
     menu.appendChild(link);
     item("Arrange icons", arrange);
+    item("Cascade windows", cascade);
+    item("Run", openRun);
+    item("Screen saver", function () { power(false); });
     item("Shut down", askLeave);
   }
 
@@ -1292,6 +1390,46 @@
     });
   }
 
+  function cascade() {
+    var i = 0;
+    Array.prototype.forEach.call(windows.children, function (win) {
+      win.classList.remove("is-min");
+      win.style.left = (20 + (i % 8) * 26) + "px";
+      win.style.top = (12 + (i % 8) * 22) + "px";
+      win.dataset.max = "0";
+      i += 1;
+    });
+  }
+
+  function openRun() {
+    openWindow("run-box", "Run", 320, 140, function (body) {
+      var p = document.createElement("p");
+      p.className = "about-copy";
+      p.textContent = "Type a name on the desk. Try mail, bin, or diary.";
+      var form = document.createElement("form");
+      form.className = "prompt-row";
+      var input = document.createElement("input");
+      input.setAttribute("aria-label", "Run");
+      var go = document.createElement("button");
+      go.type = "submit";
+      go.className = "raised";
+      go.textContent = "OK";
+      form.appendChild(input);
+      form.appendChild(go);
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var found = findFile(input.value);
+        closeWin("run-box");
+        if (Array.isArray(found)) deskAlert("Run", "More than one match.");
+        else if (!found) deskAlert("Run", "Haven Desk cannot find that.");
+        else openFile(found.id);
+      });
+      body.appendChild(p);
+      body.appendChild(form);
+      setTimeout(function () { input.focus(); }, 30);
+    });
+  }
+
   function power(on) {
     document.getElementById("desk").hidden = !on;
     document.getElementById("off").hidden = on;
@@ -1300,7 +1438,63 @@
       stopTone();
       var audio = document.querySelector("#win-player audio");
       if (audio) audio.pause();
+      startSaver();
+    } else stopSaver();
+  }
+
+  function startSaver() {
+    stopSaver();
+    var canvas = document.getElementById("saver");
+    var word = document.getElementById("saver-word");
+    if (!canvas) return;
+    if (word) word.textContent = "";
+    var ctx = canvas.getContext("2d");
+    var stars = [];
+    var i;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    for (i = 0; i < 90; i++) stars.push({ x: Math.random(), y: Math.random(), z: Math.random() });
+    var t0 = Date.now();
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    function frame() {
+      var w = canvas.width;
+      var h = canvas.height;
+      ctx.fillStyle = "#000010";
+      ctx.fillRect(0, 0, w, h);
+      stars.forEach(function (s) {
+        if (!reduce) {
+          s.z -= 0.01;
+          if (s.z <= 0) { s.x = Math.random(); s.y = Math.random(); s.z = 1; }
+        }
+        var k = (1 - s.z) * 2.2;
+        ctx.fillStyle = "#9ee";
+        ctx.fillRect((s.x - 0.5) * k * w + w / 2, (s.y - 0.5) * k * h + h / 2, 2, 2);
+      });
+      var bx = (Math.sin(Date.now() / 700) * 0.32 + 0.5) * w;
+      var by = (Math.cos(Date.now() / 900) * 0.28 + 0.42) * h;
+      ctx.fillStyle = "#c45a12";
+      ctx.fillRect(bx, by, 26, 26);
+      ctx.fillStyle = "#000080";
+      ctx.fillRect(bx + 4, by + 4, 18, 7);
+      if (word && (reduce || Date.now() - t0 > 3200)) word.textContent = saverWord;
+      if (!reduce) saverRAF = requestAnimationFrame(frame);
     }
+    frame();
+  }
+
+  function stopSaver() {
+    if (saverRAF) cancelAnimationFrame(saverRAF);
+    saverRAF = 0;
+  }
+
+  function wake() {
+    if (document.getElementById("off").hidden) return;
+    stopSaver();
+    document.getElementById("off").hidden = true;
+    document.getElementById("boot").hidden = false;
+    booted = false;
+    idleAt = Date.now();
+    setTimeout(sitDown, bootClicked ? 600 : 400);
   }
 
   function tick() {
@@ -1321,6 +1515,25 @@
       save();
       openFile("readme");
     }
+    if (bootClicked) chime();
+  }
+
+  function chime() {
+    try {
+      var ctx = getCtx();
+      [523, 659, 784, 1046].forEach(function (freq, i) {
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = "square";
+        o.frequency.value = freq;
+        g.gain.value = 0.03;
+        o.connect(g);
+        g.connect(ctx.destination);
+        var t = ctx.currentTime + i * 0.12;
+        o.start(t);
+        o.stop(t + 0.1);
+      });
+    } catch (e) { /* silent boot */ }
   }
 
   deskBtn.addEventListener("click", function (e) {
@@ -1339,13 +1552,33 @@
     e.preventDefault();
     showCtx(e.clientX, e.clientY, [
       ["Arrange icons", arrange],
+      ["Cascade windows", cascade],
+      ["Run", openRun],
+      ["Screen saver", function () { power(false); }],
       ["About Haven", function () { openFile("about"); }]
     ]);
   });
   document.addEventListener("keydown", function (e) {
+    if (!document.getElementById("off").hidden) {
+      if (e.key === "Tab") return;
+      wake();
+      return;
+    }
+    poke();
     if (e.key === "Escape") {
       if (!menu.hidden) { closeMenu(); return; }
       hideCtx();
+    }
+    if (e.altKey && e.key === "Tab") {
+      e.preventDefault();
+      var list = Array.prototype.filter.call(windows.children, function (win) {
+        return !win.classList.contains("is-min");
+      });
+      if (!list.length) return;
+      var on = 0;
+      list.forEach(function (win, i) { if (win.classList.contains("is-on")) on = i; });
+      var next = list[(on + 1) % list.length];
+      focusWin(next.dataset.win);
     }
     if (e.key === "Enter" && selected && (document.activeElement === document.body || document.activeElement === desktop)) {
       openFile(selected);
@@ -1353,14 +1586,36 @@
   });
   document.getElementById("boot").addEventListener("click", function (e) {
     if (e.target.closest("a")) return;
+    bootClicked = true;
     sitDown();
   });
-  document.getElementById("on-again").addEventListener("click", function () {
-    document.getElementById("off").hidden = true;
-    document.getElementById("boot").hidden = false;
-    booted = false;
-    setTimeout(sitDown, 500);
+  document.getElementById("off").addEventListener("click", function (e) {
+    if (e.target.closest("a")) return;
+    wake();
   });
+  document.getElementById("power-btn").addEventListener("click", function () { power(false); });
+  clock.addEventListener("click", function () { openFile("calendar"); });
+  document.getElementById("vol-btn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    var pop = document.getElementById("vol-pop");
+    pop.hidden = !pop.hidden;
+  });
+  document.getElementById("vol-slider").addEventListener("input", function (e) {
+    store.vol = Number(e.target.value) / 100;
+    var audio = document.querySelector("#win-player audio");
+    if (audio) audio.volume = store.vol;
+    save();
+  });
+  document.getElementById("vol-slider").value = String(Math.round((store.vol || 0.7) * 100));
+  function poke() { idleAt = Date.now(); }
+  ["pointerdown", "pointermove", "keydown"].forEach(function (name) {
+    document.addEventListener(name, poke);
+  });
+  setInterval(function () {
+    var deskOn = document.getElementById("desk") && !document.getElementById("desk").hidden;
+    var saverOn = !document.getElementById("off").hidden;
+    if (deskOn && !saverOn && Date.now() - idleAt > 75000) power(false);
+  }, 4000);
   setInterval(tick, 1000);
 
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1370,6 +1625,17 @@
     open: openFile,
     exec: execLine,
     files: FILES,
-    key: STORE_KEY
+    key: STORE_KEY,
+    addFile: function (file) { FILES.push(file); },
+    register: function (id, fn) { APP_MOUNT[id] = fn; },
+    command: function (name, fn) { EXTRA_CMD[name] = fn; },
+    onRender: function (fn) { renderHooks.push(fn); },
+    alert: deskAlert,
+    save: save,
+    store: store,
+    beep: beep,
+    restore: restoreFile,
+    inBin: inBin,
+    setSaverWord: function (word) { saverWord = word; }
   };
 })();
