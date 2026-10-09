@@ -1541,11 +1541,10 @@
       sky.addColorStop(1, "#000008");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, w, h);
+      var motion = reduce ? 0.55 : 1;
       stars.forEach(function (s) {
-        if (!reduce) {
-          s.z -= 0.0045;
-          if (s.z <= 0) { s.x = Math.random(); s.y = Math.random(); s.z = 1; }
-        }
+        s.z -= 0.014 * motion;
+        if (s.z <= 0) { s.x = Math.random(); s.y = Math.random(); s.z = 1; }
         var k = (1 - s.z) * 2.4;
         var x = (s.x - 0.5) * k * w + w / 2;
         var y = (s.y - 0.5) * k * h + h / 2;
@@ -1556,37 +1555,43 @@
       });
       ctx.globalAlpha = 0.45;
       dust.forEach(function (d) {
-        if (!reduce) {
-          d.x += d.v;
-          if (d.x > 1) d.x = 0;
-        }
+        d.x += d.v * 8 * motion;
+        if (d.x > 1) d.x = 0;
         ctx.fillStyle = "#7ee0d0";
         ctx.fillRect(d.x * w, d.y * h, 1.5, 1.5);
       });
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.7;
       var cx = w / 2;
       var cy = h * 0.46;
-      var pulse = reduce ? 0 : Math.sin(now / 1400) * 8;
-      ring(cx, cy, Math.min(w, h) * 0.34 + pulse, 18, now / 6000, "rgba(212,180,131,0.85)");
-      ring(cx, cy, Math.min(w, h) * 0.22, 11, -now / 4200, "rgba(94,234,212,0.9)");
-      ctx.globalAlpha = 0.22;
+      var pulse = Math.sin(now / 700) * 14 * motion;
+      ring(cx, cy, Math.min(w, h) * 0.34 + pulse, 18, now / 1400 * motion, "rgba(212,180,131,0.9)");
+      ring(cx, cy, Math.min(w, h) * 0.22, 11, -now / 900 * motion, "rgba(94,234,212,0.95)");
+      var spark;
+      ctx.globalAlpha = 1;
+      for (spark = 0; spark < 8; spark++) {
+        var ang = now / 700 * motion + spark * 0.8;
+        var rad = Math.min(w, h) * (0.16 + (spark % 4) * 0.07);
+        ctx.fillStyle = spark % 2 ? "#d4b483" : "#5eead4";
+        ctx.fillRect(cx + Math.cos(ang) * rad - 3, cy + Math.sin(ang) * rad * 0.62 - 3, 6, 6);
+      }
+      ctx.globalAlpha = 0.35;
       ctx.strokeStyle = "#5eead4";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(cx, cy, Math.min(w, h) * 0.16, Math.min(w, h) * 0.1, now / 8000, 0, Math.PI * 1.35);
+      ctx.ellipse(cx, cy, Math.min(w, h) * 0.16, Math.min(w, h) * 0.1, now / 2200 * motion, 0, Math.PI * 1.35);
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.font = "13px Tahoma, Verdana, sans-serif";
       ctx.fillStyle = "rgba(232,255,251,0.72)";
       var bw = ctx.measureText(banner).width;
-      var shift = reduce ? 0 : (now / 45) % bw;
+      var shift = (now / 22 * motion) % bw;
       var bx = -shift;
       while (bx < w) {
         ctx.fillText(banner, bx, h - 22);
         bx += bw;
       }
       if (word && (reduce || now > 3200)) word.textContent = saverWord;
-      if (!reduce) saverRAF = requestAnimationFrame(frame);
+      saverRAF = requestAnimationFrame(frame);
     }
     saverResize = function () { frame(); };
     window.addEventListener("resize", saverResize);
