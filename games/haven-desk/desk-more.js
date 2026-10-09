@@ -700,6 +700,7 @@
       "A blank floppy, a brass key, and a note in the drawer.",
       "You found the desk the way Rook left it in March 1998.",
       "The picnic was real. The cat is not a password.",
+      "The papers on the desk are not all mine.",
       "Sit as long as you want.",
       "",
       "Hearth Line night board"
@@ -914,7 +915,8 @@
     var notes = [
       { id: "s1", text: "Lin called.\nRead the mail.", x: 500, y: 24, rot: -2 },
       { id: "s2", text: "The cat sat on\nthe keys AGAIN.", x: 620, y: 150, rot: 2 },
-      { id: "s3", text: "Off sends you\ninto the dark.", x: 540, y: 300, rot: -1 }
+      { id: "s3", text: "Off sends you\ninto the dark.", x: 540, y: 300, rot: -1 },
+      { id: "s4", text: "Open Papers.\nThen the prompt.", x: 500, y: 180, rot: 1 }
     ];
     notes.forEach(function (note) {
       var saved = H.store.sticks[note.id] || {};

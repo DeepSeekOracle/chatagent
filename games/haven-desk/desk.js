@@ -296,14 +296,19 @@
       deskAlert("The Bin", file.name + " is in the Bin. Open The Bin to put it back.");
       return "That file is in the Bin.";
     }
-    var wide = file.kind === "frame" ? 760 : 460;
-    var high = file.kind === "frame" ? 520 : 360;
+    if (file.sealed) {
+      deskAlert("LYGO 98", "That file is still shut. The papers on the desk know the next command.");
+      return "That file is sealed.";
+    }
+    var wide = file.wide || (file.kind === "frame" ? 760 : 460);
+    var high = file.high || (file.kind === "frame" ? 520 : 360);
     if (file.id === "ash" || file.id === "pairs") { wide = 320; high = 340; }
     if (file.id === "about" || file.id === "readme") { wide = 420; high = 340; }
     if (file.kind === "photo") { wide = 460; high = 480; }
     if (file.id === "mail" || file.id === "browse" || file.id === "cards") { wide = 560; high = 420; }
     openWindow(file.id, file.name, wide, high, function (body) {
       if (file.kind === "text") fillText(file, body);
+      else if (file.kind === "note") fillNote(file, body);
       else if (file.kind === "photo") fillPhoto(file, body);
       else if (file.kind === "frame") fillFrame(file, body);
       else mountApp(file, body);
@@ -316,6 +321,32 @@
     pre.className = "sheet sunken";
     pre.textContent = file.body || "";
     body.appendChild(pre);
+  }
+
+  function fillNote(file, body) {
+    var box = document.createElement("div");
+    box.className = "about-copy sunken";
+    String(file.body || "").split("\n").forEach(function (line) {
+      var p = document.createElement("p");
+      var rest = line;
+      var match = rest.match(/https?:\/\/[^\s]+/);
+      if (!match) {
+        p.textContent = line === "" ? " " : line;
+      } else {
+        var at = match.index;
+        if (at > 0) p.appendChild(document.createTextNode(rest.slice(0, at)));
+        var a = document.createElement("a");
+        a.href = match[0];
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = match[0];
+        p.appendChild(a);
+        var after = rest.slice(at + match[0].length);
+        if (after) p.appendChild(document.createTextNode(after));
+      }
+      box.appendChild(p);
+    });
+    body.appendChild(box);
   }
 
   function fillFrame(file, body) {
@@ -605,11 +636,12 @@
         "games    list the games",
         "desk     where you are",
         "beep     a short tone",
+        "lore     how far the second trail has gone",
         "shutdown leave the desk"
       ].join("\n");
     }
     if (cmd === "dir") {
-      var shown = FILES.filter(function (f) { return !inBin(f); });
+      var shown = FILES.filter(function (f) { return !inBin(f) && !f.sealed && !f.folder; });
       return shown.map(function (f) { return f.name; }).join("\n") + "\n" + shown.length + " file(s)";
     }
     if (cmd === "ver") return "LYGO 98\nHearth build 3";
@@ -637,7 +669,8 @@
       if (Array.isArray(file)) return "More than one match.";
       if (!file) return "No file named " + rest + ".";
       if (inBin(file)) return file.name + " is in the Bin.";
-      if (file.kind !== "text" && file.kind !== "photo") return file.name + " is a program. Use open.";
+      if (file.sealed) return "That file is sealed. The papers on the desk know the next command.";
+      if (file.kind !== "text" && file.kind !== "photo" && file.kind !== "note") return file.name + " is a program. Use open.";
       return file.body || "";
     }
     if (EXTRA_CMD[cmd]) return EXTRA_CMD[cmd](rest);
@@ -690,6 +723,7 @@
     var list = document.createElement("div");
     list.className = "track-list sunken";
     FILES.forEach(function (f) {
+      if (f.sealed || f.folder) return;
       var b = document.createElement("button");
       b.type = "button";
       b.className = "track";
@@ -1299,6 +1333,7 @@
     item("The Drawer", function () { openFile("drawer"); });
     item("The Bin", function () { openFile("bin"); });
     item("Guest Leaf", function () { openFile("leaf"); });
+    item("Papers", function () { openFile("papers"); });
     item("About LYGO", function () { openFile("about"); });
     label("Games");
     item("Ash Cells", function () { openFile("ash"); });
@@ -1640,6 +1675,7 @@
     beep: beep,
     restore: restoreFile,
     inBin: inBin,
+    refresh: renderIcons,
     setSaverWord: function (word) { saverWord = word; }
   };
 })();

@@ -326,8 +326,11 @@ a.games-mini {
 }
 .track.is-on { background: var(--navy); color: #fff; }
 .track-list { max-height: 160px; overflow: auto; background: #fff; }
+.folder-list { max-height: 260px; }
 
 .about-copy { padding: 8px; line-height: 1.4; user-select: text; }
+.about-copy a { word-break: break-all; }
+.reel audio { display: block; width: 100%; margin: 8px 0; }
 .about-copy a { color: var(--navy); }
 .about-copy p { margin: 0 0 8px; }
 
