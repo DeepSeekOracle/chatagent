@@ -49,7 +49,7 @@
     "https://asiancoastline.com/data/public_stream_playlist.json",
     "https://deepseekoracle.github.io/Excavationpro/data/public_stream_playlist.json"
   ];
-  var RIFF = [523, 659, 784, 659, 587, 523, 440, 523];
+
   var COLORS = ["#000000", "#800000", "#008000", "#808000", "#000080", "#800080", "#008080", "#c0c0c0", "#808080", "#ff0000", "#00ff00", "#ffff00", "#0000ff", "#ff00ff", "#00ffff", "#ffffff"];
   var NUMC = { 1: "#0000ff", 2: "#008000", 3: "#ff0000", 4: "#000080", 5: "#800000", 6: "#008080", 7: "#000000", 8: "#808080" };
   var PAIR_FACES = ["\u25B2", "\u25CF", "\u2606", "\u25C6", "\u263E", "\u266A", "\u25A0", "\u2726"];
@@ -62,8 +62,7 @@
   var histAt = -1;
   var tracks = [];
   var trackAt = 0;
-  var usingTone = false;
-  var toneTimer = null;
+
   var audioCtx = null;
   var msgN = 0;
   var booted = false;
@@ -865,11 +864,10 @@
       tracks.forEach(function (t, i) {
         var b = document.createElement("button");
         b.type = "button";
-        b.className = "track" + (i === trackAt && !usingTone ? " is-on" : "");
+        b.className = "track" + (i === trackAt ? " is-on" : "");
         b.textContent = t.title;
         b.addEventListener("click", function () {
           trackAt = i;
-          usingTone = false;
           startAudio();
         });
         list.appendChild(b);
@@ -878,47 +876,29 @@
     function setTitle(text) { title.textContent = text; }
     function startAudio() {
       stopTone();
-      usingTone = false;
-      if (!tracks.length) { startTone(); return; }
+      if (!tracks.length) {
+        setTitle("No stream reached this desk.");
+        return;
+      }
       var t = tracks[trackAt % tracks.length];
       audio.src = t.url;
       audio.volume = store.vol;
-      var played = audio.play();
       setTitle(t.title);
       paintList();
+      var played = audio.play();
       if (played && played.catch) {
         played.catch(function () {
-          setTitle("The stream did not start. Playing the hearth tone.");
-          startTone();
+          if (!audio.paused) return;
+          setTitle("The stream did not start.");
         });
       }
     }
-    function startTone() {
-      stopTone();
-      usingTone = true;
-      setTitle("Hearth tone");
-      var step = 0;
-      try {
-        var ctx = getCtx();
-        toneTimer = setInterval(function () {
-          var o = ctx.createOscillator();
-          var g = ctx.createGain();
-          o.type = "square";
-          o.frequency.value = RIFF[step % RIFF.length];
-          g.gain.value = 0.045 * (store.vol || 0.7);
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.start();
-          o.stop(ctx.currentTime + 0.16);
-          step += 1;
-        }, 240);
-      } catch (e) {
-        setTitle("This browser blocked the tone.");
-      }
-    }
     play.addEventListener("click", function () {
-      if (usingTone || !tracks.length) startTone();
-      else startAudio();
+      if (!tracks.length) {
+        setTitle("No stream reached this desk.");
+        return;
+      }
+      startAudio();
     });
     stop.addEventListener("click", function () {
       audio.pause();
@@ -926,7 +906,10 @@
       setTitle("Stopped");
     });
     next.addEventListener("click", function () {
-      if (!tracks.length) { startTone(); return; }
+      if (!tracks.length) {
+        setTitle("No stream reached this desk.");
+        return;
+      }
       trackAt = (trackAt + 1) % tracks.length;
       startAudio();
     });
@@ -936,8 +919,9 @@
       startAudio();
     });
     audio.addEventListener("error", function () {
-      setTitle("That track did not load. Playing the hearth tone.");
-      startTone();
+      if (audio.error && audio.error.code === 1) return;
+      if (!audio.paused) return;
+      setTitle("That track did not load.");
     });
     vol.addEventListener("input", function () {
       store.vol = Number(vol.value) / 100;
@@ -957,18 +941,12 @@
         setTitle(tracks.length + " tracks from Excavationpro. Press Play.");
         paintList();
       } else {
-        setTitle("No stream reached this desk. Press Play for the hearth tone.");
+        setTitle("No stream reached this desk.");
       }
     });
   }
 
-  function stopTone() {
-    if (toneTimer) {
-      clearInterval(toneTimer);
-      toneTimer = null;
-    }
-    usingTone = false;
-  }
+  function stopTone() {}
 
   function loadTracks(done) {
     var i = 0;
