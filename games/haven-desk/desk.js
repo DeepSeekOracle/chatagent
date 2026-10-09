@@ -151,6 +151,9 @@
       tidy: '<rect x="4" y="6" width="24" height="18" fill="#000" stroke="#808080"/><rect x="6" y="8" width="4" height="4" fill="#000080"/><rect x="11" y="8" width="4" height="4" fill="#008080"/><rect x="16" y="8" width="4" height="4" fill="#808000"/><rect x="21" y="8" width="4" height="4" fill="#800000"/><rect x="6" y="14" width="8" height="4" fill="#000080"/><rect x="15" y="14" width="10" height="4" fill="#008080"/>',
       find: '<rect x="6" y="6" width="14" height="14" fill="none" stroke="#000" stroke-width="2"/><rect x="17" y="17" width="8" height="3" fill="#000"/>',
       browse: '<rect x="4" y="5" width="24" height="20" fill="#fff" stroke="#000"/><rect x="4" y="5" width="24" height="5" fill="#000080"/><rect x="7" y="13" width="18" height="2" fill="#404040"/><rect x="7" y="17" width="12" height="2" fill="#000080"/>',
+      wire: '<rect x="4" y="6" width="24" height="18" fill="#fff" stroke="#000"/><rect x="4" y="6" width="24" height="5" fill="#000080"/><rect x="7" y="14" width="8" height="2" fill="#008080"/><rect x="7" y="18" width="16" height="2" fill="#404040"/>',
+      swap: '<rect x="5" y="7" width="9" height="16" fill="#000080" stroke="#fff"/><rect x="18" y="7" width="9" height="16" fill="#000080" stroke="#fff"/><rect x="7" y="12" width="5" height="6" fill="#3cff7a"/><rect x="20" y="12" width="5" height="6" fill="#3cff7a"/>',
+      lime: '<rect x="6" y="4" width="20" height="24" fill="#d8ffc8" stroke="#000"/><rect x="9" y="8" width="14" height="2" fill="#208040"/><rect x="9" y="12" width="14" height="2" fill="#208040"/><rect x="9" y="16" width="10" height="2" fill="#208040"/><rect x="9" y="22" width="8" height="3" fill="#208040"/>',
       key: '<rect x="6" y="12" width="12" height="8" fill="#e0b050" stroke="#000"/><rect x="16" y="14" width="10" height="3" fill="#e0b050"/><rect x="22" y="14" width="2" height="6" fill="#e0b050"/>',
       floppy: '<rect x="7" y="3" width="18" height="24" fill="#204080" stroke="#000"/><rect x="10" y="5" width="12" height="8" fill="#f4f0e0"/><rect x="12" y="18" width="8" height="6" fill="#c0c0c0"/>'
     };
@@ -1329,6 +1332,9 @@
     item("Picture Box", function () { openFile("photos"); });
     item("Hearth Browse", function () { openFile("browse"); });
     item("Dial Tone", function () { openFile("dial"); });
+    item("Night Wire", function () { openFile("wireweb"); });
+    item("Night Swap", function () { openFile("swap"); });
+    item("Lime Line", function () { openFile("lime"); });
     item("Disk Tidy", function () { openFile("tidy"); });
     item("Find", function () { openFile("find"); });
     item("The Drawer", function () { openFile("drawer"); });

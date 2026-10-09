@@ -446,6 +446,25 @@ a.games-mini {
   background: repeating-linear-gradient(-45deg, #000, #000 8px, #f0c000 8px, #f0c000 16px);
   margin: 6px 0;
 }
+.modem-lamp {
+  width: 12px;
+  height: 12px;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+  background: #5a1010;
+  display: inline-block;
+}
+.modem-lamp.is-on { background: #3cff7a; }
+.meter {
+  height: 16px;
+  margin: 6px 0;
+  background: #fff;
+  border: 2px solid;
+  border-color: #808080 #fff #fff #808080;
+}
+.meter > span { display: block; height: 100%; width: 0; background: #000080; }
+.lime-list { background: #e9ffe4; }
+.wire-hit { display: block; margin: 0 0 6px; text-align: left; }
 
 @media (max-width: 720px) {
   .win {

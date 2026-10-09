@@ -186,6 +186,9 @@
     ["bin", "The Bin", "bin", 104, 398],
     ["browse", "Hearth Browse", "browse", 200, 8],
     ["dial", "Dial Tone", "dial", 200, 86],
+    ["wireweb", "Night Wire", "wire", 296, 398, 560, 460],
+    ["swap", "Night Swap", "swap", 392, 398, 520, 420],
+    ["lime", "Lime Line", "lime", 488, 8, 520, 420],
     ["tidy", "Disk Tidy", "tidy", 0, 0],
     ["find", "Find", "find", 0, 0],
     ["calendar", "Day Page", "about", 0, 0],
@@ -193,7 +196,7 @@
   ].forEach(function (row) {
     H.addFile({
       id: row[0], name: row[1], kind: "app", icon: row[2], x: row[3], y: row[4],
-      desk: row[3] !== 0
+      desk: row[3] !== 0, wide: row[5], high: row[6]
     });
   });
 
@@ -632,55 +635,517 @@
     show("hearth://home");
   });
 
+  var modem = { up: false, job: 0, ctx: null, nodes: [], timer: null };
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var DTMF = {
+    "1": [697, 1209], "2": [697, 1336], "3": [697, 1477],
+    "4": [770, 1209], "5": [770, 1336], "6": [770, 1477],
+    "7": [852, 1209], "8": [852, 1336], "9": [852, 1477],
+    "0": [941, 1336]
+  };
+  var SHELF = [
+    { title: "Kettle at 2am", peer: "Lin Park", kb: 840, notes: [523, 659, 784, 659, 523] },
+    { title: "Harbor Late", peer: "Rook Pell", kb: 1204, notes: [392, 440, 494, 440, 349] },
+    { title: "Glass Word", peer: "night board", kb: 640, notes: [880, 988, 1046, 880] },
+    { title: "Picnic Wrong", peer: "Mara", kb: 990, notes: [330, 392, 330, 294] },
+    { title: "Aerial Rain", peer: "harbor kids", kb: 1500, notes: [494, 523, 587, 523, 494, 440] },
+    { title: "Marrow March", peer: "Lin Park", kb: 760, notes: [262, 330, 392, 330, 262] },
+    { title: "Desk Lamp", peer: "Rook Pell", kb: 430, notes: [220, 247, 262, 220] },
+    { title: "Seam Light", peer: "builder", kb: 2100, notes: [698, 784, 880, 784] }
+  ];
+  var LIME = [
+    { name: "kettle-at-2am.mp3", kind: "tone", notes: [523, 659, 784, 659], blurb: "An original desk tone. Not a record from a real swap network." },
+    { name: "glass-word.mp3", kind: "tone", notes: [880, 988, 1046, 880], blurb: "Another original tone." },
+    { name: "note-from-lin.txt", kind: "note", blurb: "Lin says the cat is still not the password. The modem number on this desk is a story." },
+    { name: "harbor-march.jpg", kind: "note", blurb: "That picture is already on the desk. Harbor.jpg." },
+    { name: "free-money.exe", kind: "bad", blurb: "The desk quarantined this. It does not run." },
+    { name: "picnic-map.exe", kind: "bad", blurb: "Quarantine. The red X was sandwiches." },
+    { name: "night-wire-skin.zip", kind: "note", blurb: "A gray window. You already have one." },
+    { name: "blank-floppy.bin", kind: "note", blurb: "The label never stuck." }
+  ];
+
+  function lineCtx() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!modem.ctx) modem.ctx = new AC();
+    if (modem.ctx.state === "suspended") modem.ctx.resume();
+    return modem.ctx;
+  }
+
+  function silence() {
+    modem.nodes.forEach(function (node) {
+      try { node.stop(); } catch (e) { /* already stopped */ }
+    });
+    modem.nodes = [];
+  }
+
+  function tone(ctx, freq, start, dur, type, gain) {
+    var osc = ctx.createOscillator();
+    var amp = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, start);
+    amp.gain.setValueAtTime(0.0001, start);
+    amp.gain.exponentialRampToValueAtTime(gain || 0.03, start + 0.02);
+    amp.gain.exponentialRampToValueAtTime(0.0001, start + Math.max(0.05, dur));
+    osc.connect(amp);
+    amp.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + dur + 0.03);
+    modem.nodes.push(osc);
+  }
+
+  function hiss(ctx, start, dur, gain) {
+    var len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = buf.getChannelData(0);
+    var i;
+    for (i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    var src = ctx.createBufferSource();
+    var filter = ctx.createBiquadFilter();
+    var amp = ctx.createGain();
+    src.buffer = buf;
+    filter.type = "bandpass";
+    filter.frequency.value = 1700;
+    filter.Q.value = 0.6;
+    amp.gain.value = gain || 0.02;
+    src.connect(filter);
+    filter.connect(amp);
+    amp.connect(ctx.destination);
+    src.start(start);
+    src.stop(start + dur);
+    modem.nodes.push(src);
+  }
+
+  function handshake() {
+    var ctx = lineCtx();
+    if (!ctx || reduceMotion) {
+      if (ctx) tone(ctx, 440, ctx.currentTime, 0.12, "square", 0.03);
+      return;
+    }
+    var t = ctx.currentTime + 0.05;
+    tone(ctx, 350, t, 0.55, "sine", 0.03);
+    tone(ctx, 440, t, 0.55, "sine", 0.03);
+    t += 0.65;
+    "5550198".split("").forEach(function (digit) {
+      tone(ctx, DTMF[digit][0], t, 0.1, "sine", 0.035);
+      tone(ctx, DTMF[digit][1], t, 0.1, "sine", 0.035);
+      t += 0.16;
+    });
+    t += 0.2;
+    tone(ctx, 440, t, 0.7, "sine", 0.03);
+    tone(ctx, 480, t, 0.7, "sine", 0.03);
+    t += 0.9;
+    hiss(ctx, t, 0.08, 0.04);
+    t += 0.12;
+    [620, 1200, 1860, 900, 2200, 1480, 760, 2400].forEach(function (freq, i) {
+      tone(ctx, freq, t, 0.08, i % 2 ? "square" : "sawtooth", 0.018);
+      if (i % 3 === 0) hiss(ctx, t, 0.06, 0.018);
+      t += 0.09;
+    });
+    tone(ctx, 2100, t, 0.35, "sine", 0.02);
+  }
+
+  function playNotes(notes) {
+    var ctx = lineCtx();
+    if (!ctx) return;
+    var t = ctx.currentTime + 0.02;
+    notes.forEach(function (freq) {
+      tone(ctx, freq, t, 0.18, "square", 0.04);
+      t += 0.2;
+    });
+  }
+
+  function paintLine() {
+    document.querySelectorAll("[data-modem-lamp]").forEach(function (el) {
+      el.classList.toggle("is-on", modem.up);
+    });
+    document.querySelectorAll("[data-modem-state]").forEach(function (el) {
+      el.textContent = modem.up ? "connected at 28800" : "on the hook";
+    });
+    document.querySelectorAll("[data-modem-call]").forEach(function (el) {
+      el.textContent = modem.up ? "Hang up" : "Call";
+    });
+  }
+
+  function hangUp(quiet) {
+    modem.job += 1;
+    modem.up = false;
+    if (modem.timer) clearInterval(modem.timer);
+    modem.timer = null;
+    silence();
+    paintLine();
+    if (!quiet && modem.log && modem.log.isConnected) modem.log.textContent += "click. the line is down.\n";
+  }
+
+  function needLine(status) {
+    if (modem.up) return true;
+    status.textContent = "The modem is on the hook. Open Dial Tone and call.";
+    return false;
+  }
+
+  function pour(bar, done) {
+    if (reduceMotion) {
+      bar.style.width = "100%";
+      done();
+      return;
+    }
+    var n = 0;
+    var timer = setInterval(function () {
+      n += 10 + Math.floor(Math.random() * 14);
+      if (n > 100) n = 100;
+      bar.style.width = n + "%";
+      if (n >= 100) {
+        clearInterval(timer);
+        done();
+      }
+    }, 160);
+  }
+
+  var offEl = document.getElementById("off");
+  if (offEl && window.MutationObserver) {
+    new MutationObserver(function () {
+      if (!offEl.hidden) hangUp(true);
+    }).observe(offEl, { attributes: true, attributeFilter: ["hidden"] });
+  }
+
   H.register("dial", function (body) {
     var log = document.createElement("pre");
     log.className = "prompt-out sunken";
-    log.textContent = "Hearth Line dialer\nThe phone is a story. Press Call.\n";
+    log.textContent = "Hearth modem\nFictional number 555-0198\nPress Call. The squeal is synthesized in this browser.\n";
+    modem.log = log;
     var row = document.createElement("div");
     row.className = "row";
+    var lamp = document.createElement("span");
+    lamp.className = "modem-lamp";
+    lamp.dataset.modemLamp = "1";
+    var state = document.createElement("span");
+    state.dataset.modemState = "1";
+    state.textContent = modem.up ? "connected at 28800" : "on the hook";
     var call = document.createElement("button");
     call.type = "button";
     call.className = "raised";
-    call.textContent = "Call";
-    var lines = [
-      "picking up the handset",
-      "dialing the night board",
-      "handshake  ----  squeal",
-      "carrier heard",
-      "connected, more or less, at 28800",
-      "Hearth Line says hello. Your mail is local anyway."
-    ];
+    call.dataset.modemCall = "1";
+    call.textContent = modem.up ? "Hang up" : "Call";
+    var openWire = document.createElement("button");
+    openWire.type = "button";
+    openWire.className = "raised";
+    openWire.textContent = "Night Wire";
+    openWire.addEventListener("click", function () { H.open("wireweb"); });
+    function stamp() {
+      call.textContent = modem.up ? "Hang up" : "Call";
+      lamp.classList.toggle("is-on", modem.up);
+      state.textContent = modem.up ? "connected at 28800" : "on the hook";
+    }
     call.addEventListener("click", function () {
+      if (modem.up) {
+        hangUp(false);
+        stamp();
+        return;
+      }
+      var job = modem.job + 1;
+      modem.job = job;
+      if (modem.timer) clearInterval(modem.timer);
+      silence();
       log.textContent = "";
-      var i = 0;
-      squawk();
-      var t = setInterval(function () {
-        log.textContent += lines[i] + "\n";
-        i += 1;
-        if (i >= lines.length) clearInterval(t);
-      }, 450);
+      var lines = reduceMotion
+        ? [[0, "off the hook"], [80, "carrier 28800"], [160, "The Night Wire is up."]]
+        : [
+          [0, "off the hook"],
+          [500, "dial tone"],
+          [1200, "dialing 555-0198"],
+          [2500, "ringing the night board"],
+          [3600, "answer"],
+          [3900, "handshake"],
+          [5000, "carrier 28800"],
+          [5400, "The Night Wire is up."]
+        ];
+      var step = 0;
+      var started = Date.now();
+      try { handshake(); } catch (e) { /* this browser has no tone */ }
+      modem.timer = setInterval(function () {
+        if (modem.job !== job) {
+          clearInterval(modem.timer);
+          return;
+        }
+        var elapsed = Date.now() - started;
+        while (step < lines.length && elapsed >= lines[step][0]) {
+          log.textContent += lines[step][1] + "\n";
+          log.scrollTop = log.scrollHeight;
+          step += 1;
+        }
+        if (step >= lines.length) {
+          clearInterval(modem.timer);
+          modem.timer = null;
+          if (modem.job === job) {
+            modem.up = true;
+            stamp();
+            paintLine();
+          }
+        }
+      }, 40);
     });
+    stamp();
     row.appendChild(call);
+    row.appendChild(lamp);
+    row.appendChild(state);
+    row.appendChild(openWire);
     body.appendChild(row);
     body.appendChild(log);
   });
 
-  function squawk() {
-    try {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      var ctx = new AC();
-      var o = ctx.createOscillator();
-      var g = ctx.createGain();
-      o.type = "sawtooth";
-      o.frequency.value = 420;
-      g.gain.value = 0.02;
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.start();
-      o.frequency.linearRampToValueAtTime(980, ctx.currentTime + 0.4);
-      o.stop(ctx.currentTime + 0.55);
-    } catch (e) { /* no tone */ }
-  }
+  H.register("wireweb", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Night Wire searches archive.org, which has been on the web since 1996. This window does not download those files. DuckDuckGo is newer than this room, so it opens beside the desk.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = modem.up ? "connected at 28800" : "on the hook";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.setAttribute("aria-label", "Search the stacks");
+    input.maxLength = 80;
+    input.placeholder = "radio, moon, harbor";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Search Archive";
+    var duck = document.createElement("button");
+    duck.type = "button";
+    duck.className = "raised";
+    duck.textContent = "DuckDuckGo";
+    form.appendChild(input);
+    form.appendChild(go);
+    form.appendChild(duck);
+    var view = document.createElement("div");
+    view.className = "page-view sunken";
+    var head = document.createElement("h2");
+    head.textContent = "The Night Wire";
+    view.appendChild(head);
+    addP(view, "A fictional 1998 browser on Rook's desk. The line number is a story.");
+    duck.addEventListener("click", function () {
+      if (!needLine(state)) return;
+      var q = input.value.trim();
+      if (!q) {
+        state.textContent = "Type a word first.";
+        return;
+      }
+      window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q), "_blank", "noopener");
+    });
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!needLine(state)) return;
+      var q = input.value.trim();
+      if (!q) {
+        state.textContent = "Type a word. The stacks are large.";
+        return;
+      }
+      state.textContent = "asking archive.org...";
+      go.disabled = true;
+      var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(q) +
+        "&fl[]=identifier&fl[]=title&fl[]=year&fl[]=mediatype&rows=8&page=1&output=json";
+      fetch(url).then(function (res) {
+        if (!res.ok) throw new Error("archive");
+        return res.json();
+      }).then(function (data) {
+        var docs = data && data.response && data.response.docs ? data.response.docs : [];
+        view.innerHTML = "";
+        var found = document.createElement("h2");
+        found.textContent = docs.length ? "Stacks" : "Nothing under that word";
+        view.appendChild(found);
+        if (!docs.length) addP(view, "Try a plainer word, or open DuckDuckGo.");
+        docs.forEach(function (doc) {
+          var title = Array.isArray(doc.title) ? doc.title[0] : doc.title;
+          var year = Array.isArray(doc.year) ? doc.year[0] : doc.year;
+          var a = document.createElement("a");
+          a.className = "wire-hit";
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.href = "https://archive.org/details/" + encodeURIComponent(doc.identifier || "");
+          a.textContent = String(title || doc.identifier || "Untitled") +
+            (year ? " (" + year + ")" : "") +
+            (doc.mediatype ? " · " + doc.mediatype : "");
+          view.appendChild(a);
+        });
+        state.textContent = modem.up ? "connected at 28800" : "on the hook";
+      }).catch(function () {
+        view.innerHTML = "";
+        addP(view, "The stacks did not answer.");
+        var a = document.createElement("a");
+        a.href = "https://archive.org/search?query=" + encodeURIComponent(q);
+        a.target = "_blank";
+        a.rel = "noopener";
+        a.textContent = "Open this search on archive.org";
+        view.appendChild(a);
+        state.textContent = "the wire hiccuped. the link above still leaves the desk.";
+      }).then(function () { go.disabled = false; });
+    });
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(form);
+    body.appendChild(view);
+  });
+
+  H.register("swap", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Night Swap is a pretend song board. It is not Napster. These tones were written for this desk. Nothing here is someone else's record.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = modem.up ? "connected at 28800" : "on the hook";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.setAttribute("aria-label", "Find a tone");
+    input.placeholder = "harbor, kettle, lin";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Find";
+    form.appendChild(input);
+    form.appendChild(go);
+    var list = document.createElement("div");
+    list.className = "page-view sunken";
+    var meter = document.createElement("div");
+    meter.className = "meter";
+    var fill = document.createElement("span");
+    meter.appendChild(fill);
+    function show(rows) {
+      list.innerHTML = "";
+      if (!rows.length) addP(list, "Nobody on the night board has that.");
+      rows.forEach(function (row) {
+        var line = document.createElement("div");
+        line.className = "row";
+        var label = document.createElement("span");
+        label.textContent = row.title + " · " + row.peer + " · " + row.kb + " KB";
+        var get = document.createElement("button");
+        get.type = "button";
+        get.className = "raised";
+        get.textContent = "Get";
+        get.addEventListener("click", function () {
+          if (!needLine(state)) return;
+          Array.prototype.forEach.call(line.querySelectorAll("button"), function (b) {
+            if (b !== get) b.remove();
+          });
+          get.disabled = true;
+          fill.style.width = "0";
+          state.textContent = "pulling " + row.title + "...";
+          pour(fill, function () {
+            get.disabled = false;
+            state.textContent = row.title + " is on the shelf.";
+            var play = document.createElement("button");
+            play.type = "button";
+            play.className = "raised";
+            play.textContent = "Play";
+            play.addEventListener("click", function () { playNotes(row.notes); });
+            line.appendChild(play);
+          });
+        });
+        line.appendChild(label);
+        line.appendChild(get);
+        list.appendChild(line);
+      });
+    }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!needLine(state)) return;
+      var q = input.value.trim().toLowerCase();
+      show(SHELF.filter(function (row) {
+        return !q || (row.title + " " + row.peer).toLowerCase().indexOf(q) !== -1;
+      }));
+    });
+    show(SHELF);
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(form);
+    body.appendChild(meter);
+    body.appendChild(list);
+  });
+
+  H.register("lime", function (body) {
+    var note = document.createElement("p");
+    note.className = "honest";
+    note.textContent = "Lime Line is a pretend file wire. It is not LimeWire. The files are jokes and original tones. Quarantine means the desk refuses to run them.";
+    var state = document.createElement("p");
+    state.dataset.modemState = "1";
+    state.textContent = modem.up ? "connected at 28800" : "on the hook";
+    var form = document.createElement("form");
+    form.className = "page-bar";
+    var input = document.createElement("input");
+    input.setAttribute("aria-label", "Search the wire");
+    input.placeholder = "mp3, exe, harbor";
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.className = "raised";
+    go.textContent = "Search";
+    form.appendChild(input);
+    form.appendChild(go);
+    var list = document.createElement("div");
+    list.className = "page-view sunken lime-list";
+    var meter = document.createElement("div");
+    meter.className = "meter";
+    var fill = document.createElement("span");
+    fill.style.background = "#208040";
+    meter.appendChild(fill);
+    function show(rows) {
+      list.innerHTML = "";
+      if (!rows.length) addP(list, "The wire has no file by that name.");
+      rows.forEach(function (row) {
+        var line = document.createElement("div");
+        line.className = "row";
+        var label = document.createElement("span");
+        label.textContent = row.name;
+        var get = document.createElement("button");
+        get.type = "button";
+        get.className = "raised";
+        get.textContent = "Get";
+        get.addEventListener("click", function () {
+          if (!needLine(state)) return;
+          Array.prototype.forEach.call(line.querySelectorAll("button"), function (b) {
+            if (b !== get) b.remove();
+          });
+          get.disabled = true;
+          fill.style.width = "0";
+          state.textContent = "receiving " + row.name + "...";
+          pour(fill, function () {
+            get.disabled = false;
+            if (row.kind === "bad") {
+              state.textContent = row.blurb;
+              return;
+            }
+            if (row.kind === "tone") {
+              state.textContent = row.name + " landed. It is a desk tone.";
+              var play = document.createElement("button");
+              play.type = "button";
+              play.className = "raised";
+              play.textContent = "Play";
+              play.addEventListener("click", function () { playNotes(row.notes); });
+              line.appendChild(play);
+              return;
+            }
+            state.textContent = row.blurb;
+          });
+        });
+        line.appendChild(label);
+        line.appendChild(get);
+        list.appendChild(line);
+      });
+    }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!needLine(state)) return;
+      var q = input.value.trim().toLowerCase();
+      show(LIME.filter(function (row) {
+        return !q || row.name.toLowerCase().indexOf(q) !== -1;
+      }));
+    });
+    show(LIME);
+    body.appendChild(note);
+    body.appendChild(state);
+    body.appendChild(form);
+    body.appendChild(meter);
+    body.appendChild(list);
+  });
 
   H.register("tidy", function (body) {
     var colors = ["#000080", "#008080", "#808000", "#800000", "#008000"];
