@@ -154,5 +154,80 @@
         text-overflow:ellipsis;white-space:nowrap">Idle</span>
 </div>
 <script src="radio.js?v=1"></script>
+<script>
+    (function () {
+      var voices = [];
+      var maleNames = ["Google UK English Male", "Microsoft Guy", "Microsoft David", "Daniel", "Alex", "Microsoft Mark"];
+      var femaleNames = ["Google UK English Female", "Microsoft Aria", "Microsoft Zira", "Samantha", "Victoria", "Microsoft Jenny"];
+      function loadVoices() {
+        voices = window.speechSynthesis ? (speechSynthesis.getVoices() || []) : [];
+      }
+      if (window.speechSynthesis) {
+        loadVoices();
+        speechSynthesis.addEventListener("voiceschanged", loadVoices);
+      }
+      function named(list, names) {
+        for (var i = 0; i < names.length; i++) {
+          var needle = names[i].toLowerCase();
+          for (var j = 0; j < list.length; j++) {
+            if ((list[j].name || "").toLowerCase().indexOf(needle) !== -1) return list[j];
+          }
+        }
+        return null;
+      }
+      function pick(female) {
+        var list = voices.length ? voices : (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+        var voice = named(list, female ? femaleNames : maleNames);
+        if (voice) return voice;
+        var hint = female ? /female|woman|aria|zira|samantha|victoria|jenny/i : /male|david|guy|daniel|\balex\b|mark/i;
+        for (var i = 0; i < list.length; i++) {
+          if (hint.test(list[i].name || "") && /^en/i.test(list[i].lang || "en")) return list[i];
+        }
+        return null;
+      }
+      var ducked = false;
+      function duck(on) {
+        var audio = document.getElementById("radioEl");
+        if (!audio) return;
+        if (on) {
+          var base = window.HavenRadio && HavenRadio.vol ? HavenRadio.vol() : audio.volume;
+          audio.volume = Math.max(0, base * 0.15);
+          ducked = true;
+        } else if (ducked) {
+          audio.volume = window.HavenRadio && HavenRadio.vol ? HavenRadio.vol() : 0.5;
+          ducked = false;
+        }
+      }
+      window.lygoSpeak = function (text, female) {
+        if (!text || !window.speechSynthesis) return;
+        var woman = female === true || female === 1 || female === "1";
+        try {
+          var u = new SpeechSynthesisUtterance(String(text));
+          var voice = pick(woman);
+          if (voice) {
+            u.voice = voice;
+            u.lang = voice.lang || "en-GB";
+            u.pitch = 1;
+            u.rate = 0.96;
+          } else {
+            u.lang = woman ? "en-GB" : "en-GB";
+            u.pitch = woman ? 1.12 : 0.82;
+            u.rate = woman ? 0.96 : 0.92;
+          }
+          u.onend = function () { duck(false); };
+          u.onerror = function () { duck(false); };
+          speechSynthesis.cancel();
+          if (speechSynthesis.paused) speechSynthesis.resume();
+          duck(true);
+          speechSynthesis.speak(u);
+          setTimeout(function () {
+            if (speechSynthesis.paused) speechSynthesis.resume();
+          }, 80);
+        } catch (err) {
+          duck(false);
+        }
+      };
+    })();
+</script>
 </body>
 </html>
