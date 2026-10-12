@@ -129,6 +129,21 @@
       "players": "1"
     },
     {
+      "id": "lygo-dungeon",
+      "slug": "lygo-dungeon",
+      "title": "LYGO Dungeon",
+      "tagline": "Unity dungeon crawler",
+      "blurb": "Still-frame dungeon. Four locked characters, open d20 fights, and the same wolf picture stacked harder by area. Gear on top of level. Free in the browser. No account.",
+      "cover": "/games/lygo-dungeon/assets/og.jpg",
+      "coverAlt": "A wolf on a dusk forest path",
+      "status": "live",
+      "featured": true,
+      "order": 6.6,
+      "href": "/games/lygo-dungeon/",
+      "genre": ["dungeon", "rpg"],
+      "players": "1"
+    },
+    {
       "id": "lattice-crypt",
       "slug": "lattice-crypt",
       "title": "Lattice Crypt",
