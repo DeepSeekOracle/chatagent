@@ -31,7 +31,7 @@
       #lygoSiteBar a { color: #e6c56a; text-decoration: none; }
       #lygoSiteBar a:hover { text-decoration: underline; }
       #unity-container { left: 0 !important; top: 40px !important; transform: none !important; }
-      #unity-canvas { display: block !important; max-width: 100vw !important; max-height: calc(100vh - 86px) !important; }
+      #unity-canvas { display: block !important; }
       #lygo-radio-bar { top: 4px !important; z-index: 10001 !important; padding: 3px 9px !important; }
     </style>
   </head>
@@ -96,15 +96,14 @@
         devicePixelRatio: 1
       };
 
-      var fittingCanvas = false;
       function fitCanvas() {
-        if (fittingCanvas) return;
-        fittingCanvas = true;
         var w = Math.max(320, window.innerWidth | 0);
         var h = Math.max(240, (window.innerHeight - 86) | 0);
-        canvas.style.width = w + "px";
-        canvas.style.height = h + "px";
-        fittingCanvas = false;
+        var width = w + "px";
+        var height = h + "px";
+        if (canvas.style.width === width && canvas.style.height === height) return;
+        canvas.style.width = width;
+        canvas.style.height = height;
       }
 
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
@@ -157,14 +156,21 @@
 <script>
     (function () {
       var voices = [];
+      var readingVoices = false;
       var maleNames = ["Google UK English Male", "Microsoft Guy", "Microsoft David", "Daniel", "Alex", "Microsoft Mark"];
       var femaleNames = ["Google UK English Female", "Microsoft Aria", "Microsoft Zira", "Samantha", "Victoria", "Microsoft Jenny"];
       function loadVoices() {
-        voices = window.speechSynthesis ? (speechSynthesis.getVoices() || []) : [];
+        if (readingVoices || !window.speechSynthesis) return voices;
+        readingVoices = true;
+        try { voices = speechSynthesis.getVoices() || []; }
+        finally { readingVoices = false; }
+        return voices;
       }
       if (window.speechSynthesis) {
         loadVoices();
-        speechSynthesis.addEventListener("voiceschanged", loadVoices);
+        speechSynthesis.addEventListener("voiceschanged", function () {
+          if (!readingVoices) loadVoices();
+        });
       }
       function named(list, names) {
         for (var i = 0; i < names.length; i++) {
@@ -176,7 +182,7 @@
         return null;
       }
       function pick(female) {
-        var list = voices.length ? voices : (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+        var list = voices.length ? voices : loadVoices();
         var voice = named(list, female ? femaleNames : maleNames);
         if (voice) return voice;
         var hint = female ? /female|woman|aria|zira|samantha|victoria|jenny/i : /male|david|guy|daniel|\balex\b|mark/i;
