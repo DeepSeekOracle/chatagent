@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-08",
+  "updated": "2026-10-11",
   "paypal": "https://www.paypal.com/paypalme/ExcavationPro",
   "listen": "https://asiancoastline.com/listen.html",
   "note": "Source of truth for the arcade. Add a live title: folder /games/<slug>/ plus one object here. status: live | coming.",
@@ -112,6 +112,21 @@
         { "label": "Live hall", "href": "/games/haven-rally/ledger.html" },
         { "label": "Whitepaper", "href": "/games/haven-rally/whitepaper.html" }
       ]
+    },
+    {
+      "id": "lattice-grand-prix",
+      "slug": "lattice-grand-prix",
+      "title": "Lattice Grand Prix",
+      "tagline": "Unity circuit racer",
+      "blurb": "Unity arcade racer. A 20-event career across 5 ranks, rival AI on their own lines, nitrous, and a pit lane. Free in the browser. No account.",
+      "cover": "/games/lattice-grand-prix/assets/og.jpg",
+      "coverAlt": "Orange open-wheel car on a dark twilight circuit",
+      "status": "live",
+      "featured": true,
+      "order": 6.5,
+      "href": "/games/lattice-grand-prix/",
+      "genre": ["racing"],
+      "players": "1"
     },
     {
       "id": "lattice-crypt",
