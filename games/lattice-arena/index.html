@@ -41,12 +41,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./arena.css?v=3">
+<link rel="stylesheet" href="./arena.css?v=4">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 <link rel="stylesheet" href="/games/lygo-gate.css?v=1">
 <script src="/games/lygo-gate.js?v=1" defer></script>
 </head>
-<body>
+<body class="in-menu">
 <audio id="radioEl" preload="none"></audio>
 <div id="boot" class="boot">
   <p class="kicker">Δ9Φ963 · chatagent.ca</p>
@@ -103,15 +103,17 @@
 </div>
 
 <footer class="dock">
-  <div id="radioDock" class="radio-inline">
-    <button type="button" id="radioPlay">Radio</button>
-    <button type="button" id="radioNext">Next</button>
-    <button type="button" id="radioMute">Mute</button>
-    <label class="radio-vol" title="Radio volume">
-      <span>Vol</span>
-      <input type="range" data-radio-vol min="0" max="100" value="55" aria-label="Radio volume">
-    </label>
-    <span class="radio-title-inline" id="radioTitle">Idle</span>
+  <div id="battleRadio">
+    <div id="radioDock" class="radio-inline">
+      <button type="button" id="radioPlay">Radio</button>
+      <button type="button" id="radioNext">Next</button>
+      <button type="button" id="radioMute">Mute</button>
+      <label class="radio-vol" title="Radio volume">
+        <span>Vol</span>
+        <input type="range" data-radio-vol min="0" max="100" value="55" aria-label="Radio volume">
+      </label>
+      <span class="radio-title-inline" id="radioTitle">Idle</span>
+    </div>
   </div>
   <span class="dock-note" id="dockStatus">Pick a team · the AI does the rest</span>
   <span class="grow"></span>
@@ -128,6 +130,6 @@
 <script src="/games/arcade-ledger.js?v=6"></script>
 <script src="./roster.js?v=1"></script>
 <script src="./arena.js?v=1"></script>
-<script src="./arena-ui.js?v=3"></script>
+<script src="./arena-ui.js?v=4"></script>
 </body>
 </html>

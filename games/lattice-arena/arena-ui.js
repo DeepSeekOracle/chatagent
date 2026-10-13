@@ -14,7 +14,10 @@
     { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {} },
     (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
   );
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify(persist)); } catch (e) {} }
+  function save() {
+    persist.team = your.slice();
+    try { localStorage.setItem(SAVE, JSON.stringify(persist)); } catch (e) {}
+  }
 
   let your = (persist.team || []).filter((id) => R.byId[id]).slice(0, 5);
   let foeIds = [];
@@ -24,6 +27,7 @@
   let overlayMode = null;
   let gateHeld = false;
   let menuTab = "home";
+  let inspectId = "kael";
   let hallRows = [];
 
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
@@ -209,24 +213,158 @@
         "</span></button>";
     }).join("");
   }
-  function fighterCard(f) {
-    const built = R.build(f, [], null, Math.random);
-    const art = f.portrait ? "<img src='./assets/" + f.portrait + "' alt=''>" : "<img class='spr' src='" + E.iconFor(f) + "' alt=''>";
+  function artSrc(f) {
+    return f.portrait ? "./assets/" + f.portrait : E.iconFor(f);
+  }
+  function stashRadio() {
+    const dock = $("radioDock");
+    const home = $("battleRadio");
+    if (dock && home && dock.parentElement !== home) home.appendChild(dock);
+  }
+  function placeRadio() {
+    const dock = $("radioDock");
+    const opt = $("optRadio");
+    const home = $("battleRadio");
+    const dest = menuTab === "options" && opt ? opt : home;
+    if (dock && dest && dock.parentElement !== dest) dest.appendChild(dock);
+  }
+  function paintSfx() {
+    document.querySelectorAll("[data-act='mute']").forEach((b) => {
+      b.classList.toggle("on", muted);
+      b.textContent = muted ? "SFX off" : "SFX on";
+    });
+  }
+  function lineupNames() {
+    return your.map((id) => (R.byId[id] ? R.byId[id].name : id)).join(", ");
+  }
+  function rosterButton(f) {
+    const on = inspectId === f.id ? " on" : "";
+    const picked = your.includes(f.id) ? " picked" : "";
+    return "<button type='button' class='rpick" + on + picked + "' data-id='" + f.id + "'>" +
+      "<img src='" + artSrc(f) + "' alt=''><span><b>" + esc(f.name) + "</b><u>" + esc(f.tag) + "</u></span></button>";
+  }
+  function dossierHtml(f) {
+    if (!f) return "<p class='muted'>Pick a name from the list.</p>";
+    const mates = your.map((id) => R.byId[id]).filter(Boolean);
+    const b = R.build(f, mates.length ? mates : [f], null, Math.random);
     const picked = your.includes(f.id);
-    const kit = f.moves.map((m) => "<em>" + R.MOVES[m].name + "</em>").join("");
-    const cards = f.cards.map((c) => "<i>" + R.CARDS[c].tag + "</i>").join("");
-    return "<button type='button' class='fcard" + (picked ? " picked" : "") + "' data-id='" + f.id + "'>" +
-      "<div class='fart'>" + art + "<span class='cls " + f.cls + "'>" + f.cls + "</span></div>" +
-      "<div class='fmeta'><b>" + f.name + "</b><u>" + f.tag + "</u><span class='pw'>PWR " + built.power + "</span></div>" +
-      "<div class='fkit'>" + kit + "</div>" +
-      "<div class='fcards'>" + cards + "</div>" +
-      "<div class='fbio'>" + f.bio + "</div>" +
-      "<div class='fcounter'>" + f.counter + "</div>" +
-      "</button>";
+    const full = !picked && your.length >= persist.mode;
+    const stats = [
+      ["Health", b.max], ["Damage", Math.round(b.dmg)], ["Attacks", b.rate.toFixed(2) + "/s"],
+      ["Speed", f.speed.toFixed(1)], ["Armor", b.armor], ["Range", f.range.toFixed(1)],
+      ["Mana", b.manaMax], ["Crit", Math.round(b.crit * 100) + "%"], ["Power", b.power]
+    ];
+    const moves = (b.moves || []).map((m) => "<li><b>" + esc(m.name) + "</b><span>" + esc(m.text || "") + "</span></li>").join("");
+    const cards = (f.cards || []).map((id) => {
+      const c = R.CARDS[id];
+      if (!c) return "";
+      return "<li><b>" + esc(c.name) + "</b><i>" + esc(c.tag) + "</i><span>" + esc(c.text || "") + "</span></li>";
+    }).join("");
+    const clsName = { champ: "Champion", beast: "Crypt creature", pet: "Beast" }[f.cls] || f.cls;
+    return "<article class='dossier'>" +
+      "<div class='dossier-hero'>" +
+        "<img class='" + (f.portrait ? "" : "spr") + "' src='" + artSrc(f) + "' alt=''>" +
+        "<div><p class='kicker'>" + esc(clsName) + "</p><h2>" + esc(f.name) + "</h2>" +
+        "<p class='tagline'>" + esc(f.tag) + "</p>" +
+        "<p>" + esc(f.bio) + "</p>" +
+        "<p class='fcounter'>" + esc(f.counter) + "</p>" +
+        (f.atk ? "<p class='muted'>Basic attack: " + esc(f.atk.name) + "</p>" : "") +
+        "<button type='button' class='btn gold' data-add='" + f.id + "'" + (full ? " disabled" : "") + ">" +
+          (picked ? "Remove from team" : full ? "Team is full" : "Add to team") + "</button></div></div>" +
+      "<div class='stat-grid'>" + stats.map(([k, v]) => "<div><b>" + v + "</b><span>" + k + "</span></div>").join("") + "</div>" +
+      "<h3>Moves</h3><ul class='kit-list'>" + (moves || "<li><span>No special moves.</span></li>") + "</ul>" +
+      "<h3>Cards</h3><ul class='kit-list'>" + (cards || "<li><span>No cards.</span></li>") + "</ul></article>";
+  }
+  function screenTitle() {
+    const line = lineupBook();
+    const ready = your.length === persist.mode && !!(persist.name || "").trim();
+    const names = lineupNames() || "no one fielded";
+    return "<div class='title-screen'>" +
+      "<div class='title-art'><img src='./assets/menu.jpg' alt='Four fighters at a cyan lattice gate in a torchlit stone crypt' width='1280' height='720'></div>" +
+      "<div class='title-panel'>" +
+        "<p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LYGO Arena</h1>" +
+        "<p class='lede'>Two AI teams. One stone ring. Name yourself, build a team, then watch them fight.</p>" +
+        "<label class='name-block'>Your name<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'></label>" +
+        "<div class='menu-actions'>" +
+          "<button type='button' class='btn gold' id='btnFight'" + (ready ? "" : "") + "><b>Fight</b><span>" + MODE_LABEL[persist.mode] + " · " + esc(names) + "</span></button>" +
+          "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
+          "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Fight sounds, speed, and the radio</span></button>" +
+          "<button type='button' class='btn' data-tab='how'><b>How to play</b><span>What the teams actually do</span></button>" +
+          "<button type='button' class='btn' data-tab='hall'><b>Hall</b><span>Win / loss lines for named teams</span></button>" +
+        "</div>" +
+        "<p class='tally'><b>This lineup</b> <span class='wins'>" + (line.wins || 0) + "W</span> / <span class='losses'>" + (line.losses || 0) + "L</span>" +
+          " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></p>" +
+        (ready ? "" : "<p class='muted'>" + (your.length < persist.mode ? "Team select still needs " + (persist.mode - your.length) + " more." : "Put your name in. The hall keeps it with this team.") + "</p>") +
+        "<div class='donate-row'>" +
+          "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
+          "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961' target='_blank' rel='noopener'>Patreon</a>" +
+        "</div>" +
+        "<p class='muted'>Optional. The arena stays free.</p>" +
+      "</div></div>";
+  }
+  function screenTeam() {
+    const list = R.ROSTER.filter((f) => f.cls === persist.filter);
+    const look = R.byId[inspectId] || list[0] || R.ROSTER[0];
+    if (look) inspectId = look.id;
+    const filters = [
+      ["champ", "Champions"], ["beast", "Creatures"], ["pet", "Beasts"]
+    ].map(([id, label]) => "<button type='button' class='tab" + (persist.filter === id ? " on" : "") + "' data-filter='" + id + "'>" + label + "</button>").join("");
+    const tray = your.length ? your.map((id) => {
+      const f = R.byId[id];
+      return "<button type='button' class='slot' data-drop='" + f.id + "'><img src='" + artSrc(f) + "' alt=''><b>" + esc(f.name) + "</b></button>";
+    }).join("") : "<p class='muted'>No one fielded yet.</p>";
+    return "<div class='team-screen'>" +
+      "<div class='team-head'><div class='team-title'><button type='button' class='btn' data-tab='home'>Back</button>" +
+        "<h2>Team select <span>" + your.length + "/" + persist.mode + "</span></h2></div>" +
+        "<div class='modes'>" + modeCards() + "</div></div>" +
+      "<div class='team-body'><div class='roster-col'>" +
+        "<div class='filters'>" + filters +
+          "<button type='button' class='tab' data-draft='1'>Random</button>" +
+          "<button type='button' class='tab' data-clear='1'>Clear</button></div>" +
+        list.map(rosterButton).join("") +
+      "</div>" + dossierHtml(look) + "</div>" +
+      "<div class='team-foot'><div class='tray'>" + tray + "</div>" +
+        "<button type='button' class='btn gold' data-tab='home'>Done</button></div></div>";
+  }
+  function screenOptions() {
+    const speeds = [1, 2, 4, 8].map((n) => "<button type='button' class='btn ghost" + (persist.speed === n ? " on" : "") + "' data-speed='" + n + "'>" + n + "×</button>").join("");
+    return "<div class='plain-screen'>" +
+      "<button type='button' class='btn' data-tab='home'>Back</button>" +
+      "<p class='kicker'>Options</p><h1>Options</h1>" +
+      "<h2>Fight sounds</h2>" +
+      "<p class='lede'>These are the hits, casts, and the result. The radio is separate.</p>" +
+      "<button type='button' class='btn" + (muted ? " on" : "") + "' data-act='mute'>" + (muted ? "SFX off" : "SFX on") + "</button>" +
+      "<h2>Battle speed</h2><div class='speed'>" + speeds + "</div>" +
+      "<h2>Radio</h2>" +
+      "<p class='lede'>Excavationpro, from the listen portal. It keeps playing when the fight starts. Mute here is the music.</p>" +
+      "<div id='optRadio'></div>" +
+      "<p style='margin-top:.8rem'><button type='button' class='btn' data-act='full'>Fullscreen</button></p>" +
+      "</div>";
+  }
+  function screenHow() {
+    return "<div class='plain-screen how'>" +
+      "<button type='button' class='btn' data-tab='home'>Back</button>" +
+      "<p class='kicker'>Guide</p><h1>How to play</h1><ol>" +
+      "<li>Put your name in on the title screen. The hall keeps a win/loss line for that name and the exact team you field.</li>" +
+      "<li>Team select is its own screen. Choose 1v1, 2v2, 3v3, or 5v5, then open a fighter and read the stats, moves, and cards. Add the ones you want.</li>" +
+      "<li>Both sides are AI. Nobody is steered. Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
+      "<li>Challengers are drawn from the full roster, so you never know what walks in.</li>" +
+      "<li>The radio lives in Options, and on the dock once a fight is open. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
+      "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
+      "</ol></div>";
+  }
+  function screenHall() {
+    return "<div class='plain-screen'>" +
+      "<button type='button' class='btn' data-tab='home'>Back</button>" +
+      "<p class='kicker'>Live hall</p><h1>Hall</h1>" +
+      "<p class='lede'>Each line is one player and one lineup. The public book is the shared hall. This browser keeps its own copy until that write lands.</p>" +
+      "<div class='hall-live'>" + hallBlock() + "</div>" +
+      "<p class='muted' style='margin-top:.8rem'><a href='./ledger.html'>Open the full hall</a></p></div>";
   }
   function renderMenu() {
-    const panel = $("menuPanel");
-    const keepScroll = (panel.querySelector(".grid") || {}).scrollTop || 0;
+    const root = $("menu");
+    const keepScroll = (root.querySelector(".roster-col") || {}).scrollTop || 0;
+    stashRadio();
     overlayMode = "menu";
     /* every route back to the menu — Escape, the Menu button, "change team" from the results
        board — lands here, so this is the one place the reminder hold has to be released.
@@ -234,121 +372,62 @@
     if (gateHeld) gateHold(false, 120000);
     $("menu").classList.remove("hidden");
     $("battle").classList.add("hidden");
+    document.body.classList.add("in-menu");
+    document.body.classList.remove("in-battle");
     $("overlay").className = "overlay";
-    const list = R.ROSTER.filter((f) => f.cls === persist.filter);
-    const youBuilt = your.map((id) => R.build(R.byId[id], [], null, Math.random));
-    const power = youBuilt.reduce((s, b) => s + b.power, 0);
-    const line = lineupBook();
-    const ready = your.length === persist.mode && !!(persist.name || "").trim();
-    const tab = (id, label) => "<button type='button' class='tab" + (menuTab === id ? " on" : "") + "' data-tab='" + id + "'>" + label + "</button>";
-    panel.innerHTML =
-      "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
-      "<h1>LYGO Arena</h1>" +
-      "<nav class='menu-tabs' aria-label='Menu'>" +
-        tab("home", "Home") + tab("team", "Team") + tab("how", "Guide") + tab("hall", "Hall") +
-      "</nav>" +
-      "<div id='panelHome'" + (menuTab === "home" ? "" : " class='hidden'") + ">" +
-        "<p class='lede'>Two AI teams. One stone ring. Name yourself, pick a roster, then watch. " +
-        "Every kit fights on its own moves, cards and cooldowns. Challengers are drawn blind.</p>" +
-        "<div class='modes'>" + modeCards() + "</div>" +
-        "<div class='tally' style='margin-top:.7rem'><b>This lineup</b> " +
-          "<span class='wins'>" + (line.wins || 0) + "W</span> / <span class='losses'>" + (line.losses || 0) + "L</span>" +
-          " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
-          " · <b>Power</b> " + power + "</div>" +
-        "<div class='hall-live' style='margin-top:.6rem'>" + hallBlock() + "</div>" +
-      "</div>" +
-      "<div id='panelTeam'" + (menuTab === "team" ? "" : " class='hidden'") + ">" +
-        "<div class='builder'>" +
-          "<div class='builder-head'>" +
-            "<h2>Your team <span id='teamCount'>" + your.length + "/" + persist.mode + "</span></h2>" +
-            "<div class='filters'>" +
-              "<button type='button' class='tab" + (persist.filter === "champ" ? " on" : "") + "' data-filter='champ'>Champions</button>" +
-              "<button type='button' class='tab" + (persist.filter === "beast" ? " on" : "") + "' data-filter='beast'>Creatures</button>" +
-              "<button type='button' class='tab" + (persist.filter === "pet" ? " on" : "") + "' data-filter='pet'>Beasts</button>" +
-              "<button type='button' class='tab' data-draft='1'>Random draft</button>" +
-              "<button type='button' class='tab' data-clear='1'>Clear</button>" +
-            "</div>" +
-          "</div>" +
-          "<div class='tray' id='tray'>" + (your.length ? your.map((id) => {
-            const f = R.byId[id];
-            return "<button type='button' class='slot' data-drop='" + f.id + "'>" +
-              "<img src='" + (f.portrait ? "./assets/" + f.portrait : E.iconFor(f)) + "' alt=''>" +
-              "<b>" + f.name + "</b></button>";
-          }).join("") : "<p class='muted'>Nothing picked yet — choose from the roster below.</p>") + "</div>" +
-          "<div class='grid'>" + list.map(fighterCard).join("") + "</div>" +
-        "</div>" +
-      "</div>" +
-      "<div id='panelHow' class='how" + (menuTab === "how" ? "" : " hidden") + "'>" +
-        "<p class='kicker'>Instructions</p>" +
-        "<ol>" +
-          "<li>Put your name in. The hall keeps a win/loss line for each lineup you field under that name. No account.</li>" +
-          "<li>Pick 1v1, 2v2, 3v3 or 5v5, then fill the team from champions, crypt creatures and beasts. Click a slot to drop someone.</li>" +
-          "<li>Both sides are AI. Nobody is steered. Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
-          "<li>Three moves and three cards per kit, taken from the Lattice Crypt numbers. The challengers are drawn from the full roster, so you never know what walks in.</li>" +
-          "<li>The dock radio is the Excavationpro listen portal. It has its own play, next, and mute. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
-          "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> fight sounds · <b>Esc</b> menu · <b>R</b> rematch.</li>" +
-        "</ol>" +
-      "</div>" +
-      "<div id='panelHall'" + (menuTab === "hall" ? "" : " class='hidden'") + ">" +
-        "<p class='kicker'>Live hall</p>" +
-        "<p class='lede'>Each line is one player and one lineup: wins, losses, and the kits they fielded. The public book is the Hugging Face hall. This browser keeps its own copy until that write lands.</p>" +
-        "<div class='hall-live'>" + hallBlock() + "</div>" +
-        "<p class='muted' style='margin-top:.6rem'><a href='./ledger.html'>Open the full hall</a></p>" +
-      "</div>" +
-      "<div class='menu-foot'>" +
-        "<label class='name-block'>Your name" +
-          "<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'>" +
-        "</label>" +
-        "<button type='button' class='btn gold big' id='btnFight'" + (ready ? "" : " disabled") + ">Fight — " + MODE_LABEL[persist.mode] + "</button>" +
-      "</div>" +
-      (ready ? "" : "<p class='muted'>" + (your.length < persist.mode ? "Open Team and fill the lineup." : "Name yourself. The hall keeps a win/loss line for that name and this team.") + "</p>") +
-      "<div class='donate-row'>" +
-        "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
-        "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961' target='_blank' rel='noopener'>Patreon</a>" +
-        "<a class='btn' href='./ledger.html'>Live hall</a>" +
-        "<a class='btn' href='./whitepaper.html'>Whitepaper</a>" +
-        "<a class='btn' href='/games/'>All games</a>" +
-      "</div>" +
-      "<p class='muted'>Optional. The arena stays free. A tip never changes a kit or a record.</p>";
+    const pages = { home: screenTitle, team: screenTeam, options: screenOptions, how: screenHow, hall: screenHall };
+    root.innerHTML = (pages[menuTab] || screenTitle)();
+    placeRadio();
     const named = $("callSign");
     if (named) {
       named.addEventListener("input", () => {
         persist.name = named.value.replace(/\s+/g, " ").trim().slice(0, 18);
         save();
-        const fight = $("btnFight");
-        if (fight) fight.disabled = !(persist.name && your.length === persist.mode);
       });
     }
-    const g = panel.querySelector(".grid");
-    if (g) g.scrollTop = keepScroll;
+    const col = root.querySelector(".roster-col");
+    if (col) col.scrollTop = keepScroll;
+    const seen = root.querySelector(".rpick.on");
+    if (seen && keepScroll === 0) seen.scrollIntoView({ block: "nearest" });
   }
 
   function onMenuClick(ev) {
-    const t = ev.target.closest("[data-mode],[data-id],[data-drop],[data-filter],[data-draft],[data-clear],[data-tab]");
-    if (!t) {
-      if (ev.target.id === "btnFight") { void 0; }
-      return;
-    }
+    const t = ev.target.closest("[data-mode],[data-id],[data-drop],[data-filter],[data-draft],[data-clear],[data-tab],[data-add]");
+    if (!t) return;
     blip("click");
     if (t.dataset.tab) { menuTab = t.dataset.tab; renderMenu(); return; }
     if (t.dataset.mode) {
       persist.mode = +t.dataset.mode;
       while (your.length > persist.mode) your.pop();
+      menuTab = "team";
       save(); renderMenu(); return;
     }
     if (t.dataset.filter) { persist.filter = t.dataset.filter; menuTab = "team"; save(); renderMenu(); return; }
     if (t.dataset.draft) {
       your = R.draw(persist.mode).map((f) => f.id);
+      inspectId = your[0] || inspectId;
       menuTab = "team";
       save(); renderMenu(); return;
     }
-    if (t.dataset.clear) { your = []; save(); renderMenu(); return; }
-    if (t.dataset.drop) { your = your.filter((id) => id !== t.dataset.drop); save(); renderMenu(); return; }
-    if (t.dataset.id) {
-      const id = t.dataset.id;
+    if (t.dataset.clear) { your = []; menuTab = "team"; save(); renderMenu(); return; }
+    if (t.dataset.drop) {
+      your = your.filter((id) => id !== t.dataset.drop);
+      inspectId = t.dataset.drop;
+      menuTab = "team";
+      save(); renderMenu(); return;
+    }
+    if (t.dataset.add) {
+      const id = t.dataset.add;
       if (your.includes(id)) your = your.filter((x) => x !== id);
       else if (your.length < persist.mode) your = your.concat([id]);
+      inspectId = id;
+      menuTab = "team";
       save(); renderMenu(); return;
+    }
+    if (t.dataset.id) {
+      inspectId = t.dataset.id;
+      menuTab = "team";
+      renderMenu();
     }
   }
 
@@ -374,8 +453,10 @@
     ov.onclick = (ev) => {
       /* the challengers shown on this sheet are the ones that fight: begin(false) keeps the
          set drawn when Fight was pressed, so the reveal is never a lie. */
-      if (ev.target.id === "btnGo") begin(false);
-      else if (ev.target.id === "btnBackMenu") renderMenu();
+      const go = ev.target.closest && ev.target.closest("#btnGo");
+      const back = ev.target.closest && ev.target.closest("#btnBackMenu");
+      if (go) begin(false);
+      else if (back) { menuTab = "team"; renderMenu(); }
     };
   }
   let label = "vs";
@@ -475,6 +556,9 @@
   function begin(reset) {
     persist.name = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
     save();
+    stashRadio();
+    document.body.classList.remove("in-menu");
+    document.body.classList.add("in-battle");
     if (reset || !foeIds.length) foeIds = R.draw(persist.mode, your).map((f) => f.id);
     $("overlay").className = "overlay";
     overlayMode = "battle";
@@ -530,10 +614,12 @@
     blip(won ? "win" : "lose");
     postResult(won, persist.mode, mvp ? mvp.name : "");
     $("overlay").onclick = (ev) => {
-      const id = ev.target.id;
-      if (id === "btnAgain") begin(false);
-      else if (id === "btnNewFoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
-      else if (id === "btnMenu2") { $("battle").classList.add("hidden"); renderMenu(); }
+      const again = ev.target.closest && ev.target.closest("#btnAgain");
+      const fresh = ev.target.closest && ev.target.closest("#btnNewFoe");
+      const back = ev.target.closest && ev.target.closest("#btnMenu2");
+      if (again) begin(false);
+      else if (fresh) { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
+      else if (back) { menuTab = "team"; $("battle").classList.add("hidden"); renderMenu(); }
     };
   }
 
@@ -558,23 +644,32 @@
       if (t.dataset.speed) {
         persist.speed = +t.dataset.speed; save();
         E.setSpeed(persist.speed);
-        document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", b === t));
+        document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", +b.dataset.speed === persist.speed));
         return;
       }
       const act = t.dataset.act;
       if (act === "pause") { const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
-      if (act === "menu") { $("battle").classList.add("hidden"); renderMenu(); gateHold(false, 60000); }
+      if (act === "menu") { menuTab = "home"; $("battle").classList.add("hidden"); renderMenu(); gateHold(false, 60000); }
       if (act === "rematch") begin(false);
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
-      if (act === "mute") { muted = !muted; $("btnMute").classList.toggle("on", muted); $("btnMute").textContent = muted ? "SFX off" : "SFX"; }
+      if (act === "mute") { muted = !muted; paintSfx(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     });
     document.addEventListener("keydown", (ev) => {
       if (ev.target.tagName === "INPUT") return;
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
-      else if (ev.code === "KeyM") { muted = !muted; $("btnMute").classList.toggle("on", muted); $("btnMute").textContent = muted ? "SFX off" : "SFX"; }
+      else if (ev.code === "KeyM") { muted = !muted; paintSfx(); }
       else if (ev.code === "KeyR" && overlayMode === "battle") begin(false);
-      else if (ev.code === "Escape") { if (overlayMode === "battle") { $("battle").classList.add("hidden"); renderMenu(); } else if (overlayMode === "results") { $("battle").classList.add("hidden"); renderMenu(); } }
+      else if (ev.code === "Escape") {
+        if (overlayMode === "battle" || overlayMode === "results" || overlayMode === "vs") {
+          menuTab = "home";
+          $("battle").classList.add("hidden");
+          renderMenu();
+        } else if (overlayMode === "menu" && menuTab !== "home") {
+          menuTab = "home";
+          renderMenu();
+        }
+      }
       else if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(ev.code)) {
         if (overlayMode !== "menu" && overlayMode !== "battle") return;
         const map = { Digit1: 1, Digit2: 2, Digit3: 4, Digit4: 8 };
@@ -584,7 +679,7 @@
     });
     /* the fight button lives inside the sheet, so bind it here as well as the grid */
     document.body.addEventListener("click", (ev) => {
-      if (ev.target.id === "btnFight") {
+      if (ev.target.closest && ev.target.closest("#btnFight")) {
         const named = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
         if (!named || your.length !== persist.mode) {
           menuTab = your.length === persist.mode ? "home" : "team";
