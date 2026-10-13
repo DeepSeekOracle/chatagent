@@ -113,7 +113,10 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   realm family chosen by seed, walls mirrored so neither side inherits better ground, and both spawn
   pockets flood-filled to guarantee that every tile a body can stand on is reachable from both ends.
   The harness asserts this over 120 seeds — a map that strands a fighter is a bug, not a surprise.</p>
-  <p>There are five colosseums, and the seed picks both the ground and the realm it is cut from:</p>
+  <p>There are five colosseums, and the seed picks both the ground and the realm it is cut from. The
+  layouts are kept whole in the code; in this build every ring is swept bare — no pillars, no walls, no
+  loose stone — while the brains are tuned, so that what a body does is the brain's doing and not the
+  walls'. The five are still built and still named, and cover comes back with one flag:</p>
   <ul>
     <li><b>Colosseum</b> — open sand with pillar knots on the diagonals. The centre is left empty on
     purpose: the middle of a colosseum is where the fight should happen.</li>
@@ -125,7 +128,7 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
     behind.</li>
     <li><b>Ruin</b> — a court of three short walls and loose stone.</li>
   </ul>
-  <p>Every one of them is deliberately nearly empty — 78–83% open sand — because the obstacle a body
+  <p>Every one of them is deliberately nearly empty — 86% open sand, with nothing standing in it at all right now — because the obstacle a body
   snags on is the obstacle that ruins the watch. What is left is placed to be <em>worth standing next
   to</em>: cover to break a line of fire, a gap to hold, a lane to run. The harness builds 120 seeds and
   asserts that both pockets can reach all ten spawn slots in every one of them.</p>
@@ -220,7 +223,7 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
       resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
       <li>Built kits are playable: finite health, damage, rate and reach; a power spread that is a band
       rather than a cliff.</li>
-      <li>Maps: 120 seeds, both pockets can reach all ten spawn slots; open ground stays in a 78–93% band.</li>
+      <li>Maps: 120 seeds, both pockets can reach all ten spawn slots; the ring floor is clear (0 interior stone tiles across 120 seeds).</li>
       <li>Battles: every match ends with a winner, no <code>NaN</code> in any live body, nobody outside the
       arena, both sides actually cast moves, and no kit ships without ever dealing damage.</li>
       <li>Pacing: per-mode mean and median length against the two-minute target.</li>
