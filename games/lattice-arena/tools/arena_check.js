@@ -52,6 +52,7 @@ const ctx = vm.createContext(win);
 
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
 load("roster.js");
+load("attacks.js");
 load("arena.js");
 
 const R = win.LYGO_ARENA;
@@ -114,6 +115,21 @@ R.ROSTER.forEach((f) => {
 must("no two fighters share the same kit", dupes.length === 0, dupes.join(", "));
 
 const built = R.buildTeam(R.ROSTER);
+const bare = built.filter((b) => !b.atk.vis || !b.atk.sfx || b.moves.some((m) => !m.vis || !m.sfx || !m.name));
+must("every attack and move has a picture and a sound", bare.length === 0, bare.map((b) => b.id).join(", "));
+const announced = {};
+const sameCall = [];
+built.forEach((b) => {
+  const sig = [b.atk.name].concat(b.moves.map((m) => m.name)).sort().join("|");
+  if (announced[sig]) sameCall.push(b.id + " = " + announced[sig]);
+  announced[sig] = b.id;
+});
+must("no two fighters announce the same attacks", sameCall.length === 0, sameCall.join(", "));
+const wolf = built.find((b) => b.id === "wolf");
+const tusker = built.find((b) => b.id === "elephant");
+must("Ashmane bites and Tuskward tramples", wolf && wolf.atk.vis === "bite" && wolf.atk.name === "Bite" && tusker && tusker.atk.vis === "tusk" && tusker.moves.some((m) => m.name === "Trample" && m.vis === "trample"), "");
+const wavMiss = win.LYGO_ATTACKS.sfxNames().filter((n) => !fs.existsSync(path.join(ASSETS, "sfx", n + ".wav")));
+must("every attack sound file is on disk", wavMiss.length === 0, wavMiss.slice(0, 12).join(", ") + (wavMiss.length > 12 ? " +" + (wavMiss.length - 12) : ""));
 const badBuild = built.filter((b) => !(b.max > 100 && b.dmg > 5 && b.rate > 0.2 && b.speed > 30 && b.moves.length >= 2));
 must("every built fighter has playable numbers", badBuild.length === 0, badBuild.map((b) => b.id).join(", "));
 const powers = built.map((b) => b.power);
@@ -156,8 +172,8 @@ must("arenas stay in the 40-80% open band", openMin > 0.4 && openMax < 0.85, "op
 /* --- 3. battles ----------------------------------------------------------- */
 const MODES = [1, 2, 3, 5];
 const tally = {};         // fighterId -> {wins, losses, dmg, kills, uses}
-const moveUse = {};       // every move's cast count across the whole ladder (keyed by move name)
-Object.keys(R.MOVES).forEach((m) => { moveUse[R.MOVES[m].name] = 0; });
+const moveUse = {};       // cast counts under the name a spectator actually reads
+built.forEach((b) => b.moves.forEach((m) => { moveUse[m.name] = 0; }));
 const modeStats = {};
 R.ROSTER.forEach((f) => { tally[f.id] = { wins: 0, losses: 0, dmg: 0, kills: 0, uses: 0, matches: 0 }; });
 

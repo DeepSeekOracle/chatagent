@@ -187,14 +187,14 @@
     mode: 3,
     lv: null,
     your: [], foe: [],
-    projectiles: [], pending: [], drops: [], texts: [], marks: [],
+    projectiles: [], pending: [], drops: [], texts: [], marks: [], swings: [],
     time: 0, speed: 1, paused: false, countdown: 0,
     events: [], winner: null, over: false, sudden: false,
     rng: 0
   };
   let seq = 0;
-  function pushEvent(text, kind) {
-    S.events.push({ t: S.time, text: text, kind: kind || "" });
+  function pushEvent(text, kind, sfx) {
+    S.events.push({ t: S.time, text: text, kind: kind || "", sfx: sfx || "" });
     if (S.events.length > 140) S.events.shift();
   }
 
@@ -209,7 +209,7 @@
       regenT: 0, regenHps: 0, thornsT: 0, thornsV: 0, reflectT: 0, reflectV: 0, veilT: 0, veilV: 0,
       lifestealT: 0, lifestealV: 0, tauntT: 0, shieldWallT: 0,
       cds: built.moves.map(() => 0), atkCd: 0.6 + Math.random() * 0.5,
-      face: 0, walk: 0, animT: 0, aimA: 0, flash: 0, dead: false, dieT: 0,
+      face: 0, walk: 0, animT: 0, animMax: 0.34, animVis: "", aimA: 0, flash: 0, dead: false, dieT: 0,
       target: null, retarget: 0, stuck: 0, lastX: 0, lastY: 0, kite: 0, idleT: 0,
       firstUsed: false, usedLastStand: false, usedRevive: false, lastCardCheck: 0,
       kills: 0, dmgDone: 0, healDone: 0, taken: 0, uses: {}, tokens: 0, ttl: isToken ? (built.ttl || 20) : 0,
@@ -462,7 +462,6 @@
     e.mana -= cost;
     e.cds[idx] = mv.cd * e.b.cdMul;
     e.uses[mv.name] = (e.uses[mv.name] || 0) + 1;
-    e.animT = 0.32;
     const caster = e;
     const tgt = (mv.aim === "enemy" || mv.aim === "weakest" || mv.aim === "clump") ? pickTarget(e, mv.aim) :
       (mv.aim === "deadally" ? (e.team === 0 ? S.your : S.foe).find((x) => x.dead) : null);
@@ -482,6 +481,7 @@
     }
     const P = reachPoint();
     faceTo(caster, P.x, P.y);
+    flourish(caster, mv.vis || "slash", P.x, P.y);
     if (mv.fx) S.marks.push({ x: caster.x, y: caster.y - 10, r: 0, life: 0.22, col: caster.b.color, spark: true });
 
     switch (mv.shape) {
@@ -547,6 +547,7 @@
           S.projectiles.push({
             x: caster.x, y: caster.y - 8, a: a, spd: 430,
             dmg: caster.b.dmg * mv.dmg, src: caster, team: caster.team, w: mv.w || caster.b.atk.w,
+            vis: mv.vis || caster.b.atk.vis, col: caster.b.color,
             life: 2.2, pierce: (mv.pierce || 0), lob: false,
             tx: P.x, ty: P.y, st: mv.st, frame: 0, ignoreWall: false
           });
@@ -557,7 +558,8 @@
         S.projectiles.push({
           x: caster.x, y: caster.y - 8, a: Math.atan2(P.y - caster.y, P.x - caster.x), spd: 200,
           dmg: caster.b.dmg * mv.dmg, src: caster, team: caster.team, w: mv.w || "comet",
-          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0
+          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0,
+          vis: mv.vis || "stone", col: caster.b.color
         });
         break;
       }
@@ -612,7 +614,7 @@
       default: return false;
     }
     if (mv.name) {
-      pushEvent(caster.b.name + " — " + mv.name + (tgt && (mv.aim === "enemy" || mv.aim === "weakest") ? " on " + tgt.b.name : "") + ".", "move");
+      pushEvent(caster.b.name + " — " + mv.name + (tgt && (mv.aim === "enemy" || mv.aim === "weakest") ? " on " + tgt.b.name : "") + ".", "move", mv.sfx || "");
     }
     return true;
   }
@@ -702,6 +704,13 @@
     return pts.some((p) => solidAt(S.lv, p[0], p[1]));
   }
 
+  function flourish(e, vis, x2, y2) {
+    e.animT = 0.34;
+    e.animMax = 0.34;
+    e.animVis = vis || "slash";
+    if (w.LYGO_ATTACKS) w.LYGO_ATTACKS.cast(S, e, e.animVis, x2, y2);
+  }
+
   function attack(e) {
     if (e.atkCd > 0 || e.stun > 0) return;
     const b = e.b;
@@ -713,7 +722,8 @@
     if (e.silence > 0) return;
     faceTo(e, t.x, t.y);
     e.atkCd = 1 / Math.max(0.15, st.rate);
-    e.animT = 0.18;
+    flourish(e, b.atk.vis || (b.atk.type === "bolt" ? "shard" : "slash"), t.x, t.y);
+    if (b.atk.sfx && w.ArenaUI && w.ArenaUI.sfx) w.ArenaUI.sfx(b.atk.sfx, 0.22);
     const isMelee = b.atk.type !== "bolt" && b.range <= 100;
     const echo = b.mods.echo || 0;
     const dmg = st.dmg * (1 + (b.atk.dmg || 0));
@@ -730,7 +740,7 @@
     } else {
       S.projectiles.push({
         x: e.x, y: e.y - 8, a: Math.atan2(t.y - e.y, t.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
-        w: b.atk.w, life: 2.0, pierce: b.pierce || 0, frame: 0,
+        w: b.atk.w, vis: b.atk.vis, col: b.color, life: 2.0, pierce: b.pierce || 0, frame: 0,
         direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5, doubleFirst: !!b.mods.firstDouble
       });
     }
@@ -851,6 +861,8 @@
     S.texts = S.texts.filter((t) => t.life > 0);
     S.marks.forEach((m) => { m.life -= dt; if (m.ring) m.r += 90 * dt; });
     S.marks = S.marks.filter((m) => m.life > 0);
+    S.swings.forEach((s) => { s.life -= dt; });
+    S.swings = S.swings.filter((s) => s.life > 0);
     if (!S.over && S.time > HARD_STOP) {
       const a = live(0).reduce((s, e) => s + e.hp, 0), b2 = live(1).reduce((s, e) => s + e.hp, 0);
       S.over = true; S.phase = "over"; S.winner = a >= b2 ? 0 : 1;
@@ -908,8 +920,10 @@
     if (!c) return 0;
     const size = b.cls === "token" ? 34 : b.boss ? 52 : b.cls === "pet" ? 40 : 46;
     const flip = e.face === 2;
+    const pose = w.LYGO_ATTACKS ? w.LYGO_ATTACKS.pose(e) : null;
     ctx.save();
-    ctx.translate(Math.round(e.x), Math.round(e.y));
+    ctx.translate(Math.round(e.x + (pose ? pose.dx : 0)), Math.round(e.y + (pose ? pose.dy : 0)));
+    if (pose) ctx.scale(pose.sx || 1, pose.sy || 1);
     if (flip) ctx.scale(-1, 1);
     ctx.drawImage(img, c.sx, c.sy, c.cell, c.cell, -size / 2, -size * 0.78, size, size);
     ctx.restore();
@@ -1005,8 +1019,10 @@
         ctx.fillText(e.stun > 0 ? "STUN" : e.root > 0 ? "ROOT" : "HUSH", e.x, by - 11);
       }
     });
+    if (w.LYGO_ATTACKS) w.LYGO_ATTACKS.draw(ctx, S);
     /* projectiles */
     S.projectiles.forEach((p) => {
+      if (w.LYGO_ATTACKS && p.vis) { w.LYGO_ATTACKS.shot(ctx, p); return; }
       const c = cellOf("fx", "bolt_" + p.w, { fr: (p.frame | 0) % 4 });
       if (c) ctx.drawImage(AT.fx, c.sx, c.sy, c.cell, c.cell, p.x - 9, p.y - 9, 18, 18);
       else { ctx.fillStyle = "#fbbf24"; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
@@ -1068,7 +1084,7 @@
     fieldCache.clear();
     S.your = mkTeam(ids.you, 0);
     S.foe = mkTeam(ids.foe, 1);
-    S.projectiles = []; S.pending = []; S.texts = []; S.marks = [];
+    S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
     S.countdown = 3.2;
     S.phase = "count";

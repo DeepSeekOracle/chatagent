@@ -43,13 +43,15 @@
   }
   function loadSfx() {
     const ctx = ensureAudio();
-    return Promise.all(SFX_NAMES.map((name) => fetch("./assets/sfx/" + name + ".wav")
+    const kit = (w.LYGO_ATTACKS && w.LYGO_ATTACKS.sfxNames()) || [];
+    const names = SFX_NAMES.concat(kit.filter((n) => SFX_NAMES.indexOf(n) < 0));
+    return Promise.all(names.map((name) => fetch("./assets/sfx/" + name + ".wav")
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { sfxBuf[name] = decoded; })
       .catch(() => {}))).then(() => { sfxReady = true; });
   }
-  function blip(type) {
+  function blip(type, gain) {
     if (muted) return;
     try {
       const ctx = ensureAudio();
@@ -58,7 +60,7 @@
         const src = ctx.createBufferSource();
         const g = ctx.createGain();
         src.buffer = buf;
-        g.gain.value = SFX_GAIN[type] || 0.4;
+        g.gain.value = gain || SFX_GAIN[type] || 0.36;
         src.connect(g); g.connect(ctx.destination);
         src.start();
         return;
@@ -80,6 +82,7 @@
     if (ev.kind === "summon") { blip("summon"); return; }
     if (ev.kind === "warn") { blip("warn"); return; }
     if (ev.kind === "move") {
+      if (ev.sfx) { blip(ev.sfx, 0.4); return; }
       if (now - sfxGate < 120) return;
       sfxGate = now;
       blip(/falls|cuts down|heavy|slam/i.test(ev.text || "") ? "big" : "cast");
@@ -347,7 +350,8 @@
       "<p class='kicker'>Guide</p><h1>How to play</h1><ol>" +
       "<li>Put your name in on the title screen. The hall keeps a win/loss line for that name and the exact team you field.</li>" +
       "<li>Team select is its own screen. Choose 1v1, 2v2, 3v3, or 5v5, then open a fighter and read the stats, moves, and cards. Add the ones you want.</li>" +
-      "<li>Both sides are AI. Nobody is steered. Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
+      "<li>Both sides are AI. Nobody is steered. Each kit swings its own attack: Ashmane bites, Tuskward tramples, and the champions do not share a swing.</li>" +
+      "<li>Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
       "<li>Challengers are drawn from the full roster, so you never know what walks in.</li>" +
       "<li>The radio lives in Options, and on the dock once a fight is open. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
       "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
@@ -695,7 +699,7 @@
     });
   }
 
-  w.ArenaUI = { tick: paintHud, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }) };
+  w.ArenaUI = { tick: paintHud, sfx: blip, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }) };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })(window);

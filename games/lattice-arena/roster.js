@@ -393,6 +393,7 @@
        · melee kits pay a walk-in tax (they eat shots closing), so they carry more body;
        · paper casters under 560 health get a little more, or burst deletes them outright.
        Damage is scaled once for everyone so a fight resolves inside a spectator's patience. */
+    const kit = (w.LYGO_ATTACKS && w.LYGO_ATTACKS.kit(fighter.id)) || { atk: {}, moves: {} };
     const melee = fighter.range <= 1.95 && fighter.atk.type !== "bolt";
     let hp = fighter.hp * hpMul;
     if (melee) hp *= 1.18;
@@ -414,8 +415,13 @@
       critMul: critMul,
       cdMul: Math.max(0.4, 1 + mods.cdMul),
       pierce: (fighter.atk.pierce || 0) + mods.pierceAdd,
-      atk: fighter.atk, cards, cardIds: fighter.cards.slice(), mods,
-      moves: fighter.moves.map((m) => MOVES[m]).filter(Boolean),
+      atk: Object.assign({}, fighter.atk, (kit.atk || {})),
+      cards, cardIds: fighter.cards.slice(), mods,
+      moves: fighter.moves.map((m) => {
+        const base = MOVES[m];
+        if (!base) return null;
+        return Object.assign({ moveId: m }, base, (kit.moves && kit.moves[m]) || {});
+      }).filter(Boolean),
       moveIds: fighter.moves.slice(),
       auraArmor, auraDmg, logic: fighter.logic || null
     };
