@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LYGO Arena — whitepaper | chatagent.ca</title>
+<meta name="description" content="How LYGO Arena works: 33 kits, a real-time AI arena engine, the balance ladder and what the measurements actually say.">
+<link rel="canonical" href="https://chatagent.ca/games/lattice-arena/whitepaper.html">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<meta property="og:image" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#07080e; --panel:#0c1018; --line:#1e2a3a; --cyan:#5eead4; --gold:#fbbf24; --mute:#94a3b8; --text:#e8eef5; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:"Source Sans 3",system-ui,sans-serif; line-height:1.55; }
+.wrap { max-width:1000px; margin:0 auto; padding:1.6rem 1.1rem 4rem; }
+.kicker { letter-spacing:.2em; text-transform:uppercase; color:var(--cyan); font-size:.72rem; }
+h1,h2,h3 { font-family:Syne,sans-serif; line-height:1.15; }
+h1 { font-size:clamp(1.7rem,4vw,2.6rem); margin:.2rem 0 .3rem; }
+h2 { font-size:1.22rem; margin:2.1rem 0 .5rem; border-top:1px solid var(--line); padding-top:1.1rem; }
+h3 { font-size:1rem; margin:1.4rem 0 .3rem; color:var(--cyan); }
+p, li { color:#c9d5e2; }
+a { color:var(--cyan); }
+.lede { font-size:1.02rem; color:#dbe4ee; }
+.row { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0 1.4rem; }
+.btn { display:inline-flex; padding:.5rem .85rem; border:1px solid var(--line); border-radius:9px; text-decoration:none; color:var(--text); font-weight:600; font-size:.85rem; }
+.btn.gold { background:linear-gradient(180deg,#fde68a,#f59e0b); color:#1a1206; border-color:#f59e0b; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:.8rem .9rem; margin:.7rem 0; }
+.card h3 { margin-top:0; }
+table { width:100%; border-collapse:collapse; font-size:.78rem; margin:.6rem 0 1.2rem; }
+th, td { text-align:left; padding:.3rem .4rem; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-family:"IBM Plex Mono",monospace; font-size:.64rem; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); }
+td.n { font-family:"IBM Plex Mono",monospace; color:#cbd5e1; }
+td i { display:inline-block; font-style:normal; color:var(--mute); font-size:.7rem; }
+td em { font-style:normal; display:inline-block; margin:0 .18rem .18rem 0; font-size:.68rem; color:var(--cyan); background:#0d1a1c; border:1px solid #14343a; border-radius:5px; padding:.04rem .28rem; }
+td.cards i { color:#d8c9a3; background:#1a1508; border:1px solid #4a3a14; border-radius:5px; padding:.04rem .28rem; font-size:.63rem; margin:0 .18rem .18rem 0; }
+.stat { font-family:"IBM Plex Mono",monospace; color:var(--gold); }
+.muted { color:var(--mute); }
+.mode-stat { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.5rem; margin:.6rem 0 1rem; }
+.mode-stat div { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:.55rem .6rem; }
+.mode-stat b { display:block; font-family:Syne,sans-serif; font-size:1.1rem; color:var(--gold); }
+.mode-stat span { font-size:.72rem; color:var(--mute); }
+code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f1720; border:1px solid var(--line); border-radius:5px; padding:.06rem .3rem; }
+.warn { border-left:3px solid var(--gold); padding-left:.7rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Δ9Φ963 · studio doc</p>
+  <h1>LYGO Arena</h1>
+  <p class="lede">A real-time arena battler where nobody is driven. You choose a roster; two AI teams
+  then fight on a stone ring with their own kits, cooldowns and cards — and the fight resolves on its
+  own terms.</p>
+  <div class="row">
+    <a class="btn gold" href="./">Play the arena</a>
+    <a class="btn" href="./ledger.html">Live hall</a>
+    <a class="btn" href="/games/lattice-crypt/">Lattice Crypt</a>
+    <a class="btn" href="/games/">Hub</a>
+  </div>
+
+  <h2>1. What this is</h2>
+  <p>Lattice Crypt is a game you play with keys. LYGO Arena is the same world with the hands taken off
+  the wheel: a <b>real-time team battler</b> in which the interesting decision happens before the bell.
+  You pick the team, the challengers are drawn blind from the full roster, and then you watch a fight
+  nobody is steering — including you.</p>
+  <p>The design bet is that the kits are legible enough to be fun to read. A fighter is not a stat block
+  with a name: every one of the thirty-three carries its own stat line, three named moves and three draft
+  cards, derived from the numbers Lattice Crypt already gives it — shot, speed, magic, armour, melee,
+  brave and faith for the champions, the <code>FOE</code> table for the crypt creatures, the
+  <code>PETS</code> table for the pack.</p>
+
+  <h2>2. Modes and the shape of a match</h2>
+  <p>Four modes: <b>1v1</b>, <b>2v2</b>, <b>3v3</b> and <b>5v5</b>. Team size is the only rule that
+  changes; the arena, the kits and the AI are identical, so a 5v5 is not a different game so much as a
+  louder one. Between the count and the result the only inputs are the watch controls: pause, and
+  1× / 2× / 4× / 8× speed.</p>
+  <div class="mode-stat">
+    <div><b>26s</b><span>1v1 median</span></div>
+    <div><b>34s</b><span>2v2 median</span></div>
+    <div><b>41s</b><span>3v3 median</span></div>
+    <div><b>50s</b><span>5v5 median</span></div>
+  </div>
+  <p class="muted">Medians over 300 simulated battles in the balance harness (§6). Every match is
+  expected to land inside two minutes; the ring starts closing at 80 seconds so no two healers can
+  out-sustain the floor and leave a fight unresolved.</p>
+
+  <h2>3. The arena</h2>
+  <p>Each match builds a fresh map from the Lattice Crypt stone atlas: a symmetric tile field with a
+  realm family chosen by seed, walls mirrored so neither side inherits better ground, and both spawn
+  pockets flood-filled to guarantee that every tile a body can stand on is reachable from both ends.
+  The harness asserts this over 120 seeds — a map that strands a fighter is a bug, not a surprise.</p>
+  <p>Bodies move in continuous space, not on the grid: they path toward their target with a stuck
+  detector, slide along walls, and hold at the reach of their own weapon. A ranged kit kites a melee
+  threat; a melee kit commits.</p>
+
+  <h2>4. The AI</h2>
+  <p>Every body runs the same think loop, once per tick:</p>
+  <ul>
+    <li><b>Pick a target.</b> Nearest threat, re-evaluated on a timer and immediately when a target dies.</li>
+    <li><b>Move to the reach you want.</b> Melee walks in; ranged holds at 86% of its reach and backs off
+    a melee threat that gets inside 55% of it.</li>
+    <li><b>Cast the biggest thing that fits.</b> Moves are evaluated before the basic attack, so a body in
+    range uses what it has instead of auto-attacking.</li>
+    <li><b>Commit when nothing lands.</b> A body that has not dealt damage in five seconds drops the
+    kiting rules and charges. This is what stops two ranged kits from circling each other forever — a
+    real stalemate the first balance pass produced.</li>
+  </ul>
+  <p>Cards fire on hooks: <em>Second Wind</em> when a body first drops below 30%, <em>Name Recall</em> to
+  rise once more after being cut down, <em>Unwrite Ink</em> to shrug off the first stun, plus auras,
+  leech, thorns, echo rounds and executioner edges that modify every number passing through them.</p>
+
+  <h2>5. The roster — 33 real kits</h2>
+  <p>The numbers below are what the engine builds for an undrafted kit: base health, base damage, attacks
+  per second, reach in world units, flat armour, the three moves, the three cards, and the composite
+  <b>power</b> figure the menu shows while you draft. Power is a draft aid, not a promise — §6 says where
+  it lies.</p>
+
+  <h3>Champions — 13</h3>
+<table><thead><tr><th>Kit</th><th>HP</th><th>Damage</th><th>Rate</th><th>Reach</th><th>Armour</th><th>Three moves</th><th>Three cards</th><th>Power</th></tr></thead><tbody><tr><td><b>Kael</b><i>Gallant Blade</i></td><td class='n'>700</td><td class='n'>43</td><td class='n'>0.8</td><td class='n'>48</td><td class='n'>9</td><td class='kit'><em>Rend</em> <em>Shield Wall</em> <em>Squire&#x27;s Charge</em></td><td class='cards'><i>MIGHT</i> <i>IRON</i> <i>VAMP</i></td><td class='n'>166</td></tr><tr><td><b>Vale</b><i>Aegis Knight</i></td><td class='n'>920</td><td class='n'>30</td><td class='n'>0.72</td><td class='n'>51</td><td class='n'>12</td><td class='kit'><em>Cover</em> <em>Bulwark</em> <em>Shield Wall</em></td><td class='cards'><i>BULWARK</i> <i>THORN</i> <i>IRON</i></td><td class='n'>197</td></tr><tr><td><b>Orin</b><i>Black Sigil</i></td><td class='n'>600</td><td class='n'>49</td><td class='n'>0.86</td><td class='n'>262</td><td class='n'>2</td><td class='kit'><em>Unwrite</em> <em>Resonance Flask</em> <em>Chorus Flask</em></td><td class='cards'><i>MIGHT</i> <i>FOCUS</i> <i>RES</i></td><td class='n'>131</td></tr><tr><td><b>Nia</b><i>Path Archer</i></td><td class='n'>620</td><td class='n'>31</td><td class='n'>0.92</td><td class='n'>275</td><td class='n'>3</td><td class='kit'><em>Pinning Volley</em> <em>Dash</em> <em>Needle Rain</em></td><td class='cards'><i>STRIDE</i> <i>LUCK</i> <i>VOLLEY</i></td><td class='n'>128</td></tr><tr><td><b>Lyra</b><i>Spiral Bard</i></td><td class='n'>560</td><td class='n'>32</td><td class='n'>0.84</td><td class='n'>250</td><td class='n'>3</td><td class='kit'><em>Hymn</em> <em>Spiral Chorus</em> <em>Weave Bloom</em></td><td class='cards'><i>RES</i> <i>REGEN</i> <i>AURA</i></td><td class='n'>118</td></tr><tr><td><b>Arkos</b><i>Lattice Lancer</i></td><td class='n'>662</td><td class='n'>45</td><td class='n'>0.78</td><td class='n'>61</td><td class='n'>6</td><td class='kit'><em>Geodesic</em> <em>True Line</em> <em>Dash</em></td><td class='cards'><i>PIERCE</i> <i>MIGHT</i> <i>NIMBLE</i></td><td class='n'>142</td></tr><tr><td><b>D9ra</b><i>Wolf Monk</i></td><td class='n'>850</td><td class='n'>44</td><td class='n'>0.88</td><td class='n'>45</td><td class='n'>6</td><td class='kit'><em>Shockwave</em> <em>Wolf Fury</em> <em>Squire&#x27;s Charge</em></td><td class='cards'><i>FURY</i> <i>BRUTAL</i> <i>LEECH</i></td><td class='n'>164</td></tr><tr><td><b>Srath</b><i>Shadow Needle</i></td><td class='n'>560</td><td class='n'>33</td><td class='n'>0.9</td><td class='n'>243</td><td class='n'>2</td><td class='kit'><em>Doublespeak</em> <em>Needle Rain</em> <em>Dash</em></td><td class='cards'><i>VEIL</i> <i>LUCK</i> <i>ECHO</i></td><td class='n'>118</td></tr><tr><td><b>Kairos</b><i>Hour Mage</i></td><td class='n'>548</td><td class='n'>38</td><td class='n'>1</td><td class='n'>269</td><td class='n'>2</td><td class='kit'><em>Right-Time</em> <em>Borrowed Second</em> <em>Δ9 Seal</em></td><td class='cards'><i>HASTE</i> <i>RES</i> <i>CLOCK</i></td><td class='n'>123</td></tr><tr><td><b>Justicae</b><i>Accord Knight</i></td><td class='n'>944</td><td class='n'>31</td><td class='n'>0.74</td><td class='n'>54</td><td class='n'>10</td><td class='kit'><em>Fair Plate</em> <em>Verdict</em> <em>Bulwark</em></td><td class='cards'><i>EXEC</i> <i>BULWARK</i> <i>THORN</i></td><td class='n'>187</td></tr><tr><td><b>Seidon</b><i>Tide Seer</i></td><td class='n'>600</td><td class='n'>35</td><td class='n'>0.8</td><td class='n'>256</td><td class='n'>4</td><td class='kit'><em>Undertow</em> <em>Current</em> <em>Geodesic</em></td><td class='cards'><i>AURA</i> <i>RES</i> <i>GIFT</i></td><td class='n'>128</td></tr><tr><td><b>Sancora</b><i>Weave Chemist</i></td><td class='n'>798</td><td class='n'>32</td><td class='n'>0.78</td><td class='n'>256</td><td class='n'>4</td><td class='kit'><em>Chorus Flask</em> <em>Weave Bloom</em> <em>Cover</em></td><td class='cards'><i>REGEN</i> <i>GIANT</i> <i>AURA</i></td><td class='n'>139</td></tr><tr><td><b>Lightfather</b><i>Architect · Δ9</i></td><td class='n'>680</td><td class='n'>37</td><td class='n'>0.84</td><td class='n'>256</td><td class='n'>6</td><td class='kit'><em>Δ9 Seal</em> <em>Provenance</em> <em>Cover</em></td><td class='cards'><i>AURA</i> <i>GIFT</i> <i>GIFT</i></td><td class='n'>152</td></tr></tbody></table>
+  <h3>Crypt creatures — 15</h3>
+<table><thead><tr><th>Kit</th><th>HP</th><th>Damage</th><th>Rate</th><th>Reach</th><th>Armour</th><th>Three moves</th><th>Three cards</th><th>Power</th></tr></thead><tbody><tr><td><b>Wraith</b><i>Crypt Fodder</i></td><td class='n'>420</td><td class='n'>32</td><td class='n'>1.05</td><td class='n'>256</td><td class='n'>2</td><td class='kit'><em>Wail</em> <em>Drain Cloud</em></td><td class='cards'><i>HASTE</i> <i>NIMBLE</i> <i>LEECH</i></td><td class='n'>105</td></tr><tr><td><b>Brute</b><i>Crypt Fodder</i></td><td class='n'>1090</td><td class='n'>39</td><td class='n'>0.66</td><td class='n'>48</td><td class='n'>9</td><td class='kit'><em>Ground Pound</em> <em>Ward Field</em></td><td class='cards'><i>IRON</i> <i>GIANT</i> <i>THORN</i></td><td class='n'>190</td></tr><tr><td><b>Imp</b><i>Crypt Fodder</i></td><td class='n'>403</td><td class='n'>31</td><td class='n'>0.95</td><td class='n'>237</td><td class='n'>1</td><td class='kit'><em>Imp Fire</em> <em>Flicker</em></td><td class='cards'><i>STRIDE</i> <i>LUCK</i> <i>NIMBLE</i></td><td class='n'>95</td></tr><tr><td><b>Hurler</b><i>Crypt Artillery</i></td><td class='n'>859</td><td class='n'>47</td><td class='n'>0.72</td><td class='n'>51</td><td class='n'>4</td><td class='kit'><em>Lob Stone</em> <em>Ground Pound</em></td><td class='cards'><i>MIGHT</i> <i>BULWARK</i> <i>GIANT</i></td><td class='n'>137</td></tr><tr><td><b>Shade</b><i>Veilkin</i></td><td class='n'>471</td><td class='n'>36</td><td class='n'>0.92</td><td class='n'>51</td><td class='n'>3</td><td class='kit'><em>Flicker</em> <em>Snatch</em></td><td class='cards'><i>VEIL</i> <i>LEECH</i> <i>NIMBLE</i></td><td class='n'>101</td></tr><tr><td><b>Thief</b><i>Tithe-Thief</i></td><td class='n'>507</td><td class='n'>35</td><td class='n'>1.05</td><td class='n'>51</td><td class='n'>2</td><td class='kit'><em>Snatch</em> <em>Flicker</em></td><td class='cards'><i>STRIDE</i> <i>VAMP</i> <i>LUCK</i></td><td class='n'>106</td></tr><tr><td><b>Drain</b><i>The Unwriting</i></td><td class='n'>700</td><td class='n'>46</td><td class='n'>0.78</td><td class='n'>64</td><td class='n'>4</td><td class='kit'><em>Unmake</em> <em>Drain Cloud</em></td><td class='cards'><i>LEECH</i> <i>REGEN</i> <i>MIGHT</i></td><td class='n'>128</td></tr><tr><td><b>Gate</b><i>Nexus Guardian</i></td><td class='n'>1735</td><td class='n'>46</td><td class='n'>0.6</td><td class='n'>61</td><td class='n'>13</td><td class='kit'><em>Gate Slam</em> <em>Ward Field</em> <em>Call the Wards</em></td><td class='cards'><i>IRON</i> <i>THORN</i> <i>GIANT</i></td><td class='n'>269</td></tr><tr><td><b>Crown</b><i>Nexus Guardian</i></td><td class='n'>1446</td><td class='n'>52</td><td class='n'>0.62</td><td class='n'>58</td><td class='n'>7</td><td class='kit'><em>Regal Volley</em> <em>Lob Stone</em></td><td class='cards'><i>MIGHT</i> <i>BULWARK</i> <i>WELL</i></td><td class='n'>209</td></tr><tr><td><b>Smith</b><i>Nexus Guardian</i></td><td class='n'>1020</td><td class='n'>60</td><td class='n'>0.64</td><td class='n'>250</td><td class='n'>10</td><td class='kit'><em>Anvil</em> <em>Gate Cannon</em></td><td class='cards'><i>MIGHT</i> <i>BRUTAL</i> <i>IRON</i></td><td class='n'>223</td></tr><tr><td><b>Heart of the Crypt</b><i>Nexus Guardian</i></td><td class='n'>1900</td><td class='n'>44</td><td class='n'>0.68</td><td class='n'>58</td><td class='n'>8</td><td class='kit'><em>Heartbeat</em> <em>Ward Field</em></td><td class='cards'><i>GIANT</i> <i>REGEN</i> <i>VAMP</i></td><td class='n'>245</td></tr><tr><td><b>Leviathan</b><i>Nexus Guardian</i></td><td class='n'>1080</td><td class='n'>58</td><td class='n'>0.72</td><td class='n'>243</td><td class='n'>6</td><td class='kit'><em>Tide Crush</em> <em>Undertow</em></td><td class='cards'><i>MIGHT</i> <i>STRIDE</i> <i>LEECH</i></td><td class='n'>201</td></tr><tr><td><b>Tithe-King</b><i>Nexus Guardian</i></td><td class='n'>1000</td><td class='n'>45</td><td class='n'>0.98</td><td class='n'>64</td><td class='n'>5</td><td class='kit'><em>Tithe</em> <em>Snatch</em></td><td class='cards'><i>VAMP</i> <i>EXEC</i> <i>STRIDE</i></td><td class='n'>179</td></tr><tr><td><b>Name-Eater</b><i>Nexus Guardian</i></td><td class='n'>1008</td><td class='n'>53</td><td class='n'>0.76</td><td class='n'>262</td><td class='n'>6</td><td class='kit'><em>Nameless</em> <em>Unmake</em></td><td class='cards'><i>MIGHT</i> <i>CLOCK</i> <i>LEECH</i></td><td class='n'>196</td></tr><tr><td><b>The Lock</b><i>Super Boss</i></td><td class='n'>2100</td><td class='n'>53</td><td class='n'>0.66</td><td class='n'>269</td><td class='n'>14</td><td class='kit'><em>The Lock Seals</em> <em>Gate Cannon</em></td><td class='cards'><i>IRON</i> <i>BULWARK</i> <i>GIANT</i></td><td class='n'>323</td></tr></tbody></table>
+  <h3>Beasts — 5</h3>
+<table><thead><tr><th>Kit</th><th>HP</th><th>Damage</th><th>Rate</th><th>Reach</th><th>Armour</th><th>Three moves</th><th>Three cards</th><th>Power</th></tr></thead><tbody><tr><td><b>Ashmane</b><i>Wolf</i></td><td class='n'>496</td><td class='n'>37</td><td class='n'>0.96</td><td class='n'>48</td><td class='n'>4</td><td class='kit'><em>Pack Bite</em> <em>Roar</em></td><td class='cards'><i>STRIDE</i> <i>FURY</i> <i>LEECH</i></td><td class='n'>114</td></tr><tr><td><b>Solstride</b><i>Lion</i></td><td class='n'>543</td><td class='n'>49</td><td class='n'>0.9</td><td class='n'>51</td><td class='n'>4</td><td class='kit'><em>Solstride</em> <em>Roar</em></td><td class='cards'><i>LUCK</i> <i>BRUTAL</i> <i>MIGHT</i></td><td class='n'>138</td></tr><tr><td><b>Ironhide</b><i>Bear</i></td><td class='n'>1024</td><td class='n'>38</td><td class='n'>0.74</td><td class='n'>54</td><td class='n'>10</td><td class='kit'><em>Maul</em> <em>Ward Field</em></td><td class='cards'><i>IRON</i> <i>GIANT</i> <i>THORN</i></td><td class='n'>196</td></tr><tr><td><b>Tuskward</b><i>Elephant</i></td><td class='n'>1033</td><td class='n'>35</td><td class='n'>0.68</td><td class='n'>61</td><td class='n'>11</td><td class='kit'><em>Stomp</em> <em>Ground Pound</em></td><td class='cards'><i>IRON</i> <i>BULWARK</i> <i>WELL</i></td><td class='n'>197</td></tr><tr><td><b>Glassbarb</b><i>Scorpion</i></td><td class='n'>448</td><td class='n'>38</td><td class='n'>1.02</td><td class='n'>51</td><td class='n'>4</td><td class='kit'><em>Glassbarb Clamp</em> <em>Flicker</em></td><td class='cards'><i>THORN</i> <i>FURY</i> <i>VEIL</i></td><td class='n'>115</td></tr></tbody></table>
+  <h2>6. The balance ladder</h2>
+  <p>Feel is not a spreadsheet, but some things are. <code>tools/arena_check.js</code> loads the real
+  roster and the real engine in Node behind a stub DOM and runs the whole thing headless. It asserts what
+  a player would notice, and prints what a designer wants to argue about.</p>
+  <div class="card">
+    <h3>What the harness checks — 19 assertions, 300 battles per run</h3>
+    <ul>
+      <li>Roster shape: 33 fighters, unique ids, every sprite key present in its atlas, every move id
+      resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
+      <li>Built kits are playable: finite health, damage, rate and reach; a power spread that is a band
+      rather than a cliff.</li>
+      <li>Maps: 120 seeds, both pockets can reach all ten spawn slots; open ground stays in a 40–80% band.</li>
+      <li>Battles: every match ends with a winner, no <code>NaN</code> in any live body, nobody outside the
+      arena, both sides actually cast moves, and no kit ships without ever dealing damage.</li>
+      <li>Pacing: per-mode mean and median length against the two-minute target.</li>
+      <li>Usage: which moves the sim reaches for and which never fire — the fastest way to find a kit whose
+      third move is dead weight.</li>
+    </ul>
+  </div>
+  <p>The ladder produced four systemic fixes rather than thirty-three hand tweaks, which is the point of
+  building it:</p>
+  <ul>
+    <li><b>A melee walk-in tax.</b> Melee kits were being shot for free on approach. Every kit with reach
+    under 100 now gets +18% health and +1 armour before any card touches it.</li>
+    <li><b>Softer armour.</b> Flat reduction of 1.5× armour per hit made high-armour bodies near-immune to
+    low-damage kits; it is 1.1× now, floored at 3 damage.</li>
+    <li><b>A frustration timer.</b> Five seconds without landing a hit forces the charge in §4, which
+    turned the worst stalemate class into decisive fights.</li>
+    <li><b>A closing ring.</b> A share of maximum health per second from 80 seconds, climbing as the fight
+    drags, so sustain cannot draw a match out indefinitely.</li>
+  </ul>
+  <p class="warn"><b>Where it stands today, honestly:</b> the top end is still hot. The two bosses and the
+  strongest support kits win noticeably more than they lose — the current 300-battle spread runs from
+  about 27% for the weakest melee creature to about 82% for the super boss, with the champion band inside
+  roughly 33–81%. The systemic levers closed the broad gaps; the remaining outliers are tuning work on
+  specific kits, and the ladder exists so that work can be measured instead of guessed. Draft a boss if
+  you want an easier night.</p>
+
+  <h2>7. The hall</h2>
+  <p>A callsign is optional and nothing else is collected. When a match ends and a call is set, the result
+  posts to the shared arcade book (mode, side that won, MVP, session wins) and the browser keeps a queue so
+  a failed post is retried later instead of being lost. The <a href="./ledger.html">live hall</a> reads the
+  same book and shows only this game's rows. Empty beats a fake board.</p>
+
+  <h2>8. Controls</h2>
+  <p><b>Space</b> pause · <b>1 2 3 4</b> speed 1× 2× 4× 8× · <b>M</b> mute · <b>R</b> rematch ·
+  <b>Esc</b> back to the menu. The donation-gate reminder is held shut for the length of a match and released
+  on the results board or the menu.</p>
+
+  <h2>9. Lineage and credits</h2>
+  <p>Art, atlases, roster lineage and the numeric DNA all come from <a href="/games/lattice-crypt/">Lattice
+  Crypt</a>; the arena engine, the kits and the harness are new. Built by Δ9Φ963 with the steward, Justin
+  Helmer — Lightfather. Everything runs in the browser with no build step: three scripts, a stylesheet and
+  one atlas pack.</p>
+  <p class="muted">Files: <code>roster.js</code> (33 kits, 26 cards, the move table) · <code>arena.js</code>
+  (the engine) · <code>arena-ui.js</code> (menu, HUD, results) · <code>tools/arena_check.js</code> (the ladder).</p>
+</div>
+</body>
+</html>

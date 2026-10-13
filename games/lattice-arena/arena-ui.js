@@ -1,0 +1,399 @@
+/* LYGO Arena — the shell.
+   The menu, the draft, the fight HUD and the results board. The engine owns the battle;
+   this file owns everything a spectator reads: who is on the floor, who is winning, what
+   just happened, and what the champions actually do to each other. */
+(function (w) {
+  "use strict";
+  const R = w.LYGO_ARENA;
+  const E = w.ArenaEngine;
+  const SAVE = "lygo_lattice_arena_v1";
+  const $ = (id) => document.getElementById(id);
+  const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+
+  const persist = Object.assign(
+    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "" },
+    (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
+  );
+  function save() { try { localStorage.setItem(SAVE, JSON.stringify(persist)); } catch (e) {} }
+
+  let your = (persist.team || []).filter((id) => R.byId[id]).slice(0, 5);
+  let foeIds = [];
+  let lastMatch = null;
+  let rows = { you: [], foe: [] };
+  let feedLen = 0;
+  let overlayMode = null;
+
+  const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
+
+  /* ------------------------------------------------------------------ sound --- */
+  let audio = null, muted = false;
+  function blip(type) {
+    if (muted) return;
+    try {
+      if (!audio) audio = new (w.AudioContext || w.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      const table = {
+        hit: [220, 0.06, "square", 0.05], big: [140, 0.12, "square", 0.07],
+        kill: [90, 0.22, "sawtooth", 0.08], cast: [520, 0.09, "triangle", 0.05],
+        start: [660, 0.3, "triangle", 0.09], win: [880, 0.5, "triangle", 0.1], lose: [180, 0.5, "sine", 0.09]
+      }[type] || [300, 0.08, "square", 0.05];
+      o.type = table[2]; o.frequency.setValueAtTime(table[0], t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(60, table[0] * 0.5), t + table[1]);
+      g.gain.setValueAtTime(table[3], t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + table[1]);
+      o.connect(g); g.connect(audio.destination);
+      o.start(t); o.stop(t + table[1] + 0.02);
+    } catch (e) {}
+  }
+
+  /* ------------------------------------------------------------ gate/hall --- */
+  function gateHold(on, ms) {
+    gateHeld = !!on;
+    try {
+      if (w.LYGO_GATE && w.LYGO_GATE.hold) w.LYGO_GATE.hold(on);
+      if (on === false && ms && w.LYGO_GATE.suppress) w.LYGO_GATE.suppress(ms);
+    } catch (e) {}
+  }
+  function hallName() { return persist.name || "Spectator"; }
+  function postResult(won, mode, mvp) {
+    if (!persist.name) return;
+    try {
+      if (w.ArcadeLedger && w.ArcadeLedger.arena) {
+        w.ArcadeLedger.arena({
+          name: persist.name, score: persist.wins, mode: MODE_LABEL[mode], mvp: mvp,
+          outcome: won ? "win" : "loss", date: new Date().toISOString().slice(0, 10)
+        });
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- menu --- */
+  function modeCards() {
+    return [1, 2, 3, 5].map((n) => {
+      const on = persist.mode === n ? " on" : "";
+      return "<button type='button' class='mode-card" + on + "' data-mode='" + n + "'>" +
+        "<b>" + MODE_LABEL[n] + "</b><span>" +
+        ({ 1: "one on one — the clean read", 2: "pairs, every kit matters", 3: "the classic team fight", 5: "a full roster war" }[n]) +
+        "</span></button>";
+    }).join("");
+  }
+  function fighterCard(f) {
+    const built = R.build(f, [], null, Math.random);
+    const art = f.portrait ? "<img src='./assets/" + f.portrait + "' alt=''>" : "<img class='spr' src='" + E.iconFor(f) + "' alt=''>";
+    const picked = your.includes(f.id);
+    const kit = f.moves.map((m) => "<em>" + R.MOVES[m].name + "</em>").join("");
+    const cards = f.cards.map((c) => "<i>" + R.CARDS[c].tag + "</i>").join("");
+    return "<button type='button' class='fcard" + (picked ? " picked" : "") + "' data-id='" + f.id + "'>" +
+      "<div class='fart'>" + art + "<span class='cls " + f.cls + "'>" + f.cls + "</span></div>" +
+      "<div class='fmeta'><b>" + f.name + "</b><u>" + f.tag + "</u><span class='pw'>PWR " + built.power + "</span></div>" +
+      "<div class='fkit'>" + kit + "</div>" +
+      "<div class='fcards'>" + cards + "</div>" +
+      "<div class='fbio'>" + f.bio + "</div>" +
+      "<div class='fcounter'>" + f.counter + "</div>" +
+      "</button>";
+  }
+  function renderMenu() {
+    const ov = $("overlay");
+    /* every pick rebuilds this sheet, so carry the roster's scroll position across the
+       rebuild — otherwise choosing a card below the fold snaps the player back to the top. */
+    const keepScroll = (ov.querySelector(".grid") || {}).scrollTop || 0;
+    overlayMode = "menu";
+    const list = R.ROSTER.filter((f) => f.cls === persist.filter);
+    const youBuilt = your.map((id) => R.build(R.byId[id], [], null, Math.random));
+    const power = youBuilt.reduce((s, b) => s + b.power, 0);
+    ov.className = "overlay show";
+    ov.innerHTML =
+      "<div class='sheet menu-sheet'>" +
+        "<p class='kicker'>Δ9Φ963 · chatagent.ca arena</p>" +
+        "<h1>LYGO Arena</h1>" +
+        "<p class='lede'>Two AI teams. One stone ring. You pick the roster and then you watch — " +
+        "every champion fights its own kit, uses its own moves and plays its own cards. " +
+        "The challengers are drawn at random, so you never know what walks in.</p>" +
+        "<div class='modes'>" + modeCards() + "</div>" +
+        "<div class='builder'>" +
+          "<div class='builder-head'>" +
+            "<h2>Your team <span id='teamCount'>" + your.length + "/" + persist.mode + "</span></h2>" +
+            "<div class='filters'>" +
+              "<button type='button' class='tab" + (persist.filter === "champ" ? " on" : "") + "' data-filter='champ'>Champions</button>" +
+              "<button type='button' class='tab" + (persist.filter === "beast" ? " on" : "") + "' data-filter='beast'>Creatures</button>" +
+              "<button type='button' class='tab" + (persist.filter === "pet" ? " on" : "") + "' data-filter='pet'>Beasts</button>" +
+              "<button type='button' class='tab' data-draft='1'>Random draft</button>" +
+              "<button type='button' class='tab' data-clear='1'>Clear</button>" +
+            "</div>" +
+          "</div>" +
+          "<div class='tray' id='tray'>" + (your.length ? your.map((id) => {
+            const f = R.byId[id];
+            return "<button type='button' class='slot' data-drop='" + f.id + "'>" +
+              "<img src='" + (f.portrait ? "./assets/" + f.portrait : E.iconFor(f)) + "' alt=''>" +
+              "<b>" + f.name + "</b></button>";
+          }).join("") : "<p class='muted'>Nothing picked yet — choose from the roster below.</p>") + "</div>" +
+          "<div class='grid'>" + list.map(fighterCard).join("") + "</div>" +
+        "</div>" +
+        "<div class='menu-foot'>" +
+          "<div class='tally'><b>Your power</b> <span>" + power + "</span> · " +
+            "<b>Session</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></div>" +
+          "<label class='callsign'>Callsign for the hall <input type='text' id='callSign' maxlength='18' value='" + (persist.name || "").replace(/[<>"'&]/g, "") + "' placeholder='optional'></label>" +
+          "<button type='button' class='btn gold big' id='btnFight'" + (your.length === persist.mode ? "" : " disabled") + ">Fight — " + MODE_LABEL[persist.mode] + "</button>" +
+        "</div>" +
+        "<details class='how'>" +
+          "<summary>How the arena works</summary>" +
+          "<p>Both sides are AI. Nobody is controlled. What decides a fight is the kits: three moves and three cards per " +
+          "champion, all taken from the Lattice Crypt numbers. Ranged kits kite, melee kits commit, healers wait for a wound, " +
+          "and a body that has not landed a hit in five seconds stops being careful and charges in.</p>" +
+          "<p>Keys: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> mute · <b>Esc</b> menu · <b>R</b> rematch.</p>" +
+        "</details>" +
+      "</div>";
+    ov.onclick = onMenuClick;
+    const g = ov.querySelector(".grid");
+    if (g) { g.scrollTop = keepScroll; }
+  }
+
+  function onMenuClick(ev) {
+    const t = ev.target.closest("[data-mode],[data-id],[data-drop],[data-filter],[data-draft],[data-clear]");
+    if (!t) {
+      if (ev.target.id === "btnFight") { void 0; }
+      return;
+    }
+    if (t.dataset.mode) {
+      persist.mode = +t.dataset.mode;
+      while (your.length > persist.mode) your.pop();
+      save(); renderMenu(); return;
+    }
+    if (t.dataset.filter) { persist.filter = t.dataset.filter; save(); renderMenu(); return; }
+    if (t.dataset.draft) {
+      your = R.draw(persist.mode).map((f) => f.id);
+      save(); renderMenu(); return;
+    }
+    if (t.dataset.clear) { your = []; save(); renderMenu(); return; }
+    if (t.dataset.drop) { your = your.filter((id) => id !== t.dataset.drop); save(); renderMenu(); return; }
+    if (t.dataset.id) {
+      const id = t.dataset.id;
+      if (your.includes(id)) your = your.filter((x) => x !== id);
+      else if (your.length < persist.mode) your = your.concat([id]);
+      save(); renderMenu(); return;
+    }
+  }
+
+  /* ------------------------------------------------------------------ VS --- */
+  function renderVS() {
+    const ov = $("overlay");
+    overlayMode = "vs";
+    const you = your.map((id) => R.byId[id]);
+    const foe = foeIds.map((id) => R.byId[id]);
+    const side = (list, cls) => "<div class='vside " + cls + "'>" + list.map((f) => {
+      const b = R.build(f, [], null, Math.random);
+      return "<div class='vcard'><img src='" + (f.portrait ? "./assets/" + f.portrait : E.iconFor(f)) + "' alt=''>" +
+        "<div><b>" + f.name + "</b><u>" + f.tag + "</u>" + b.moves.map((m) => "<em>" + m.name + "</em>").join("") +
+        "<span class='pw'>PWR " + b.power + "</span></div></div>";
+    }).join("") + "</div>";
+    ov.className = "overlay show";
+    ov.innerHTML = "<div class='sheet vs-sheet'><h1 class='vs'>" + MODE_LABEL[persist.mode] + "</h1>" +
+      "<div class='vsgrid'>" + side(you, "you") + "<div class='vsmark'>vs</div>" + side(foe, "foe") + "</div>" +
+      "<p class='lede center'>The challengers are drawn from the full roster — champions, crypt creatures and the pack.</p>" +
+      "<div class='modes'><button type='button' class='btn gold big' id='btnGo'>Open the arena</button>" +
+      "<button type='button' class='btn' id='btnBackMenu'>Change team</button></div></div>";
+    label = "vs";
+    ov.onclick = (ev) => {
+      if (ev.target.id === "btnGo") begin(true);
+      else if (ev.target.id === "btnBackMenu") renderMenu();
+    };
+  }
+  let label = "vs";
+
+  /* --------------------------------------------------------------- battle --- */
+  function teamPanel(team) {
+    const box = $("team" + (team === 0 ? "You" : "Foe"));
+    box.innerHTML = "<div class='theading'><h3>" + (team === 0 ? "Your team" : "Challengers") +
+      "</h3><span class='tag' id='" + (team === 0 ? "youTag" : "foeTag") + "'></span></div>" +
+      "<div class='trows' id='" + (team === 0 ? "youRows" : "foeRows") + "'></div>";
+  }
+  function buildRows() {
+    const S = E.state();
+    ["you", "foe"].forEach((side, i) => {
+      const list = i === 0 ? S.your : S.foe;
+      const box = $(side === "you" ? "youRows" : "foeRows");
+      box.innerHTML = "";
+      rows[side] = list.map((e) => {
+        const b = e.b;
+        const icon = b.spr.sheet ? R.byId[b.id] && R.byId[b.id].portrait : null;
+        const src = b.portrait ? "./assets/" + b.portrait : iconForBuilt(b);
+        const row = el("div", "trow");
+        row.innerHTML =
+          "<img class='tart' src='" + src + "' alt=''>" +
+          "<div class='tmain'><div class='tname'><b>" + b.name + "</b><span class='tpw'>" + (b.power || "") + "</span></div>" +
+          "<div class='tbar'><i class='hp'></i><i class='shd'></i></div>" +
+          "<div class='tstatus'></div></div>" +
+          "<div class='tcds'>" + b.moves.map((m) => "<i title='" + m.name + " · " + m.text.replace(/'/g, "") + "'>" + m.name.slice(0, 2) + "</i>").join("") + "</div>";
+        box.appendChild(row);
+        return {
+          e, row, hp: row.querySelector(".hp"), shd: row.querySelector(".shd"),
+          st: row.querySelector(".tstatus"), cds: Array.from(row.querySelectorAll(".tcds i"))
+        };
+      });
+    });
+  }
+  const iconCacheBuilt = {};
+  function iconForBuilt(b) {
+    if (iconCacheBuilt[b.id]) return iconCacheBuilt[b.id];
+    const tpl = R.byId[b.id];
+    const src = tpl ? E.iconFor(tpl) : "";
+    iconCacheBuilt[b.id] = src;
+    return src;
+  }
+  function paintHud() {
+    const S = E.state();
+    if (!S.your.length) return;
+    ["you", "foe"].forEach((side) => {
+      rows[side].forEach((r) => {
+        const e = r.e;
+        const frac = Math.max(0, Math.min(1, e.hp / e.max));
+        r.hp.style.width = (frac * 100).toFixed(1) + "%";
+        r.hp.className = "hp" + (e.team === 0 ? "" : " foe") + (e.dead ? " dead" : "") + (frac < 0.3 ? " low" : "");
+        r.shd.style.width = (e.shd > 0 ? Math.min(100, (e.shd / e.max) * 100) : 0) + "%";
+        r.row.classList.toggle("down", !!e.dead);
+        const st = E.statusList(e).slice(0, 4).map(([k]) => "<i class='st " + k + "'>" + k + "</i>").join("");
+        if (r.st.dataset.k !== st) { r.st.innerHTML = st; r.st.dataset.k = st; }
+        e.b.moves.forEach((m, i) => {
+          const c = r.cds[i];
+          if (!c) return;
+          const ready = e.cds[i] <= 0 && e.mana >= E.moveCost(m);
+          c.className = "cd" + (ready ? " ready" : " cool") + (e.dead ? " off" : "");
+          if (!ready && !e.dead) c.style.setProperty("--p", (1 - Math.min(1, e.cds[i] / (m.cd * e.b.cdMul))) * 100 + "%");
+        });
+      });
+    });
+    $("arenaClock").textContent = clockOf(S.time);
+    $("youTag").textContent = alive(0) + " standing";
+    $("foeTag").textContent = alive(1) + " standing";
+    const cd = $("announce");
+    if (S.phase === "count") { cd.textContent = Math.ceil(S.countdown) + ""; cd.classList.add("show"); }
+    else if (S.phase === "live" && S.time < 4) { cd.textContent = "FIGHT"; cd.classList.add("show"); }
+    else cd.classList.remove("show");
+    if (S.events.length !== feedLen) {
+      feedLen = S.events.length;
+      const f = $("feed");
+      f.innerHTML = S.events.slice(-9).reverse().map((ev) => "<p class='" + ev.kind + "'><span>" + clockOf(ev.t) + "</span>" + ev.text + "</p>").join("");
+    }
+    const youBar = rows.you.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.you.reduce((s, r) => s + r.e.max, 0));
+    const foeBar = rows.foe.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.foe.reduce((s, r) => s + r.e.max, 0));
+    $("meterYou").style.width = (youBar * 100) + "%";
+    $("meterFoe").style.width = (foeBar * 100) + "%";
+    if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
+  }
+  function alive(team) { return E.state()[(team === 0 ? "your" : "foe")].filter((e) => !e.dead).length; }
+  function clockOf(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
+
+  function begin(reset) {
+    persist.name = ($("callSign") && $("callSign").value.trim()) || persist.name;
+    save();
+    if (reset || !foeIds.length) foeIds = R.draw(persist.mode, your).map((f) => f.id);
+    $("overlay").className = "overlay";
+    overlayMode = "battle";
+    $("battle").classList.remove("hidden");
+    teamPanel(0); teamPanel(1);
+    E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode);
+    buildRows();
+    feedLen = 0;
+    gateHold(true);
+    blip("start");
+    $("matchPill").textContent = MODE_LABEL[persist.mode];
+    lastMatch = { your: your.slice(), foe: foeIds.slice() };
+  }
+
+  function showResults() {
+    const S = E.state();
+    if (overlayMode === "results") return;
+    overlayMode = "results";
+    const won = S.winner === 0;
+    persist[won ? "wins" : "losses"]++;
+    save();
+    const all = S.your.concat(S.foe).map((e) => ({
+      name: e.b.name, team: e.team, dmg: Math.round(e.dmgDone), kills: e.kills,
+      heal: Math.round(e.healDone), taken: Math.round(e.taken), uses: Object.values(e.uses).reduce((a, b) => a + b, 0)
+    })).sort((a, b) => b.dmg - a.dmg);
+    const mvp = all[0];
+    const moveTally = {};
+    S.your.forEach((e) => Object.keys(e.uses).forEach((n) => { moveTally[n] = (moveTally[n] || 0) + e.uses[n]; }));
+    const best = Object.entries(moveTally).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    $("overlay").className = "overlay show";
+    $("overlay").innerHTML = "<div class='sheet res-sheet " + (won ? "won" : "lost") + "'>" +
+      "<p class='kicker'>" + MODE_LABEL[persist.mode] + " · " + clockOf(S.time) + "</p>" +
+      "<h1>" + (won ? "Your team takes the arena" : "The challengers take the arena") + "</h1>" +
+      "<p class='lede center'>" + (all.find((a) => a.team === (won ? 0 : 1)).name) + " led the damage. " +
+      (best.length ? "Your most-used moves: " + best.map(([n, c]) => n + " ×" + c).join(", ") + "." : "") + "</p>" +
+      "<div class='table'><div class='thead'><span>Fighter</span><span>Side</span><span>Damage</span><span>Kills</span><span>Healed</span><span>Moves</span></div>" +
+      all.map((a) => "<div class='trowline" + (a.team === 0 ? " you" : "") + "'><span><b>" + a.name + "</b></span><span>" +
+        (a.team === 0 ? "you" : "foe") + "</span><span>" + a.dmg + "</span><span>" + a.kills + "</span><span>" + a.heal + "</span><span>" + a.uses + "</span></div>").join("") +
+      "</div>" +
+      "<div class='tally'>Session: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></div>" +
+      "<div class='modes'>" +
+        "<button type='button' class='btn gold big' id='btnAgain'>Rematch · same challengers</button>" +
+        "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>" +
+        "<button type='button' class='btn' id='btnMenu2'>Change team</button>" +
+      "</div></div>";
+    gateHold(false, 120000);
+    blip(won ? "win" : "lose");
+    postResult(won, persist.mode, mvp ? mvp.name : "");
+    $("overlay").onclick = (ev) => {
+      const id = ev.target.id;
+      if (id === "btnAgain") begin(false);
+      else if (id === "btnNewFoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
+      else if (id === "btnMenu2") { $("battle").classList.add("hidden"); renderMenu(); }
+    };
+  }
+
+  /* ------------------------------------------------------------------ boot --- */
+  async function boot() {
+    const canvas = $("arena");
+    await E.init(canvas);
+    /* the menu should not show until the atlases are in, or cards come up blank */
+    document.body.classList.add("ready");
+    $("boot").classList.add("hidden");
+    renderMenu();
+    E.setSpeed(persist.speed || 1);
+    document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", +b.dataset.speed === (persist.speed || 1)));
+
+    document.body.addEventListener("click", (ev) => {
+      const t = ev.target.closest("[data-speed],[data-act]");
+      if (!t) return;
+      if (t.dataset.speed) {
+        persist.speed = +t.dataset.speed; save();
+        E.setSpeed(persist.speed);
+        document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", b === t));
+        return;
+      }
+      const act = t.dataset.act;
+      if (act === "pause") { const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
+      if (act === "menu") { $("battle").classList.add("hidden"); renderMenu(); gateHold(false, 60000); }
+      if (act === "rematch") begin(false);
+      if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
+      if (act === "mute") { muted = !muted; $("btnMute").classList.toggle("on", muted); }
+      if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.target.tagName === "INPUT") return;
+      if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
+      else if (ev.code === "KeyM") { muted = !muted; $("btnMute").classList.toggle("on", muted); }
+      else if (ev.code === "KeyR" && overlayMode === "battle") begin(false);
+      else if (ev.code === "Escape") { if (overlayMode === "battle") { $("battle").classList.add("hidden"); renderMenu(); } else if (overlayMode === "results") { $("battle").classList.add("hidden"); renderMenu(); } }
+      else if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(ev.code)) {
+        if (overlayMode !== "menu" && overlayMode !== "battle") return;
+        const map = { Digit1: 1, Digit2: 2, Digit3: 4, Digit4: 8 };
+        persist.speed = map[ev.code]; save(); E.setSpeed(persist.speed);
+        document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", +b.dataset.speed === persist.speed));
+      }
+    });
+    /* the fight button lives inside the sheet, so bind it here as well as the grid */
+    document.body.addEventListener("click", (ev) => {
+      if (ev.target.id === "btnFight" && your.length === persist.mode) {
+        foeIds = R.draw(persist.mode, your).map((f) => f.id);
+        renderVS();
+      }
+    });
+  }
+
+  w.ArenaUI = { tick: paintHud, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }) };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})(window);

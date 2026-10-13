@@ -86,6 +86,11 @@
       rec.event = rec.event || "run";
       return post("lygo-lattice-crypt-ledger-q", rec, SPACE + "/arcade/submit");
     },
+    arena: function (rec) {
+      rec.game = "lattice-arena";
+      rec.event = rec.event || "match";
+      return post("lygo-lattice-arena-ledger-q", rec, SPACE + "/arcade/submit");
+    },
     fish: function (rec) {
       rec.game = "fish-tank";
       rec.event = rec.event || "life";
@@ -100,6 +105,7 @@
         flush("lygo-swarm-ledger-q", url);
         flush("lygo-eternal-ledger-q", url);
         flush("lygo-lattice-crypt-ledger-q", url);
+        flush("lygo-lattice-arena-ledger-q", url);
         flush("lygo-fish-tank-ledger-q", SPACE + "/fish/submit");
       }
       pulse();

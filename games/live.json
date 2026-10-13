@@ -69,6 +69,15 @@
       ]
     },
     {
+      "id": "lattice-arena",
+      "play": "/games/lattice-arena/",
+      "ledger": "/games/lattice-arena/ledger.html",
+      "feeds": [
+        "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
+        "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json"
+      ]
+    },
+    {
       "id": "eternal-lattice",
       "play": "/games/eternal-lattice/",
       "ledger": "/games/eternal-lattice/ledger.html",

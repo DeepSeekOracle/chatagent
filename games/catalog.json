@@ -235,6 +235,25 @@
       ]
     },
     {
+      "id": "lattice-arena",
+      "slug": "lattice-arena",
+      "title": "LYGO Arena",
+      "tagline": "Real-time team battles",
+      "blurb": "Two AI teams, one stone ring. Pick 1v1 to 5v5 from 33 real kits — champions, crypt creatures and the pack — then watch every move, card and cooldown play out on its own. Challengers are drawn blind.",
+      "status": "live",
+      "featured": true,
+      "order": 12,
+      "href": "/games/lattice-arena/",
+      "cover": "/games/lattice-arena/assets/og.jpg",
+      "coverAlt": "Four Lattice champions in framed portraits beside the LYGO Arena wordmark",
+      "genre": ["battler", "spectate"],
+      "players": "1 (watch two AI teams)",
+      "links": [
+        { "label": "Whitepaper", "href": "/games/lattice-arena/whitepaper.html" },
+        { "label": "Live hall", "href": "/games/lattice-arena/ledger.html" }
+      ]
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",
