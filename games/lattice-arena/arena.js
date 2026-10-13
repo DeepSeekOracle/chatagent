@@ -88,6 +88,33 @@
   function lawForSeed(seed) {
     return lawById(REALMS[(seed == null ? 0 : Math.abs(seed | 0)) % REALMS.length]);
   }
+  /* ---------------------------------------------------------- the colosseums ---
+     Five kinds of fighting ground, all mirrored down the middle so neither side
+     owns a lane, all deliberately nearly empty: the obstacles are few and every one
+     of them is worth standing next to. That is the whole design brief — cover to
+     break a sight line, a gap to hold, a lane to run, and open sand everywhere else
+     so a body that wants to go somewhere can go there.
+
+       colosseum  the classic: open oval sand, four pillar knots on the diagonals
+       gauntlet   a spine down the middle with a mouth at each end, and two ways round
+       pit        low cross-walls with single-tile gates — four doorways to fight over
+       colonnade  two broken rows of pillars, making lanes and hard cover
+       ruin       a court of rubble: three short walls, scattered tooth-shaped blocks
+
+     Every kind is authored for the left half and mirrored, then repaired: the spawn
+     aprons are cleared and anything the repair cuts through is linked back in, so no
+     seed can strand a body behind stone. */
+  const KINDS = ["colosseum", "gauntlet", "pit", "colonnade", "ruin"];
+  const KIND_BLURB = {
+    colosseum: "Colosseum — open sand, cover on the corners.",
+    gauntlet: "Gauntlet — a spine down the middle and a mouth at each end.",
+    pit: "The Pit — four doorways in a low wall. Hold one or lose the middle.",
+    colonnade: "Colonnade — pillars in rows: lanes to run, columns to hide behind.",
+    ruin: "Ruin — a court of broken walls and loose stone."
+  };
+  /* which colosseum a seed stands in — derived from the seed so the pre-fight card can
+     name it before the match exists */
+  function kindOf(seed) { return KINDS[(((seed | 0) >> 3) % KINDS.length + KINDS.length) % KINDS.length]; }
   function buildMap(seed) {
     const t = [];
     for (let y = 0; y < MAP_H; y++) { t.push([]); for (let x = 0; x < MAP_W; x++) t[y].push("floor"); }
@@ -105,21 +132,47 @@
     };
     for (let x = 0; x < MAP_W; x++) { t[0][x] = "wall"; t[MAP_H - 1][x] = "wall"; }
     for (let y = 0; y < MAP_H; y++) { t[y][0] = "wall"; t[y][MAP_W - 1] = "wall"; }
-    /* mirrored feature list — authored for the left half, mirrored onto the right */
-    const FEAT = [
-      [1, 1, 2, 5], [1, 16, 2, 5],      // shoulder walls beside each spawn
-      [5, 6, 3, 2], [5, 14, 3, 2],      // mid cover, top and bottom
-      [8, 1, 3, 3], [8, 18, 3, 3],      // corner alcove ceilings
-      [11, 7, 2, 2], [11, 13, 2, 2],    // inner pillars
-      [14, 3, 2, 4], [14, 15, 2, 4],    // long flank walls
-      [9, 10, 2, 2]                     // centre knob (self-mirrored pair)
-    ];
-    FEAT.forEach(([x, y, w2, h]) => { block(x, y, w2, h); block(MAP_W - x - w2, y, w2, h); });
-    /* the spine: a dividing wall across the middle with a wide mouth above and below */
-    for (let y = 6; y <= 15; y++) { t[y][15] = "wall"; t[y][MAP_W - 16] = "wall"; }
-    /* spawn pockets stay clear */
+    /* both a mirrored block and its twin, so a builder only writes the left half */
+    const twin = (x, y, w2, h) => { block(x, y, w2, h); block(MAP_W - x - w2, y, w2, h); };
+
+    const kind = kindOf(seed);
+    if (kind === "colosseum") {
+      /* four knots on the diagonals, two tiles square, and nothing in the middle:
+         the centre of a colosseum is where the fight should happen */
+      twin(7, 5, 2, 2); twin(7, 15, 2, 2);
+      twin(12, 9, 2, 1); twin(12, 12, 2, 1);
+      twin(4, 10, 1, 2);
+    } else if (kind === "gauntlet") {
+      /* the spine, with a wide mouth above and below it, and a shoulder to break
+         sight on each flank — the only structure that rewards holding a gap */
+      for (let y = 7; y <= 14; y++) { t[y][MAP_W / 2 - 1 | 0] = "wall"; t[y][MAP_W / 2 | 0] = "wall"; }
+      twin(5, 3, 2, 2); twin(5, 17, 2, 2);
+      twin(9, 8, 2, 1); twin(9, 13, 2, 1);
+      twin(12, 1, 3, 2); twin(12, 19, 3, 2);
+    } else if (kind === "pit") {
+      /* low cross-walls with single-tile gates: four doorways, and open sand in
+         the middle, where the pit is */
+      for (let x = 8; x <= 14; x++) { if (x !== 10 && x !== 12) { t[6][x] = "wall"; t[MAP_H - 7][x] = "wall"; } }
+      for (let y = 7; y <= 14; y++) { if (y !== 10 && y !== 12) { t[y][16] = "wall"; t[y][MAP_W - 17] = "wall"; } }
+      twin(3, 5, 1, 2); twin(3, 15, 1, 2);
+    } else if (kind === "colonnade") {
+      /* two rows of single pillars: lanes between them, and a column to break the
+         line of every gun in the arena */
+      for (let x = 6; x <= 13; x += 3) { t[7][x] = "wall"; t[MAP_H - 8][x] = "wall"; }
+      for (let x = 8; x <= 13; x += 3) { t[4][x] = "wall"; t[MAP_H - 5][x] = "wall"; }
+      twin(2, 10, 1, 2); twin(14, 10, 1, 2);
+      t[MAP_H / 2 | 0][MAP_W / 2 - 1 | 0] = "wall"; t[MAP_H / 2 | 0][MAP_W / 2 | 0] = "wall";
+    } else {
+      /* ruin: three short walls at different angles of the court, plus loose stone */
+      twin(6, 4, 3, 1); twin(6, 17, 3, 1);
+      twin(12, 2, 1, 3); twin(12, 17, 1, 3);
+      twin(9, 10, 1, 1); twin(4, 8, 1, 1); twin(4, 13, 1, 1);
+      t[4][16] = "wall"; t[MAP_H - 5][16] = "wall";
+    }
+
+    /* spawn pockets stay clear — nothing in front of a gate is a fair arena */
     const slots = spawnSlots();
-    slots.forEach((s) => carve(s.x - 1, s.y - 1, 3, 3));
+    slots.forEach((s) => carve(s.x - 2, s.y - 1, 5, 3));
     /* guaranteed connectivity: flood from the left pocket, cut to anything stranded */
     const seen = flood(t, 2, 11);
     slots.forEach((s) => {
@@ -130,7 +183,7 @@
         while (y !== 11) { t[y][x] = "floor"; y += Math.sign(11 - y) || 0; if (y === 11) break; }
       }
     });
-    return { W: MAP_W, H: MAP_H, tiles: t, realm: REALMS[seed % REALMS.length] };
+    return { W: MAP_W, H: MAP_H, tiles: t, realm: REALMS[seed % REALMS.length], kind: kind };
   }
   function spawnSlots() {
     const out = [];
@@ -315,7 +368,12 @@
     const before = e.hp;
     e.hp = Math.min(e.max, e.hp + amt);
     const real = e.hp - before;
-    if (from && real > 0) from.healDone += real;
+    if (from && real > 0) {
+      from.healDone += real;
+      /* "utility" has to mean something: the mending that lands on somebody else is
+         counted apart from a kit drinking its own flask */
+      if (from !== e) from.healOut = (from.healOut || 0) + real;
+    }
     if (real > 2) S.texts.push({ x: e.x, y: e.y - 22, t: "+" + Math.round(real), life: 0.9, col: "#6ee7b7" });
     return real;
   }
@@ -646,21 +704,66 @@
     return true;
   }
 
-  /* ------------------------------------------------------------------ AI --- */
+  /* ------------------------------------------------------------------ AI ---
+     The brain (brain.js) decides; this is the body's hands and feet — pick the
+     move, walk the ground the task asks for, and deal with stone. Every tactical
+     judgement lives in brain.js so a spectator can read one file and know what a
+     kit wants; everything here is execution. */
+  const OPEN = { x: 0, y: 0 };
+  /* the nearest open cell to a cell — a destination inside stone is no destination */
+  function openTile(tx, ty) {
+    if (!solid(S.lv, tx, ty)) { OPEN.x = tx; OPEN.y = ty; return OPEN; }
+    for (let r = 1; r <= 4; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const nx = clamp(tx + dx, 1, MAP_W - 2), ny = clamp(ty + dy, 1, MAP_H - 2);
+        if (!solid(S.lv, nx, ny)) { OPEN.x = nx; OPEN.y = ny; return OPEN; }
+      }
+    }
+    OPEN.x = clamp(tx, 1, MAP_W - 2); OPEN.y = clamp(ty, 1, MAP_H - 2);
+    return OPEN;
+  }
+  /* the count of a body's own corners that are inside stone: the measure a move is
+     judged by. A body that is already in the wall may always push its way out. */
+  function overlapAt(x, y) {
+    const rad = 11;
+    let n = 0;
+    if (solidAt(S.lv, x - rad, y - rad)) n++;
+    if (solidAt(S.lv, x + rad, y - rad)) n++;
+    if (solidAt(S.lv, x - rad, y + rad)) n++;
+    if (solidAt(S.lv, x + rad, y + rad)) n++;
+    return n;
+  }
+
   function think(e, dt) {
     const b = e.b;
     const st = buffed(e);
     if (e.stun > 0 || e.dead) return;
-    /* target selection: keep the current one while it lives and stays reachable */
-    e.retarget -= dt;
-    if (e.retarget <= 0 || !e.target || e.target.dead) {
-      e.retarget = 0.5 + Math.random() * 0.4;
-      e.target = pickTarget(e, b.logic === "hunter" ? "weakest" : b.logic === "protect" ? "protect" : b.logic === "artillery" ? "clump" : "nearest");
+    /* lazily stamped so a body that never moved still has honest counters */
+    if (e.blockedT == null) {
+      e.blockedT = 0; e.blockedWorst = 0; e.bailT = 0; e.slideT = 0; e.slideDir = 1;
+      e.strafeDir = Math.random() < 0.5 ? -1 : 1; e.stuckS = 0; e.stuckWorst = 0;
+      e.mvT = 0; e.mvX = e.x; e.mvY = e.y; e.goalNow = false; e.pathOn = false; e.pathT = 0;
+      e.idleT = 0; e.braveT = 0; e.recoilT = 0;
     }
-    const t = e.target;
-    if (!t) return;
+    e.idleT += dt;
+    e.braveT = Math.max(0, e.braveT - dt);
+    e.recoilT = Math.max(0, e.recoilT - dt);
 
-    /* moves first — a body that is in range uses the biggest thing it has */
+    const B = w.LYGO_BRAIN;
+    const stl = B ? B.styleOf(b) : { band: 0.9, commit: 1.4, prefer: "nearest", retreat: 0.25 };
+    const plan = B ? B.plan(S, e, dt) : { task: "press", band: b.range, gait: 1, point: null, target: null };
+    if (B) B.age(e, dt);
+    e.plan = plan;
+
+    let t = plan.target;
+    if (!t || t.dead) t = pickTarget(e, !stl.prefer || stl.prefer === "attack" ? "nearest" : stl.prefer);
+    if (!t) return;
+    e.target = t;
+
+    /* ---- the kit: whatever is in reach and off cooldown, in the kit's own order.
+       A body that cannot reach the called target still helps: the moves that land
+       on its own side are thrown for whoever needs them. */
     for (let i = 0; i < b.moves.length; i++) {
       const mv = b.moves[i];
       if (e.cds[i] > 0 || e.mana < moveCost(mv)) continue;
@@ -668,67 +771,173 @@
       const reach = (mv.range || 0) * TILE;
       const ring = (mv.radius || 3) * TILE;
       let ready = true;
-      if (mv.aim === "allylow") ready = lowestAlly(e).hp / lowestAlly(e).max < 0.65;
-      else if (mv.aim === "allies") ready = d < Math.max(reach, 5 * TILE);
+      if (mv.aim === "allylow") { const low = lowestAlly(e); ready = low && low.hp / low.max < (mv.selfSt ? 0.72 : 0.8); }
+      else if (mv.aim === "allies" || mv.shape === "allies") ready = e.hp / e.max < 0.92 || d < Math.max(reach, 5 * TILE);
       else if (mv.aim === "deadally") ready = (e.team === 0 ? S.your : S.foe).some((o) => o.dead);
       else if (mv.aim === "self" || mv.shape === "aura") ready = d < Math.max(reach, ring);
       else ready = d <= reach + 30;
-      if (ready) { if (castMove(e, mv, i)) return; }
+      if (ready) { if (castMove(e, mv, i)) { if (stl.recoil) e.recoilT = 0.55; return; } }
     }
 
-    /* movement: close to reach, kite a melee threat, and never let two kiters circle each
-       other for a minute — a body that has not landed a hit in a while simply commits. */
-    const wantRange = b.range > 100 ? b.range * 0.86 : Math.max(b.range * 0.9, 22);
+    /* ---- the ground. A plan either names a point or asks the body to hold where
+       it stands; both are executed with the same walker. */
     const d = dist2(e.x, e.y, t.x, t.y);
-    e.idleT = (e.idleT || 0) + dt;
-    const threat = t.b.range <= 100.5;
-    const committed = e.idleT > 5;
-    let flee = false;
-    if (b.range > 100 && !committed) {
-      if (d < wantRange * 0.55 && threat) flee = true;
-      else if (d < wantRange) { faceTo(e, t.x, t.y); return; }
-    } else if (b.range <= 100 && d <= wantRange && !committed) { faceTo(e, t.x, t.y); return; }
+    const band = Math.max(plan.band || (b.range > 100 ? b.range * 0.9 : 26), b.range <= 100 ? 24 : 58);
+    let gx2 = plan.point ? plan.point.x : t.x;
+    let gy2 = plan.point ? plan.point.y : t.y;
+    /* hit-and-run: a body that just threw something steps back off its line */
+    if (stl.recoil && e.recoilT > 0.35) {
+      gx2 = e.x + (e.x - t.x) * 0.8; gy2 = e.y + (e.y - t.y) * 0.8; e.recoilT = 0;
+    }
+    /* Which of the two things is this body doing: going somewhere, or standing on
+       the ground it has already won? A plan that names a point is always walked to.
+       A plan that does not (press, hold) means "get to your band" — INSIDE the band
+       that is a hold, outside it is a walk. Getting this wrong is not cosmetic: read
+       every press as a hold and no team in the arena ever closes, every fight runs to
+       the clock and the floor decides it. */
+    const holdClass = plan.task === "hold" || plan.task === "overwatch" || plan.task === "screen";
+    const inBand = d <= band + 18;
+    const standing = plan.point ? false : (holdClass || inBand);
+    if (standing) {
+      /* in position: face the enemy, drift across its front. A body blocked on that
+         drift turns around instead of grinding its shoulder into a wall. */
+      if (e.blockedT > 0.25) { e.strafeDir = -e.strafeDir; }
+      const sAmt = stl.strafe == null ? 0.5 : stl.strafe;
+      const sa = Math.atan2(t.y - e.y, t.x - e.x) + Math.PI / 2;
+      const mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      const mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      moveEntity(e, mvx2, mvy2);
+      faceTo(e, t.x, t.y);
+      e.aimA = Math.atan2(t.y - e.y, t.x - e.x);
+      stampStuck(e, dt, false);
+      return;
+    }
 
-    const ax = flee ? e.x - (t.x - e.x) : t.x;
-    const ay = flee ? e.y - (t.y - e.y) : t.y;
-    let stepX = ax, stepY = ay;
+    /* ---- pathing. In the open, walk the straight line; follow stone around
+       corners. The choice is HELD for half a second: an enemy stepping in and out
+       of cover flips a line-of-sight test every few ticks, and a heading that
+       alternates between the direct line and the way round the rock walks on the
+       spot for the rest of the match. */
     const cx = Math.floor(e.x / TILE), cy = Math.floor(e.y / TILE);
-    const gx = clamp(Math.floor(ax / TILE), 0, MAP_W - 1), gy = clamp(Math.floor(ay / TILE), 0, MAP_H - 1);
-    /* in the open, walk the straight line; only follow stone around corners */
-    if (!(cx === gx && cy === gy) && !clearLine(e.x, e.y, t.x, t.y)) {
-      const f = flowField(S.lv, gx, gy);
-      const nxt = f[cy * MAP_W + cx];
-      if (nxt >= 0) {
-        stepX = (nxt % MAP_W) * TILE + TILE / 2;
-        stepY = ((nxt / MAP_W) | 0) * TILE + TILE / 2;
+    /* A body whose own cell is stone is not walking anywhere sensible, whatever its plan
+       says. It walks to the middle of the nearest open cell, straight through the
+       collision test: it is already in the wall, so the only way out is through. Without
+       this, a body shoved into the border by a knockback can sit in the stone for the
+       rest of the match while its plan asks it to walk somewhere. */
+    if (solid(S.lv, cx, cy)) {
+      const ot = openTile(cx, cy);
+      const tx2 = ot.x * TILE + TILE / 2, ty2 = ot.y * TILE + TILE / 2;
+      const ang = Math.atan2(ty2 - e.y, tx2 - e.x);
+      e.x = clamp(e.x + Math.cos(ang) * 52 * dt, 6, MAP_W * TILE - 6);
+      e.y = clamp(e.y + Math.sin(ang) * 52 * dt, 6, MAP_H * TILE - 6);
+      faceTo(e, t.x, t.y);
+      e.aimA = Math.atan2(t.y - e.y, t.x - e.x);
+      stampStuck(e, dt, true);
+      return;
+    }
+    let inStone = false;
+    if (solid(S.lv, cx, cy)) {
+      inStone = true;
+      e.slideT = 0;
+      const out = openTile(cx, cy);
+      gx2 = out.x * TILE + TILE / 2; gy2 = out.y * TILE + TILE / 2;
+    } else {
+      const gt = openTile(clamp(Math.floor(gx2 / TILE), 1, MAP_W - 2), clamp(Math.floor(gy2 / TILE), 1, MAP_H - 2));
+      const gtx = gt.x, gty = gt.y;
+      e.pathT = Math.max(0, e.pathT - dt);
+      const needsField = !clearLine(e.x, e.y, gx2, gy2) || e.blockedT > 0.35;
+      if (needsField) { e.pathOn = true; e.pathT = 0.5; }
+      else if (e.pathT <= 0) e.pathOn = false;
+      if (!(cx === gtx && cy === gty) && e.pathOn) {
+        const f = flowField(S.lv, gtx, gty);
+        const nxt = f[cy * MAP_W + cx];
+        if (nxt >= 0) { gx2 = (nxt % MAP_W) * TILE + TILE / 2; gy2 = ((nxt / MAP_W) | 0) * TILE + TILE / 2; }
       }
     }
-    const a = Math.atan2(stepY - e.y, stepX - e.x);
-    /* separation so bodies do not stack into one another */
+    /* a body that has been trying to move for over a second and gets nowhere walks
+       to the middle of the arena for a moment. The pockets between the border and a
+       pillar are the one place a wall-slide cannot reason its way out of. */
+    if (e.blockedT > 1.2) e.bailT = 0.7;
+    const bail = e.bailT > 0;
+    if (bail) {
+      e.bailT -= dt;
+      gx2 = MAP_W * TILE * 0.5; gy2 = MAP_H * TILE * 0.5;
+      e.pathOn = true; e.pathT = 0.7;      // and take the route, not the straight line
+    }
+    let a = Math.atan2(gy2 - e.y, gx2 - e.x);
+    if (!inStone && e.slideT > 0) a += e.slideDir * Math.PI / 2;
+
+    let mvx = Math.cos(a) * st.speed * dt;
+    let mvy = Math.sin(a) * st.speed * dt;
+    /* separation — a nudge, never a wall. Uncapped, four allies crowded round one
+       slow body sum to more push-back than that body's walking speed. */
     let sx = 0, sy = 0;
     all().forEach((o) => {
       if (o === e || o.dead) return;
       const dd = dist2(e.x, e.y, o.x, o.y);
       if (dd < 17 && dd > 0.01) { sx += (e.x - o.x) / dd; sy += (e.y - o.y) / dd; }
     });
-    const mvx = Math.cos(a) * st.speed * dt + sx * 26 * dt;
-    const mvy = Math.sin(a) * st.speed * dt + sy * 26 * dt;
-    moveEntity(e, mvx, mvy);
-    e.walk += Math.abs(mvx) + Math.abs(mvy) > 0.03 ? dt * 6 : 0;
-    if (Math.abs(mvx) > 0.02) e.face = mvx > 0 ? 3 : 2;
-    else if (Math.abs(mvy) > 0.02) e.face = 0;
+    const sepN = Math.hypot(sx, sy);
+    if (sepN > 1e-6) {
+      const sepVel = Math.min(26 * sepN, st.speed * 0.45);
+      mvx += (sx / sepN) * sepVel * dt;
+      mvy += (sy / sepN) * sepVel * dt;
+    }
+    const wanted = Math.hypot(mvx, mvy);
+    const walked = moveEntity(e, mvx, mvy);
+    if (wanted > 0.06 && walked < wanted * 0.45) {
+      e.blockedT += dt;
+      if (e.blockedT > e.blockedWorst) e.blockedWorst = e.blockedT;
+      if (e.blockedT > 0.2 && e.slideT <= 0 && !inStone) {
+        /* step to the side that is actually open, not a coin flip */
+        const p1 = a + Math.PI / 2, p2 = a - Math.PI / 2;
+        const ok1 = !solidAt(S.lv, e.x + Math.cos(p1) * 22, e.y + Math.sin(p1) * 22);
+        const ok2 = !solidAt(S.lv, e.x + Math.cos(p2) * 22, e.y + Math.sin(p2) * 22);
+        e.slideDir = ok1 && !ok2 ? 1 : ok2 && !ok1 ? -1 : (Math.random() < 0.5 ? 1 : -1);
+        e.slideT = 0.42;
+      }
+    } else {
+      e.blockedT = 0;
+    }
+    if (e.slideT > 0) e.slideT -= dt;
+    e.walk += walked > 0.02 ? dt * 6 : 0;
+    if (Math.abs(mvx) > Math.abs(mvy) * 0.7) e.face = mvx > 0 ? 3 : 2;
+    else e.face = mvy > 0 ? 0 : 1;
     e.aimA = Math.atan2(t.y - e.y, t.x - e.x);
+    stampStuck(e, dt, true);
   }
+
+  /* The measure that matches the complaint "they get caught on things": a body that
+     has somewhere to be, is leaning on stone, and has not moved for two seconds.
+     Sampled in windows because a single frame says nothing — a body pressed into a
+     wall while it dies is fine, a body pressed into one for a minute is not. */
+  function stampStuck(e, dt, moving) {
+    e.goalNow = moving;
+    e.mvT += dt;
+    if (e.mvT < 1.0) return;
+    e.mvT = 0;
+    const net = Math.hypot(e.x - e.mvX, e.y - e.mvY);
+    e.mvX = e.x; e.mvY = e.y;
+    if (e.goalNow && e.blockedT > 0.4 && net < 14) {
+      e.stuckS += 1;
+      if (e.stuckS > e.stuckWorst) e.stuckWorst = e.stuckS;
+    } else e.stuckS = 0;
+  }
+
   function moveEntity(e, dx, dy) {
-    const rad = 11;
+    const x0 = e.x, y0 = e.y;
+    const before = overlapAt(x0, y0);
     const nx = e.x + dx;
-    if (!sol(e, nx, e.y, rad)) e.x = nx;
+    /* A body standing inside stone — knocked there, pulled there, blinking there —
+       may always push its way back out. The old rule demanded a fully clear
+       destination, so a kit shoved into the border wall had EVERY direction
+       refused, including the one that would have freed it, and it stood frozen for
+       the rest of the match. This one rule was the whole of the "caught on the
+       obstacles" report. */
+    if (overlapAt(nx, e.y) <= before) e.x = nx;
     const ny = e.y + dy;
-    if (!sol(e, e.x, ny, rad)) e.y = ny;
-  }
-  function sol(e, x, y, rad) {
-    const pts = [[x - rad, y - rad], [x + rad, y - rad], [x - rad, y + rad], [x + rad, y + rad]];
-    return pts.some((p) => solidAt(S.lv, p[0], p[1]));
+    if (overlapAt(e.x, ny) <= before) e.y = ny;
+    return Math.hypot(e.x - x0, e.y - y0);
   }
 
   function flourish(e, vis, x2, y2) {
@@ -822,6 +1031,8 @@
   /* -------------------------------------------------------------- the tick --- */
   function step(dt) {
     S.time += dt;
+    /* the team call is made on the squad's own clock, before anybody moves */
+    if (w.LYGO_BRAIN) w.LYGO_BRAIN.tick(S, dt);
     if (!S.sudden && S.time > SUDDEN) {
       S.sudden = true;
       pushEvent("The arena begins to close — every body starts losing the floor.", "warn");
@@ -963,16 +1174,55 @@
         tile(z + "_f" + ((x & 3) + ((y & 3) << 2)), px, py);
       }
     }
-    /* the two spawn aprons and the centre ring, so the arena reads as an arena */
+    /* ---- the dressing. Each kind of colosseum paints its own floor, so a
+       spectator knows which arena they are watching before the first blow lands. */
     const ring = (x, y, r, col, lw) => { cx.strokeStyle = col; cx.lineWidth = lw; cx.beginPath(); cx.arc(x, y, r, 0, 6.283); cx.stroke(); };
-    cx.save();
-    cx.globalAlpha = 0.30;
     const cxp = cv.width / 2, cyp = cv.height / 2;
-    ring(cxp, cyp, 150, "#5eead4", 3); ring(cxp, cyp, 100, "#fbbf24", 2); ring(cxp, cyp, 40, "#5eead4", 2);
+    const kind = lv.kind || "colosseum";
+    cx.save();
+    /* sand grain: a seeded speckle so the sand never reads as flat colour */
+    let sd = 1337;
+    const rnd2 = () => { sd = (sd * 1103515245 + 12345) & 0x7fffffff; return sd / 0x7fffffff; };
+    cx.globalAlpha = 0.07;
+    for (let i = 0; i < 900; i++) {
+      const px = rnd2() * cv.width, py = rnd2() * cv.height;
+      if (solid(lv, Math.floor(px / TILE), Math.floor(py / TILE))) continue;
+      cx.fillStyle = rnd2() > 0.5 ? "#fde68a" : "#0f172a";
+      cx.fillRect(px, py, 2, 2);
+    }
+    cx.globalAlpha = 0.30;
+    if (kind === "pit") {
+      ring(cxp, cyp, 118, "#fbbf24", 3);
+      cx.globalAlpha = 0.10; cx.fillStyle = "#7f1d1d";
+      cx.beginPath(); cx.arc(cxp, cyp, 96, 0, 6.283); cx.fill();
+    } else if (kind === "colonnade") {
+      cx.globalAlpha = 0.22;
+      for (let i = -3; i <= 3; i++) {
+        cx.strokeStyle = i % 2 ? "#5eead4" : "#fbbf24";
+        cx.beginPath(); cx.moveTo(cxp + i * 54, 0); cx.lineTo(cxp + i * 54, cv.height); cx.stroke();
+      }
+    } else if (kind === "gauntlet") {
+      cx.globalAlpha = 0.35;
+      ring(cxp, cyp, 190, "#f87171", 2);
+      cx.fillStyle = "#7f1d1d"; cx.globalAlpha = 0.12;
+      cx.fillRect(cxp - TILE * 1.2, 0, TILE * 2.4, cv.height);
+    } else if (kind === "ruin") {
+      cx.globalAlpha = 0.16; cx.fillStyle = "#a16207";
+      for (let i = 0; i < 26; i++) { const px = rnd2() * cv.width, py = rnd2() * cv.height; if (!solid(lv, Math.floor(px / TILE), Math.floor(py / TILE))) cx.fillRect(px, py, 8, 5); }
+    } else {
+      cx.globalAlpha = 0.28;
+      ring(cxp, cyp, 150, "#5eead4", 3); ring(cxp, cyp, 100, "#fbbf24", 2); ring(cxp, cyp, 40, "#5eead4", 2);
+    }
+    /* the gates: a wash down each side so the two camps are legible at a glance */
     cx.fillStyle = "#22d3ee"; cx.globalAlpha = 0.10;
     cx.fillRect(TILE, 0, TILE * 3.2, cv.height);
     cx.fillStyle = "#f87171";
     cx.fillRect(cv.width - TILE * 4.2, 0, TILE * 3.2, cv.height);
+    /* a stone lip round the whole floor, so the sand sits inside a building */
+    cx.globalAlpha = 0.5; cx.strokeStyle = "#0b1220"; cx.lineWidth = 6;
+    cx.strokeRect(3, 3, cv.width - 6, cv.height - 6);
+    cx.globalAlpha = 0.25; cx.strokeStyle = "#e2e8f0"; cx.lineWidth = 1;
+    cx.strokeRect(TILE + 1, TILE + 1, cv.width - TILE * 2 - 2, cv.height - TILE * 2 - 2);
     cx.restore();
     return cv;
   }
@@ -1163,6 +1413,7 @@
     S.countdown = 3.2; S.shake = 0; S.hitStop = 0; S.tideIn = 12;
     S.phase = "count";
     floorCv = paintFloor(S.lv);
+    pushEvent(KIND_BLURB[S.lv.kind || "colosseum"], "law");
     pushEvent(lawById(S.lv.realm).line, "law");
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
   }
@@ -1213,6 +1464,16 @@
     statusList: statusList,
     moveCost: moveCost,
     lawFor: lawForSeed,
+    ringFor(seed) {
+      const kind = kindOf(seed);
+      return { law: lawForSeed(seed), kind: kind, blurb: KIND_BLURB[kind] };
+    },
+    stepHeadless(seconds) {
+      const n = Math.round(seconds / STEP);
+      for (let i = 0; i < n && !S.over; i++) step(STEP);
+      return S;
+    },
+    brain: () => w.LYGO_BRAIN,
     law() { return lawById(S.lv && S.lv.realm); },
     /* a headless battle: step the sim without the renderer (used by the check tool) */
     runHeadless(ids, mode, seconds, seed) {

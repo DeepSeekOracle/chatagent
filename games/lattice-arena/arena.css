@@ -331,3 +331,14 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
   .thead, .trowline { grid-template-columns: minmax(0, 1.6fr) .5fr .8fr; }
   .thead span:nth-child(n + 4), .trowline span:nth-child(n + 4) { display: none; }
 }
+
+/* the task chip: what this body has decided to do, in one word */
+.st.task {
+  background: rgba(94, 234, 212, 0.16);
+  border: 1px solid rgba(94, 234, 212, 0.45);
+  color: #99f6e4;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant: small-caps;
+}
+.st.task:empty { display: none; }

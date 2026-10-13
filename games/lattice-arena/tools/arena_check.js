@@ -53,6 +53,7 @@ const ctx = vm.createContext(win);
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
 load("roster.js");
 load("attacks.js");
+load("brain.js");
 load("arena.js");
 
 const R = win.LYGO_ARENA;
@@ -167,7 +168,7 @@ for (let s = 0; s < 120; s++) {
   openMin = Math.min(openMin, m.open); openMax = Math.max(openMax, m.open);
 }
 must("every arena is walkable from both pockets", mapBad === 0, "bad seeds=" + mapBad + "/120");
-must("arenas stay in the 40-80% open band", openMin > 0.4 && openMax < 0.85, "open " + (openMin * 100).toFixed(0) + "-" + (openMax * 100).toFixed(0) + "%");
+must("arenas stay open enough to fight in", openMin > 0.76 && openMax < 0.93, "open " + (openMin * 100).toFixed(0) + "-" + (openMax * 100).toFixed(0) + "%");
 const lawNames = [];
 for (let i = 0; i < 8; i++) lawNames.push(E.lawFor(i).name);
 must("each ring seed names a law", new Set(lawNames).size === 8, lawNames.join(", "));
@@ -230,6 +231,83 @@ const deadKits = Object.keys(tally).filter((id) => tally[id].matches > 4 && tall
 must("no fighter ships with a dead kit", deadKits.length === 0, deadKits.join(", "));
 const usedKits = Object.keys(tally).filter((id) => tally[id].matches > 3 && tally[id].uses === 0);
 must("every fighter actually casts its moves", usedKits.length === 0, usedKits.join(", "));
+
+/* --- 4. the brain: the styles, the teamwork and the colosseums -------------- */
+const BRAIN = E.brain();
+const bxSTY = {};        // style -> the axes a spectator can actually see
+const bxtaskUse = {};    // task -> how often it was handed out
+const bxkinds = {};      // colosseum kind -> seats
+let bxhealOut = 0, bxhealBodies = 0, bxworstStuck = 0;
+const bxBM = 200;
+for (let m = 0; m < bxBM; m++) {
+  const n = MODES[m % MODES.length];
+  const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
+  const S = E.runHeadless({ you, foe }, n, 200, (m * 3571) % 9967);
+  bxkinds[S.lv.kind] = (bxkinds[S.lv.kind] || 0) + 1;
+  S.your.concat(S.foe).forEach((e) => {
+    const s = e.smp || { n: 0, engage: 0, close: 0, far: 0, bxpick: 0, weak: 0, bxonFocus: 0 };
+    const A = bxSTY[e.b.style || "none"] = bxSTY[e.b.style || "none"] || { n: 0, engage: 0, close: 0, far: 0, bxpicks: 0, weak: 0, focus: 0, heal: 0, stuck: 0, temper: 0 };
+    A.n++;
+    A.engage += s.n ? s.engage / s.n : 0;
+    A.close += s.n ? s.close / s.n : 0;
+    A.far += s.n ? s.far / s.n : 0;
+    A.bxpicks += s.pick; A.weak += s.weak; A.focus += s.onFocus;
+    A.heal += (e.healOut || 0);
+    if (e.healOut > 0) { bxhealBodies++; bxhealOut += e.healOut; }
+    A.stuck = Math.max(A.stuck, e.stuckWorst || 0);
+    bxworstStuck = Math.max(bxworstStuck, e.stuckWorst || 0);
+    Object.keys(e.tk || {}).forEach((k) => { bxtaskUse[k] = (bxtaskUse[k] || 0) + e.tk[k]; });
+  });
+}
+/* 4a. every kit knows what it is, and no two of them are the same fighter */
+const bxnoStyle = built.filter((b) => !b.style || !b.temper).map((b) => b.id);
+must("every kit carries a style and a temper", bxnoStyle.length === 0, bxnoStyle.join(", "));
+const bxsigs = built.map((b) => b.style + "|" + JSON.stringify(b.tune || {}));
+const bxdupe = bxsigs.length - new Set(bxsigs).size;
+must("no two kits fight the same way", bxdupe === 0, bxdupe + " duplicate style+tune pairs");
+must("every style in the book is worn by somebody", BRAIN.styles().every((s) => Object.keys(bxSTY).includes(s)), BRAIN.styles().filter((s) => !Object.keys(bxSTY).includes(s)).join(", "));
+
+/* 4b. the brain hands out real work, not one universal task */
+const bxtasks = E.brain().tasks().filter((t) => bxtaskUse[t] > 0);
+must("the brain works from a book of real bxtasks", bxtasks.length >= 6, bxtasks.length + " of " + E.brain().tasks().length + " bxtasks used");
+must("somebody is always mending somebody", bxhealOut > 0 && bxhealBodies > 30, "healed on others " + Math.round(bxhealOut) + " by " + bxhealBodies + " bodies");
+
+/* 4c. the team works together: one call, and most of the bxguns on it */
+const bxpicks = Object.values(bxSTY).reduce((a, A) => a + A.bxpicks, 0);
+const bxonFocus = Object.values(bxSTY).reduce((a, A) => a + A.focus, 0);
+const bxfocusShare = bxonFocus / Math.max(1, bxpicks);
+must("the squad concentrates its fire", bxfocusShare > 0.40, (100 * bxfocusShare).toFixed(0) + "% of attacks go at the called target");
+
+/* 4d. an assassin bxpicks the wounded, a duelist bxpicks what is in front of it, a
+       charger closes and a gun does not — the names have to be true */
+const bxrate = (s, k) => (bxSTY[s] ? bxSTY[s][k] / Math.max(1, bxSTY[s].n) : 0);
+const bxshare = (s, k) => (bxSTY[s] ? bxSTY[s][k] / Math.max(1, bxSTY[s].bxpicks) : 0);
+const bxmelee = ["rush", "berserker", "vanguard", "bulwark"];
+const bxguns = ["kite", "artillery", "medic", "controller"];
+const bxmEng = bxmelee.reduce((a, s) => a + bxrate(s, "engage"), 0) / bxmelee.length;
+const bxgEng = bxguns.reduce((a, s) => a + bxrate(s, "engage"), 0) / bxguns.length;
+must("the bxguns stand off and the chargers do not", bxgEng > bxmEng + 30, "ranged " + bxgEng.toFixed(0) + "px vs bxmelee " + bxmEng.toFixed(0) + "px");
+const bxmClose = bxmelee.reduce((a, s) => a + bxrate(s, "close"), 0) / bxmelee.length;
+const bxgClose = bxguns.reduce((a, s) => a + bxrate(s, "close"), 0) / bxguns.length;
+must("contact tells the berserkers from the kiters", bxmClose > bxgClose + 0.10, (100 * bxmClose).toFixed(0) + "% in contact vs " + (100 * bxgClose).toFixed(0) + "%");
+const bxpick = ["assassin", "hunter"].reduce((a, s) => a + bxshare(s, "weak"), 0) / 2;
+const bxstraight = ["duelist", "vanguard"].reduce((a, s) => a + bxshare(s, "weak"), 0) / 2;
+must("the killers go for the wounded and the duelists do not", bxpick > bxstraight + 0.05, "assassins " + (100 * bxpick).toFixed(0) + "% vs duelists " + (100 * bxstraight).toFixed(0) + "%");
+
+/* 4e. the five colosseums are all in use, and none of them pins anybody */
+must("all five colosseums get built", Object.keys(bxkinds).length === 5, Object.keys(bxkinds).length + " bxkinds: " + Object.entries(bxkinds).map(([k, v]) => k + " " + v).join(", "));
+must("nobody spends the match leaning on the stone", bxworstStuck < 5, "worst stall " + bxworstStuck.toFixed(1) + "s");
+console.log("");
+console.log("      style   n  stand-off  in-contact  backups  weak-bxpick  on-call  mended  worst-stall");
+Object.keys(bxSTY).sort().forEach((s) => {
+  const A = bxSTY[s], f = (x) => (A.n ? x / A.n : 0);
+  console.log("      " + s.padEnd(10) + String(A.n).padStart(4) + "   " + f(A.engage).toFixed(0).padStart(6) + "px  " +
+    (100 * f(A.close)).toFixed(0).padStart(8) + "%  " + (100 * f(A.far)).toFixed(0).padStart(5) + "%  " +
+    (100 * (A.weak / Math.max(1, A.bxpicks))).toFixed(0).padStart(7) + "%  " + (100 * (A.focus / Math.max(1, A.bxpicks))).toFixed(0).padStart(5) + "%  " +
+    f(A.heal).toFixed(0).padStart(6) + "  " + A.stuck.toFixed(1).padStart(6) + "s");
+});
+console.log("      bxtasks: " + Object.entries(bxtaskUse).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(", "));
+console.log("");
 
 /* the roster's own balance read: nobody should be a guaranteed loss */
 const lopsided = Object.keys(tally).filter((id) => tally[id].matches > 8 && (tally[id].wins / tally[id].matches > 0.95 || tally[id].wins / tally[id].matches < 0.05));

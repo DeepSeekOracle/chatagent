@@ -81,6 +81,7 @@
       atk: { vis: "seal", sfx: "lf_bolt" },
       seal9: { vis: "seal", sfx: "lf_seal" },
       provenance: { vis: "heart", sfx: "lf_prove" },
+      standard: { vis: "ward", sfx: "lf_cover", name: "Standard Raised", text: "The standard goes up and the line stands round it." },
       cover: { vis: "ward", sfx: "lf_cover", name: "Remembered Cover", text: "He puts the shield back on the one the crypt already counted out." }
     },
     wraith: {
@@ -132,6 +133,7 @@
     smith: {
       atk: { vis: "forge", sfx: "smith_bolt" },
       anvil: { vis: "fire", sfx: "smith_anvil" },
+      temperwork: { vis: "ward", sfx: "smith_anvil", name: "Temper Work", text: "He re-tempers what the fight has bent." },
       gatecannon: { vis: "beam", sfx: "smith_cannon", name: "Forge Cannon", text: "The workbench speaks in a straight white-hot line." }
     },
     heartboss: {

@@ -358,6 +358,7 @@
       "<li>Both sides are AI. Nobody is steered. Each kit swings its own attack: Ashmane bites, Tuskward tramples, and the champions do not share a swing.</li>" +
       "<li>Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
       "<li>Challengers are drawn from the full roster, so you never know what walks in.</li>" +
+      "<li>The word on each health bar is what that body has decided to do about the fight: <b>press</b> to close, <b>hold</b> the ground it has, <b>overwatch</b> from cover, <b>choke</b> a doorway, <b>flank</b> the long way round, <b>screen</b> an ally, <b>bait</b> and step off, <b>aid</b> the wounded, <b>rally</b> the line, <b>withdraw</b> when it is losing, <b>repair</b> itself out of a corner.</li>" +
       "<li>Every ring has a law, named before the fight. Stone takes no side. Frost shortens every stride. Ember burns the centre. Gold sparks the killer. Lattice hurries cooldowns. Void leaves a slow pocket where a body falls. Tide shoves the floor. Root feeds whoever is still standing.</li>" +
       "<li>Gauntlet keeps this team and draws a new ring after each win. The streak stays on this browser. Each fight still posts as a normal hall line.</li>" +
       "<li>The radio lives in Options, and on the dock once a fight is open. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
@@ -455,9 +456,10 @@
         "<span class='pw'>PWR " + b.power + "</span></div></div>";
     }).join("") + "</div>";
     ov.className = "overlay show";
-    const law = E.lawFor(nextSeed);
+    const ring = E.ringFor(nextSeed);
+    const law = ring.law;
     ov.innerHTML = "<div class='sheet vs-sheet'><h1 class='vs'>" + (gauntlet ? "Gauntlet " + streak + " · " : "") + MODE_LABEL[persist.mode] + "</h1>" +
-      "<p class='kicker'>" + esc(law.name) + "</p>" +
+      "<p class='kicker'>" + esc(law.name) + " · " + esc(ring.kind) + "</p>" +
       "<div class='vsgrid'>" + side(you, "you") + "<div class='vsmark'>vs</div>" + side(foe, "foe") + "</div>" +
       "<p class='lede center'>" + esc(law.line) + (gauntlet ? " Win, and the next ring draws new challengers." : " The challengers are drawn from the full roster.") + "</p>" +
       "<div class='modes'><button type='button' class='btn gold big' id='btnGo'>Open the arena</button>" +
@@ -525,7 +527,10 @@
         r.hp.className = "hp" + (e.team === 0 ? "" : " foe") + (e.dead ? " dead" : "") + (frac < 0.3 ? " low" : "");
         r.shd.style.width = (e.shd > 0 ? Math.min(100, (e.shd / e.max) * 100) : 0) + "%";
         r.row.classList.toggle("down", !!e.dead);
-        const st = E.statusList(e).slice(0, 4).map(([k]) => "<i class='st " + k + "'>" + k + "</i>").join("");
+        /* the task is the reason to watch: a spectator can see SHADE flanks, LYRA mends,
+           BRUTE holds the gap, and the fight stops being a mystery. */
+        const chip = e.dead ? "" : "<i class='st task' title='" + esc(e.taskWhy || "") + "'>" + esc(e.task || "") + "</i>";
+        const st = chip + E.statusList(e).slice(0, 4).map(([k]) => "<i class='st " + k + "'>" + k + "</i>").join("");
         if (r.st.dataset.k !== st) { r.st.innerHTML = st; r.st.dataset.k = st; }
         e.b.moves.forEach((m, i) => {
           const c = r.cds[i];
@@ -564,7 +569,7 @@
     const note = $("dockStatus");
     if (note && S.lv) {
       const law = E.law();
-      note.textContent = (law ? law.line : "") + (gauntlet ? " · Gauntlet streak " + streak : "");
+      note.textContent = (S.lv && S.lv.kind ? S.lv.kind + " · " : "") + (law ? law.line : "") + (gauntlet ? " · Gauntlet streak " + streak : "");
     }
     if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }

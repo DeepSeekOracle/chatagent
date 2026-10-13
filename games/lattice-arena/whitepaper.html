@@ -113,22 +113,71 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   realm family chosen by seed, walls mirrored so neither side inherits better ground, and both spawn
   pockets flood-filled to guarantee that every tile a body can stand on is reachable from both ends.
   The harness asserts this over 120 seeds — a map that strands a fighter is a bug, not a surprise.</p>
-  <p>Bodies move in continuous space, not on the grid: they path toward their target with a stuck
-  detector, slide along walls, and hold at the reach of their own weapon. A ranged kit kites a melee
-  threat; a melee kit commits.</p>
-
-  <h2>4. The AI</h2>
-  <p>Every body runs the same think loop, once per tick:</p>
+  <p>There are five colosseums, and the seed picks both the ground and the realm it is cut from:</p>
   <ul>
-    <li><b>Pick a target.</b> Nearest threat, re-evaluated on a timer and immediately when a target dies.</li>
-    <li><b>Move to the reach you want.</b> Melee walks in; ranged holds at 86% of its reach and backs off
-    a melee threat that gets inside 55% of it.</li>
-    <li><b>Cast the biggest thing that fits.</b> Moves are evaluated before the basic attack, so a body in
-    range uses what it has instead of auto-attacking.</li>
-    <li><b>Commit when nothing lands.</b> A body that has not dealt damage in five seconds drops the
-    kiting rules and charges. This is what stops two ranged kits from circling each other forever — a
-    real stalemate the first balance pass produced.</li>
+    <li><b>Colosseum</b> — open sand with pillar knots on the diagonals. The centre is left empty on
+    purpose: the middle of a colosseum is where the fight should happen.</li>
+    <li><b>Gauntlet</b> — a spine down the middle with a mouth at each end and a shoulder on each flank.
+    The one arena that rewards holding a gap.</li>
+    <li><b>The Pit</b> — low cross-walls pierced by four single-tile doorways. Hold a door or lose the
+    middle.</li>
+    <li><b>Colonnade</b> — two broken rows of pillars. Lanes to run, columns to break a sight line
+    behind.</li>
+    <li><b>Ruin</b> — a court of three short walls and loose stone.</li>
   </ul>
+  <p>Every one of them is deliberately nearly empty — 78–83% open sand — because the obstacle a body
+  snags on is the obstacle that ruins the watch. What is left is placed to be <em>worth standing next
+  to</em>: cover to break a line of fire, a gap to hold, a lane to run. The harness builds 120 seeds and
+  asserts that both pockets can reach all ten spawn slots in every one of them.</p>
+  <p>Bodies move in continuous space, not on the grid. They walk with a measured feel for stone: a move
+  is judged by how much of the body would end up inside a wall rather than by a yes/no test, so a body
+  shoved into the border by a knockback can always push its way back out — the bug that once left a kit
+  frozen against the wall for the rest of a match. A body whose cell is stone walks straight to the
+  middle of the nearest open cell, through the collision test, because it is already in the wall. The
+  choice between the direct line and the route around cover is <em>held</em> for half a second: an enemy
+  stepping behind a pillar would otherwise flip that decision every few ticks and leave the body walking
+  on the spot.</p>
+
+  <h2>4. The brain</h2>
+  <p>Every kit fights like itself, because every kit makes its own decisions. Two layers produce that:
+  a <b>squad brain</b> per team on a slow clock, and a <b>task brain</b> per body on a fast one. The
+  squad brain reads the ground, not the fog: it counts who is alive, whose line is winning the
+  exchange, who is wounded, who shoots from far, who mends — and then it makes one call: who to kill,
+  and why. The body brain turns that call into one word of work, which is what the chip on its health
+  bar shows you while you watch.</p>
+  <p>The body brain works from a book of twelve tasks:</p>
+  <ul>
+    <li><b>press / advance</b> — close to the reach this kit's weapon actually wants, then stop there.</li>
+    <li><b>hold</b> — stay on ground that is already good: at your reach, facing the enemy, drifting
+    across its front.</li>
+    <li><b>overwatch</b> — step into cover while an enemy still has a line to you, and shoot from it.</li>
+    <li><b>choke</b> — for the kits whose job is to be in the way, stand in the doorway rather than in
+    the open, but only while the team is not the one pushing.</li>
+    <li><b>screen</b> — the bulwark and the brute put their body between the enemy and the ally who
+    cannot take the hit.</li>
+    <li><b>flank</b> — the assassins, hunters and skirmishers leave the squad's axis, take the long arc
+    round, and arrive from a bearing nobody is facing.</li>
+    <li><b>bait</b> — the kiters give ground in bursts: back off, fire, hold, back off again.</li>
+    <li><b>aid</b> — anybody carrying a mending move goes to whoever is bleeding worst and puts them
+    back together, standing on the side of the patient away from the enemy.</li>
+    <li><b>rally</b> — when the team is losing the exchange, fall back on the standard together instead
+    of dying apart.</li>
+    <li><b>withdraw</b> — break contact when outnumbered and nearly gone, into the nearest cover on the
+    way home. A last body standing never withdraws: there is no line left to fall back into, and two
+    sides both refusing to fight is not a tactic.</li>
+    <li><b>repair</b> — a body leaning on stone with somewhere to be walks to the middle of the arena
+    for a moment. The pockets between the border and a pillar are the one place wall-sliding cannot
+    reason its way out of.</li>
+    <li><b>no hits landing</b> — a body that has not landed a hit in six seconds stops holding its range
+    and walks in. Two teams that both like their range would otherwise stand at their bands behind cover
+    until the floor decided the match for them.</li>
+  </ul>
+  <p>Style is a doctrine, not a leash. The anchors and the chargers fight what the team called. The
+  killers go for the body that will die soonest — the ladder measures it, and the names hold: assassins
+  take the most-wounded enemy on 98% of their decisions, hunters on 96%, duelists on 80%. The kiters
+  deal with what is on them, the artillery hits whatever is bunched, the medics look after the line.
+  Nobody crosses the arena alone to do it: a target of your own choosing has to be within reach of your
+  own line.</p>
   <p>Cards fire on hooks: <em>Second Wind</em> when a body first drops below 30%, <em>Name Recall</em> to
   rise once more after being cut down, <em>Unwrite Ink</em> to shrug off the first stun, plus auras,
   leech, thorns, echo rounds and executioner edges that modify every number passing through them.</p>
@@ -150,13 +199,13 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   roster and the real engine in Node behind a stub DOM and runs the whole thing headless. It asserts what
   a player would notice, and prints what a designer wants to argue about.</p>
   <div class="card">
-    <h3>What the harness checks — 19 assertions, 300 battles per run</h3>
+    <h3>What the harness checks — 35 assertions, 290 battles per run</h3>
     <ul>
       <li>Roster shape: 33 fighters, unique ids, every sprite key present in its atlas, every move id
       resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
       <li>Built kits are playable: finite health, damage, rate and reach; a power spread that is a band
       rather than a cliff.</li>
-      <li>Maps: 120 seeds, both pockets can reach all ten spawn slots; open ground stays in a 40–80% band.</li>
+      <li>Maps: 120 seeds, both pockets can reach all ten spawn slots; open ground stays in a 78–93% band.</li>
       <li>Battles: every match ends with a winner, no <code>NaN</code> in any live body, nobody outside the
       arena, both sides actually cast moves, and no kit ships without ever dealing damage.</li>
       <li>Pacing: per-mode mean and median length against the two-minute target.</li>
