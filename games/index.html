@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Games Hub — live halls | chatagent.ca</title>
-<meta name="description" content="Games Hub: thirteen live titles plus shared high-score halls. Play Marines, Swarm, Eternal Lattice, Stock Market Masters, Lattice Golf, Haven Rally, Lattice Grand Prix, LYGO Dungeon Adventures, Lattice Crypt, Fish Tank, Lattice Corridor, Vale Tactics, and LYGO 98. Names and scores only. No account.">
+<meta name="description" content="Games Hub: fourteen live titles plus shared high-score halls. Play Marines, Swarm, Eternal Lattice, Stock Market Masters, Lattice Golf, Haven Rally, Lattice Grand Prix, LYGO Dungeon Adventures, Lattice Crypt, Fish Tank, Lattice Corridor, Vale Tactics, LYGO 98, and LYGO Arena. Names and scores only. No account.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="theme-color" content="#070b12">
@@ -139,11 +139,11 @@
   <h1>GAMES <em>HUB</em></h1>
   <p class="portal-lead">One floor for every live title and the <a href="/games/board.html">live board</a>. Hugging Face writes <a href="https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/blob/main/arcade.json">arcade.json</a> after each finish. <strong>No account. Names and match metadata only.</strong> Optional <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>. Feeds: <a href="/games/catalog.json">catalog.json</a> · <a href="/games/live.json">live.json</a> · <a href="/games/arcade.json">arcade.json</a>.</p>
 </div>
-<p class="meta">chatagent.ca · thirteen live titles · ten live halls · updated October 2026</p>
+<p class="meta">chatagent.ca · fourteen live titles · eleven live halls · updated October 2026</p>
 
 <div class="stat-row">
-  <div class="stat"><b data-games-count>13</b><span>live modules</span></div>
-  <div class="stat"><b>10</b><span>live halls</span></div>
+  <div class="stat"><b data-games-count>14</b><span>live modules</span></div>
+  <div class="stat"><b>11</b><span>live halls</span></div>
   <div class="stat"><b>0</b><span>account required</span></div>
 </div>
 
@@ -342,6 +342,19 @@
         </div>
       </div>
     </article>
+    <article class="gcard" data-genre="battler spectate">
+      <div class="gmod-stage"><img class="gcard-cover" src="/games/lattice-arena/assets/og.jpg?v=ring" alt="Four fighters at a cyan lattice gate under the LYGO Arena wordmark" width="640" height="336"></div>
+      <div class="gcard-body">
+        <p class="gcard-kicker">battler · spectate</p>
+        <h2>LYGO Arena</h2>
+        <p>Two AI teams, one stone ring. Name yourself, pick 1v1 to 5v5 from 33 kits, then watch every move, card and cooldown. Each lineup keeps its own win/loss line.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="/games/lattice-arena/">Play</a>
+          <a class="btn" href="/games/lattice-arena/ledger.html">Live hall</a>
+          <a class="btn" href="/games/lattice-arena/whitepaper.html">Whitepaper</a>
+        </div>
+      </div>
+    </article>
     <article class="gcard is-coming">
       <div class="gmod-stage"><div class="gcard-cover gcard-cover-empty" aria-hidden="true"></div></div>
       <div class="gcard-body">
@@ -409,6 +422,12 @@
       <ol class="hall-rows"></ol>
       <a class="btn" href="/games/fish-tank/ledger.html">Life hall</a>
     </article>
+    <article class="hall" data-hall="arena">
+      <header><p class="gcard-kicker">public</p><h3>LYGO Arena</h3></header>
+      <p class="hall-meta">Loading lineups…</p>
+      <ol class="hall-rows"></ol>
+      <a class="btn" href="/games/lattice-arena/ledger.html">Live hall</a>
+    </article>
     <article class="hall" data-hall="moonlit">
       <header><p class="gcard-kicker">local</p><h3>Vale Tactics</h3></header>
       <p class="hall-meta">The public book is empty. Book I stays in this browser.</p>
@@ -449,7 +468,7 @@
 </footer>
 <script>document.querySelectorAll(".y").forEach(function(n){n.textContent=new Date().getFullYear()});</script>
 <script src="/games/arcade-ledger.js?v=5"></script>
-<script src="/games/hub.js?v=12" defer></script>
+<script src="/games/hub.js?v=13" defer></script>
 <script src="/assets/lygo-tv-ninja.js?v=8" defer></script>
 </body>
 </html>

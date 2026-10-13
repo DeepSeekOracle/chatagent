@@ -15,7 +15,8 @@
       rec.trackId || rec.courseId || "",
       /* a fish is not only a name and a number: two keepers can keep a Sunny, and the
          same fish over two lives is two records */
-      rec.fish || "", rec.dna || "", rec.gen || "", rec.species || ""
+      rec.fish || "", rec.dna || "", rec.gen || "", rec.species || "",
+      rec.teamKey || "", rec.match || "", rec.outcome || "", rec.losses || ""
     ].join("|");
   }
   function enqueue(qk, rec) {

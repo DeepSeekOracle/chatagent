@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LYGO Arena — live hall | chatagent.ca</title>
-<meta name="description" content="Every posted LYGO Arena finish: callsign, mode, the side that won and the match MVP. Optional callsign, nothing else collected.">
+<meta name="description" content="LYGO Arena live hall: each named player and each lineup, with wins and losses. Nothing else is collected.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="theme-color" content="#07080e">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -16,20 +16,20 @@
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/games/lattice-arena/ledger.html">
 <meta property="og:title" content="LYGO Arena — live hall">
-<meta property="og:description" content="Arena finishes, posted from the ring. Empty beats a fake board.">
+<meta property="og:description" content="Named players and the win/loss line for each team they field. Empty beats a fake board.">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="LYGO Arena key art: gold LYGO ARENA wordmark over four framed Lattice champions">
+<meta property="og:image:alt" content="Four fighters at a cyan lattice gate under the LYGO Arena wordmark">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
 <meta name="twitter:title" content="LYGO Arena — live hall">
-<meta name="twitter:description" content="Arena finishes, posted from the ring: callsign, mode, winner, MVP.">
+<meta name="twitter:description" content="Named players and the win/loss line for each team they field.">
 <meta name="twitter:image" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
-<meta name="twitter:image:alt" content="LYGO Arena key art with the LYGO ARENA wordmark">
+<meta name="twitter:image:alt" content="Four fighters at a cyan lattice gate under the LYGO Arena wordmark">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <style>
 body { margin:0; background:#07080e; color:#e8eef5; font-family:"Source Sans 3",system-ui,sans-serif; }
@@ -53,7 +53,7 @@ a { color:#5eead4; }
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · live hall</p>
   <h1>LYGO Arena ledger</h1>
-  <p class="muted">Arena finishes, posted from the ring. A callsign is optional; nothing but the call, the mode, the side that won and the MVP is ever sent. Empty beats a fake board.</p>
+  <p class="muted">One line per player and lineup. The hall stores the name, the kits, the mode, and the wins and losses. Empty beats a fake board.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="./whitepaper.html">Whitepaper</a>
@@ -73,11 +73,37 @@ a { color:#5eead4; }
   var FEEDS = [
     "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
     "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
-    "./arcade.json"
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/arena/ledger.json"
   ];
-  /* the shared book holds every game's rows; this page only shows the arena's own. */
-  function arenaOnly(list){
-    return (list || []).filter(function(r){ return !r.game || r.game === "lattice-arena"; });
+  function fromFeed(data){
+    if (!data) return [];
+    if (data.books && data.books["lattice-arena"]) {
+      var book = data.books["lattice-arena"];
+      return book.rows || book.standings || [];
+    }
+    if (Array.isArray(data.standings)) return data.standings;
+    if (Array.isArray(data.rows)) return data.rows;
+    return [];
+  }
+  function localLines(){
+    var out = [];
+    try {
+      var s = JSON.parse(localStorage.getItem("lygo_lattice_arena_v1") || "{}");
+      var books = s.books || {};
+      Object.keys(books).forEach(function(k){
+        var b = books[k];
+        if (!(b.wins || b.losses)) return;
+        out.push({
+          name: s.name || "You",
+          wins: b.wins || 0,
+          losses: b.losses || 0,
+          mode: b.mode || k.split("|")[0],
+          team: (b.names || []).join(" · "),
+          date: "this browser"
+        });
+      });
+    } catch (e) {}
+    return out.sort(function(a,b){ return (b.wins||0)-(a.wins||0); });
   }
   async function pull(){
     var rows = [], src = "this browser";
@@ -85,27 +111,21 @@ a { color:#5eead4; }
       try {
         var r = await fetch(FEEDS[i], { cache:"no-store" });
         if (!r.ok) continue;
-        var data = await r.json();
-        var list = data.rounds || data.runs || (data.books && data.books["lattice-arena"] && (data.books["lattice-arena"].rows || data.books["lattice-arena"].runs)) || (Array.isArray(data) ? data : []);
-        list = arenaOnly(list);
+        var list = fromFeed(await r.json()).filter(function(row){ return !row.game || row.game === "lattice-arena"; });
         if (list && list.length) { rows = list.slice(); src = FEEDS[i].replace(/^https?:\/\//,""); break; }
       } catch(e) {}
     }
-    var queued = [];
-    try {
-      var q = JSON.parse(localStorage.getItem("lygo-lattice-arena-ledger-q") || "[]");
-      var s = JSON.parse(localStorage.getItem("lygo_lattice_arena_v1") || "{}");
-      queued = q.slice();
-      if (s.name && (s.wins || s.losses)) queued.push({ name: s.name, score: s.wins, mode: "session", outcome: (s.wins >= s.losses ? "win" : "loss"), date: "local" });
-    } catch(e) {}
-    document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " · " + src) : "Hall is empty — a real zero.";
-    document.getElementById("mine").innerHTML = queued.slice(-12).reverse().map(card).join("") || "<p class='muted'>No finishes recorded in this browser yet.</p>";
-    var sorted = rows.slice().sort(function(a,b){ return (b.score||0)-(a.score||0); });
-    document.getElementById("hall").innerHTML = sorted.slice(0,40).map(card).join("") || "<p class='muted'>No arena finishes posted yet — the first callsign goes here.</p>";
+    var mine = localLines();
+    document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " lineup" + (rows.length===1?"":"s") + " · " + src) : "Hall is empty — a real zero.";
+    document.getElementById("mine").innerHTML = mine.slice(0, 12).map(card).join("") || "<p class='muted'>No named lineups in this browser yet.</p>";
+    var sorted = rows.slice().sort(function(a,b){ return (b.wins||0)-(a.wins||0) || (a.losses||0)-(b.losses||0); });
+    document.getElementById("hall").innerHTML = sorted.slice(0,40).map(card).join("") || "<p class='muted'>No lineup has been posted yet. Name yourself, finish a fight, and the line lands here.</p>";
   }
   function card(r){
-    return "<div class='round'><div class='rtop'><b>"+esc(r.name||"Spectator")+"</b><span>"+esc(r.score||0)+" W</span></div>"+
-      "<div class='rmeta'>"+(r.mode?("<b>"+esc(r.mode)+"</b> · "):"")+(r.mvp?("MVP <b>"+esc(r.mvp)+"</b> · "):"")+esc(r.outcome||r.event||"match")+" · "+esc(r.date||"")+"</div></div>";
+    var wins = r.wins != null ? r.wins : (r.score || 0);
+    var losses = r.losses != null ? r.losses : 0;
+    return "<div class='round'><div class='rtop'><b>"+esc(r.name||"Spectator")+"</b><span>"+esc(wins)+"W / "+esc(losses)+"L</span></div>"+
+      "<div class='rmeta'>"+(r.mode?("<b>"+esc(r.mode)+"</b> · "):"")+(r.team?esc(r.team)+" · ":"")+(r.mvp?("last MVP <b>"+esc(r.mvp)+"</b> · "):"")+esc(r.date||"")+"</div></div>";
   }
   pull();
   setInterval(pull, 40000);

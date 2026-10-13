@@ -244,8 +244,8 @@
       "featured": true,
       "order": 12,
       "href": "/games/lattice-arena/",
-      "cover": "/games/lattice-arena/assets/og.jpg",
-      "coverAlt": "Four Lattice champions in framed portraits beside the LYGO Arena wordmark",
+      "cover": "/games/lattice-arena/assets/og.jpg?v=ring",
+      "coverAlt": "Four fighters at a cyan lattice gate under the LYGO Arena wordmark",
       "genre": ["battler", "spectate"],
       "players": "1 (watch two AI teams)",
       "links": [

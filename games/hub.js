@@ -201,6 +201,7 @@
     if (Array.isArray(book.ladder)) return book.ladder;
     if (Array.isArray(book.runs)) return book.runs;
     if (Array.isArray(book.lives)) return book.lives;
+    if (Array.isArray(book.standings)) return book.standings;
     return [];
   }
 
@@ -379,6 +380,21 @@
     crypt = crypt.filter(function (r) { return (r.score || 0) > 0; }).sort(function (a, b) { return (b.score || 0) - (a.score || 0); });
     paintHall("crypt", crypt.length ? (stamp + crypt.length + " runs") : "No crypt runs yet.", crypt.slice(0, 12).map(function (r) {
       return { name: r.name || "Warden", score: String(r.score), meta: cryptLine(r) };
+    }));
+
+    var arenaSeen = {};
+    var arena = bookRows(books["lattice-arena"]).concat(lsJson("lygo-lattice-arena-ledger-q") || []);
+    arena.sort(function (a, b) { return (b.wins || 0) - (a.wins || 0) || (a.losses || 0) - (b.losses || 0); });
+    arena = arena.filter(function (r) {
+      var k = (r.name || "") + "|" + (r.mode || "") + "|" + (r.teamKey || r.team || "");
+      if (!k || arenaSeen[k]) return false;
+      arenaSeen[k] = true;
+      return !!(r.name || r.team);
+    });
+    paintHall("arena", arena.length ? (stamp + arena.length + " lineups") : "No named lineups yet.", arena.slice(0, 12).map(function (r) {
+      var wins = r.wins != null ? r.wins : (r.outcome === "win" ? (r.score || 1) : 0);
+      var losses = r.losses != null ? r.losses : (r.outcome === "loss" ? 1 : 0);
+      return { name: r.name || "Spectator", score: wins + "W / " + losses + "L", meta: [r.mode, r.team].filter(Boolean).join(" · ") };
     }));
 
     /* the book first, then this browser's own unsynced lives: the outbox, and the tank's

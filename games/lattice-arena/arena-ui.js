@@ -11,7 +11,7 @@
   const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
   const persist = Object.assign(
-    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "" },
+    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {} },
     (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
   );
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(persist)); } catch (e) {} }
@@ -23,6 +23,8 @@
   let feedLen = 0;
   let overlayMode = null;
   let gateHeld = false;
+  let menuTab = "home";
+  let hallRows = [];
 
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
 
@@ -56,17 +58,113 @@
       if (on === false && ms && w.LYGO_GATE.suppress) w.LYGO_GATE.suppress(ms);
     } catch (e) {}
   }
-  function hallName() { return persist.name || "Spectator"; }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+  function teamKey() { return persist.mode + "|" + your.join(","); }
+  function teamNames() { return your.map((id) => (R.byId[id] ? R.byId[id].name : id)); }
+  function touchBook(won) {
+    persist.books = persist.books || {};
+    const key = teamKey();
+    const row = persist.books[key] || { wins: 0, losses: 0 };
+    row.names = teamNames();
+    row.mode = MODE_LABEL[persist.mode];
+    if (won) row.wins++;
+    else row.losses++;
+    persist.books[key] = row;
+    return row;
+  }
+  function bookLines() {
+    const books = persist.books || {};
+    return Object.keys(books).map((k) => {
+      const b = books[k];
+      const modeN = k.split("|")[0];
+      return {
+        name: persist.name || "You",
+        wins: b.wins || 0,
+        losses: b.losses || 0,
+        mode: b.mode || MODE_LABEL[modeN] || modeN,
+        team: (b.names || []).join(" · "),
+        teamKey: k.split("|")[1] || ""
+      };
+    }).filter((b) => b.wins || b.losses).sort((a, b) => (b.wins - a.wins) || (a.losses - b.losses));
+  }
+  function lineupBook() {
+    return (persist.books || {})[teamKey()] || { wins: 0, losses: 0 };
+  }
+  function recordLine(r, local) {
+    const team = r.team || "";
+    return "<div class='hall-line" + (local ? " local" : "") + "'><b>" + esc(r.name || "Spectator") + "</b>" +
+      "<span><span class='wins'>" + (r.wins || 0) + "W</span> / <span class='losses'>" + (r.losses || 0) + "L</span></span>" +
+      "<em>" + esc(r.mode || "") + (team ? " · " + esc(team) : "") + "</em></div>";
+  }
   function postResult(won, mode, mvp) {
-    if (!persist.name) return;
+    const name = (persist.name || "").trim().slice(0, 18);
+    if (!name) return;
+    const book = (persist.books || {})[teamKey()] || { wins: 0, losses: 0 };
+    const match = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     try {
       if (w.ArcadeLedger && w.ArcadeLedger.arena) {
         w.ArcadeLedger.arena({
-          name: persist.name, score: persist.wins, mode: MODE_LABEL[mode], mvp: mvp,
-          outcome: won ? "win" : "loss", date: new Date().toISOString().slice(0, 10)
+          name: name,
+          score: book.wins,
+          wins: book.wins,
+          losses: book.losses,
+          mode: MODE_LABEL[mode],
+          team: teamNames().join(" · "),
+          teamKey: your.join(","),
+          outcome: won ? "win" : "loss",
+          mvp: mvp || "",
+          match: match,
+          date: new Date().toISOString().slice(0, 10)
         });
       }
     } catch (e) {}
+  }
+  const HALL_FEEDS = [
+    "https://huggingface.co/datasets/DeepSeekOracle/lattice-marines-wins/resolve/main/arcade.json",
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/arcade.json",
+    "https://deepseekoracle-lattice-marines-ledger.hf.space/arena/ledger.json"
+  ];
+  function rowsFromHall(data) {
+    if (!data) return [];
+    if (data.books && data.books["lattice-arena"]) {
+      const book = data.books["lattice-arena"];
+      return book.rows || book.standings || [];
+    }
+    if (Array.isArray(data.standings)) return data.standings;
+    if (Array.isArray(data.rows)) return data.rows;
+    return [];
+  }
+  async function pullHall() {
+    for (let i = 0; i < HALL_FEEDS.length; i++) {
+      try {
+        const r = await fetch(HALL_FEEDS[i], { cache: "no-store" });
+        if (!r.ok) continue;
+        const list = rowsFromHall(await r.json());
+        if (list && list.length) {
+          hallRows = list.slice();
+          if (overlayMode === "menu") {
+            document.querySelectorAll(".hall-live").forEach((box) => { box.innerHTML = hallBlock(); });
+          }
+          return;
+        }
+      } catch (e) {}
+    }
+  }
+  function hallBlock() {
+    const pub = hallRows.slice().sort((a, b) => ((b.wins || 0) - (a.wins || 0)) || ((a.losses || 0) - (b.losses || 0)));
+    const mine = bookLines();
+    let html = "";
+    if (pub.length) html += pub.slice(0, 12).map((r) => recordLine(r, false)).join("");
+    else html += "<p class='muted'>The public hall is empty. A named finish is the first line.</p>";
+    if (mine.length) {
+      html += "<p class='kicker' style='margin-top:.8rem'>This browser</p>";
+      html += mine.slice(0, 8).map((r) => recordLine(r, true)).join("");
+    }
+    return html;
   }
 
   /* ---------------------------------------------------------------- menu --- */
@@ -95,27 +193,39 @@
       "</button>";
   }
   function renderMenu() {
-    const ov = $("overlay");
-    /* every pick rebuilds this sheet, so carry the roster's scroll position across the
-       rebuild — otherwise choosing a card below the fold snaps the player back to the top. */
-    const keepScroll = (ov.querySelector(".grid") || {}).scrollTop || 0;
+    const panel = $("menuPanel");
+    const keepScroll = (panel.querySelector(".grid") || {}).scrollTop || 0;
     overlayMode = "menu";
     /* every route back to the menu — Escape, the Menu button, "change team" from the results
        board — lands here, so this is the one place the reminder hold has to be released.
        Leaving it held would keep the supporter card away for the rest of the visit. */
     if (gateHeld) gateHold(false, 120000);
+    $("menu").classList.remove("hidden");
+    $("battle").classList.add("hidden");
+    $("overlay").className = "overlay";
     const list = R.ROSTER.filter((f) => f.cls === persist.filter);
     const youBuilt = your.map((id) => R.build(R.byId[id], [], null, Math.random));
     const power = youBuilt.reduce((s, b) => s + b.power, 0);
-    ov.className = "overlay show";
-    ov.innerHTML =
-      "<div class='sheet menu-sheet'>" +
-        "<p class='kicker'>Δ9Φ963 · chatagent.ca arena</p>" +
-        "<h1>LYGO Arena</h1>" +
-        "<p class='lede'>Two AI teams. One stone ring. You pick the roster and then you watch — " +
-        "every champion fights its own kit, uses its own moves and plays its own cards. " +
-        "The challengers are drawn at random, so you never know what walks in.</p>" +
+    const line = lineupBook();
+    const ready = your.length === persist.mode && !!(persist.name || "").trim();
+    const tab = (id, label) => "<button type='button' class='tab" + (menuTab === id ? " on" : "") + "' data-tab='" + id + "'>" + label + "</button>";
+    panel.innerHTML =
+      "<p class='kicker'>Δ9Φ963 · chatagent.ca</p>" +
+      "<h1>LYGO Arena</h1>" +
+      "<nav class='menu-tabs' aria-label='Menu'>" +
+        tab("home", "Home") + tab("team", "Team") + tab("how", "Guide") + tab("hall", "Hall") +
+      "</nav>" +
+      "<div id='panelHome'" + (menuTab === "home" ? "" : " class='hidden'") + ">" +
+        "<p class='lede'>Two AI teams. One stone ring. Name yourself, pick a roster, then watch. " +
+        "Every kit fights on its own moves, cards and cooldowns. Challengers are drawn blind.</p>" +
         "<div class='modes'>" + modeCards() + "</div>" +
+        "<div class='tally' style='margin-top:.7rem'><b>This lineup</b> " +
+          "<span class='wins'>" + (line.wins || 0) + "W</span> / <span class='losses'>" + (line.losses || 0) + "L</span>" +
+          " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
+          " · <b>Power</b> " + power + "</div>" +
+        "<div class='hall-live' style='margin-top:.6rem'>" + hallBlock() + "</div>" +
+      "</div>" +
+      "<div id='panelTeam'" + (menuTab === "team" ? "" : " class='hidden'") + ">" +
         "<div class='builder'>" +
           "<div class='builder-head'>" +
             "<h2>Your team <span id='teamCount'>" + your.length + "/" + persist.mode + "</span></h2>" +
@@ -135,39 +245,67 @@
           }).join("") : "<p class='muted'>Nothing picked yet — choose from the roster below.</p>") + "</div>" +
           "<div class='grid'>" + list.map(fighterCard).join("") + "</div>" +
         "</div>" +
-        "<div class='menu-foot'>" +
-          "<div class='tally'><b>Your power</b> <span>" + power + "</span> · " +
-            "<b>Session</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></div>" +
-          "<label class='callsign'>Callsign for the hall <input type='text' id='callSign' maxlength='18' value='" + (persist.name || "").replace(/[<>"'&]/g, "") + "' placeholder='optional'></label>" +
-          "<button type='button' class='btn gold big' id='btnFight'" + (your.length === persist.mode ? "" : " disabled") + ">Fight — " + MODE_LABEL[persist.mode] + "</button>" +
-        "</div>" +
-        "<details class='how'>" +
-          "<summary>How the arena works</summary>" +
-          "<p>Both sides are AI. Nobody is controlled. What decides a fight is the kits: three moves and three cards per " +
-          "champion, all taken from the Lattice Crypt numbers. Ranged kits kite, melee kits commit, healers wait for a wound, " +
-          "and a body that has not landed a hit in five seconds stops being careful and charges in.</p>" +
-          "<p>Keys: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> mute · <b>Esc</b> menu · <b>R</b> rematch.</p>" +
-        "</details>" +
-      "</div>";
-    ov.onclick = onMenuClick;
-    const g = ov.querySelector(".grid");
-    if (g) { g.scrollTop = keepScroll; }
+      "</div>" +
+      "<div id='panelHow' class='how" + (menuTab === "how" ? "" : " hidden") + "'>" +
+        "<p class='kicker'>Instructions</p>" +
+        "<ol>" +
+          "<li>Put your name in. The hall keeps a win/loss line for each lineup you field under that name. No account.</li>" +
+          "<li>Pick 1v1, 2v2, 3v3 or 5v5, then fill the team from champions, crypt creatures and beasts. Click a slot to drop someone.</li>" +
+          "<li>Both sides are AI. Nobody is steered. Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
+          "<li>Three moves and three cards per kit, taken from the Lattice Crypt numbers. The challengers are drawn from the full roster, so you never know what walks in.</li>" +
+          "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> mute · <b>Esc</b> menu · <b>R</b> rematch.</li>" +
+        "</ol>" +
+      "</div>" +
+      "<div id='panelHall'" + (menuTab === "hall" ? "" : " class='hidden'") + ">" +
+        "<p class='kicker'>Live hall</p>" +
+        "<p class='lede'>Each line is one player and one lineup: wins, losses, and the kits they fielded. The public book is the Hugging Face hall. This browser keeps its own copy until that write lands.</p>" +
+        "<div class='hall-live'>" + hallBlock() + "</div>" +
+        "<p class='muted' style='margin-top:.6rem'><a href='./ledger.html'>Open the full hall</a></p>" +
+      "</div>" +
+      "<div class='menu-foot'>" +
+        "<label class='name-block'>Your name" +
+          "<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'>" +
+        "</label>" +
+        "<button type='button' class='btn gold big' id='btnFight'" + (ready ? "" : " disabled") + ">Fight — " + MODE_LABEL[persist.mode] + "</button>" +
+      "</div>" +
+      (ready ? "" : "<p class='muted'>" + (your.length < persist.mode ? "Open Team and fill the lineup." : "Name yourself. The hall keeps a win/loss line for that name and this team.") + "</p>") +
+      "<div class='donate-row'>" +
+        "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
+        "<a class='donate-patreon' href='https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961' target='_blank' rel='noopener'>Patreon</a>" +
+        "<a class='btn' href='./ledger.html'>Live hall</a>" +
+        "<a class='btn' href='./whitepaper.html'>Whitepaper</a>" +
+        "<a class='btn' href='/games/'>All games</a>" +
+      "</div>" +
+      "<p class='muted'>Optional. The arena stays free. A tip never changes a kit or a record.</p>";
+    const named = $("callSign");
+    if (named) {
+      named.addEventListener("input", () => {
+        persist.name = named.value.replace(/\s+/g, " ").trim().slice(0, 18);
+        save();
+        const fight = $("btnFight");
+        if (fight) fight.disabled = !(persist.name && your.length === persist.mode);
+      });
+    }
+    const g = panel.querySelector(".grid");
+    if (g) g.scrollTop = keepScroll;
   }
 
   function onMenuClick(ev) {
-    const t = ev.target.closest("[data-mode],[data-id],[data-drop],[data-filter],[data-draft],[data-clear]");
+    const t = ev.target.closest("[data-mode],[data-id],[data-drop],[data-filter],[data-draft],[data-clear],[data-tab]");
     if (!t) {
       if (ev.target.id === "btnFight") { void 0; }
       return;
     }
+    if (t.dataset.tab) { menuTab = t.dataset.tab; renderMenu(); return; }
     if (t.dataset.mode) {
       persist.mode = +t.dataset.mode;
       while (your.length > persist.mode) your.pop();
       save(); renderMenu(); return;
     }
-    if (t.dataset.filter) { persist.filter = t.dataset.filter; save(); renderMenu(); return; }
+    if (t.dataset.filter) { persist.filter = t.dataset.filter; menuTab = "team"; save(); renderMenu(); return; }
     if (t.dataset.draft) {
       your = R.draw(persist.mode).map((f) => f.id);
+      menuTab = "team";
       save(); renderMenu(); return;
     }
     if (t.dataset.clear) { your = []; save(); renderMenu(); return; }
@@ -292,11 +430,12 @@
   function clockOf(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
 
   function begin(reset) {
-    persist.name = ($("callSign") && $("callSign").value.trim()) || persist.name;
+    persist.name = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
     save();
     if (reset || !foeIds.length) foeIds = R.draw(persist.mode, your).map((f) => f.id);
     $("overlay").className = "overlay";
     overlayMode = "battle";
+    $("menu").classList.add("hidden");
     $("battle").classList.remove("hidden");
     teamPanel(0); teamPanel(1);
     E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode);
@@ -314,6 +453,7 @@
     overlayMode = "results";
     const won = S.winner === 0;
     persist[won ? "wins" : "losses"]++;
+    const book = touchBook(won);
     save();
     const all = S.your.concat(S.foe).map((e) => ({
       name: e.b.name, team: e.team, dmg: Math.round(e.dmgDone), kills: e.kills,
@@ -333,7 +473,10 @@
       all.map((a) => "<div class='trowline" + (a.team === 0 ? " you" : "") + "'><span><b>" + a.name + "</b></span><span>" +
         (a.team === 0 ? "you" : "foe") + "</span><span>" + a.dmg + "</span><span>" + a.kills + "</span><span>" + a.heal + "</span><span>" + a.uses + "</span></div>").join("") +
       "</div>" +
-      "<div class='tally'>Session: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></div>" +
+      "<div class='tally'>This lineup: <span class='wins'>" + book.wins + "W</span> / <span class='losses'>" + book.losses + "L</span>" +
+      " · " + esc(teamNames().join(" · ")) +
+      "<br>This browser: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
+      (persist.name ? " · " + esc(persist.name) : "") + "</div>" +
       "<div class='modes'>" +
         "<button type='button' class='btn gold big' id='btnAgain'>Rematch · same challengers</button>" +
         "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>" +
@@ -357,7 +500,10 @@
     /* the menu should not show until the atlases are in, or cards come up blank */
     document.body.classList.add("ready");
     $("boot").classList.add("hidden");
+    $("menu").addEventListener("click", onMenuClick);
     renderMenu();
+    pullHall();
+    setInterval(pullHall, 40000);
     E.setSpeed(persist.speed || 1);
     document.querySelectorAll("[data-speed]").forEach((b) => b.classList.toggle("on", +b.dataset.speed === (persist.speed || 1)));
 
@@ -393,7 +539,16 @@
     });
     /* the fight button lives inside the sheet, so bind it here as well as the grid */
     document.body.addEventListener("click", (ev) => {
-      if (ev.target.id === "btnFight" && your.length === persist.mode) {
+      if (ev.target.id === "btnFight") {
+        const named = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
+        if (!named || your.length !== persist.mode) {
+          menuTab = your.length === persist.mode ? "home" : "team";
+          renderMenu();
+          if (!named && $("callSign")) $("callSign").focus();
+          return;
+        }
+        persist.name = named;
+        save();
         foeIds = R.draw(persist.mode, your).map((f) => f.id);
         renderVS();
       }

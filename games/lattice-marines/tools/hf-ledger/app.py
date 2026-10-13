@@ -97,11 +97,12 @@ def save_ledger(data: dict) -> None:
     CACHE["t"] = time.time()
 
 
-def rate_ok(ip: str, route: str = "main") -> bool:
+def rate_ok(ip: str, route: str = "main", limit: int | None = None) -> bool:
     t = time.time()
     key = f"{ip}:{route}"
+    cap = RATE_MAX if limit is None else limit
     bucket = [x for x in HITS.get(key, []) if t - x < RATE_WINDOW]
-    if len(bucket) >= RATE_MAX:
+    if len(bucket) >= cap:
         HITS[key] = bucket
         return False
     bucket.append(t)
@@ -456,6 +457,7 @@ def arcade_snapshot() -> dict:
         ("swarm", "lattice-swarm.json", "lattice-swarm", "Lattice Swarm Hall", "scores"),
         ("eternal", "eternal-lattice.json", "eternal-lattice", "Eternal Lattice Ladder", "ladder"),
         ("crypt", "lattice-crypt.json", "lattice-crypt", "Lattice Crypt Hall", "runs"),
+        ("arena", "lattice-arena.json", "lattice-arena", "LYGO Arena Hall", "standings"),
     )
     for kind, filename, game, title, key in extras:
         data = arcade_load(kind, filename, game, title, key)
@@ -707,6 +709,153 @@ def crypt_validate(body: dict) -> tuple[dict | None, str]:
     return rec, "ok"
 
 
+ARENA_MODES = {"1v1": 1, "2v2": 2, "3v3": 3, "5v5": 5}
+ARENA_KEY_RE = re.compile(r"^[a-z0-9]+(,[a-z0-9]+){0,4}$")
+ARENA_MATCH_RE = re.compile(r"^[A-Za-z0-9]{6,40}$")
+
+
+def arena_validate(body: dict) -> tuple[dict | None, str]:
+    if not isinstance(body, dict):
+        return None, "bad payload"
+    if str(body.get("event") or "match") != "match":
+        return None, "only matches are inscribed"
+    name = clean_name(body.get("name"))
+    if not name:
+        return None, "name rejected"
+    mode = str(body.get("mode") or "")
+    need = ARENA_MODES.get(mode)
+    if not need:
+        return None, "mode rejected"
+    team = as_str(body.get("team"), 1, 120)
+    team_key = as_str(body.get("teamKey") or body.get("team_key"), 1, 80)
+    if team is None or team_key is None or not ARENA_KEY_RE.match(team_key):
+        return None, "team rejected"
+    ids = team_key.split(",")
+    if len(ids) != need or len(set(ids)) != need:
+        return None, "team size rejected"
+    outcome = str(body.get("outcome") or "")
+    if outcome not in ("win", "loss"):
+        return None, "outcome rejected"
+    match = str(body.get("match") or "")
+    if not ARENA_MATCH_RE.match(match):
+        return None, "match rejected"
+    mvp = as_str(body.get("mvp") or "", 0, 32) or ""
+    day = str(body.get("date") or utc_now()[:10])[:10]
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+        day = utc_now()[:10]
+    standing = hashlib.sha256(f"{name.lower()}|{mode}|{team_key}".encode("utf-8")).hexdigest()[:24]
+    rec = {
+        "id": standing,
+        "match": match,
+        "name": name,
+        "event": "match",
+        "mode": mode,
+        "team": team,
+        "teamKey": team_key,
+        "outcome": outcome,
+        "mvp": mvp,
+        "date": day,
+        "game": "lattice-arena",
+    }
+    return rec, "ok"
+
+
+def arena_public(data: dict) -> dict:
+    rows = []
+    for row in data.get("standings") or []:
+        if not isinstance(row, dict):
+            continue
+        rows.append({k: v for k, v in row.items() if k != "seen"})
+    out = {k: v for k, v in data.items() if k != "seen"}
+    out["standings"] = rows
+    out["rows"] = rows
+    return out
+
+
+def arena_inscribe(rec: dict) -> tuple[dict, str]:
+    with LOCK:
+        data = arcade_load("arena", "lattice-arena.json", "lattice-arena", "LYGO Arena Hall", "standings")
+        rows = data.get("standings") or []
+        row = next((w for w in rows if w.get("id") == rec["id"]), None)
+        if row is None:
+            row = {
+                "id": rec["id"],
+                "name": rec["name"],
+                "mode": rec["mode"],
+                "team": rec["team"],
+                "teamKey": rec["teamKey"],
+                "wins": 0,
+                "losses": 0,
+                "game": "lattice-arena",
+                "event": "match",
+            }
+            rows.append(row)
+        seen_map = data.get("seen") or {}
+        seen = list(seen_map.get(rec["id"]) or [])
+        if rec["match"] in seen:
+            return arena_public(data), "duplicate"
+        seen.append(rec["match"])
+        seen_map[rec["id"]] = seen[-40:]
+        data["seen"] = seen_map
+        if rec["outcome"] == "win":
+            row["wins"] = int(row.get("wins") or 0) + 1
+        else:
+            row["losses"] = int(row.get("losses") or 0) + 1
+        row["name"] = rec["name"]
+        row["team"] = rec["team"]
+        row["mode"] = rec["mode"]
+        row["teamKey"] = rec["teamKey"]
+        row["mvp"] = rec["mvp"]
+        row["outcome"] = rec["outcome"]
+        row["date"] = rec["date"]
+        row["iso"] = utc_now()
+        row["score"] = int(row["wins"])
+        rows.sort(key=lambda w: (-int(w.get("wins") or 0), int(w.get("losses") or 0), str(w.get("iso") or "")))
+        data["standings"] = rows[:8000]
+        data["updated"] = utc_now()
+        data["game"] = "lattice-arena"
+        data["title"] = "LYGO Arena Hall"
+        arcade_save("arena", "lattice-arena.json", data, "inscribe arena match")
+        return arena_public(data), "inscribed"
+
+
+async def arena_handle(request: Request, body: dict | None = None):
+    ip = request.client.host if request.client else "0"
+    if not rate_ok(ip, "arena", 40):
+        return JSONResponse({"ok": False, "error": "slow down"}, status_code=429)
+    if body is None:
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"ok": False, "error": "need JSON"}, status_code=400)
+    rec, err = arena_validate(body)
+    if not rec:
+        return JSONResponse({"ok": False, "error": err}, status_code=400)
+    if not TOKEN:
+        return JSONResponse({"ok": False, "error": "writer offline"}, status_code=503)
+    try:
+        data, status = arena_inscribe(rec)
+    except Exception:
+        ARCADE_CACHE.pop("arena", None)
+        return JSONResponse({"ok": False, "error": "inscribe failed"}, status_code=502)
+    if status != "duplicate":
+        try:
+            write_arcade_snapshot()
+        except Exception:
+            pass
+    rows = data.get("standings") or []
+    rank = next((i + 1 for i, w in enumerate(rows) if w.get("id") == rec["id"]), None)
+    row = next((w for w in rows if w.get("id") == rec["id"]), {})
+    return {
+        "ok": True,
+        "status": status,
+        "id": rec["id"],
+        "rank": rank,
+        "wins": row.get("wins"),
+        "losses": row.get("losses"),
+    }
+
+
 @app.get("/rally/ledger.json")
 def rally_ledger_json():
     data = arcade_load("rally", "haven-rally.json", "haven-rally", "Haven Rally Hall", "rows")
@@ -787,6 +936,17 @@ async def crypt_submit(request: Request):
     )
 
 
+@app.get("/arena/ledger.json")
+def arena_ledger_json():
+    data = arcade_load("arena", "lattice-arena.json", "lattice-arena", "LYGO Arena Hall", "standings")
+    return JSONResponse(arena_public(data), headers={"Cache-Control": "public, max-age=20"})
+
+
+@app.post("/arena/submit")
+async def arena_submit(request: Request):
+    return await arena_handle(request)
+
+
 @app.get("/arcade.json")
 def arcade_json():
     return JSONResponse(arcade_snapshot(), headers={"Cache-Control": "public, max-age=20"})
@@ -832,6 +992,8 @@ async def arcade_any_submit(request: Request):
             "inscribe eternal ladder",
             body=body,
         )
+    if game == "lattice-arena":
+        return await arena_handle(request, body=body)
     if game == "lattice-crypt":
         return await arcade_post(
             request, "crypt", crypt_validate, "lattice-crypt.json", "lattice-crypt",
@@ -939,7 +1101,8 @@ a{color:#22d3ee} code{color:#fbbf24}
 <li>POST <code>/arcade/submit</code> JSON with <code>game</code> id — new titles plug in here</li>
 <li>Marines POST <code>/submit</code> · GET <a href="/ledger.json">/ledger.json</a></li>
 <li>SMM POST <code>/smm/submit</code> · GET <a href="/smm/ledger.json">/smm/ledger.json</a></li>
-<li>Rally / Golf / Swarm / Eternal keep their <code>/…/submit</code> aliases</li>
+<li>Rally / Golf / Swarm / Eternal / Crypt / Arena keep their <code>/…/submit</code> aliases</li>
+<li>Arena POST <code>/arena/submit</code> · GET <a href="/arena/ledger.json">/arena/ledger.json</a> — name, lineup, wins and losses</li>
 <li><a href="/health">health</a></li>
 </ul>
 </body></html>"""
