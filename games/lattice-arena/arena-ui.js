@@ -29,25 +29,57 @@
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
 
   /* ------------------------------------------------------------------ sound --- */
-  let audio = null, muted = false;
+  const SFX_NAMES = ["click", "count", "fight", "hit", "big", "cast", "heal", "summon", "kill", "warn", "win", "lose"];
+  const SFX_GAIN = { click: 0.35, count: 0.4, hit: 0.32, cast: 0.38, big: 0.5, heal: 0.42, summon: 0.46, kill: 0.5, warn: 0.46, fight: 0.5, win: 0.55, lose: 0.5 };
+  let audio = null, muted = false, sfxBuf = {}, sfxReady = false, sfxGate = 0, lastCount = "", fought = false;
+  function ensureAudio() {
+    if (!audio) audio = new (w.AudioContext || w.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume().catch(() => {});
+    return audio;
+  }
+  function loadSfx() {
+    const ctx = ensureAudio();
+    return Promise.all(SFX_NAMES.map((name) => fetch("./assets/sfx/" + name + ".wav")
+      .then((r) => r.arrayBuffer())
+      .then((buf) => ctx.decodeAudioData(buf))
+      .then((decoded) => { sfxBuf[name] = decoded; })
+      .catch(() => {}))).then(() => { sfxReady = true; });
+  }
   function blip(type) {
     if (muted) return;
     try {
-      if (!audio) audio = new (w.AudioContext || w.webkitAudioContext)();
-      const t = audio.currentTime;
-      const o = audio.createOscillator(), g = audio.createGain();
-      const table = {
-        hit: [220, 0.06, "square", 0.05], big: [140, 0.12, "square", 0.07],
-        kill: [90, 0.22, "sawtooth", 0.08], cast: [520, 0.09, "triangle", 0.05],
-        start: [660, 0.3, "triangle", 0.09], win: [880, 0.5, "triangle", 0.1], lose: [180, 0.5, "sine", 0.09]
-      }[type] || [300, 0.08, "square", 0.05];
-      o.type = table[2]; o.frequency.setValueAtTime(table[0], t);
-      o.frequency.exponentialRampToValueAtTime(Math.max(60, table[0] * 0.5), t + table[1]);
-      g.gain.setValueAtTime(table[3], t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + table[1]);
-      o.connect(g); g.connect(audio.destination);
-      o.start(t); o.stop(t + table[1] + 0.02);
+      const ctx = ensureAudio();
+      const buf = sfxBuf[type];
+      if (buf) {
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        src.buffer = buf;
+        g.gain.value = SFX_GAIN[type] || 0.4;
+        src.connect(g); g.connect(ctx.destination);
+        src.start();
+        return;
+      }
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "triangle";
+      o.frequency.setValueAtTime(440, t);
+      g.gain.setValueAtTime(0.04, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.09);
     } catch (e) {}
+  }
+  function playEvent(ev) {
+    const now = performance.now();
+    if (ev.kind === "kill") { blip("kill"); return; }
+    if (ev.kind === "gift") { blip("heal"); return; }
+    if (ev.kind === "summon") { blip("summon"); return; }
+    if (ev.kind === "warn") { blip("warn"); return; }
+    if (ev.kind === "move") {
+      if (now - sfxGate < 120) return;
+      sfxGate = now;
+      blip(/falls|cuts down|heavy|slam/i.test(ev.text || "") ? "big" : "cast");
+    }
   }
 
   /* ------------------------------------------------------------ gate/hall --- */
@@ -253,7 +285,8 @@
           "<li>Pick 1v1, 2v2, 3v3 or 5v5, then fill the team from champions, crypt creatures and beasts. Click a slot to drop someone.</li>" +
           "<li>Both sides are AI. Nobody is steered. Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
           "<li>Three moves and three cards per kit, taken from the Lattice Crypt numbers. The challengers are drawn from the full roster, so you never know what walks in.</li>" +
-          "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> mute · <b>Esc</b> menu · <b>R</b> rematch.</li>" +
+          "<li>The dock radio is the Excavationpro listen portal. It has its own play, next, and mute. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
+          "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed (1× 2× 4× 8×) · <b>M</b> fight sounds · <b>Esc</b> menu · <b>R</b> rematch.</li>" +
         "</ol>" +
       "</div>" +
       "<div id='panelHall'" + (menuTab === "hall" ? "" : " class='hidden'") + ">" +
@@ -296,6 +329,7 @@
       if (ev.target.id === "btnFight") { void 0; }
       return;
     }
+    blip("click");
     if (t.dataset.tab) { menuTab = t.dataset.tab; renderMenu(); return; }
     if (t.dataset.mode) {
       persist.mode = +t.dataset.mode;
@@ -412,11 +446,20 @@
     $("youTag").textContent = alive(0) + " standing";
     $("foeTag").textContent = alive(1) + " standing";
     const cd = $("announce");
-    if (S.phase === "count") { cd.textContent = Math.ceil(S.countdown) + ""; cd.classList.add("show"); }
-    else if (S.phase === "live" && S.time < 4) { cd.textContent = "FIGHT"; cd.classList.add("show"); }
-    else cd.classList.remove("show");
+    if (S.phase === "count") {
+      const n = String(Math.ceil(S.countdown));
+      cd.textContent = n;
+      cd.classList.add("show");
+      if (n !== lastCount) { lastCount = n; blip("count"); }
+    } else if (S.phase === "live" && S.time < 4) {
+      cd.textContent = "FIGHT";
+      cd.classList.add("show");
+      if (!fought) { fought = true; blip("fight"); }
+    } else cd.classList.remove("show");
     if (S.events.length !== feedLen) {
+      const fresh = S.events.slice(feedLen);
       feedLen = S.events.length;
+      fresh.forEach(playEvent);
       const f = $("feed");
       f.innerHTML = S.events.slice(-9).reverse().map((ev) => "<p class='" + ev.kind + "'><span>" + clockOf(ev.t) + "</span>" + ev.text + "</p>").join("");
     }
@@ -441,8 +484,9 @@
     E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode);
     buildRows();
     feedLen = 0;
+    lastCount = "";
+    fought = false;
     gateHold(true);
-    blip("start");
     $("matchPill").textContent = MODE_LABEL[persist.mode];
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
   }
@@ -498,6 +542,7 @@
     const canvas = $("arena");
     await E.init(canvas);
     /* the menu should not show until the atlases are in, or cards come up blank */
+    loadSfx();
     document.body.classList.add("ready");
     $("boot").classList.add("hidden");
     $("menu").addEventListener("click", onMenuClick);
@@ -521,13 +566,13 @@
       if (act === "menu") { $("battle").classList.add("hidden"); renderMenu(); gateHold(false, 60000); }
       if (act === "rematch") begin(false);
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
-      if (act === "mute") { muted = !muted; $("btnMute").classList.toggle("on", muted); }
+      if (act === "mute") { muted = !muted; $("btnMute").classList.toggle("on", muted); $("btnMute").textContent = muted ? "SFX off" : "SFX"; }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     });
     document.addEventListener("keydown", (ev) => {
       if (ev.target.tagName === "INPUT") return;
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
-      else if (ev.code === "KeyM") { muted = !muted; $("btnMute").classList.toggle("on", muted); }
+      else if (ev.code === "KeyM") { muted = !muted; $("btnMute").classList.toggle("on", muted); $("btnMute").textContent = muted ? "SFX off" : "SFX"; }
       else if (ev.code === "KeyR" && overlayMode === "battle") begin(false);
       else if (ev.code === "Escape") { if (overlayMode === "battle") { $("battle").classList.add("hidden"); renderMenu(); } else if (overlayMode === "results") { $("battle").classList.add("hidden"); renderMenu(); } }
       else if (["Digit1", "Digit2", "Digit3", "Digit4"].includes(ev.code)) {
