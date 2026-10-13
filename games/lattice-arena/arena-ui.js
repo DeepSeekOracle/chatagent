@@ -22,6 +22,7 @@
   let rows = { you: [], foe: [] };
   let feedLen = 0;
   let overlayMode = null;
+  let gateHeld = false;
 
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
 
@@ -99,6 +100,10 @@
        rebuild — otherwise choosing a card below the fold snaps the player back to the top. */
     const keepScroll = (ov.querySelector(".grid") || {}).scrollTop || 0;
     overlayMode = "menu";
+    /* every route back to the menu — Escape, the Menu button, "change team" from the results
+       board — lands here, so this is the one place the reminder hold has to be released.
+       Leaving it held would keep the supporter card away for the rest of the visit. */
+    if (gateHeld) gateHold(false, 120000);
     const list = R.ROSTER.filter((f) => f.cls === persist.filter);
     const youBuilt = your.map((id) => R.build(R.byId[id], [], null, Math.random));
     const power = youBuilt.reduce((s, b) => s + b.power, 0);
@@ -195,7 +200,9 @@
       "<button type='button' class='btn' id='btnBackMenu'>Change team</button></div></div>";
     label = "vs";
     ov.onclick = (ev) => {
-      if (ev.target.id === "btnGo") begin(true);
+      /* the challengers shown on this sheet are the ones that fight: begin(false) keeps the
+         set drawn when Fight was pressed, so the reveal is never a lie. */
+      if (ev.target.id === "btnGo") begin(false);
       else if (ev.target.id === "btnBackMenu") renderMenu();
     };
   }
