@@ -107,6 +107,7 @@ h1, h2, h3, .brand, .kicker, .btn { font-family: Syne, sans-serif; }
 .feed p.kill { border-left-color: var(--red); }
 .feed p.move { border-left-color: var(--cyan); color: var(--cyan); }
 .feed p.over { border-left-color: var(--gold); color: var(--gold); }
+.feed p.law { border-left-color: var(--gold); color: var(--gold); }
 @keyframes feed-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
 
 /* ------------------------------------------------------------------- dock --- */

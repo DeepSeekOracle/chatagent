@@ -11,7 +11,7 @@
   const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
   const persist = Object.assign(
-    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {} },
+    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {}, bestStreak: 0 },
     (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
   );
   function save() {
@@ -29,6 +29,9 @@
   let menuTab = "home";
   let inspectId = "kael";
   let hallRows = [];
+  let gauntlet = false;
+  let streak = 0;
+  let nextSeed = 0;
 
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
 
@@ -290,13 +293,15 @@
         "<label class='name-block'>Your name<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'></label>" +
         "<div class='menu-actions'>" +
           "<button type='button' class='btn gold' id='btnFight'" + (ready ? "" : "") + "><b>Fight</b><span>" + MODE_LABEL[persist.mode] + " · " + esc(names) + "</span></button>" +
+          "<button type='button' class='btn' id='btnGauntlet'><b>Gauntlet</b><span>Same team. A new ring after every win. Best streak " + (persist.bestStreak || 0) + ".</span></button>" +
           "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
           "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Fight sounds, speed, and the radio</span></button>" +
           "<button type='button' class='btn' data-tab='how'><b>How to play</b><span>What the teams actually do</span></button>" +
           "<button type='button' class='btn' data-tab='hall'><b>Hall</b><span>Win / loss lines for named teams</span></button>" +
         "</div>" +
         "<p class='tally'><b>This lineup</b> <span class='wins'>" + (line.wins || 0) + "W</span> / <span class='losses'>" + (line.losses || 0) + "L</span>" +
-          " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span></p>" +
+          " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
+          " · <b>Best gauntlet</b> " + (persist.bestStreak || 0) + "</p>" +
         (ready ? "" : "<p class='muted'>" + (your.length < persist.mode ? "Team select still needs " + (persist.mode - your.length) + " more." : "Put your name in. The hall keeps it with this team.") + "</p>") +
         "<div class='donate-row'>" +
           "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
@@ -353,6 +358,8 @@
       "<li>Both sides are AI. Nobody is steered. Each kit swings its own attack: Ashmane bites, Tuskward tramples, and the champions do not share a swing.</li>" +
       "<li>Ranged kits kite, melee kits commit, healers wait for a wound, and a body that has not landed a hit in five seconds stops being careful and charges.</li>" +
       "<li>Challengers are drawn from the full roster, so you never know what walks in.</li>" +
+      "<li>Every ring has a law, named before the fight. Stone takes no side. Frost shortens every stride. Ember burns the centre. Gold sparks the killer. Lattice hurries cooldowns. Void leaves a slow pocket where a body falls. Tide shoves the floor. Root feeds whoever is still standing.</li>" +
+      "<li>Gauntlet keeps this team and draws a new ring after each win. The streak stays on this browser. Each fight still posts as a normal hall line.</li>" +
       "<li>The radio lives in Options, and on the dock once a fight is open. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
       "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
       "</ol></div>";
@@ -448,9 +455,11 @@
         "<span class='pw'>PWR " + b.power + "</span></div></div>";
     }).join("") + "</div>";
     ov.className = "overlay show";
-    ov.innerHTML = "<div class='sheet vs-sheet'><h1 class='vs'>" + MODE_LABEL[persist.mode] + "</h1>" +
+    const law = E.lawFor(nextSeed);
+    ov.innerHTML = "<div class='sheet vs-sheet'><h1 class='vs'>" + (gauntlet ? "Gauntlet " + streak + " · " : "") + MODE_LABEL[persist.mode] + "</h1>" +
+      "<p class='kicker'>" + esc(law.name) + "</p>" +
       "<div class='vsgrid'>" + side(you, "you") + "<div class='vsmark'>vs</div>" + side(foe, "foe") + "</div>" +
-      "<p class='lede center'>The challengers are drawn from the full roster — champions, crypt creatures and the pack.</p>" +
+      "<p class='lede center'>" + esc(law.line) + (gauntlet ? " Win, and the next ring draws new challengers." : " The challengers are drawn from the full roster.") + "</p>" +
       "<div class='modes'><button type='button' class='btn gold big' id='btnGo'>Open the arena</button>" +
       "<button type='button' class='btn' id='btnBackMenu'>Change team</button></div></div>";
     label = "vs";
@@ -460,7 +469,7 @@
       const go = ev.target.closest && ev.target.closest("#btnGo");
       const back = ev.target.closest && ev.target.closest("#btnBackMenu");
       if (go) begin(false);
-      else if (back) { menuTab = "team"; renderMenu(); }
+      else if (back) leaveToMenu("team");
     };
   }
   let label = "vs";
@@ -552,6 +561,11 @@
     const foeBar = rows.foe.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.foe.reduce((s, r) => s + r.e.max, 0));
     $("meterYou").style.width = (youBar * 100) + "%";
     $("meterFoe").style.width = (foeBar * 100) + "%";
+    const note = $("dockStatus");
+    if (note && S.lv) {
+      const law = E.law();
+      note.textContent = (law ? law.line : "") + (gauntlet ? " · Gauntlet streak " + streak : "");
+    }
     if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }
   function alive(team) { return E.state()[(team === 0 ? "your" : "foe")].filter((e) => !e.dead).length; }
@@ -569,13 +583,14 @@
     $("menu").classList.add("hidden");
     $("battle").classList.remove("hidden");
     teamPanel(0); teamPanel(1);
-    E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode);
+    E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode, nextSeed);
     buildRows();
     feedLen = 0;
     lastCount = "";
     fought = false;
     gateHold(true);
-    $("matchPill").textContent = MODE_LABEL[persist.mode];
+    const lawNow = E.law();
+    $("matchPill").textContent = (gauntlet ? "Gauntlet " + streak + " · " : "") + MODE_LABEL[persist.mode] + (lawNow ? " · " + lawNow.name : "");
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
   }
 
@@ -586,6 +601,17 @@
     const won = S.winner === 0;
     persist[won ? "wins" : "losses"]++;
     const book = touchBook(won);
+    let streakNote = "";
+    if (gauntlet) {
+      if (won) {
+        streak += 1;
+        if (streak > (persist.bestStreak || 0)) persist.bestStreak = streak;
+        streakNote = "Gauntlet streak " + streak + ". Best " + persist.bestStreak + ".";
+      } else {
+        streakNote = "Gauntlet ends at " + streak + ". Best " + (persist.bestStreak || 0) + ".";
+        streak = 0;
+      }
+    }
     save();
     const all = S.your.concat(S.foe).map((e) => ({
       name: e.b.name, team: e.team, dmg: Math.round(e.dmgDone), kills: e.kills,
@@ -608,10 +634,17 @@
       "<div class='tally'>This lineup: <span class='wins'>" + book.wins + "W</span> / <span class='losses'>" + book.losses + "L</span>" +
       " · " + esc(teamNames().join(" · ")) +
       "<br>This browser: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
-      (persist.name ? " · " + esc(persist.name) : "") + "</div>" +
+      (persist.name ? " · " + esc(persist.name) : "") +
+      (streakNote ? "<br>" + esc(streakNote) : "") + "</div>" +
       "<div class='modes'>" +
-        "<button type='button' class='btn gold big' id='btnAgain'>Rematch · same challengers</button>" +
-        "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>" +
+        (gauntlet && won
+          ? "<button type='button' class='btn gold big' id='btnNext'>Next ring</button>" +
+            "<button type='button' class='btn' id='btnAgain'>Rematch · same challengers</button>"
+          : gauntlet
+          ? "<button type='button' class='btn gold big' id='btnNext'>Run the gauntlet again</button>" +
+            "<button type='button' class='btn' id='btnAgain'>Rematch · same challengers</button>"
+          : "<button type='button' class='btn gold big' id='btnAgain'>Rematch · same challengers</button>" +
+            "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>") +
         "<button type='button' class='btn' id='btnMenu2'>Change team</button>" +
       "</div></div>";
     gateHold(false, 120000);
@@ -620,11 +653,40 @@
     $("overlay").onclick = (ev) => {
       const again = ev.target.closest && ev.target.closest("#btnAgain");
       const fresh = ev.target.closest && ev.target.closest("#btnNewFoe");
+      const next = ev.target.closest && ev.target.closest("#btnNext");
       const back = ev.target.closest && ev.target.closest("#btnMenu2");
-      if (again) begin(false);
-      else if (fresh) { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
-      else if (back) { menuTab = "team"; $("battle").classList.add("hidden"); renderMenu(); }
+      if (next) { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
+      else if (again) begin(false);
+      else if (fresh) { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
+      else if (back) { $("battle").classList.add("hidden"); leaveToMenu("team"); }
     };
+  }
+
+  function rollSeed() { nextSeed = (Math.random() * 9999) | 0; }
+  function endGauntlet() { gauntlet = false; streak = 0; }
+  function leaveToMenu(tab) {
+    endGauntlet();
+    menuTab = tab || "home";
+    $("battle").classList.add("hidden");
+    renderMenu();
+    gateHold(false, 60000);
+  }
+  function startListed(asGauntlet) {
+    const named = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
+    if (!named || your.length !== persist.mode) {
+      menuTab = your.length === persist.mode ? "home" : "team";
+      renderMenu();
+      if (!named && $("callSign")) $("callSign").focus();
+      return;
+    }
+    blip("click");
+    persist.name = named;
+    gauntlet = !!asGauntlet;
+    streak = 0;
+    save();
+    foeIds = R.draw(persist.mode, your).map((f) => f.id);
+    rollSeed();
+    renderVS();
   }
 
   /* ------------------------------------------------------------------ boot --- */
@@ -653,9 +715,9 @@
       }
       const act = t.dataset.act;
       if (act === "pause") { const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
-      if (act === "menu") { menuTab = "home"; $("battle").classList.add("hidden"); renderMenu(); gateHold(false, 60000); }
+      if (act === "menu") leaveToMenu("home");
       if (act === "rematch") begin(false);
-      if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); renderVS(); }
+      if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
       if (act === "mute") { muted = !muted; paintSfx(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     });
@@ -666,9 +728,7 @@
       else if (ev.code === "KeyR" && overlayMode === "battle") begin(false);
       else if (ev.code === "Escape") {
         if (overlayMode === "battle" || overlayMode === "results" || overlayMode === "vs") {
-          menuTab = "home";
-          $("battle").classList.add("hidden");
-          renderMenu();
+          leaveToMenu("home");
         } else if (overlayMode === "menu" && menuTab !== "home") {
           menuTab = "home";
           renderMenu();
@@ -683,19 +743,8 @@
     });
     /* the fight button lives inside the sheet, so bind it here as well as the grid */
     document.body.addEventListener("click", (ev) => {
-      if (ev.target.closest && ev.target.closest("#btnFight")) {
-        const named = (($("callSign") && $("callSign").value) || persist.name || "").replace(/\s+/g, " ").trim().slice(0, 18);
-        if (!named || your.length !== persist.mode) {
-          menuTab = your.length === persist.mode ? "home" : "team";
-          renderMenu();
-          if (!named && $("callSign")) $("callSign").focus();
-          return;
-        }
-        persist.name = named;
-        save();
-        foeIds = R.draw(persist.mode, your).map((f) => f.id);
-        renderVS();
-      }
+      if (ev.target.closest && ev.target.closest("#btnFight")) startListed(false);
+      else if (ev.target.closest && ev.target.closest("#btnGauntlet")) startListed(true);
     });
   }
 

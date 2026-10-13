@@ -168,6 +168,9 @@ for (let s = 0; s < 120; s++) {
 }
 must("every arena is walkable from both pockets", mapBad === 0, "bad seeds=" + mapBad + "/120");
 must("arenas stay in the 40-80% open band", openMin > 0.4 && openMax < 0.85, "open " + (openMin * 100).toFixed(0) + "-" + (openMax * 100).toFixed(0) + "%");
+const lawNames = [];
+for (let i = 0; i < 8; i++) lawNames.push(E.lawFor(i).name);
+must("each ring seed names a law", new Set(lawNames).size === 8, lawNames.join(", "));
 
 /* --- 3. battles ----------------------------------------------------------- */
 const MODES = [1, 2, 3, 5];

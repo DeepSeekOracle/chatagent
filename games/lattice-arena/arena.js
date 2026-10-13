@@ -73,6 +73,21 @@
      on each flank, a central spine with gaps top and bottom, and four alcoves. Everything a
      spectator needs to read a fight: two ways round, cover to break sight, open middle. */
   const REALMS = ["stone", "frost", "ember", "gold", "lattice", "void", "tide", "root"];
+  /* Each ring is a small readable law. Numbers stay mild so a 3v3 still ends. */
+  const LAWS = {
+    stone: { name: "Stone Ring", line: "Stone Ring — the floor takes no side." },
+    frost: { name: "Frost Ring", line: "Frost Ring — every stride is shorter." },
+    ember: { name: "Ember Ring", line: "Ember Ring — the centre burns." },
+    gold: { name: "Gold Ring", line: "Gold Ring — a kill pays the killer a spark." },
+    lattice: { name: "Lattice Ring", line: "Lattice Ring — moves come back faster." },
+    void: { name: "Void Ring", line: "Void Ring — a fall leaves a slow pocket." },
+    tide: { name: "Tide Ring", line: "Tide Ring — the floor shoves every few seconds." },
+    root: { name: "Root Ring", line: "Root Ring — the floor feeds whoever is still standing." }
+  };
+  function lawById(id) { return LAWS[id] || LAWS.stone; }
+  function lawForSeed(seed) {
+    return lawById(REALMS[(seed == null ? 0 : Math.abs(seed | 0)) % REALMS.length]);
+  }
   function buildMap(seed) {
     const t = [];
     for (let y = 0; y < MAP_H; y++) { t.push([]); for (let x = 0; x < MAP_W; x++) t[y].push("floor"); }
@@ -190,7 +205,7 @@
     projectiles: [], pending: [], drops: [], texts: [], marks: [], swings: [],
     time: 0, speed: 1, paused: false, countdown: 0,
     events: [], winner: null, over: false, sudden: false,
-    rng: 0
+    rng: 0, shake: 0, hitStop: 0, zones: [], tideIn: 12
   };
   let seq = 0;
   function pushEvent(text, kind, sfx) {
@@ -240,10 +255,12 @@
     const hpFrac = e.hp / e.max;
     let dmg = b.dmg * (1 + (e.rageT > 0 ? e.rageV : 0)) * (1 - (e.weakT > 0 ? e.weakV : 0));
     if (b.mods.fury && hpFrac < 0.4) dmg *= 1 + b.mods.fury;
+    let speed = b.speed * (1 + (e.swiftT > 0 ? e.swiftV : 0)) * (1 - (e.slowT > 0 ? e.slowV : 0)) * (e.stun > 0 || e.root > 0 ? 0 : 1);
+    if (S.lv && S.lv.realm === "frost") speed *= 0.88;
     return {
       dmg: dmg,
       rate: b.rate * (1 + (e.hasteT > 0 ? e.hasteV : 0)),
-      speed: b.speed * (1 + (e.swiftT > 0 ? e.swiftV : 0)) * (1 - (e.slowT > 0 ? e.slowV : 0)) * (e.stun > 0 || e.root > 0 ? 0 : 1),
+      speed: speed,
       armor: b.armor + e.armorBuff,
       range: b.range + (e.shieldWallT > 0 ? 12 : 0)
     };
@@ -408,13 +425,23 @@
     if (src) {
       src.kills++;
       if (src.b.mods.vamp) heal(src, Math.round(src.max * src.b.mods.vamp), src);
+      if (S.lv && S.lv.realm === "gold") heal(src, Math.round(src.max * 0.05), src);
       pushEvent(src.b.name + " cuts down " + e.b.name + ".", "kill");
     } else {
       pushEvent(e.b.name + " falls.", "kill");
     }
+    if (S.lv && S.lv.realm === "void") S.zones.push({ x: e.x, y: e.y, r: 70, life: 3.5, slow: 0.32 });
+    /* Hit-stop is read by frame(), never by step(), so the headless ladder stays at sim speed. */
+    S.hitStop = 0.1;
+    S.shake = Math.max(S.shake, 0.34);
     S.marks.push({ x: e.x, y: e.y, r: 0, life: 0.8, col: "#f87171" });
     S.texts.push({ x: e.x, y: e.y - 30, t: "DOWN", life: 1.2, col: "#f87171", big: true });
     checkOver();
+    if (S.over) {
+      S.hitStop = 0.42;
+      S.shake = Math.max(S.shake, 0.72);
+      S.texts.push({ x: e.x, y: e.y - 48, t: "FINISH", life: 1.7, col: "#fbbf24", big: true });
+    }
   }
 
   function checkOver() {
@@ -824,6 +851,20 @@
       /* the well: regen status plus the card */
       const regen = (e.regenT > 0 ? e.regenHps : 0) + (e.b.mods.regen || 0);
       if (regen) e.hp = Math.min(e.max, e.hp + regen * dt);
+      const realm = S.lv && S.lv.realm;
+      if (realm === "root") e.hp = Math.min(e.max, e.hp + 1.8 * dt);
+      if (realm === "ember") {
+        const cx = MAP_W * TILE * 0.5, cy = MAP_H * TILE * 0.5;
+        if (dist2(e.x, e.y, cx, cy) < 108) {
+          e.emberHold = (e.emberHold || 0) + 11 * dt;
+          if (e.emberHold >= 4) {
+            const bite = e.emberHold;
+            e.emberHold = 0;
+            damage(null, e, bite, { dot: true, sure: true, noCrit: true, ignoreArmor: true });
+            if (e.dead) return;
+          }
+        }
+      }
       if (e.burnT > 0) { e.burnT -= dt; damage(null, e, e.burnDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
       if (e.bleedT > 0) { e.bleedT -= dt; damage(null, e, e.bleedDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
       if (S.sudden) {
@@ -841,8 +882,9 @@
         pushEvent(e.b.name + " will not go down — Second Wind.", "gift");
       }
       e.mana = Math.min(e.b.manaMax, e.mana + e.b.manaRegen * dt);
-      e.cds = e.cds.map((c) => Math.max(0, c - dt));
-      e.atkCd = Math.max(0, e.atkCd - dt);
+      const cdStep = dt * ((S.lv && S.lv.realm === "lattice") ? 1.1 : 1);
+      e.cds = e.cds.map((c) => Math.max(0, c - cdStep));
+      e.atkCd = Math.max(0, e.atkCd - cdStep);
       think(e, dt);
       attack(e);
       /* contact damage for anything standing in something's face, so melee always matters */
@@ -863,6 +905,31 @@
     S.marks = S.marks.filter((m) => m.life > 0);
     S.swings.forEach((s) => { s.life -= dt; });
     S.swings = S.swings.filter((s) => s.life > 0);
+    S.zones.forEach((z) => {
+      z.life -= dt;
+      if (S.lv && S.lv.realm === "void") {
+        live().forEach((e) => {
+          if (dist2(e.x, e.y, z.x, z.y) <= z.r) {
+            e.slowT = Math.max(e.slowT, 0.2);
+            e.slowV = Math.max(e.slowV, z.slow);
+          }
+        });
+      }
+    });
+    S.zones = S.zones.filter((z) => z.life > 0);
+    if (S.lv && S.lv.realm === "tide" && !S.over) {
+      S.tideIn -= dt;
+      if (S.tideIn <= 0) {
+        S.tideIn = 12;
+        const cx = MAP_W * TILE * 0.5, cy = MAP_H * TILE * 0.5;
+        pushEvent("The tide turns.", "law");
+        S.marks.push({ x: cx, y: cy, r: 40, life: 0.7, col: "#38bdf8", ring: true });
+        live().forEach((e) => {
+          const a = Math.atan2(e.y - cy, e.x - cx) + 1.5708;
+          moveEntity(e, Math.cos(a) * 36, Math.sin(a) * 36);
+        });
+      }
+    }
     if (!S.over && S.time > HARD_STOP) {
       const a = live(0).reduce((s, e) => s + e.hp, 0), b2 = live(1).reduce((s, e) => s + e.hp, 0);
       S.over = true; S.phase = "over"; S.winner = a >= b2 ? 0 : 1;
@@ -952,8 +1019,12 @@
     ctx.fillRect(0, 0, wpx, hpx);
     const scale = Math.min(wpx / (S.lv.W * TILE), hpx / (S.lv.H * TILE));
     const ox = (wpx - S.lv.W * TILE * scale) / 2, oy = (hpx - S.lv.H * TILE * scale) / 2;
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
+    const kick = S.shake > 0 ? S.shake * 16 : 0;
+    const sx = kick ? (Math.random() - 0.5) * kick : 0;
+    const sy = kick ? (Math.random() - 0.5) * kick : 0;
+    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (ox + sx), dpr * (oy + sy));
     if (floorCv) ctx.drawImage(floorCv, 0, 0);
+    drawLaw();
 
     /* pending blasts are telegraphed before they land: a spectator needs to see it coming */
     S.pending.forEach((p) => {
@@ -1033,7 +1104,7 @@
     S.texts.forEach((t) => {
       ctx.save();
       ctx.globalAlpha = clamp(t.life * 1.6, 0, 1);
-      ctx.font = (t.big ? "800 15px " : "700 12px ") + "'IBM Plex Mono', monospace";
+      ctx.font = (t.t === "FINISH" ? "800 22px " : t.big ? "800 15px " : "700 12px ") + "'IBM Plex Mono', monospace";
       ctx.fillStyle = "#000"; ctx.fillText(t.t, t.x + 1, t.y + 1);
       ctx.fillStyle = t.col; ctx.fillText(t.t, t.x, t.y);
       ctx.restore();
@@ -1057,9 +1128,12 @@
     const now = ts / 1000;
     const dt = Math.min(0.1, last ? now - last : 0);
     last = now;
+    if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 1.35);
     if (S.phase === "count") {
       S.countdown -= dt;
       if (S.countdown <= 0) { S.phase = "live"; pushEvent("FIGHT.", "over"); }
+    } else if (S.phase === "live" && !S.paused && S.hitStop > 0) {
+      S.hitStop -= dt;
     } else if (S.phase === "live" && !S.paused) {
       acc += dt * S.speed;
       let steps = 0;
@@ -1084,12 +1158,49 @@
     fieldCache.clear();
     S.your = mkTeam(ids.you, 0);
     S.foe = mkTeam(ids.foe, 1);
-    S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = [];
+    S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
-    S.countdown = 3.2;
+    S.countdown = 3.2; S.shake = 0; S.hitStop = 0; S.tideIn = 12;
     S.phase = "count";
     floorCv = paintFloor(S.lv);
+    pushEvent(lawById(S.lv.realm).line, "law");
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
+  }
+
+  function drawLaw() {
+    if (!S.lv) return;
+    const realm = S.lv.realm;
+    const cx = MAP_W * TILE * 0.5, cy = MAP_H * TILE * 0.5;
+    ctx.save();
+    if (realm === "ember") {
+      ctx.globalAlpha = 0.16 + 0.07 * Math.sin(S.time * 4);
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath(); ctx.arc(cx, cy, 108, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = 0.75; ctx.strokeStyle = "#fb923c"; ctx.lineWidth = 2; ctx.stroke();
+    } else if (realm === "frost") {
+      ctx.globalAlpha = 0.07; ctx.fillStyle = "#7dd3fc";
+      ctx.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
+    } else if (realm === "root") {
+      ctx.globalAlpha = 0.05 + 0.03 * Math.sin(S.time * 2);
+      ctx.fillStyle = "#4ade80";
+      ctx.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
+    } else if (realm === "gold") {
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, 78 + 8 * Math.sin(S.time * 2), 0, 6.283); ctx.stroke();
+    } else if (realm === "lattice") {
+      ctx.globalAlpha = 0.22; ctx.strokeStyle = "#5eead4"; ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) ctx.strokeRect(cx - i * 48, cy - i * 34, i * 96, i * 68);
+    } else if (realm === "tide") {
+      ctx.globalAlpha = 0.2; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, 90 + 14 * Math.sin(S.time * 1.4), 0, 6.283); ctx.stroke();
+    }
+    S.zones.forEach((z) => {
+      ctx.globalAlpha = Math.max(0.12, (z.life / 3.5) * 0.4);
+      ctx.fillStyle = "rgba(88,28,135,0.35)";
+      ctx.strokeStyle = "#c4b5fd"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, 6.283); ctx.fill(); ctx.stroke();
+    });
+    ctx.restore();
   }
 
   w.ArenaEngine = {
@@ -1101,6 +1212,8 @@
     state: () => S,
     statusList: statusList,
     moveCost: moveCost,
+    lawFor: lawForSeed,
+    law() { return lawById(S.lv && S.lv.realm); },
     /* a headless battle: step the sim without the renderer (used by the check tool) */
     runHeadless(ids, mode, seconds, seed) {
       newMatch(ids, mode, seed);
