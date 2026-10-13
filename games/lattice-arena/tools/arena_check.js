@@ -157,17 +157,22 @@ function mapStats(seed) {
     });
   }
   const unreachable = slots.filter((s) => !seen[s.y * lv.W + s.x]);
-  let open = 0;
-  for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) if (lv.tiles[y][x] !== "wall") open++;
-  return { unreachable: unreachable.length, open: open / (lv.W * lv.H) };
+  let open = 0, inner = 0;
+  for (let y = 0; y < lv.H; y++) for (let x = 0; x < lv.W; x++) {
+    if (lv.tiles[y][x] !== "wall") open++;
+    else if (x > 0 && y > 0 && x < lv.W - 1 && y < lv.H - 1) inner++;   // stone inside the ring
+  }
+  return { unreachable: unreachable.length, open: open / (lv.W * lv.H), inner };
 }
-let mapBad = 0, openMin = 1, openMax = 0;
+let mapBad = 0, openMin = 1, openMax = 0, innerWall = 0;
 for (let s = 0; s < 120; s++) {
   const m = mapStats(s);
   if (m.unreachable) mapBad++;
+  innerWall = Math.max(innerWall, m.inner);
   openMin = Math.min(openMin, m.open); openMax = Math.max(openMax, m.open);
 }
 must("every arena is walkable from both pockets", mapBad === 0, "bad seeds=" + mapBad + "/120");
+must("the ring floor is clear — no obstacles inside it", innerWall === 0, innerWall + " interior stone tiles across 120 seeds");
 must("arenas stay open enough to fight in", openMin > 0.76 && openMax < 0.93, "open " + (openMin * 100).toFixed(0) + "-" + (openMax * 100).toFixed(0) + "%");
 const lawNames = [];
 for (let i = 0; i < 8; i++) lawNames.push(E.lawFor(i).name);

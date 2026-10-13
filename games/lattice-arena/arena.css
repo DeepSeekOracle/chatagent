@@ -342,3 +342,8 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
   font-variant: small-caps;
 }
 .st.task:empty { display: none; }
+
+/* a button that will not start a fight should not look like one that will */
+.btn.gold[data-ready='0'] { opacity: .62; filter: saturate(.55); }
+.btn.gold[data-ready='0'] span { color: #4a2f05; }
+h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--dim, #8b95a5); margin-left: 10px; }

@@ -284,6 +284,12 @@
   function screenTitle() {
     const line = lineupBook();
     const ready = your.length === persist.mode && !!(persist.name || "").trim();
+    /* Why the button will not start a fight, said on the button. A click that does
+       nothing is the one thing a player cannot read. */
+    const need = persist.mode - your.length;
+    const hold = need > 0 ? MODE_LABEL[persist.mode] + " needs " + persist.mode + " kits — you have " + your.length
+      : need < 0 ? MODE_LABEL[persist.mode] + " takes " + persist.mode + " — you have " + your.length
+      : (!(persist.name || "").trim() ? "put your name in to start" : "");
     const names = lineupNames() || "no one fielded";
     return "<div class='title-screen'>" +
       "<div class='title-art'><img src='./assets/menu.jpg' alt='Four fighters at a cyan lattice gate in a torchlit stone crypt' width='1280' height='720'></div>" +
@@ -292,7 +298,7 @@
         "<p class='lede'>Two AI teams. One stone ring. Name yourself, build a team, then watch them fight.</p>" +
         "<label class='name-block'>Your name<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'></label>" +
         "<div class='menu-actions'>" +
-          "<button type='button' class='btn gold' id='btnFight'" + (ready ? "" : "") + "><b>Fight</b><span>" + MODE_LABEL[persist.mode] + " · " + esc(names) + "</span></button>" +
+          "<button type='button' class='btn gold' id='btnFight' data-ready='" + (ready ? "1" : "0") + "'><b>Fight</b><span>" + (hold ? esc(hold) : MODE_LABEL[persist.mode] + " · " + esc(names)) + "</span></button>" +
           "<button type='button' class='btn' id='btnGauntlet'><b>Gauntlet</b><span>Same team. A new ring after every win. Best streak " + (persist.bestStreak || 0) + ".</span></button>" +
           "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
           "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Fight sounds, speed, and the radio</span></button>" +
@@ -323,7 +329,10 @@
     }).join("") : "<p class='muted'>No one fielded yet.</p>";
     return "<div class='team-screen'>" +
       "<div class='team-head'><div class='team-title'><button type='button' class='btn' data-tab='home'>Back</button>" +
-        "<h2>Team select <span>" + your.length + "/" + persist.mode + "</span></h2></div>" +
+        "<h2>Team select <span>" + your.length + "/" + persist.mode + "</span>" +
+          (your.length === persist.mode ? "" : "<em class='need'>" + (persist.mode - your.length > 0
+            ? "pick " + (persist.mode - your.length) + " more to field " + MODE_LABEL[persist.mode]
+            : "drop " + (your.length - persist.mode) + " to field " + MODE_LABEL[persist.mode]) + "</em>") + "</h2></div>" +
         "<div class='modes'>" + modeCards() + "</div></div>" +
       "<div class='team-body'><div class='roster-col'>" +
         "<div class='filters'>" + filters +

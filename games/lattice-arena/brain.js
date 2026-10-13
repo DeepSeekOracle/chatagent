@@ -191,6 +191,8 @@
     if (!en.length) { e.task = "hold"; return { task: "hold", target: null, point: null, band: 0, gait: 0, why: "" }; }
     const Q = SQ[e.team] || blank();
     e.planT = (e.planT == null ? 0 : e.planT) - dt;
+    /* the knife's rhythm has to run on its own clock, or it darts in and out every frame */
+    e.stepOutT = Math.max(0, (e.stepOutT == null ? 0 : e.stepOutT) - dt);
     const changed = !e.plan || !e.plan.target || e.plan.target.dead || e.planPatient !== Q.wounded;
     if (e.planT > 0 && !changed) return e.plan;
     e.planT = PLAN_T;
@@ -231,7 +233,40 @@
        from somebody who is in worse shape than you are. */
     const lastOne = al.filter((o) => o !== e && !o.dead).length === 0;
     const enemyWorse = focus.hp / focus.max < hp - 0.08;
-    const hurt = hp < (wound ? 0.2 : st.retreat) && !lastOne && !enemyWorse && localE > localA + 0.5;
+
+    /* ---- GROUP DISCIPLINE — what a body can see of the fight beats what the
+       scoreboard says. An enemy is lonely when none of its own stand within 165px
+       of it: that one is fair game for a single knife. A clump is not, unless this
+       body has the numbers standing with it. Bodies that arrive one at a time into
+       three is how a team fight is lost — this is the whole difference between
+       diving and attacking. */
+    const knife = range <= 110 && !st.wound;                     // the contact kits: rush, assassin, skirmish, hunter
+    const foesNear = en.filter((o) => dist(e.x, e.y, o.x, o.y) < 210);
+    const matesNear = al.filter((o) => o !== e && dist(e.x, e.y, o.x, o.y) < 210);
+    const edgeHere = matesNear.length - foesNear.length;         // >0: we have the numbers here
+    /* keep it next to the glass test below; both are read by the knife rules */
+    const lonely = en.filter((o) => en.filter((q) => q !== o && dist(q.x, q.y, o.x, o.y) < 165).length === 0)
+      .sort((q, r2) => dist(e.x, e.y, q.x, q.y) - dist(e.x, e.y, r2.x, r2.y))[0] || null;
+    /* hunt with the pack: an enemy one of ours is already standing on is the one to hit */
+    const packPrey = knife ? matesNear.map((m) => en.find((o) => dist(m.x, m.y, o.x, o.y) < 95))
+      .filter(Boolean).sort((q, r2) => dist(e.x, e.y, q.x, q.y) - dist(e.x, e.y, r2.x, r2.y))[0] || null : null;
+    /* two or more on it, nobody of ours near: a knife in that position left too late
+       to matter. It breaks off early instead of at the style's last-third retreat. */
+    const swarmed = knife && localE >= 2 && localA === 0 && hp < 0.72;
+    /* a glass knife — the wolf, the imp, the thief — reads its own body against the
+       line's. It has the health for one exchange, so it only takes fights it has the
+       numbers for, and it steps out sooner than the heavy contact kits do. */
+    const teamMax = al.reduce((s, o) => s + o.max, 0) / (al.length || 1);
+    const glass = knife && e.max < teamMax * 0.82;
+
+    const hurt = (hp < (wound ? 0.2 : st.retreat) || swarmed) && !lastOne && !enemyWorse && localE > localA + 0.5;
+    /* the knives choose differently: pile on what a mate is already fighting, or take
+       the one that wandered off, or trail the squad call — never stroll into the knot */
+    if (knife && !hurt) {
+      if (packPrey && dist(e.x, e.y, packPrey.x, packPrey.y) < 340) target = packPrey;
+      else if (lonely && (matesNear.length === 0 || edgeHere < 0)) target = lonely;
+    }
+    const dTargetNow = dist(e.x, e.y, target.x, target.y);
 
     /* — 1. AID: somebody in this team is bleeding and I am the one who can mend.
            A body with a heal does not stand in the front rank while a friend dies. */
@@ -273,6 +308,24 @@
       return set(e, { task, target, point, band, gait, why }, S);
     }
 
+    /* — 2b. WORK THE EDGE: a knife standing in the middle of the pack is a knife on a
+           cooldown with three bodies hitting it. Dart in, then break back out to the
+           edge of its own reach and come again — that rhythm, not the longest walk in,
+           is what keeps a contact kit alive in a group fight. */
+    if (knife && !hurt && !e.stepOutT && hp < (glass ? 0.92 : 0.86) &&
+        foesNear.filter((o) => dist(e.x, e.y, o.x, o.y) < range + 26 + (glass ? 20 : 0)).length >= 2) {
+      const n0 = foesNear.reduce((a, o) => (dist(e.x, e.y, o.x, o.y) < dist(e.x, e.y, a.x, a.y) ? o : a));
+      const away = dist(e.x, e.y, n0.x, n0.y) || 1;
+      const step = { x: n0.x + ((e.x - n0.x) / away) * (range + 34), y: n0.y + ((e.y - n0.y) / away) * (range + 34) };
+      e.stepOutT = 1.3;
+      task = "hold";
+      point = stone(S, step.x, step.y) ? { x: Q.cx, y: Q.cy } : step;
+      band = band0;
+      gait = 1;
+      why = "stepping out of the pack";
+      return set(e, { task, target, point, band, gait, why }, S);
+    }
+
     /* — 3. SCREEN: stand between the enemy and whoever cannot take the hit. */
     if (st.screen) {
       const ward = al.filter((o) => o !== e && o.b.range > 160 && o.hp > 0)
@@ -288,6 +341,25 @@
           return set(e, { task, target, point, band, gait, why }, S);
         }
       }
+    }
+
+    /* — 3c. DO NOT FEED THE CLUMP: a knife with nobody standing with it does not walk
+           into two or more bodies. It circles at the edge of its own reach until the
+           line arrives or one of them steps out alone. A body shoving at the pack
+           alone is not pressure, it is a free kill with a cooldown on it. */
+    if (knife && !hurt && dTargetNow < 420 &&
+        ((matesNear.length === 0 && foesNear.length >= 2) || edgeHere <= -2 || (glass && edgeHere < 0))) {
+      const ccx = foesNear.reduce((s, o) => s + o.x, 0) / foesNear.length;
+      const ccy = foesNear.reduce((s, o) => s + o.y, 0) / foesNear.length;
+      const away = dist(e.x, e.y, ccx, ccy) || 1;
+      const ux = (e.x - ccx) / away, uy = (e.y - ccy) / away;
+      const rim = { x: ccx + ux * (band0 * 0.72 + 42), y: ccy + uy * (band0 * 0.72 + 42) };
+      task = "hold";
+      point = stone(S, rim.x, rim.y) ? { x: Q.cx, y: Q.cy } : rim;
+      band = band0;
+      gait = 1;
+      why = "waiting for the line";
+      return set(e, { task, target, point, band, gait, why }, S);
     }
 
     /* — 4. FLANK: do not walk into the same doorway as everybody else. */

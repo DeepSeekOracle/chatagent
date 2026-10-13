@@ -105,12 +105,22 @@
      aprons are cleared and anything the repair cuts through is linked back in, so no
      seed can strand a body behind stone. */
   const KINDS = ["colosseum", "gauntlet", "pit", "colonnade", "ruin"];
-  const KIND_BLURB = {
+  /* COVER off: every ring is swept down to bare sand. Nothing to walk round, nothing
+     to get caught on, so what a body does is the brain's doing and not the walls'.
+     Flip it back to true and all five layouts return exactly as they were. */
+  const COVER = false;
+  const KIND_BLURB = COVER ? {
     colosseum: "Colosseum — open sand, cover on the corners.",
     gauntlet: "Gauntlet — a spine down the middle and a mouth at each end.",
     pit: "The Pit — four doorways in a low wall. Hold one or lose the middle.",
     colonnade: "Colonnade — pillars in rows: lanes to run, columns to hide behind.",
     ruin: "Ruin — a court of broken walls and loose stone."
+  } : {
+    colosseum: "Colosseum — swept sand and one ring to settle it in.",
+    gauntlet: "Gauntlet — a long floor and a mouth at each end.",
+    pit: "The Pit — open ground, and the floor takes no side.",
+    colonnade: "Colonnade — a wide court with the columns gone.",
+    ruin: "Ruin — a court of cracked slabs, swept flat."
   };
   /* which colosseum a seed stands in — derived from the seed so the pre-fight card can
      name it before the match exists */
@@ -136,7 +146,10 @@
     const twin = (x, y, w2, h) => { block(x, y, w2, h); block(MAP_W - x - w2, y, w2, h); };
 
     const kind = kindOf(seed);
-    if (kind === "colosseum") {
+    /* the layouts, kept whole. COVER off leaves the floor bare: no pillars, no
+       walls, no loose stone — the outer ring is the only stone in the arena. */
+    if (COVER) {
+      if (kind === "colosseum") {
       /* four knots on the diagonals, two tiles square, and nothing in the middle:
          the centre of a colosseum is where the fight should happen */
       twin(7, 5, 2, 2); twin(7, 15, 2, 2);
@@ -170,6 +183,7 @@
       t[4][16] = "wall"; t[MAP_H - 5][16] = "wall";
     }
 
+    }
     /* spawn pockets stay clear — nothing in front of a gate is a fair arena */
     const slots = spawnSlots();
     slots.forEach((s) => carve(s.x - 2, s.y - 1, 5, 3));

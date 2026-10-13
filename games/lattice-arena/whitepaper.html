@@ -182,6 +182,21 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   rise once more after being cut down, <em>Unwrite Ink</em> to shrug off the first stun, plus auras,
   leech, thorns, echo rounds and executioner edges that modify every number passing through them.</p>
 
+  <h3>Fighting as a group</h3>
+  <ul>
+    <li>A body reads the fight it can see, not the scoreboard: enemies inside 210px
+      are counted against its own company there.</li>
+    <li>A knife with nobody standing with it does not walk into two or more bodies. It
+      circles at the edge of reach and waits for the line, or for one of them to step
+      out alone.</li>
+    <li>Contact kits dart in, break back out to the edge of their own reach, and come
+      again — the rhythm, not the longest walk in, is what keeps them alive.</li>
+    <li>A glass kit (the wolf, the imp, the thief) measures itself against the line and
+      only takes fights it has the numbers for.</li>
+    <li>Knives pile onto whoever a mate is already fighting, and take the straggler
+      when there is one — never the knot in the middle.</li>
+  </ul>
+
   <h2>5. The roster — 33 real kits</h2>
   <p>The numbers below are what the engine builds for an undrafted kit: base health, base damage, attacks
   per second, reach in world units, flat armour, the three moves, the three cards, and the composite
@@ -199,7 +214,7 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   roster and the real engine in Node behind a stub DOM and runs the whole thing headless. It asserts what
   a player would notice, and prints what a designer wants to argue about.</p>
   <div class="card">
-    <h3>What the harness checks — 35 assertions, 290 battles per run</h3>
+    <h3>What the harness checks — 36 assertions, 290 battles per run</h3>
     <ul>
       <li>Roster shape: 33 fighters, unique ids, every sprite key present in its atlas, every move id
       resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
