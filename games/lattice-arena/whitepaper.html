@@ -238,7 +238,7 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   roster and the real engine in Node behind a stub DOM and runs the whole thing headless. It asserts what
   a player would notice, and prints what a designer wants to argue about.</p>
   <div class="card">
-    <h3>What the harness checks — 36 assertions, 290 battles per run</h3>
+    <h3>What the harness checks — 49 assertions, 90 battles per run</h3>
     <ul>
       <li>Roster shape: 33 fighters, unique ids, every sprite key present in its atlas, every move id
       resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
@@ -264,12 +264,13 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
     <li><b>A closing ring.</b> A share of maximum health per second from 80 seconds, climbing as the fight
     drags, so sustain cannot draw a match out indefinitely.</li>
   </ul>
-  <p class="warn"><b>Where it stands today, honestly:</b> the top end is still hot. The two bosses and the
-  strongest support kits win noticeably more than they lose — the current 300-battle spread runs from
-  about 27% for the weakest melee creature to about 82% for the super boss, with the champion band inside
-  roughly 33–81%. The systemic levers closed the broad gaps; the remaining outliers are tuning work on
-  specific kits, and the ladder exists so that work can be measured instead of guessed. Draft a boss if
-  you want an easier night.</p>
+  <p class="warn"><b>Where it stands today, honestly:</b> the field average is 50.0% and the middle is
+  tight — nineteen kits inside 38–64%. The tails are real, though. Eight kits, the light creatures and the
+  short-reach melee, hold 24–44%: they die two fights in three because they are the body the pack finishes
+  first. The strongest seven sit at 73–79%, and it is no longer only the bosses — the kits that fight from
+  eight tiles and never have to walk in own the top of the table. Two members of the floor were not weak at
+  all, they were broken: the imp and the stone-hurler fought at bolt range carrying a melee punch, so they
+  stood outside their own reach for the whole match. Give a kit a throw and it is a different fighter.</p>
 
   <h2>7. The hall</h2>
   <p>A callsign is optional and nothing else is collected. When a match ends and a call is set, the result
@@ -288,7 +289,9 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   Helmer — Lightfather. Everything runs in the browser with no build step: three scripts, a stylesheet and
   one atlas pack.</p>
   <p class="muted">Files: <code>roster.js</code> (33 kits, 26 cards, the move table) · <code>arena.js</code>
-  (the engine) · <code>arena-ui.js</code> (menu, HUD, results) · <code>tools/arena_check.js</code> (the ladder).</p>
+  (the engine) · <code>brain.js</code> (the tasking brain) · <code>banter.js</code> (every spoken line) ·
+  <code>arena-ui.js</code> (menu, HUD, feed, caster, results) · <code>tools/arena_check.js</code> (49
+  assertions) · <code>tools/arena_ladder.js</code> (the field table).</p>
 </div>
 
 <section class="doc" id="voices">
@@ -318,7 +321,20 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   <code>tools/arena_ladder.js 420</code> runs the whole field through 420 matches and prints a
   win rate, a death rate and a damage-per-match line for all 33 kits. The field average is held
   at 50%, and the floor of the roster — the kits that were losing more than two fights in three —
-  has been raised twice off the back of that table.</p>
+  has been raised three times off the back of that table.</p>
+  <p><b>The table knows its own noise.</b> Teams are drawn at random, so the same build measured twice does
+  not produce the same table: two runs of 420 matches disagreed by up to sixteen points on a single kit (the
+  bulwark <em>gate</em> read 60% in one run and 76% in the next; the <em>smith</em> 43% and then 64%). The
+  ladder therefore prints a 95% interval beside every win rate and marks a <code>~</code> on each kit whose
+  interval covers 50% — that kit is average, not weak, and tuning it is tuning a coin toss. Only the tails
+  are stable between runs: the same handful sits at the top and the same handful at the bottom every time.</p>
+  <p>So every change here is made against a cause that can be named, never against a number: a kit whose
+  reach exceeds its attack (the imp, the hurler), a signature ability that decides maps on its own (the
+  vanguard's revive, now forty seconds and a 30% return), a body so light it dies before it arrives. Two
+  fixes that measured as net-negative were reverted rather than kept for the look of activity: a rule that
+  made light kits break off earlier lost more team fights than it saved (the kite fell from 53% to 33%), and
+  handing three hunter kits a heal-cut made them <em>worse</em> — a wound sends its owner after the enemy
+  mender, and an average body that dives at a protected back line does not come back.</p>
 </section>
 </body>
 </html>
