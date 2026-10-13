@@ -83,13 +83,13 @@
     righttime: { name: "Right-Time",     text: "Warp the hour: foes slow, you hurry.",                  cd: 12, range: 8, aim: "clump", shape: "blast", dmg: 0.8, radius: 2.6, fx: "nova", st: { slow: [0.45, 5] }, selfSt: { swift: [0.3, 5] } },
     borrow:    { name: "Borrowed Second",text: "Spend a second as a key: every cooldown resets.",       cd: 24, range: 0, aim: "self", shape: "self", st: { cdReset: 1, haste: [0.3, 6] } },
     fairplate: { name: "Fair Plate",     text: "Fairness as plate: reflect and thorn up.",              cd: 14, range: 0, aim: "self", shape: "self", st: { reflect: [0.45, 6], thorns: [0.35, 6] } },
-    verdict:   { name: "Verdict",        text: "Strike where the plate is already cracked.",            cd: 12, range: 2.4, aim: "weakest", shape: "melee", dmg: 1.3, execute: true, fx: "hit_shard" },
+    verdict:   { name: "Verdict",        text: "Strike where the plate is already cracked.", cd: 12, range: 2.4, aim: "weakest", shape: "melee", dmg: 1.3, execute: true, fx: "hit_shard" },
     current:   { name: "Current",        text: "The tide behind the line: allies hurry and stride.",    cd: 13, range: 7, aim: "allies", shape: "allies", st: { haste: [0.3, 7], swift: [0.2, 7] } },
     undertow:  { name: "Undertow",       text: "Drag them in and slow what has no footing.",            cd: 15, range: 7, aim: "clump", shape: "aura", atRange: true, radius: 3.2, dmg: 0.7, fx: "nova", st: { pull: 3.2, slow: [0.4, 4] } },
     chorusflask:{ name: "Chorus Flask",  text: "One drink, four pulses: the whole line heals.",         cd: 13, range: 7, aim: "allies", shape: "allies", st: { heal: 0.24 } },
     weavebloom:{ name: "Weave Bloom",    text: "Plant a bloom of regrowth under your team.",            cd: 16, range: 7, aim: "allies", shape: "allies", st: { regen: [6.5, 6] } },
-    seal9:     { name: "Δ9 Seal",        text: "The architect's seal: stuns the room, shields his own.", cd: 16, range: 6, aim: "self", shape: "aura", dmg: 0.9, radius: 6, fx: "nova", st: { stun: 1.1 }, selfSt: { aegis: 0.28, heal: 0.12 } },
-    provenance:{ name: "Provenance",     text: "Remember the name: a fallen ally rises again.",          cd: 26, range: 30, aim: "deadally", shape: "revive", heal: 0.45 },
+    seal9:     { name: "Δ9 Seal",        text: "The architect's seal: stuns the room, shields his own.", cd: 20, range: 6, aim: "self", shape: "aura", dmg: 0.9, radius: 6, fx: "nova", st: { stun: 0.9 }, selfSt: { aegis: 0.18, heal: 0.06 } },
+    provenance:{ name: "Provenance",     text: "Remember the name: a fallen ally rises again.",          cd: 40, range: 30, aim: "deadally", shape: "revive", heal: 0.30 },
 
     /* --- creatures ------------------------------------------------------- */
     wail:      { name: "Wail",           text: "A thin cry that weakens what hears it and nails its feet down.", cd: 12, range: 6, aim: "self", shape: "aura", dmg: 0.6, radius: 6, fx: "nova", st: { weak: [0.3, 6], root: 0.9, wound: [0.3, 4] } },
@@ -108,7 +108,7 @@
     temperwork:{ name: "Temper Work",     text: "The smith re-tempers what the fight has bent.",        cd: 17, range: 6, aim: "allies", shape: "allies", st: { heal: 0.16, haste: [0.15, 4] } },
     heartbeat: { name: "Heartbeat",      text: "The heart of the crypt beats: it mends its own.",        cd: 12, range: 6, aim: "allies", shape: "allies", st: { heal: 0.20 } },
     tidecrush: { name: "Tide Crush",     text: "The depth takes the room and drags it in.",              cd: 14, range: 6, aim: "clump", shape: "aura", atRange: true, radius: 3.4, dmg: 1.2, fx: "nova", st: { pull: 3.6, slow: [0.35, 4] } },
-    tithe:     { name: "Tithe",          text: "The tithe-king is paid in what you were saving.",        cd: 12, range: 2.2, aim: "enemy", shape: "melee", dmg: 1.2, drain: 0.6, fx: "hit_needle", st: { weak: [0.22, 5] } },
+    tithe:     { name: "Tithe",          text: "The tithe-king is paid in what you were saving.",        cd: 12, range: 2.2, aim: "enemy", shape: "melee", dmg: 1.2, drain: 0.6, fx: "hit_needle", st: { weak: [0.22, 5], wound: [0.3, 5] } },
     nameless:  { name: "Nameless",       text: "Names go where it looks.",                               cd: 15, range: 8, aim: "clump", shape: "blast", dmg: 1.3, radius: 2.8, fx: "hit_halo", st: { silence: 5 } },
     lockseal:  { name: "The Lock Seals", text: "The whole arena is the door and it is closing.",         cd: 18, range: 0, aim: "self", shape: "aura", dmg: 1.35, radius: 4.4, fx: "nova", st: { stun: 1.2, burn: [9, 5] } },
     gatecannon:{ name: "Gate Cannon",    text: "A shell of cold light from the gate itself.",            cd: 12, range: 10, aim: "enemy", shape: "beam", dmg: 1.5, fx: "hit_cinder" },
@@ -116,7 +116,7 @@
     /* --- the pack -------------------------------------------------------- */
     bite:      { name: "Pack Bite",      text: "Dash in and hamstring — the pack is faster than you.",  cd: 8,  range: 8, aim: "weakest", shape: "blink", dmg: 1.2, fx: "hit_needle", st: { root: 1.2, wound: [0.45, 4] } },
     roar:      { name: "Roar",           text: "A roar that shakes the line and throws it back off its feet.", cd: 12, range: 5.5, aim: "self", shape: "aura", dmg: 0.8, radius: 5.5, fx: "nova", st: { weak: [0.25, 5], knock: 1.8 } },
-    soljump:   { name: "Solstride",      text: "A long leap onto the one already hurt.",                 cd: 10, range: 10, aim: "weakest", shape: "blink", dmg: 1.25, fx: "hit_shard" },
+    soljump:   { name: "Solstride",      text: "A long leap onto the one already hurt.", cd: 10, range: 10, aim: "weakest", shape: "blink", dmg: 1.25, fx: "hit_shard" },
     maul:      { name: "Maul",           text: "Ironhide comes down on everything in reach.",            cd: 11, range: 0, aim: "self", shape: "aura", dmg: 1.2, radius: 2.8, fx: "nova", st: { knock: 1.4 } },
     stomp:     { name: "Stomp",          text: "The ground answers the tusk.",                           cd: 12, range: 0, aim: "self", shape: "aura", dmg: 1.1, radius: 3.2, fx: "nova", st: { stun: 0.8 } },
     clamp:     { name: "Glassbarb Clamp",text: "A clamp of glass barb and a tail you did not see.",      cd: 9,  range: 2.0, aim: "enemy", shape: "melee", dmg: 1.3, fx: "hit_needle", st: { burn: [5, 4] } }
@@ -160,7 +160,7 @@
   add({ id: "nia", name: "Nia", tag: "Path Archer", cls: "champ", spr: { sheet: "heroes", key: "hero_nia" }, portrait: "p-nia.jpg", color: "#4ade80",
     bio: "She maps the corridors by running them. A slow warden is a closed door.",
     style: "kite", tune: { band: 0.95, panic: 200, retreat: 0.3, strafe: 1.1, commit: 0.6 }, temper: "Never stands where the last shot landed.",
-    hp: 620, dmg: 27, rate: 0.92, speed: 4.4, armor: 3, range: 8.6, mana: 70, manaRegen: 6, crit: 0.22, cdMul: 0.84,
+    hp: 707, dmg: 27, rate: 0.92, speed: 4.4, armor: 4, range: 8.6, mana: 70, manaRegen: 6, crit: 0.22, cdMul: 0.84,
     atk: { name: "Path Arrow", type: "bolt", w: "needle", pierce: 1 },
     moves: ["pinvolley", "dash", "needlerain"], cards: ["swift", "lucky", "volley"],
     counter: "Fastest feet in the arena. Rooted once and she is only an archer." });
@@ -175,8 +175,8 @@
 
   add({ id: "arkos", name: "Arkos", tag: "Lattice Lancer", cls: "champ", spr: { sheet: "heroes", key: "hero_arkos" }, portrait: "p-arkos.jpg", color: "#2dd4bf",
     bio: "The spear is a geodesic: the shortest true line through a lie.",
-    style: "duelist", tune: { band: 0.9, commit: 1.9, strafe: 0.95 }, temper: "One name, one line, until one of them is finished.",
-    hp: 850, dmg: 31, rate: 0.78, speed: 3.2, armor: 8, range: 1.9, mana: 80, manaRegen: 6, crit: 0.18, cdMul: 0.84,
+    style: "duelist", tune: { band: 0.9, commit: 1.6, strafe: 0.95 }, temper: "One name, one line, until one of them is finished.",
+    hp: 918, dmg: 35.34, rate: 0.78, speed: 3.2, armor: 10, range: 1.9, mana: 80, manaRegen: 6, crit: 0.18, cdMul: 0.84,
     atk: { name: "Lance Thrust", type: "melee", w: "shard", reach: 1.9 },
     moves: ["geodesic", "trueline", "dash"], cards: ["pierce", "might", "nimble"],
     counter: "Ignores walls and armor. Weak to being swarmed." });
@@ -208,7 +208,7 @@
   add({ id: "justicae", name: "Justicae", tag: "Accord Knight", cls: "champ", spr: { sheet: "heroes", key: "hero_justicae" }, portrait: "p-justicae.jpg", color: "#e2e8f0",
     bio: "Fairness as plate. She will not open a seal that would crush the unnamed.",
     style: "hunter", tune: { band: 0.9, commit: 1.9, strafe: 0.5 }, temper: "Hunts whatever is already carrying a wound.",
-    hp: 920, dmg: 27, rate: 0.74, speed: 3.0, armor: 9, range: 1.7, mana: 90, manaRegen: 6, crit: 0.17, cdMul: 0.80,
+    hp: 1049, dmg: 27, rate: 0.74, speed: 3.0, armor: 11, range: 1.7, mana: 90, manaRegen: 6, crit: 0.17, cdMul: 0.80,
     atk: { name: "Accord Blade", type: "melee", w: "shard" },
     moves: ["fairplate", "verdict", "bulwark"], cards: ["executioner", "bulwark", "thorns"],
     counter: "Reflects everything thrown at her and finishes what is already hurt." });
@@ -232,7 +232,7 @@
   add({ id: "lightfather", name: "Lightfather", tag: "Architect · Δ9", cls: "champ", spr: { sheet: "heroes", key: "hero_lightfather" }, portrait: "p-lightfather.jpg", color: "#fbbf24",
     bio: "He does not replace the four teeth — he remembers why the door was cut.",
     style: "vanguard", tune: { band: 0.92, leash: 140, commit: 1.3, strafe: 0.4 }, temper: "Stands a step in front of his own and remembers who fell.",
-    hp: 720, dmg: 29, rate: 0.84, speed: 3.4, armor: 5, range: 8.0, mana: 160, manaRegen: 12, crit: 0.19, cdMul: 0.70,
+    hp: 660, dmg: 27, rate: 0.84, speed: 3.4, armor: 4, range: 8.0, mana: 160, manaRegen: 10, crit: 0.19, cdMul: 0.82,
     atk: { name: "Seal Bolt", type: "bolt", w: "halo" },
     moves: ["seal9", "provenance", "cover", "standard"], cards: ["standard", "secondlife", "warded"],
     counter: "Raises the dead and shuts a room down. Slow to come online." });
@@ -258,16 +258,16 @@
   add({ id: "imp", name: "Imp", tag: "Crypt Fodder", cls: "beast", spr: { sheet: "creatures", key: "foe_imp" }, color: "#fb923c",
     bio: "Fast, small, and holding a coal it intends to give you.",
     style: "skirmish", tune: { band: 0.8, recoil: 0.9, strafe: 0.95 , retreat: 0.38}, temper: "In, a coal, out — before the swing finishes.",
-    hp: 646, dmg: 30, rate: 0.95, speed: 2.9, armor: 5, range: 7.4, mana: 60, manaRegen: 8, crit: 0.12, cdMul: 0.86,
-    atk: { name: "Claw", type: "melee", w: "shard" },
+    hp: 724, dmg: 34.8, rate: 1.01, speed: 2.9, armor: 6, range: 7.4, mana: 60, manaRegen: 8, crit: 0.12, cdMul: 0.86,
+    atk: { name: "Ember Spit", type: "bolt", w: "cinder" },
     moves: ["impfire", "flicker"], cards: ["swift", "lucky", "nimble"],
     counter: "Fast, burns, and leaves you limping after it. Still dies to one good hit." });
 
   add({ id: "hurler", name: "Hurler", tag: "Crypt Artillery", cls: "beast", spr: { sheet: "creatures", key: "foe_hurler" }, color: "#a3a3a3",
     bio: "It never wants a line of sight. The stone goes over the wall or not at all.",
     style: "artillery", tune: { band: 1.0, panic: 175, commit: 0.9, strafe: 0.15 }, temper: "Hurls from the back of the ring, then wades in to finish what it started.",
-    hp: 700, dmg: 33, rate: 0.72, speed: 2.4, armor: 3, range: 5.6, mana: 70, manaRegen: 6, crit: 0.10, cdMul: 0.9,
-    atk: { name: "Fist", type: "melee", w: "shard" },
+    hp: 756, dmg: 33, rate: 0.72, speed: 2.4, armor: 4, range: 5.6, mana: 70, manaRegen: 6, crit: 0.10, cdMul: 0.9,
+    atk: { name: "Stone Toss", type: "bolt", w: "shard" },
     moves: ["lobstone", "pound"], cards: ["might", "bulwark", "giant"],
     counter: "Hits the back line from behind stone. Helpless up close." });
 
@@ -282,15 +282,15 @@
   add({ id: "thief", name: "Thief", tag: "Tithe-Thief", cls: "beast", spr: { sheet: "creatures", key: "foe_thief" }, color: "#facc15",
     bio: "It takes the vial, the coin, and the courage, and is gone before the roll.",
     style: "skirmish", tune: { band: 0.72, recoil: 1.5, strafe: 1.4 , retreat: 0.34}, temper: "Takes one cut and leaves; the leaving is the trick.",
-    hp: 702, dmg: 33, rate: 1.05, speed: 3.6, armor: 4, range: 1.6, mana: 50, manaRegen: 6, crit: 0.20, cdMul: 0.8,
+    hp: 790, dmg: 36, rate: 1.05, speed: 3.6, armor: 6, range: 1.6, mana: 50, manaRegen: 6, crit: 0.20, cdMul: 0.8,
     atk: { name: "Quick Stab", type: "melee", w: "needle" },
     moves: ["snatch", "flicker"], cards: ["swift", "vampiric", "lucky"],
     counter: "The fastest creature alive — it takes your stride with your coin. Never wins a stand-up fight." });
 
   add({ id: "drain", name: "Drain", tag: "The Unwriting", cls: "beast", spr: { sheet: "creatures", key: "foe_drain" }, color: "#7c3aed",
     bio: "It does not kill you. It takes the sentence you were in.",
-    style: "rush", tune: { band: 0.6, commit: 1.8, strafe: 0.2 }, temper: "Walks into your face because it eats the contact.",
-    hp: 875, dmg: 37, rate: 0.78, speed: 2.2, armor: 5, range: 2.0, mana: 90, manaRegen: 8, crit: 0.12, cdMul: 0.88, ghost: true,
+    style: "rush", tune: { band: 0.6, commit: 1.25, strafe: 0.35 }, temper: "Walks into your face because it eats the contact.",
+    hp: 875, dmg: 37, rate: 0.78, speed: 2.9, armor: 7, range: 2.0, mana: 90, manaRegen: 8, crit: 0.12, cdMul: 0.88, ghost: true,
     atk: { name: "Drain Touch", type: "melee", w: "halo", drain: 0.35 },
     moves: ["unmake", "draincloud"], cards: ["leech", "regen", "might"],
     counter: "Heals off everything it touches and holds it in place while it does. Bring armor and burst." });
@@ -371,7 +371,7 @@
   add({ id: "lion", name: "Solstride", tag: "Lion", cls: "pet", spr: { sheet: "pets", key: "pet_lion" }, color: "#fbbf24",
     bio: "Jump · roar · claw. It picks its fight out loud.",
     style: "hunter", tune: { band: 0.9, commit: 1.35, strafe: 0.55 }, temper: "Picks out the wounded and does not get distracted.",
-    hp: 680, dmg: 34, rate: 0.90, speed: 3.5, armor: 7, range: 1.6, mana: 50, manaRegen: 5, crit: 0.19, cdMul: 0.84,
+    hp: 789, dmg: 34, rate: 0.90, speed: 3.5, armor: 9, range: 1.6, mana: 50, manaRegen: 5, crit: 0.19, cdMul: 0.84,
     atk: { name: "Claw", type: "melee", w: "needle" },
     moves: ["soljump", "roar"], cards: ["lucky", "brutal", "might"],
     counter: "Hunts the wounded all match. Ignores the healthy one." });
@@ -379,7 +379,7 @@
   add({ id: "bear", name: "Ironhide", tag: "Bear", cls: "pet", spr: { sheet: "pets", key: "pet_bear" }, color: "#fb923c",
     bio: "Swipe · maul. The pack's door.",
     style: "bulwark", tune: { band: 0.9, leash: 70, commit: 1.9, strafe: 0.1 }, temper: "The pack's door — nothing walks past him.",
-    hp: 715, dmg: 33, rate: 0.74, speed: 2.3, armor: 6, range: 1.7, mana: 40, manaRegen: 4, crit: 0.14, cdMul: 0.88,
+    hp: 715, dmg: 36.96, rate: 0.74, speed: 2.3, armor: 7, range: 1.7, mana: 40, manaRegen: 4, crit: 0.14, cdMul: 0.88,
     atk: { name: "Swipe", type: "melee", w: "shard" },
     moves: ["maul", "wardfield"], cards: ["iron", "giant", "thorns"],
     counter: "A second wall for the price of a beast. No reach and no tricks." });
@@ -387,7 +387,7 @@
   add({ id: "elephant", name: "Tuskward", tag: "Elephant", cls: "pet", spr: { sheet: "pets", key: "pet_elephant" }, color: "#67e8f9",
     bio: "Stomp. It does not need a second move.",
     style: "vanguard", tune: { band: 0.95, leash: 60, commit: 2.0, strafe: 0.12 }, temper: "Moves with the herd and lands where the herd lands.",
-    hp: 805, dmg: 30, rate: 0.68, speed: 2.1, armor: 7, range: 1.9, mana: 40, manaRegen: 4, crit: 0.12, cdMul: 0.9,
+    hp: 886, dmg: 30, rate: 0.68, speed: 2.1, armor: 8, range: 1.9, mana: 40, manaRegen: 4, crit: 0.12, cdMul: 0.9,
     atk: { name: "Tusk", type: "melee", w: "shard", splash: 1.6 },
     moves: ["stomp", "pound"], cards: ["iron", "bulwark", "heart"],
     counter: "The heaviest thing on legs. Everything outruns it." });
@@ -395,7 +395,7 @@
   add({ id: "scorpion", name: "Glassbarb", tag: "Scorpion", cls: "pet", spr: { sheet: "pets", key: "pet_scorpion" }, color: "#c4b5fd",
     bio: "Clamp · tail. The barb is the part that matters.",
     style: "rush", tune: { band: 0.65, commit: 1.2, strafe: 0.45 }, temper: "Gets in your face and leaves poison there.",
-    hp: 435, dmg: 33, rate: 1.02, speed: 2.9, armor: 3, range: 1.6, mana: 60, manaRegen: 6, crit: 0.20, cdMul: 0.82,
+    hp: 513, dmg: 33, rate: 1.02, speed: 2.9, armor: 5, range: 1.6, mana: 60, manaRegen: 6, crit: 0.20, cdMul: 0.82,
     atk: { name: "Tail Barb", type: "melee", w: "needle", burn: 4 },
     moves: ["clamp", "flicker"], cards: ["thorns", "fury", "veil"],
     counter: "Poisons everything it touches. Will lose a long fight." });

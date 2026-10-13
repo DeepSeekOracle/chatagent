@@ -71,14 +71,21 @@ const rows = Object.entries(T).map(([id, r]) => ({
   id, m: r.m, wr: r.m ? r.w / r.m : 0, dead: r.m ? r.dead / r.m : 0,
   dmg: r.m ? r.dmg / r.m : 0, kills: r.m ? r.kills / r.m : 0, heal: r.m ? r.heal / r.m : 0,
   meleeShare: (r.byMelee + r.byRanged) ? r.byMelee / (r.byMelee + r.byRanged) : 0,
-  style: (R.ROSTER.find((f) => f.id === id) || {}).style
+  style: (R.ROSTER.find((f) => f.id === id) || {}).style,
+  ci: 1.96 * Math.sqrt(0.25 / r.m)                       // 95% half-width: the noise this sample can resolve
 })).filter((r) => r.m >= 30).sort((a, b) => a.wr - b.wr);
 const f = (v, k) => v.toFixed(k === undefined ? 2 : k);
-console.log("kit          style       m   win%   died%  dmg/match  kills  healed  killed-by-melee");
+console.log("kit          style        m  win%+-  died%  dmg/match  kills  healed  killed-by-melee");
 rows.forEach((r) => console.log(
-  r.id.padEnd(12) + String(r.style || "-").padEnd(12) + String(r.m).padStart(3) + "   " +
-  (100 * r.wr).toFixed(0).padStart(3) + "   " + (100 * r.dead).toFixed(0).padStart(4) + "   " +
+  r.id.padEnd(12) + String(r.style || "-").padEnd(11) + String(r.m).padStart(3) + "  " +
+  (100 * r.wr).toFixed(0).padStart(3) + "+-" + (100 * r.ci).toFixed(0).padStart(2) + "   " +
+  (100 * r.dead).toFixed(0).padStart(4) + "   " +
   f(r.dmg, 0).padStart(6) + "   " + f(r.kills, 1).padStart(5) + "   " + f(r.heal, 0).padStart(6) + "   " +
-  (100 * r.meleeShare).toFixed(0).padStart(4) + "%"));
+  (100 * r.meleeShare).toFixed(0).padStart(4) + "%" + (Math.abs(r.wr - 0.5) <= r.ci ? "   ~" : "")));
 const all = rows.reduce((a, r) => a + r.wr * r.m, 0) / rows.reduce((a, r) => a + r.m, 0);
 console.log("\nfield average " + (100 * all).toFixed(1) + "% of " + rows.length + " kits over " + N + " matches");
+const ci = rows.reduce((a, r) => a + r.ci, 0) / rows.length * 100;
+console.log("\n+-" + ci.toFixed(0) + " points is the 95% interval on one kit at this sample, and two runs of this");
+console.log("harness disagree by more than that ('~' = the interval covers 50%, so the kit is average, not weak).");
+console.log("Fix a kit only for a cause you can name -- it cannot use its own attack, it never reaches its own");
+console.log("band, its signature ability carries the match -- never to chase a number inside that band.");
