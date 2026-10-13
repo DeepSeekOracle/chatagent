@@ -41,7 +41,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./arena.css?v=6">
+<link rel="stylesheet" href="./arena.css?v=6.02">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 <!-- the donation gate is deliberately not loaded here: its fixed "Supporter access" tab
        sits over this page's own controls and blocks them -->
@@ -80,6 +80,7 @@
   </div>
   <button type="button" class="btn ghost" data-act="pause" id="btnPause">Pause</button>
   <button type="button" class="btn ghost" data-act="mute" id="btnMute">SFX</button>
+  <button type="button" class="btn ghost" data-act="talk" id="btnTalk">Voices</button>
   <button type="button" class="btn ghost" data-act="full">Full</button>
   <button type="button" class="btn" data-act="menu">Menu</button>
   <a class="paypal-mini" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal</a>
@@ -87,7 +88,10 @@
 
 <div id="battle" class="battle hidden">
   <main class="stage">
-    <aside class="team left" id="teamYou"></aside>
+    <aside class="team left">
+      <div class="colbody" id="teamYou"></div>
+      <div class="feed docked" id="feed" aria-live="polite"></div>
+    </aside>
     <div class="viewport">
       <canvas id="arena" aria-label="LYGO Arena battle"></canvas>
       <div class="announce" id="announce"></div>
@@ -96,9 +100,15 @@
         <span id="arenaClock">0:00</span>
         <i class="mf" id="meterFoe"></i>
       </div>
-      <div class="feed" id="feed" aria-live="polite"></div>
     </div>
-    <aside class="team right" id="teamFoe"></aside>
+    <aside class="team right">
+      <div class="colbody" id="teamFoe"></div>
+      <div class="caster" id="caster">
+        <div class="cbubble" id="casterSays"></div>
+        <img class="cface" src="./assets/caster.svg" alt="The caster calling the fight">
+        <span class="cname">THE CASTER</span>
+      </div>
+    </aside>
   </main>
 </div>
 
@@ -128,10 +138,11 @@
 
 <script src="./radio.js?v=1"></script>
 <script src="/games/arcade-ledger.js?v=6"></script>
-<script src="./roster.js?v=3"></script>
+<script src="./roster.js?v=3.03"></script>
 <script src="./attacks.js?v=1"></script>
+<script src="./banter.js?v=1.01"></script>
 <script src="./brain.js?v=3"></script>
-<script src="./arena.js?v=5"></script>
-<script src="./arena-ui.js?v=8"></script>
+<script src="./arena.js?v=5.03"></script>
+<script src="./arena-ui.js?v=8.06"></script>
 </body>
 </html>

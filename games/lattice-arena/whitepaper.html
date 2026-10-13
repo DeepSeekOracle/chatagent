@@ -200,6 +200,27 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
       when there is one — never the knot in the middle.</li>
   </ul>
 
+  <h3>Answering a charge</h3>
+  <ul>
+    <li>Every kit that was losing carries something that stops a charge — a root, a stun,
+      a shove, a chill, a hush — and it is spent on the first body that arrives, not
+      saved. Charging three bodies at one gun only works if the gun has no answer for the
+      first one.</li>
+    <li>A body already held is not held twice: the second arrival is met with a different
+      answer, so a rush cannot be shut down by one tool on one cooldown.</li>
+    <li>The flavours belong to the kits: the imp's ember leaves a limp, the thief steals
+      your stride along with your coin, the wraith's cry nails feet to the floor, the wolf
+      hamstrings what it lands on and its roar throws the line back off its feet, the
+      shadow blinks onto you before you are ready to be hit, and the drain's
+      <em>Unmake</em> strikes the name out of the sentence — no moves, no stride, no
+      mending.</li>
+    <li><b>Wound.</b> Mending had no counter in the system, which is why the ladder was a
+      staircase with the medics on top. Five kits now carry a wound that will not close:
+      while it lasts, everything healed into that body lands short. A heal cut in half is
+      worth more than a hit that gets healed back, so a wound is spent on whoever is doing
+      the mending — never on the body that merely stands closest.</li>
+  </ul>
+
   <h2>5. The roster — 33 real kits</h2>
   <p>The numbers below are what the engine builds for an undrafted kit: base health, base damage, attacks
   per second, reach in world units, flat armour, the three moves, the three cards, and the composite
@@ -269,5 +290,35 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   <p class="muted">Files: <code>roster.js</code> (33 kits, 26 cards, the move table) · <code>arena.js</code>
   (the engine) · <code>arena-ui.js</code> (menu, HUD, results) · <code>tools/arena_check.js</code> (the ladder).</p>
 </div>
+
+<section class="doc" id="voices">
+  <h2>The mouths, and the man with the microphone</h2>
+  <p>Two AI teams fighting in silence is a diagram. So every body in the ring now talks, and a
+  caster calls the fight from the side of the sand. Nothing either of them says is on a timer:
+  a line only exists because an event produced it. <code>banter.js</code> holds the library — 248
+  fighter lines across ten kinds (open, taunt, kill, die, hurt, crowd control, save, win, lose,
+  ace), personal lines for 22 kits, and 56 caster lines that are filled in from the event that
+  fired them: who killed whom, who was mended, which map just closed.</p>
+  <p>When a body dies, the caster names it. When somebody is dragged back from the floor by a
+  mender, he says so. When a body is rooted, stunned or slowed by a rival's crowd control, he
+  says that too. The engine emits the event and the caster says the line, which means the
+  commentary cannot drift away from the fight — checked by the harness, which fails if a single
+  caster line appears without an event behind it.</p>
+  <p>Everything spoken is also written: the feed under the characters carries the banter
+  (<em>0:35&nbsp; Lyra: Rooted. Eat it.</em>), a bubble rides the head of whoever said it, and
+  the caster's own panel sits under the challengers with his portrait and his last call. The
+  voices come from the browser's own speech engine, filtered to the human-sounding voices only —
+  the joke voices some systems ship make a fight sound like a machine test — with a fixed
+  pitch and rate per kit, so the wolf always sounds like the wolf. Voices can be switched off
+  from the top bar.</p>
+  <h2>How the balance is measured</h2>
+  <p>Every roster change is measured, not guessed. <code>tools/arena_check.js</code> runs 90
+  headless battles and asserts what a spectator would notice — 49 checks now, from "no fighter
+  ships with a dead kit" to "a cave where nobody lands a hit is a cave nobody fought in".
+  <code>tools/arena_ladder.js 420</code> runs the whole field through 420 matches and prints a
+  win rate, a death rate and a damage-per-match line for all 33 kits. The field average is held
+  at 50%, and the floor of the roster — the kits that were losing more than two fights in three —
+  has been raised twice off the back of that table.</p>
+</section>
 </body>
 </html>

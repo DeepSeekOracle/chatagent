@@ -11,7 +11,7 @@
   const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
   const persist = Object.assign(
-    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {}, bestStreak: 0 },
+    { team: ["kael", "vale", "lyra"], mode: 3, speed: 1, wins: 0, losses: 0, filter: "champ", name: "", books: {}, bestStreak: 0, talk: true },
     (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
   );
   function save() {
@@ -31,7 +31,92 @@
   let hallRows = [];
   let gauntlet = false;
   let streak = 0;
+  let feedLog = 0;
+
+  /* --------------------------------------------------------------- voices ---
+     The caster and the fighters are read out loud by the browser's voices. Only the human
+     ones are used: some systems ship joke voices (Bells, Zarvox, Bubbles, Bad News) that
+     make a fight sound like a machine test. Each body keeps one voice for the whole match,
+     so the wolf always sounds like the wolf and the imp always sounds like the imp. */
+  const VOICE_PREFER = ["Samantha", "Alex", "Karen", "Daniel", "Moira", "Tessa", "Fiona", "Ava", "Allison",
+    "Serena", "Jenny", "Aria", "Guy", "Michelle", "Ana", "Christopher", "Eric", "Zira", "David", "Mark",
+    "Google US English", "Google UK English Female", "Google UK English Male", "Microsoft Aria", "Microsoft Guy"];
+  const VOICE_DEEP = /david|mark|guy|alex|daniel|george|james|christopher|eric|male/i;
+  const VOICE_JUNK = /bells|boing|bubbles|cellos|deranged|good news|bad news|bahh|hysterical|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|junior|rishi|novelty|robot|synth|effect/i;
+  let hvCache = null;
+  function humanVoices() {
+    if (hvCache && hvCache.length) return hvCache;
+    if (typeof speechSynthesis === "undefined") return [];
+    let all = [];
+    try { all = speechSynthesis.getVoices() || []; } catch (e) { all = []; }
+    if (!all.length) return [];
+    const en = all.filter((v) => /^en/i.test(v.lang || "") && !VOICE_JUNK.test(v.name || ""));
+    const rank = (v) => { const i = VOICE_PREFER.findIndex((n) => (v.name || "").indexOf(n) >= 0); return i < 0 ? 99 : i; };
+    hvCache = (en.length ? en : all).slice().sort((a, b) => rank(a) - rank(b));
+    return hvCache;
+  }
+  if (typeof speechSynthesis !== "undefined" && speechSynthesis.addEventListener) {
+    speechSynthesis.addEventListener("voiceschanged", () => { hvCache = null; humanVoices(); });
+  }
+  let talking = 0, micHolder = "";
+  function speak(text, kit, hot) {
+    if (!persist.talk || typeof speechSynthesis === "undefined" || !text) return;
+    const hv = humanVoices();
+    if (!hv.length) return;
+    const caster = !kit;
+    /* the caster has the microphone: he cuts the chatter, and is never cut himself */
+    if (caster && micHolder === "talk") { try { speechSynthesis.cancel(); } catch (e) {} talking = 0; micHolder = ""; }
+    if (!caster && (talking > 0 || micHolder === "cast")) return;   // fighters wait for quiet
+    if (talking > 1) return;
+    const B = w.LYGO_BANTER;
+    const prof = (B && B.voiceFor) ? B.voiceFor(caster ? "caster" : kit) : { pitch: 1, rate: 1, slot: 0 };
+    const ut = new SpeechSynthesisUtterance(String(text).slice(0, 220));
+    /* the caster is the voice of the ring: prefer a deep one, and let each body keep its own */
+    const deep = hv.find((v) => VOICE_DEEP.test(v.name || ""));
+    ut.voice = (caster && deep ? deep : hv[prof.slot % hv.length]) || hv[0];
+    ut.pitch = caster ? 0.78 : prof.pitch;
+    ut.rate = caster ? 0.99 : Math.max(0.8, Math.min(1.2, prof.rate));
+    ut.volume = 0.95;
+    micHolder = caster ? "cast" : "talk";
+    ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; };
+    talking++;
+    try { speechSynthesis.speak(ut); } catch (e) { talking = Math.max(0, talking - 1); micHolder = ""; }
+  }
+  function hush() { if (typeof speechSynthesis !== "undefined") { try { speechSynthesis.cancel(); } catch (e) {} } talking = 0; micHolder = ""; }
+  function paintTalk() {
+    const b = $("btnTalk");
+    if (b) { b.classList.toggle("on", !!persist.talk); b.textContent = persist.talk ? "Voices on" : "Voices off"; }
+  }
+  let talkSeq = 0, talkLog = [];
+  function casterSay(text, voiced) {
+    if (!text) return;
+    const box = $("casterSays");
+    if (box) { box.textContent = text; box.classList.remove("said"); void box.offsetWidth; box.classList.add("said"); }
+    talkLog.push({ t: E.state().time, caster: true, text: text });
+    if (talkLog.length > 30) talkLog.shift();
+    if (voiced !== false) speak(text, null, true);
+  }
+  /* every line out of the arena is a real event: the engine names the bodies, this side says
+     it, writes it into the feed and gives it a voice */
+  function pumpTalk() {
+    const S = E.state();
+    const list = S.talk || [];
+    for (let i = 0; i < list.length; i++) {
+      const x = list[i];
+      if (!x || !x.seq || x.seq <= talkSeq) continue;
+      talkSeq = x.seq;
+      if (x.caster) casterSay(x.text, true);
+      else {
+        talkLog.push({ t: x.t, caster: false, who: x.whoName, text: x.text });
+        if (talkLog.length > 30) talkLog.shift();
+        speak(x.text, x.who, !!x.hot);
+      }
+    }
+  }
   let nextSeed = 0;
+  /* A match is a series of maps, not a single fight: three maps at most, and two wins in a
+     row closes it early. The player drives it forward one map at a time from the recap. */
+  let series = null;
 
   const MODE_LABEL = { 1: "1v1", 2: "2v2", 3: "3v3", 5: "5v5" };
 
@@ -468,7 +553,8 @@
     const ring = E.ringFor(nextSeed);
     const law = ring.law;
     ov.innerHTML = "<div class='sheet vs-sheet'><h1 class='vs'>" + (gauntlet ? "Gauntlet " + streak + " · " : "") + MODE_LABEL[persist.mode] + "</h1>" +
-      "<p class='kicker'>" + esc(law.name) + " · " + esc(ring.kind) + "</p>" +
+      "<p class='kicker'>" + esc(law.name) + " · " + esc(ring.kind) +
+      (series ? " · " + seriesTag() + " · best of three" : "") + "</p>" +
       "<div class='vsgrid'>" + side(you, "you") + "<div class='vsmark'>vs</div>" + side(foe, "foe") + "</div>" +
       "<p class='lede center'>" + esc(law.line) + (gauntlet ? " Win, and the next ring draws new challengers." : " The challengers are drawn from the full roster.") + "</p>" +
       "<div class='modes'><button type='button' class='btn gold big' id='btnGo'>Open the arena</button>" +
@@ -564,12 +650,18 @@
       cd.classList.add("show");
       if (!fought) { fought = true; blip("fight"); }
     } else cd.classList.remove("show");
-    if (S.events.length !== feedLen) {
+    pumpTalk();
+    if (S.events.length !== feedLen || talkLog.length !== feedLog) {
       const fresh = S.events.slice(feedLen);
       feedLen = S.events.length;
+      feedLog = talkLog.length;
       fresh.forEach(playEvent);
+      const evs = S.events.map((ev) => ({ t: ev.t, kind: ev.kind, text: esc(ev.text) }));
+      const tk = talkLog.map((x) => ({ t: x.t, kind: x.caster ? "cast" : "talk",
+        text: x.caster ? esc(x.text) : "<b>" + esc(x.who || "") + "</b> " + esc(x.text) }));
       const f = $("feed");
-      f.innerHTML = S.events.slice(-9).reverse().map((ev) => "<p class='" + ev.kind + "'><span>" + clockOf(ev.t) + "</span>" + ev.text + "</p>").join("");
+      if (f) f.innerHTML = evs.concat(tk).sort((p, q) => p.t - q.t).slice(-9).reverse()
+        .map((x) => "<p class='" + x.kind + "'><span>" + clockOf(x.t) + "</span>" + x.text + "</p>").join("");
     }
     const youBar = rows.you.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.you.reduce((s, r) => s + r.e.max, 0));
     const foeBar = rows.foe.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.foe.reduce((s, r) => s + r.e.max, 0));
@@ -578,7 +670,9 @@
     const note = $("dockStatus");
     if (note && S.lv) {
       const law = E.law();
-      note.textContent = (S.lv && S.lv.kind ? S.lv.kind + " · " : "") + (law ? law.line : "") + (gauntlet ? " · Gauntlet streak " + streak : "");
+      note.textContent = (S.lv && S.lv.kind ? S.lv.kind + " · " : "") + (law ? law.line : "") +
+        (series && !series.over ? " · " + seriesTag() : "") +
+        (gauntlet ? " · Gauntlet streak " + streak : "");
     }
     if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }
@@ -604,74 +698,139 @@
     fought = false;
     gateHold(true);
     const lawNow = E.law();
-    $("matchPill").textContent = (gauntlet ? "Gauntlet " + streak + " · " : "") + MODE_LABEL[persist.mode] + (lawNow ? " · " + lawNow.name : "");
+    $("matchPill").textContent = (gauntlet ? "Gauntlet " + streak + " · " : "") +
+      (series ? seriesTag() + " · " : "") +
+      MODE_LABEL[persist.mode] + (lawNow ? " · " + lawNow.name : "");
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
+  }
+
+  function newSeries() { return { played: 0, you: 0, foe: 0, last: -1, over: false, draws: 0, log: [] }; }
+  function needMore() { return "Two wins in a row takes the match."; }
+  function mapLabel() { return "Map " + (series.played + 1) + " of 3"; }
+  function seriesTag() {
+    if (!series) return "";
+    return mapLabel() + (series.played ? " \u00b7 " + scoreLine() : "");
+  }
+  function scoreLine() {
+    if (!series || !series.played) return "";
+    return "You " + series.you + " \u2013 " + series.foe + " Them";
+  }
+  function statRows(all) {
+    return all.map((a) => "<div class='trowline" + (a.team === 0 ? " you" : "") + (a.dead ? " ko" : "") + "'><span><b>" + esc(a.name) + "</b></span><span>" +
+      (a.team === 0 ? "you" : "foe") + "</span><span>" + a.dmg + "</span><span>" + a.kills + "</span><span>" + a.heal + "</span><span>" +
+      (a.dead ? "KO &mdash; " + esc(a.by || "the arena") : "up") + "</span></div>").join("");
+  }
+  function recapTable(S) {
+    const all = S.your.concat(S.foe).map((e) => ({
+      name: e.b.name, team: e.team, dead: !!e.dead, by: e.killedBy,
+      dmg: Math.round(e.dmgDone), kills: e.kills || 0, heal: Math.round(e.healDone)
+    })).sort((a, b) => b.dmg - a.dmg);
+    return { all: all, html: "<div class='table'><div class='thead'><span>Fighter</span><span>Side</span><span>Damage</span><span>Kills</span><span>Healed</span><span>Fate</span></div>" + statRows(all) + "</div>" };
+  }
+  /* the death recap: every body that went down on this map, in the order it happened */
+  function deathRecap(S) {
+    const falls = S.events.filter((e) => e.kind === "kill").map((e) => e.text);
+    if (!falls.length) return "<div class='deathroll'><b>Nobody went down</b><ul><li>Ten bodies, no kills. That does not happen often.</li></ul></div>";
+    return "<div class='deathroll'><b>" + falls.length + " went down on this map</b><ul>" +
+      falls.map((f) => "<li>" + esc(f) + "</li>").join("") + "</ul></div>";
   }
 
   function showResults() {
     const S = E.state();
     if (overlayMode === "results") return;
     overlayMode = "results";
-    const won = S.winner === 0;
-    persist[won ? "wins" : "losses"]++;
-    const book = touchBook(won);
+    const won = S.winner;                                  // 0 you, 1 them, -1 a draw
+    if (!series) series = newSeries();
+    series.played++;
+    if (won === 0 || won === 1) {
+      if (won === 0) series.you++; else series.foe++;
+      if (series.last === won) series.over = true;         // two in a row closes the match
+      series.last = won;
+    } else {
+      series.draws++;
+      series.last = -1;                                    // a draw breaks the run
+    }
+    const decided = series.played - series.draws;
+    if (!series.over && decided >= 3) series.over = true;   // three maps at most
+    const rec = recapTable(S);
+    const mvp = rec.all.filter((a) => a.team === (won === 0 ? 0 : 1))[0] || rec.all[0];
+    series.log.push({ map: series.played, won: won, time: S.time, falls: S.events.filter((e) => e.kind === "kill").length });
+    const sWon = series.you > series.foe ? 0 : series.foe > series.you ? 1 : -1;
+    const over = series.over;
+    /* the caster calls the map that just ended, and the match when it is decided */
+    if (w.LYGO_BANTER) {
+      casterSay(w.LYGO_BANTER.cast(over ? "matchEnd" : "mapEnd", {
+        team: sWon === 0 ? "your team" : sWon === 1 ? "the challengers" : "nobody",
+        score: series.you + " to " + series.foe, t: clockOf(S.time), n: series.played
+      }), true);
+    }
     let streakNote = "";
-    if (gauntlet) {
-      if (won) {
-        streak += 1;
-        if (streak > (persist.bestStreak || 0)) persist.bestStreak = streak;
-        streakNote = "Gauntlet streak " + streak + ". Best " + persist.bestStreak + ".";
-      } else {
-        streakNote = "Gauntlet ends at " + streak + ". Best " + (persist.bestStreak || 0) + ".";
-        streak = 0;
+    if (over) {
+      if (sWon !== -1) {
+        persist[sWon === 0 ? "wins" : "losses"]++;
+        if (gauntlet) {
+          if (sWon === 0) {
+            streak += 1;
+            if (streak > (persist.bestStreak || 0)) persist.bestStreak = streak;
+            streakNote = "Gauntlet streak " + streak + ". Best " + persist.bestStreak + ".";
+          } else {
+            streakNote = "Gauntlet ends at " + streak + ". Best " + (persist.bestStreak || 0) + ".";
+            streak = 0;
+          }
+        }
+        touchBook(sWon === 0);
+        save();
       }
     }
-    save();
-    const all = S.your.concat(S.foe).map((e) => ({
-      name: e.b.name, team: e.team, dmg: Math.round(e.dmgDone), kills: e.kills,
-      heal: Math.round(e.healDone), taken: Math.round(e.taken), uses: Object.values(e.uses).reduce((a, b) => a + b, 0)
-    })).sort((a, b) => b.dmg - a.dmg);
-    const mvp = all[0];
-    const moveTally = {};
-    S.your.forEach((e) => Object.keys(e.uses).forEach((n) => { moveTally[n] = (moveTally[n] || 0) + e.uses[n]; }));
-    const best = Object.entries(moveTally).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    const book = (persist.books || {})[teamKey()] || { wins: 0, losses: 0 };
+    const mapLine = series.log.map((l) => "Map " + l.map + ": " +
+      (l.won === 0 ? "you" : l.won === 1 ? "them" : "draw") + " (" + clockOf(l.time) + ", " + l.falls + " down)").join(" &middot; ");
+    const head = over
+      ? (sWon === 0 ? "Your team takes the match" : sWon === 1 ? "The challengers take the match" : "The match is drawn") +
+        " <span class='sscore'>" + series.you + "\u2013" + series.foe + "</span>"
+      : (won === 0 ? "Your team takes map " + series.played : won === 1 ? "The challengers take map " + series.played : "Map " + series.played + " is a draw");
+    const lede = over
+      ? "Best of three, " + series.played + " map" + (series.played === 1 ? "" : "s") + " played. " +
+        (mvp ? esc(mvp.name) + " led the damage on the last map." : "")
+      : needMore() + " " + scoreLine() + " \u2014 " +
+        (sWon === 0 ? "you are one map from it." : sWon === 1 ? "they are one map from it." : "the next map decides who leads.");
     $("overlay").className = "overlay show";
-    $("overlay").innerHTML = "<div class='sheet res-sheet " + (won ? "won" : "lost") + "'>" +
-      "<p class='kicker'>" + MODE_LABEL[persist.mode] + " · " + clockOf(S.time) + "</p>" +
-      "<h1>" + (won ? "Your team takes the arena" : "The challengers take the arena") + "</h1>" +
-      "<p class='lede center'>" + (all.find((a) => a.team === (won ? 0 : 1)).name) + " led the damage. " +
-      (best.length ? "Your most-used moves: " + best.map(([n, c]) => n + " ×" + c).join(", ") + "." : "") + "</p>" +
-      "<div class='table'><div class='thead'><span>Fighter</span><span>Side</span><span>Damage</span><span>Kills</span><span>Healed</span><span>Moves</span></div>" +
-      all.map((a) => "<div class='trowline" + (a.team === 0 ? " you" : "") + "'><span><b>" + a.name + "</b></span><span>" +
-        (a.team === 0 ? "you" : "foe") + "</span><span>" + a.dmg + "</span><span>" + a.kills + "</span><span>" + a.heal + "</span><span>" + a.uses + "</span></div>").join("") +
-      "</div>" +
+    $("overlay").innerHTML = "<div class='sheet res-sheet " + (over ? (sWon === 0 ? "won" : sWon === 1 ? "lost" : "") : (won === 0 ? "won" : won === 1 ? "lost" : "")) + "'>" +
+      "<p class='kicker'>" + MODE_LABEL[persist.mode] + (gauntlet ? " \u00b7 Gauntlet " + streak : "") + " \u00b7 " + (over ? "best of three, " + series.played + " map" + (series.played === 1 ? "" : "s") + " played" : "map " + series.played + " done") + " \u00b7 " + clockOf(S.time) + "</p>" +
+      "<h1>" + head + "</h1>" +
+      "<p class='lede center'>" + lede + "</p>" +
+      "<p class='mapsum'>" + mapLine + "</p>" +
+      deathRecap(S) +
+      recapTable(S).html +
       "<div class='tally'>This lineup: <span class='wins'>" + book.wins + "W</span> / <span class='losses'>" + book.losses + "L</span>" +
-      " · " + esc(teamNames().join(" · ")) +
+      " \u00b7 " + esc(teamNames().join(" \u00b7 ")) +
       "<br>This browser: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
-      (persist.name ? " · " + esc(persist.name) : "") +
+      (persist.name ? " \u00b7 " + esc(persist.name) : "") +
       (streakNote ? "<br>" + esc(streakNote) : "") + "</div>" +
       "<div class='modes'>" +
-        (gauntlet && won
-          ? "<button type='button' class='btn gold big' id='btnNext'>Next ring</button>" +
-            "<button type='button' class='btn' id='btnAgain'>Rematch · same challengers</button>"
-          : gauntlet
-          ? "<button type='button' class='btn gold big' id='btnNext'>Run the gauntlet again</button>" +
-            "<button type='button' class='btn' id='btnAgain'>Rematch · same challengers</button>"
-          : "<button type='button' class='btn gold big' id='btnAgain'>Rematch · same challengers</button>" +
+        (over
+          ? (gauntlet && sWon === 0
+            ? "<button type='button' class='btn gold big' id='btnAgain'>Next gauntlet match</button>" +
+              "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>"
+            : gauntlet
+            ? "<button type='button' class='btn gold big' id='btnAgain'>Run the gauntlet again</button>"
+            : "<button type='button' class='btn gold big' id='btnAgain'>Rematch \u00b7 best of three</button>" +
+              "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>")
+          : "<button type='button' class='btn gold big' id='btnNextMap'>Next map " + (series.played + 1) + " of 3 \u25b6</button>" +
             "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>") +
         "<button type='button' class='btn' id='btnMenu2'>Change team</button>" +
       "</div></div>";
     gateHold(false, 120000);
-    blip(won ? "win" : "lose");
-    postResult(won, persist.mode, mvp ? mvp.name : "");
+    blip(over ? (sWon === 0 ? "win" : sWon === 1 ? "lose" : "click") : (won === 0 ? "win" : "click"));
+    if (over) postResult(sWon === 0, persist.mode, mvp ? mvp.name : "");
     $("overlay").onclick = (ev) => {
       const again = ev.target.closest && ev.target.closest("#btnAgain");
       const fresh = ev.target.closest && ev.target.closest("#btnNewFoe");
-      const next = ev.target.closest && ev.target.closest("#btnNext");
+      const nextMap = ev.target.closest && ev.target.closest("#btnNextMap");
       const back = ev.target.closest && ev.target.closest("#btnMenu2");
-      if (next) { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
-      else if (again) begin(false);
-      else if (fresh) { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
+      if (nextMap) { blip("click"); rollSeed(); begin(false); }
+      else if (again) { blip("click"); series = newSeries(); renderVS(); }
+      else if (fresh) { blip("click"); foeIds = R.draw(persist.mode, your).map((f) => f.id); series = newSeries(); rollSeed(); renderVS(); }
       else if (back) { $("battle").classList.add("hidden"); leaveToMenu("team"); }
     };
   }
@@ -679,6 +838,7 @@
   function rollSeed() { nextSeed = (Math.random() * 9999) | 0; }
   function endGauntlet() { gauntlet = false; streak = 0; }
   function leaveToMenu(tab) {
+    hush();
     endGauntlet();
     menuTab = tab || "home";
     $("battle").classList.add("hidden");
@@ -699,6 +859,7 @@
     streak = 0;
     save();
     foeIds = R.draw(persist.mode, your).map((f) => f.id);
+    series = newSeries();
     rollSeed();
     renderVS();
   }
@@ -730,16 +891,17 @@
       const act = t.dataset.act;
       if (act === "pause") { const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
       if (act === "menu") leaveToMenu("home");
-      if (act === "rematch") begin(false);
+      if (act === "rematch") { series = newSeries(); begin(false); }
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
       if (act === "mute") { muted = !muted; paintSfx(); }
+      if (act === "talk") { persist.talk = !persist.talk; save(); paintTalk(); if (!persist.talk) hush(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     });
     document.addEventListener("keydown", (ev) => {
       if (ev.target.tagName === "INPUT") return;
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
       else if (ev.code === "KeyM") { muted = !muted; paintSfx(); }
-      else if (ev.code === "KeyR" && overlayMode === "battle") begin(false);
+      else if (ev.code === "KeyR" && overlayMode === "battle") { series = newSeries(); begin(false); }
       else if (ev.code === "Escape") {
         if (overlayMode === "battle" || overlayMode === "results" || overlayMode === "vs") {
           leaveToMenu("home");
@@ -756,13 +918,14 @@
       }
     });
     /* the fight button lives inside the sheet, so bind it here as well as the grid */
+    paintTalk();
     document.body.addEventListener("click", (ev) => {
       if (ev.target.closest && ev.target.closest("#btnFight")) startListed(false);
       else if (ev.target.closest && ev.target.closest("#btnGauntlet")) startListed(true);
     });
   }
 
-  w.ArenaUI = { tick: paintHud, sfx: blip, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }) };
+  w.ArenaUI = { tick: paintHud, sfx: blip, voices: humanVoices, talk: () => talkLog, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }), series: () => series };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })(window);

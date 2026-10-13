@@ -52,6 +52,7 @@ const ctx = vm.createContext(win);
 
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
 load("roster.js");
+load("banter.js");
 load("attacks.js");
 load("brain.js");
 load("arena.js");
@@ -205,9 +206,18 @@ for (let m = 0; m < MATCHES; m++) {
     if (e.x < 0 || e.y < 0 || e.x > S.lv.W * 32 || e.y > S.lv.H * 32) stuck++;
   });
   const liveAll = S.your.concat(S.foe);
-  const moved = liveAll.some((e) => Object.keys(e.uses).length > 0);
-  if (!moved) zeroMoves++;
-  if (!liveAll.some((e) => e.dmgDone > 0)) zeroDmg++;
+  const acted = (e) => Object.values(e.uses || {}).reduce((x, y) => x + y, 0) > 0 || (e.dmgDone || 0) > 0;
+  const wiped = (team) => !(team === 0 ? S.your : S.foe).some((e) => !e.dead);
+  const actedBy = (team) => (team === 0 ? S.your : S.foe).some(acted);
+  /* A side that is still standing at the end must have done something. A body killed in the
+     first seconds never gets a turn — that is a result, not a dead sim, so only survivors are
+     held to it, and auto-attacking counts as acting: a silenced or cooldown-bound body that
+     wins on basics has still fought. */
+  if (!actedBy(0) && !wiped(0)) zeroMoves++;
+  if (!actedBy(1) && !wiped(1)) zeroMoves++;
+  /* A battle where nobody landed a hit AND nobody fell is a battle where nobody fought.
+     A body that walked into the floor and died is a real result, not a dead sim. */
+  if (!liveAll.some((e) => e.dmgDone > 0) && !liveAll.some((e) => e.dead)) zeroDmg++;
   liveAll.forEach((e) => {
     const t = tally[e.b.id];
     if (!t) return;
@@ -250,7 +260,7 @@ for (let m = 0; m < bxBM; m++) {
   const S = E.runHeadless({ you, foe }, n, 200, (m * 3571) % 9967);
   bxkinds[S.lv.kind] = (bxkinds[S.lv.kind] || 0) + 1;
   S.your.concat(S.foe).forEach((e) => {
-    const s = e.smp || { n: 0, engage: 0, close: 0, far: 0, bxpick: 0, weak: 0, bxonFocus: 0 };
+    const s = e.smp || { n: 0, engage: 0, close: 0, far: 0, pick: 0, weak: 0, onFocus: 0 };
     const A = bxSTY[e.b.style || "none"] = bxSTY[e.b.style || "none"] || { n: 0, engage: 0, close: 0, far: 0, bxpicks: 0, weak: 0, focus: 0, heal: 0, stuck: 0, temper: 0 };
     A.n++;
     A.engage += s.n ? s.engage / s.n : 0;
@@ -295,13 +305,107 @@ must("the bxguns stand off and the chargers do not", bxgEng > bxmEng + 30, "rang
 const bxmClose = bxmelee.reduce((a, s) => a + bxrate(s, "close"), 0) / bxmelee.length;
 const bxgClose = bxguns.reduce((a, s) => a + bxrate(s, "close"), 0) / bxguns.length;
 must("contact tells the berserkers from the kiters", bxmClose > bxgClose + 0.10, (100 * bxmClose).toFixed(0) + "% in contact vs " + (100 * bxgClose).toFixed(0) + "%");
-const bxpick = ["assassin", "hunter"].reduce((a, s) => a + bxshare(s, "weak"), 0) / 2;
-const bxstraight = ["duelist", "vanguard"].reduce((a, s) => a + bxshare(s, "weak"), 0) / 2;
-must("the killers go for the wounded and the duelists do not", bxpick > bxstraight + 0.05, "assassins " + (100 * bxpick).toFixed(0) + "% vs duelists " + (100 * bxstraight).toFixed(0) + "%");
+/* The knives are told apart by the whole point of the style: they break off the called target
+   to finish a bleeding body, while the marching styles hit whatever the call named. Comparing
+   raw "did it hit the weakest enemy" numbers cannot show that, because the squad call usually
+   IS the weakest enemy — so an off-call share is what gets measured. */
+const bxoff = (s) => 1 - bxshare(s, "focus");
+const bxKNIVES = ["assassin", "hunter"];
+const bxMARCH = ["duelist", "skirmish", "berserker", "vanguard"];
+const bxKnifeOff = bxKNIVES.reduce((a, s) => a + bxoff(s), 0) / bxKNIVES.length;
+const bxMarchOff = bxMARCH.reduce((a, s) => a + bxoff(s), 0) / bxMARCH.length;
+must("the knives leave the line to finish the hurt", bxKnifeOff > 0.25 && bxKnifeOff > bxMarchOff * 2,
+  "knives take their own target " + (100 * bxKnifeOff).toFixed(0) + "% of the time vs the line " + (100 * bxMarchOff).toFixed(0) + "%");
+const bxKnifeWeak = bxKNIVES.reduce((a, s) => a + bxshare(s, "weak"), 0) / bxKNIVES.length;
+const bxChargeWeak = (bxshare("rush", "weak") + bxshare("vanguard", "weak")) / 2;
+must("and the body they break for is the bleeding one", bxKnifeWeak > bxChargeWeak + 0.10,
+  "knives pick the weakest " + (100 * bxKnifeWeak).toFixed(0) + "% vs chargers " + (100 * bxChargeWeak).toFixed(0) + "%");
 
 /* 4e. the five colosseums are all in use, and none of them pins anybody */
 must("all five colosseums get built", Object.keys(bxkinds).length === 5, Object.keys(bxkinds).length + " bxkinds: " + Object.entries(bxkinds).map(([k, v]) => k + " " + v).join(", "));
 must("nobody spends the match leaning on the stone", bxworstStuck < 5, "worst stall " + bxworstStuck.toFixed(1) + "s");
+
+/* 4f. crowd control: every kit that was losing carries an answer to a charge, and the
+   answer actually gets used on the body that charges. */
+const CCK = ["imp", "thief", "wraith", "wolf", "shade", "drain"];
+const ccBare = CCK.filter((id) => {
+  const b = built.find((x) => x.id === id);
+  return !b || !b.moves.some((m) => {
+    const s = m.st || {}, t = m.tgtSt || {};
+    return s.root || s.stun || s.slow || s.knock || s.silence || s.wound || t.root || t.stun || t.slow;
+  });
+});
+must("every kit that was losing carries an answer to a charge", ccBare.length === 0, ccBare.join(", "));
+
+let ccHeld = 0, ccCaught = 0, ccWound = 0, ccCut = 0, ccMatches = 40;
+const ccWas = new Map();
+for (let m = 0; m < ccMatches; m++) {
+  const n = MODES[m % MODES.length];
+  const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
+  const S = E.runHeadless({ you, foe }, n, 0.01, (m * 6151) % 9967);
+  let t = 0.01, guard = 0;
+  while (!S.over && t < 140 && guard++ < 720) {
+    E.stepHeadless(0.2); t += 0.2;
+    ccCut += S.woundCut || 0;
+    S.your.concat(S.foe).filter((e) => e.b).forEach((e) => {
+      const heldNow = e.stun > 0 || e.root > 0 || (e.slowT > 0 && e.slowV > 0.2);
+      if (e.woundT > 0 && !ccWas.get("w:" + e.b.id + ccHeld)) ccWound++;
+      if (heldNow && !ccWas.get(e)) {
+        ccHeld++;
+        const mates = (e.team === 0 ? S.your : S.foe).filter((o) => o !== e && !o.dead && Math.hypot(o.x - e.x, o.y - e.y) < 140);
+        if (!mates.length) ccCaught++;          // held with nobody of its own near: a caught charger
+      }
+      ccWas.set(e, heldNow);
+    });
+  }
+}
+must("crowd control lands — a charge gets answered", ccHeld > ccMatches * 0.6,
+  ccHeld + " holds in " + ccMatches + " matches, " + ccCaught + " of them on a body that was in alone");
+must("a wound cuts the mending, not just the health bar", ccWound > 0 && ccCut > 0,
+  ccWound + " wounds applied, " + ccCut + " healing cut in " + ccMatches + " matches");
+
+/* 4g. the mouths. Banter is bound to events, not to a timer: the caster only opens his
+   mouth when something actually happened, and every line has a bubble over the speaker. */
+const BAN = win.LYGO_BANTER;
+must("the banter library is loaded", !!(BAN && BAN.stats), BAN ? "banter.js present" : "banter.js missing");
+const bs = (BAN && BAN.stats) ? BAN.stats : { fighterLines: 0, casterLines: 0, kinds: 0 };
+must("there is plenty to say", bs.fighterLines >= 200 && bs.casterLines >= 50,
+  bs.fighterLines + " fighter lines, " + bs.casterLines + " caster lines over " + bs.kinds + " kinds");
+must("most of the roster has its own mouth", (BAN && BAN.sayers ? BAN.sayers.length : 0) >= 18,
+  (BAN && BAN.sayers ? BAN.sayers.length : 0) + " kits with personal lines");
+
+const CAST_OK = { open: 1, kill: 1, firstBlood: 1, wipe: 1, hold: 1, save: 1, edge: 1, ace: 1, draw: 1, mapEnd: 1, matchEnd: 1 };
+let banMatches = 24, banLines = 0, banHot = 0, banStray = 0, banNamed = 0, banCalls = 0, banBub = 0, banFar = 0;
+const banKinds = new Set();
+for (let m = 0; m < banMatches; m++) {
+  const n = MODES[m % MODES.length];
+  const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
+  const S = E.runHeadless({ you, foe }, n, 0.01, (m * 7717 + 31) % 9973);
+  let t = 0.01, guard = 0;
+  while (!S.over && t < 140 && guard++ < 720) {
+    E.stepHeadless(0.2); t += 0.2;
+    (S.bubbles || []).forEach((b) => {
+      if (!b.who) return;
+      if (Math.abs(b.who.x - b.x) < 90 && Math.abs(b.who.y - b.y) < 90) banBub++; else banFar++;
+    });
+  }
+  (S.talk || []).forEach((x) => {
+    if (x.caster) {
+      if (!CAST_OK[x.kind]) banStray++;
+      if (x.kind === "kill" || x.kind === "firstBlood") {
+        banCalls++;
+        if (/[A-Z][a-z]/.test(x.text || "")) banNamed++;
+      }
+    } else { banKinds.add(x.kind); banLines++; if (x.hot) banHot++; }
+  });
+}
+must("the bodies talk while they fight", banLines > banMatches, banLines + " fighter lines in " + banMatches + " matches");
+must("the big moments are voiced", banHot >= banMatches, banHot + " kill/death/win lines");
+must("the banter covers many kinds", banKinds.size >= 6, Array.from(banKinds).sort().join(", "));
+must("the caster only speaks on a real event", banStray === 0, banStray + " caster lines with no event behind them");
+must("the caster names the dead", banCalls > 0 && banNamed === banCalls, banNamed + "/" + banCalls + " kill calls name the fallen");
+must("a spoken line has a bubble over the speaker", banBub > 0 && banFar <= banBub * 0.01,
+  banBub + " bubble frames over the right head, " + banFar + " left behind (a blink frame)");
 console.log("");
 console.log("      style   n  stand-off  in-contact  backups  weak-bxpick  on-call  mended  worst-stall");
 Object.keys(bxSTY).sort().forEach((s) => {

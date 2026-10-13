@@ -10,6 +10,7 @@
 
   const TILE = 32;
   const R = w.LYGO_ARENA;
+  const BANTER = w.LYGO_BANTER || null;      // optional: the fight runs without it
   const MAP_W = 34, MAP_H = 22;
   const STEP = 1 / 60;
   const SUDDEN = 80;           // seconds before the arena starts closing
@@ -287,6 +288,7 @@
       hp: built.max, max: built.max, mana: built.manaMax, shd: Math.round(built.max * (built.mods.startShield || 0)),
       armorBuff: 0, armorBuffT: 0,
       stun: 0, root: 0, silence: 0, slowT: 0, slowV: 0, swiftT: 0, swiftV: 0, hasteT: 0, hasteV: 0,
+      woundT: 0, woundV: 0,
       rageT: 0, rageV: 0, weakT: 0, weakV: 0, burnT: 0, burnDps: 0, bleedT: 0, bleedDps: 0,
       regenT: 0, regenHps: 0, thornsT: 0, thornsV: 0, reflectT: 0, reflectV: 0, veilT: 0, veilV: 0,
       lifestealT: 0, lifestealV: 0, tauntT: 0, shieldWallT: 0,
@@ -353,9 +355,40 @@
     if (e.lifestealT > 0) out.push(["drink", e.lifestealT]);
     return out;
   }
+  /* ----------------------------------------------------------------- talk ---
+     Bubbles are not decoration: every one is a real event with a name on it. A kill makes
+     the killer say something over the body and the body answer back, and the caster call is
+     written from the same numbers the recap will print later. */
+  function mmss(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
+  function pushTalk(kind, who, foe, hot) {
+    if (!BANTER || !who || !who.b) return;
+    S.talk = S.talk || []; S.bubbles = S.bubbles || [];
+    if (!hot && S.time - (S.lastTalk == null ? -9 : S.lastTalk) < 1.1) return;
+    if (S.bubbles.length > 3) return;
+    const text = BANTER.line(kind, who.b, foe && foe.b);
+    if (!text) return;
+    S.lastTalk = S.time;
+    S.bubbles.push({ who: who, text: text, life: 3.6, col: who.b.color || "#fbbf24" });
+    S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: false, who: who.b.id, whoName: who.b.name,
+      foeName: (foe && foe.b && foe.b.name) || "", text: text, t: S.time, hot: !!hot });
+    if (S.talk.length > 80) S.talk.shift();
+  }
+  function pushCast(kind, vars) {
+    if (!BANTER) return;
+    const text = BANTER.cast(kind, vars || {});
+    if (!text) return;
+    S.talk = S.talk || [];
+    S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: true, text: text, t: S.time, hot: true });
+    if (S.talk.length > 80) S.talk.shift();
+  }
+  function isMender(b) { return !!(b && (b.moves || []).some((m) => m.st && m.st.heal)); }
   function applySt(e, st, from) {
     if (!st) return;
     if (st.stun) e.stun = Math.max(e.stun, st.stun);
+    if (from && from.team !== e.team && (st.stun || st.root)) {
+      pushTalk("cc", from, e, false);
+      if ((S.time - (S.lastHold == null ? -9 : S.lastHold)) > 4) { S.lastHold = S.time; pushCast("hold", { me: from.b.name }); }
+    }
     if (st.root) e.root = Math.max(e.root, st.root);
     if (st.silence) e.silence = Math.max(e.silence, st.silence);
     if (st.slow) { e.slowT = Math.max(e.slowT, st.slow[1]); e.slowV = Math.max(e.slowV, st.slow[0]); }
@@ -369,6 +402,7 @@
     if (st.thorns) { e.thornsT = Math.max(e.thornsT, st.thorns[1]); e.thornsV = Math.max(e.thornsV, st.thorns[0]); }
     if (st.reflect) { e.reflectT = Math.max(e.reflectT, st.reflect[1]); e.reflectV = Math.max(e.reflectV, st.reflect[0]); }
     if (st.veil) { e.veilT = Math.max(e.veilT, st.veil[1]); e.veilV = Math.max(e.veilV, st.veil[0]); }
+    if (st.wound) { e.woundT = Math.max(e.woundT || 0, st.wound[1]); e.woundV = Math.max(e.woundV || 0, st.wound[0]); }
     if (st.lifesteal) { e.lifestealT = Math.max(e.lifestealT, st.lifesteal[1]); e.lifestealV = Math.max(e.lifestealV, st.lifesteal[0]); }
     if (st.aegis) e.shd += Math.round(e.max * st.aegis);
     if (st.armor) { e.armorBuff = Math.max(e.armorBuff, st.armor[0]); e.armorBuffT = Math.max(e.armorBuffT, st.armor[1]); }
@@ -379,6 +413,14 @@
   }
   function heal(e, amt, from) {
     if (e.dead) return 0;
+    /* a wound that will not close: everything mended into this body lands short while it
+       lasts. The menders are the reason the ladder was a staircase, so the answer to a
+       mender is a kit that makes mending expensive rather than another body to stand in
+       front of it. */
+    if (e.woundT > 0 && amt > 0) {
+      const cut = Math.round(amt * e.woundV);
+      if (cut > 0) { amt -= cut; S.woundCut = (S.woundCut || 0) + cut; }
+    }
     const before = e.hp;
     e.hp = Math.min(e.max, e.hp + amt);
     const real = e.hp - before;
@@ -387,6 +429,12 @@
       /* "utility" has to mean something: the mending that lands on somebody else is
          counted apart from a kit drinking its own flask */
       if (from !== e) from.healOut = (from.healOut || 0) + real;
+      /* a real save, not a top-up: the mender gets credit out loud */
+      if (from !== e && e.hp / e.max < 0.55 && real > e.max * 0.07 && S.time - (S.lastSave == null ? -9 : S.lastSave) > 5) {
+        S.lastSave = S.time;
+        pushTalk("saved", from, e, false);
+        pushCast("save", { mender: from.b.name, victim: e.b.name });
+      }
     }
     if (real > 2) S.texts.push({ x: e.x, y: e.y - 22, t: "+" + Math.round(real), life: 0.9, col: "#6ee7b7" });
     return real;
@@ -455,6 +503,13 @@
     dmg = Math.round(dmg);
     tgt.hp -= dmg;
     tgt.taken += dmg;
+    /* about to die: one clean hit from the recap, and everybody says so */
+    if (!tgt.dead && !tgt.edgeSaid && tgt.max > 0 && tgt.hp > 0 && tgt.hp / tgt.max < 0.25) {
+      tgt.edgeSaid = true;
+      if (src) pushCast("edge", { victim: tgt.b.name });
+      if (src) pushTalk("taunt", src, tgt, true);
+      pushTalk("hurt", tgt, src, true);
+    }
     if (!opts.dot) {
       tgt.flash = 0.16;
       S.texts.push({ x: tgt.x, y: tgt.y - 26, t: dmg + (crit ? "!" : ""), life: crit ? 1.0 : 0.75, col: crit ? "#fbbf24" : "#f8fafc", big: crit });
@@ -494,11 +549,23 @@
     e.dead = true;
     e.dieT = 0;
     e.hp = 0;
+    e.killedBy = src ? src.b.name : "";        // the death recap names the hand
+    e.killedAt = S.time;
     if (src) {
       src.kills++;
       if (src.b.mods.vamp) heal(src, Math.round(src.max * src.b.mods.vamp), src);
       if (S.lv && S.lv.realm === "gold") heal(src, Math.round(src.max * 0.05), src);
       pushEvent(src.b.name + " cuts down " + e.b.name + ".", "kill");
+      S.kills = (S.kills || 0) + 1;
+      pushTalk("kill", src, e, true);
+      pushTalk("die", e, src, true);
+      pushCast(S.kills === 1 ? "firstBlood" : "kill",
+        { killer: src.b.name, victim: e.b.name, t: mmss(S.time), n: src.kills });
+      const matesLeft = (e.team === 0 ? S.your : S.foe).filter((o) => !o.dead).length;
+      if (matesLeft === 1 && !S.aceSaid) {
+        S.aceSaid = true;
+        pushCast("ace", { me: (e.team === 0 ? S.your : S.foe).find((o) => !o.dead).b.name });
+      }
     } else {
       pushEvent(e.b.name + " falls.", "kill");
     }
@@ -524,6 +591,14 @@
     S.phase = "over";
     S.winner = a ? 0 : (b ? 1 : -1);
     pushEvent(S.winner === 0 ? "YOUR TEAM TAKES THE ARENA." : S.winner === 1 ? "THE CHALLENGERS TAKE THE ARENA." : "Both sides are down — a draw.", "over");
+    if (S.winner === -1) pushCast("draw", {});
+    else {
+      const win = S.winner === 0 ? S.your : S.foe, lose = S.winner === 0 ? S.foe : S.your;
+      const alive = win.filter((e) => !e.dead), down = lose.filter((e) => e.dead);
+      if (alive.length) pushTalk("win", alive[0], null, true);
+      if (down.length) pushTalk("lose", down[0], null, true);
+      pushCast("wipe", { team: S.winner === 0 ? "your team" : "the challengers" });
+    }
   }
 
   /* ---------------------------------------------------------------- moves --- */
@@ -677,9 +752,10 @@
           const land = { x: t2.x + Math.cos(a) * 26, y: t2.y + Math.sin(a) * 26 };
           if (!solidAt(S.lv, land.x, land.y)) { caster.x = land.x; caster.y = land.y; }
           S.marks.push({ x: caster.x, y: caster.y, r: 14, life: 0.4, col: caster.b.color, ring: true });
-          if (mv.dmg) { damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true }); applySt(t2, mv.st, caster); }
+          if (mv.dmg) damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true });
+          if (mv.st) applySt(t2, mv.st, caster);       // what the landing does to them
         }
-        if (mv.st) applySt(caster, mv.st, caster);
+        if (mv.selfSt) applySt(caster, mv.selfSt, caster);   // and what it does for us
         break;
       }
       case "revive": {
@@ -778,6 +854,52 @@
     /* ---- the kit: whatever is in reach and off cooldown, in the kit's own order.
        A body that cannot reach the called target still helps: the moves that land
        on its own side are thrown for whoever needs them. */
+    /* ---- the mender. A wound cut in half is worth more than a hit that gets healed back,
+       so a kit that carries one spends it on whoever is doing the mending — not on the
+       body standing closest. Only when the mender is not already carrying one. */
+    const widx = b.moves.findIndex((mv) => mv.st && mv.st.wound);
+    if (widx >= 0 && e.cds[widx] <= 0 && e.mana >= moveCost(b.moves[widx])) {
+      const wmv = b.moves[widx];
+      const menders = enemiesOf(e).filter((o) => !o.dead && o.woundT <= 0 && isMender(o.b));
+      if (menders.length) {
+        const near = menders.reduce((p, o) => (dist2(e.x, e.y, o.x, o.y) < dist2(e.x, e.y, p.x, p.y) ? o : p));
+        const wide = wmv.shape === "self" || wmv.shape === "aura" || wmv.shape === "allies";
+        const reach = Math.max((wmv.range || 0) * TILE, wide ? (wmv.radius || 5.5) * TILE : 0);
+        if (dist2(e.x, e.y, near.x, near.y) <= reach + 34 && castMove(e, wmv, widx)) {
+          if (stl.recoil) e.recoilT = 0.55;
+          return;
+        }
+      }
+    }
+
+    /* ---- the rusher. This is the one move in a kit that has to be spent at the right
+       moment to be worth anything. If something with a hand weapon is on top of this body
+       and the kit carries something that stops a charge — a root, a stun, a shove, a
+       chill, a hush — it is spent now, not saved. Charging three bodies at one gun only
+       works if the gun has no answer for the first body that arrives. */
+    const rushers = enemiesOf(e).filter((o) => dist2(e.x, e.y, o.x, o.y) < 132 && (o.b.range || 40) <= 110);
+    const heldAlready = rushers.some((o) => o.root > 0 || o.stun > 0 || o.slowT > 0);
+    if (rushers.length && !heldAlready) {
+      const near = rushers.reduce((p, o) => (dist2(e.x, e.y, o.x, o.y) < dist2(e.x, e.y, p.x, p.y) ? o : p));
+      const stop = (mv) => {
+        const s = mv.st || {}, t2 = mv.tgtSt || {};
+        return (s.root ? 5 : 0) + (s.stun ? 4.4 : 0) + (s.knock ? 3.4 : 0) + (s.slow ? 3 : 0) +
+          (s.silence ? 2.2 : 0) + (t2.stun ? 4.4 : 0) + (t2.root ? 5 : 0) + (t2.slow ? 2.6 : 0);
+      };
+      let bi = -1, bs = 0;
+      for (let i = 0; i < b.moves.length; i++) {
+        const mv = b.moves[i];
+        if (e.cds[i] > 0 || e.mana < moveCost(mv)) continue;
+        const cc = stop(mv);
+        if (!cc) continue;
+        const wide = mv.shape === "self" || mv.shape === "aura" || mv.shape === "allies";
+        const reach = Math.max((mv.range || 0) * TILE, wide ? (mv.radius || 5.5) * TILE : 0);
+        if (dist2(e.x, e.y, near.x, near.y) > reach + 34) continue;
+        if (cc > bs) { bs = cc; bi = i; }
+      }
+      if (bi >= 0 && castMove(e, b.moves[bi], bi)) { if (stl.recoil) e.recoilT = 0.55; return; }
+    }
+
     for (let i = 0; i < b.moves.length; i++) {
       const mv = b.moves[i];
       if (e.cds[i] > 0 || e.mana < moveCost(mv)) continue;
@@ -1092,6 +1214,7 @@
       }
       if (e.burnT > 0) { e.burnT -= dt; damage(null, e, e.burnDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
       if (e.bleedT > 0) { e.bleedT -= dt; damage(null, e, e.bleedDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
+      if (e.woundT > 0) e.woundT -= dt;
       if (S.sudden) {
         /* the arena closes for real: a share of maximum health per second, climbing, so no
            two healers can out-sustain the floor and leave a match unresolved. */
@@ -1126,6 +1249,24 @@
     }
     S.texts.forEach((t) => { t.life -= dt; t.y -= 18 * dt; });
     S.texts = S.texts.filter((t) => t.life > 0);
+    S.bubbles = (S.bubbles || []).filter((b) => {
+      b.life -= dt;
+      if (b.who) { b.x = b.who.x; b.y = b.who.y; }        // the bubble rides the head that said it
+      return b.life > 0;
+    });
+    /* the quiet stretches still have mouths in them */
+    S.talkT = (S.talkT == null ? 7 : S.talkT) - dt;
+    if (S.talkT <= 0 && !S.over && S.time > 3) {
+      /* the mouths never touch the sim's randomness: which body pipes up, and when, comes
+         off the talk counter and the clock, so the fight itself plays out unchanged */
+      S.talkT = 7 + ((S.talkSeq * 37 + ((S.time * 10) | 0)) % 7);
+      const all = live();
+      if (all.length > 1) {
+        const tk = all[(S.talkSeq * 7 + ((S.time * 3) | 0)) % all.length];
+        const en = enemiesOf(tk).filter((o) => !o.dead);
+        pushTalk("taunt", tk, en.length ? en.reduce((p, o) => (dist2(tk.x, tk.y, o.x, o.y) < dist2(tk.x, tk.y, p.x, p.y) ? o : p)) : null, false);
+      }
+    }
     S.marks.forEach((m) => { m.life -= dt; if (m.ring) m.r += 90 * dt; });
     S.marks = S.marks.filter((m) => m.life > 0);
     S.swings.forEach((s) => { s.life -= dt; });
@@ -1204,11 +1345,12 @@
       cx.fillStyle = rnd2() > 0.5 ? "#fde68a" : "#0f172a";
       cx.fillRect(px, py, 2, 2);
     }
+    /* No rings or discs on the floor. A big circle in the middle of bare sand read as a
+       rendering fault, and the rings are not the arena any more — the sand is. */
     cx.globalAlpha = 0.30;
     if (kind === "pit") {
-      ring(cxp, cyp, 118, "#fbbf24", 3);
       cx.globalAlpha = 0.10; cx.fillStyle = "#7f1d1d";
-      cx.beginPath(); cx.arc(cxp, cyp, 96, 0, 6.283); cx.fill();
+      cx.fillRect(cxp - TILE * 0.9, 0, TILE * 1.8, cv.height);
     } else if (kind === "colonnade") {
       cx.globalAlpha = 0.22;
       for (let i = -3; i <= 3; i++) {
@@ -1217,15 +1359,15 @@
       }
     } else if (kind === "gauntlet") {
       cx.globalAlpha = 0.35;
-      ring(cxp, cyp, 190, "#f87171", 2);
-      cx.fillStyle = "#7f1d1d"; cx.globalAlpha = 0.12;
+      cx.fillStyle = "#f87171"; cx.globalAlpha = 0.10;
       cx.fillRect(cxp - TILE * 1.2, 0, TILE * 2.4, cv.height);
     } else if (kind === "ruin") {
       cx.globalAlpha = 0.16; cx.fillStyle = "#a16207";
       for (let i = 0; i < 26; i++) { const px = rnd2() * cv.width, py = rnd2() * cv.height; if (!solid(lv, Math.floor(px / TILE), Math.floor(py / TILE))) cx.fillRect(px, py, 8, 5); }
     } else {
-      cx.globalAlpha = 0.28;
-      ring(cxp, cyp, 150, "#5eead4", 3); ring(cxp, cyp, 100, "#fbbf24", 2); ring(cxp, cyp, 40, "#5eead4", 2);
+      /* the colosseum floor: a faint sand-scoured cross, no ring at all */
+      cx.globalAlpha = 0.10; cx.strokeStyle = "#fde68a"; cx.lineWidth = 2;
+      cx.beginPath(); cx.moveTo(0, cyp); cx.lineTo(cv.width, cyp); cx.stroke();
     }
     /* the gates: a wash down each side so the two camps are legible at a glance */
     cx.fillStyle = "#22d3ee"; cx.globalAlpha = 0.10;
@@ -1363,6 +1505,39 @@
       else { ctx.fillStyle = "#fbbf24"; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
       if (p.lob) { ctx.strokeStyle = "rgba(148,163,184,0.5)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, 10, 0, 6.283); ctx.stroke(); }
     });
+    /* the mouths: a bubble over the body that said it */
+    (S.bubbles || []).forEach((b) => {
+      const e = b.who;
+      if (!e) return;
+      const x = e.x, y = e.y - 34;
+      const words = String(b.text).split(" ");
+      const lines = [];
+      let cur = "";
+      words.forEach((wd) => {
+        if ((cur + " " + wd).trim().length > 30 && cur) { lines.push(cur); cur = wd; }
+        else cur = (cur ? cur + " " : "") + wd;
+      });
+      if (cur) lines.push(cur);
+      const long = lines.reduce((p, l) => Math.max(p, l.length), 0);
+      const w = long * 6.1 + 16, h = lines.length * 12 + 11;
+      ctx.globalAlpha = Math.min(1, b.life / 0.5);
+      ctx.fillStyle = "rgba(3,7,18,0.88)";
+      ctx.fillRect(x - w / 2, y - h - 8, w, h);
+      ctx.strokeStyle = b.col || "#fbbf24";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - w / 2, y - h - 8, w, h);
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y - 8); ctx.lineTo(x + 5, y - 8); ctx.lineTo(x, y); ctx.lineTo(x - 5, y - 8);
+      ctx.fillStyle = "rgba(3,7,18,0.88)";
+      ctx.fill();
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "11px ui-monospace, monospace";
+      ctx.textAlign = "center";
+      lines.forEach((l, i) => ctx.fillText(l, x, y - h + 3 + i * 12));
+      ctx.globalAlpha = 1;
+    });
+    /* the speech bubbles ride the heads that said them */
+    (S.bubbles || []).forEach((b) => { if (b.who) { b.x = b.who.x; b.y = b.who.y; } });
     /* damage numbers */
     ctx.textAlign = "center";
     S.texts.forEach((t) => {
@@ -1423,6 +1598,7 @@
     S.your = mkTeam(ids.you, 0);
     S.foe = mkTeam(ids.foe, 1);
     S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
+    S.bubbles = []; S.talk = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
     S.countdown = 3.2; S.shake = 0; S.hitStop = 0; S.tideIn = 12;
     S.phase = "count";
@@ -1430,6 +1606,12 @@
     pushEvent(KIND_BLURB[S.lv.kind || "colosseum"], "law");
     pushEvent(lawById(S.lv.realm).line, "law");
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
+    S.bubbles = []; S.talk = []; S.talkT = 7; S.kills = 0; S.aceSaid = false; S.talkSeq = S.talkSeq || 0;
+    S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9;
+    const yl = S.your[0], fl = S.foe[0];
+    if (yl && fl) { pushTalk("open", yl, fl, true); pushTalk("open", fl, yl, true); }
+    pushCast("open", { ring: lawById(S.lv.realm).name,
+      youN: S.your.length, foeN: S.foe.length, mode: S.mode + "v" + S.mode });
   }
 
   function drawLaw() {
@@ -1469,6 +1651,7 @@
   }
 
   w.ArenaEngine = {
+    isMender: isMender,
     init: init, newMatch: newMatch, draw: draw,
     setSpeed(n) { S.speed = n; },
     pause(on) { S.paused = !!on; },

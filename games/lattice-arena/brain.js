@@ -223,7 +223,10 @@
     let target = focus;
     if (st.prefer && st.prefer !== "attack" && pref && pref !== focus) {
       const dPref = dist(e.x, e.y, pref.x, pref.y);
-      if (dPref < Math.max(dFocus + 130, 320)) target = pref;
+      /* a knife that hunts the hurt goes further out of its way than the line does: that is
+         the whole job, and only the flanking styles can afford the walk. */
+      const reach = st.prefer === "weakest" ? Math.max(dFocus + 210, 420) : Math.max(dFocus + 130, 320);
+      if (dPref < reach) target = pref;
     }
     let task = "press", point = null, band = band0, gait = 1, why = Q.why;
     const wound = st.wound && hp < 0.55;                  // the berserker closes as it bleeds
