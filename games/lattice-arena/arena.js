@@ -664,6 +664,8 @@
       S.shake = Math.max(S.shake, 0.72);
       S.texts.push({ x: e.x, y: e.y - 48, t: "FINISH", life: 1.7, col: "#fbbf24", big: true });
     }
+    /* Draw-only. The death cam reads this. It does not change the hit. */
+    S.camSpot = { x: e.x, y: e.y - 8, hold: S.over ? 1.7 : 1.15 };
   }
 
   /* how long a body stays on a target before it may pick again */
@@ -1746,6 +1748,69 @@
     return size;
   }
 
+  /* The bowl does not move. The camera only looks closer at the sand inside it. */
+  function aimCamera(dt) {
+    if (!S.lv) return;
+    const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
+    if (!S.cam) S.cam = { x: mapW / 2, y: mapH / 2, z: 1 };
+    const bodies = all().filter((e) => !e.dead);
+    let tx = mapW / 2, ty = mapH / 2;
+    let tz = S.phase === "count" ? 1 : 1.34;
+    if (bodies.length) {
+      let sx = 0, sy = 0;
+      bodies.forEach((e) => { sx += e.x; sy += e.y; });
+      tx = sx / bodies.length;
+      ty = sy / bodies.length;
+      let best = 1e9, ax = tx, ay = ty;
+      bodies.forEach((a) => bodies.forEach((b) => {
+        if (a.team === b.team) return;
+        const d = dist2(a.x, a.y, b.x, b.y);
+        if (d < best) { best = d; ax = (a.x + b.x) / 2; ay = (a.y + b.y) / 2; }
+      }));
+      if (best < 320) { tx = tx * 0.4 + ax * 0.6; ty = ty * 0.4 + ay * 0.6; }
+    }
+    let victim = null;
+    bodies.forEach((e) => {
+      const ratio = e.max > 0 ? e.hp / e.max : 1;
+      if (ratio < 0.24 && (!victim || ratio < victim.hp / victim.max)) victim = e;
+    });
+    (S.pending || []).forEach((p) => {
+      if (!p || p.t > 0.4) return;
+      bodies.forEach((e) => {
+        if (p.src && e.team === p.src.team) return;
+        if (dist2(e.x, e.y, p.x, p.y) > (p.r || 24) + 10) return;
+        const ratio = e.max > 0 ? e.hp / e.max : 1;
+        if (ratio > 0.42 && e.hp > (p.dmg || 0) * 0.45) return;
+        if (!victim || ratio < victim.hp / Math.max(1, victim.max)) victim = e;
+      });
+    });
+    const spot = S.camSpot;
+    if (victim) {
+      tx = victim.x;
+      ty = victim.y - 12;
+      tz = 1.92;
+      S.camSpot = { x: victim.x, y: victim.y - 12, hold: 0.35 };
+    } else if (spot && spot.hold > 0) {
+      spot.hold -= dt;
+      tx = spot.x;
+      ty = spot.y;
+      tz = S.over ? 1.72 : 1.88;
+    }
+    const vw = mapW / tz, vh = mapH / tz;
+    tx = clamp(tx, vw / 2, Math.max(vw / 2, mapW - vw / 2));
+    ty = clamp(ty, vh / 2, Math.max(vh / 2, mapH - vh / 2));
+    const tight = !!(victim || (spot && spot.hold > 0));
+    const kL = 1 - Math.exp(-(tight ? 5.2 : 1.45) * dt);
+    const kZ = 1 - Math.exp(-(tight ? 4.4 : 1.7) * dt);
+    const cam = S.cam;
+    cam.x += (tx - cam.x) * kL;
+    cam.y += (ty - cam.y) * kL;
+    cam.z += (tz - cam.z) * kZ;
+    const viewW = mapW / cam.z, viewH = mapH / cam.z;
+    cam.x = clamp(cam.x, viewW / 2, Math.max(viewW / 2, mapW - viewW / 2));
+    cam.y = clamp(cam.y, viewH / 2, Math.max(viewH / 2, mapH - viewH / 2));
+  }
+
   function draw() {
     if (!ctx || !S.lv) return;
     const wpx = canvas.clientWidth, hpx = canvas.clientHeight;
@@ -1763,10 +1828,13 @@
     const padX = 140, padY = 198;
     const scale = Math.min(wpx / (mapW + padX * 2), hpx / (mapH + padY * 2));
     const ox = (wpx - mapW * scale) / 2, oy = (hpx - mapH * scale) / 2;
-    const kick = S.shake > 0 ? S.shake * 16 : 0;
+    const kick = S.shake > 0 ? S.shake * 10 : 0;
     const sx = kick ? (Math.random() - 0.5) * kick : 0;
     const sy = kick ? (Math.random() - 0.5) * kick : 0;
-    ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (ox + sx), dpr * (oy + sy));
+    const cam = S.cam || { x: mapW / 2, y: mapH / 2, z: 1 };
+    const zs = scale * cam.z;
+    const holeCx = ox + mapW * scale / 2, holeCy = oy + mapH * scale / 2;
+    ctx.setTransform(dpr * zs, 0, 0, dpr * zs, dpr * (holeCx - cam.x * zs + sx), dpr * (holeCy - cam.y * zs + sy));
     if (floorCv) ctx.drawImage(floorCv, 0, 0);
     drawMouths();
     drawLaw();
@@ -1796,12 +1864,12 @@
     /* shadows, then bodies sorted by depth */
     ctx.save(); ctx.globalAlpha = 0.32; ctx.fillStyle = "#000";
     all().forEach((e) => {
-      if (e.dead) return;
+      if (e.dead && !(e.dieT < 0.4)) return;
       poseBody(e, () => { ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 13, 5, 0, 0, 6.283); ctx.fill(); });
     });
     ctx.restore();
     const shownY = (e) => { const p = presentOf(e); return p ? p.y : e.y; };
-    const order = all().filter((e) => !e.dead).sort((a, b) => shownY(a) - shownY(b));
+    const order = all().filter((e) => !e.dead || e.dieT < 0.4).sort((a, b) => shownY(a) - shownY(b));
     order.forEach((e) => {
       poseBody(e, (p) => {
       if (p && p.lift) {
@@ -1937,6 +2005,7 @@
       if (acc > STEP * 24) acc = 0;
       runCues(INTRO_S + S.time);              // the cues after the bell ride the match clock
     }
+    aimCamera(dt);
     draw();
     if (w.ArenaUI) w.ArenaUI.tick();
   }
@@ -2001,6 +2070,8 @@
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
     S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";
+    S.cam = null;
+    S.camSpot = null;
     floorCv = paintFloor(S.lv);
     pushEvent(KIND_BLURB[S.lv.kind || "colosseum"], "law");
     pushEvent(lawById(S.lv.realm).line, "law");
@@ -2051,6 +2122,7 @@
   w.ArenaEngine = {
     isMender: isMender,
     init: init, newMatch: newMatch, draw: draw,
+    aim(dt) { aimCamera(dt || 0.016); return S.cam; },
     setSpeed(n) { S.speed = n; },
     pause(on) { S.paused = !!on; },
     iconFor: iconFor,
