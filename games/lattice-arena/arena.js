@@ -2164,10 +2164,15 @@
       if (p.lob) { ctx.strokeStyle = "rgba(148,163,184,0.5)"; ctx.beginPath(); ctx.arc(p.tx, p.ty, 10, 0, 6.283); ctx.stroke(); }
     });
     /* the mouths: a bubble over the body that said it */
+    /* Two mouths standing together used to print their bubbles on top of each other,
+       so neither line could be read. A bubble that would land on one already up this
+       frame is lifted clear of it. */
+    const up = [];
     (S.bubbles || []).forEach((b) => {
       const e = b.who;
       if (!e) return;
-      const x = e.x, y = e.y - 34;
+      const x = e.x;
+      let y = e.y - 34;
       const words = String(b.text).split(" ");
       const lines = [];
       let cur = "";
@@ -2178,6 +2183,12 @@
       if (cur) lines.push(cur);
       const long = lines.reduce((p, l) => Math.max(p, l.length), 0);
       const w = long * 6.1 + 16, h = lines.length * 12 + 11;
+      for (let tries = 0; tries < 8; tries++) {
+        const bx = { l: x - w / 2, r: x + w / 2, t: y - h - 8, b: y };
+        if (!up.some((o) => bx.l < o.r + 4 && bx.r > o.l - 4 && bx.t < o.b + 4 && bx.b > o.t - 4)) break;
+        y -= h + 10;
+      }
+      up.push({ l: x - w / 2, r: x + w / 2, t: y - h - 8, b: y });
       ctx.globalAlpha = Math.min(1, b.life / 0.5);
       ctx.fillStyle = "rgba(3,7,18,0.88)";
       ctx.fillRect(x - w / 2, y - h - 8, w, h);
