@@ -155,8 +155,10 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
 .team-body { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: .7rem; min-height: 0; }
 .roster-col { overflow: auto; display: flex; flex-direction: column; gap: .32rem; padding-right: .15rem; min-height: 0; }
 .dossier { min-height: 0; }
-#optRadio { margin: .35rem 0 .9rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: 12px; background: #080c14; }
-#optRadio .radio-title-inline { max-width: min(28rem, 70vw); }
+#optRadio, .team-radio { margin: .35rem 0 .2rem; padding: .45rem .55rem; border: 1px solid var(--line); border-radius: 12px; background: #080c14; }
+#optRadio .radio-title-inline, .team-radio .radio-title-inline { max-width: min(28rem, 70vw); }
+.team-radio { flex: 1 1 100%; }
+.team-radio:empty { display: none; }
 .plain-screen h2 { margin: 1rem 0 .25rem; font-size: 1.05rem; }
 .mix { display: flex; align-items: center; gap: .7rem; margin: .45rem 0 .2rem; max-width: 28rem; }
 .mix input[type="range"] { flex: 1; }
@@ -390,20 +392,21 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
 }
 
 /* --- the programme before the bell, and who is talking ----------------------------------- */
-.intro { position: absolute; inset: 0; display: none; flex-direction: column; gap: .5rem;
-  padding: .8rem .9rem .7rem; z-index: 6;
-  background: linear-gradient(180deg, rgba(9,10,16,.62), rgba(9,10,16,.88)); backdrop-filter: blur(2px); }
+.intro { position: absolute; inset: 0; display: none; flex-direction: column; gap: .35rem;
+  padding: .45rem .6rem .4rem; z-index: 6;
+  background: none; pointer-events: none; }
 .intro.show { display: flex; animation: ifade .3s ease-out; }
 @keyframes ifade { from { opacity: 0; } to { opacity: 1; } }
 .intro .ihead { display: flex; align-items: center; gap: .6rem; }
 .intro .iring { font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .18em;
   text-transform: uppercase; color: var(--gold); }
-.intro .iskip { margin-left: auto; font-family: "IBM Plex Mono", monospace; font-size: .66rem;
+.intro .iskip { margin-left: auto; pointer-events: auto; font-family: "IBM Plex Mono", monospace; font-size: .66rem;
   letter-spacing: .1em; color: var(--mute); background: #0b101c; border: 1px solid var(--line);
   border-radius: 5px; padding: .18rem .5rem; cursor: pointer; }
 .intro .iskip:hover { color: var(--text); border-color: var(--line-2); }
-.intro .isides { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: center; }
-.intro .iside { border: 1px solid var(--line); border-radius: .5rem; padding: .55rem .6rem; background: #0a0e1699;
+.intro .isides, .intro .ifoot { display: none; }
+.intro .isides { flex: 0 0 auto; justify-content: space-between; align-items: flex-start; gap: 18%; }
+.intro .iside { width: min(220px, 30%); border: 1px solid var(--line); border-radius: .5rem; padding: .4rem .5rem; background: #0a0e16cc;
   opacity: .18; transform: translateY(7px); transition: opacity .35s ease, transform .35s ease, border-color .35s ease; }
 .intro .iside.on { opacity: 1; transform: none; border-color: #fbbf2488; box-shadow: 0 0 0 1px #fbbf2433 inset; }
 .intro .iside.isfoe.on { border-color: #f8717188; box-shadow: 0 0 0 1px #f8717133 inset; }
@@ -411,7 +414,8 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
 .intro .iside ul { list-style: none; margin: .3rem 0 0; padding: 0; }
 .intro .iside li { font-size: .84rem; padding: .14rem 0; }
 .intro .iside li + li { border-top: 1px solid var(--line); }
-.intro .ifoot { font-size: .68rem; color: var(--mute); text-align: center; }
+.intro .iring, .intro .ifoot { text-shadow: 0 1px 2px #000, 0 0 8px #000; }
+.intro .ifoot { font-size: .68rem; color: var(--mute); text-align: left; }
 .intro .ifoot b { color: var(--gold); }
 
 /* exactly one thing is marked as talking, so a spectator never has to guess */

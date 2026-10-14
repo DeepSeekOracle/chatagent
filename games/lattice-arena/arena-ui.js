@@ -428,9 +428,22 @@
   function placeRadio() {
     const dock = $("radioDock");
     const opt = $("optRadio");
+    const team = $("teamRadio");
     const home = $("battleRadio");
-    const dest = menuTab === "options" && opt ? opt : home;
+    const dest = menuTab === "options" && opt ? opt : menuTab === "team" && team ? team : home;
     if (dock && dest && dock.parentElement !== dest) dest.appendChild(dock);
+  }
+  /* The title screen has its own theme. The radio waits until team select or the fight. */
+  function onStartPage() { return overlayMode === "menu" && menuTab === "home"; }
+  function syncMenuSong() {
+    const a = $("menuSong");
+    if (!a) return;
+    a.volume = 0.25;
+    if (onStartPage()) {
+      if (w.LatticeRadio && w.LatticeRadio.playing()) w.LatticeRadio.pause();
+      const p = a.play();
+      if (p && p.catch) p.catch(function () {});
+    } else if (!a.paused) a.pause();
   }
   function paintSfx() {
     document.querySelectorAll("[data-act='mute']").forEach((b) => {
@@ -543,7 +556,7 @@
           "<button type='button' class='tab' data-clear='1'>Clear</button></div>" +
         list.map(rosterButton).join("") +
       "</div>" + dossierHtml(look) + "</div>" +
-      "<div class='team-foot'><div class='tray'>" + tray + "</div>" +
+      "<div class='team-foot'><div id='teamRadio' class='team-radio'></div><div class='tray'>" + tray + "</div>" +
         "<button type='button' class='btn gold' data-tab='home'>Done</button></div></div>";
   }
   function screenOptions() {
@@ -561,7 +574,7 @@
       mixRow("sfxVol", "Effects", 0.85) +
       "<h2>Battle speed</h2><div class='speed'>" + speeds + "</div>" +
       "<h2>Radio</h2>" +
-      "<p class='lede'>Excavationpro, from the listen portal. It keeps playing when the fight starts. Mute here is the music.</p>" +
+      "<p class='lede'>Excavationpro, from the listen portal. The title screen plays its own theme. The radio is here, on team select, and in the fight.</p>" +
       "<div id='optRadio'></div>" +
       "<p style='margin-top:.8rem'><button type='button' class='btn' data-act='full'>Fullscreen</button></p>" +
       "</div>";
@@ -620,6 +633,7 @@
     if (seen && keepScroll === 0) seen.scrollIntoView({ block: "nearest" });
     if (menuTab === "home") startMenuLive();
     else stopMenuLive();
+    syncMenuSong();
   }
   let menuRaf = 0;
   function stopMenuLive() { if (menuRaf) cancelAnimationFrame(menuRaf); menuRaf = 0; }
@@ -934,6 +948,7 @@
       (series ? seriesTag() + " · " : "") +
       MODE_LABEL[persist.mode] + (lawNow ? " · " + lawNow.name : "");
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
+    syncMenuSong();
   }
 
   function newSeries() { return { played: 0, you: 0, foe: 0, last: -1, over: false, draws: 0, log: [] }; }
@@ -1106,6 +1121,7 @@
     document.body.classList.add("ready");
     $("boot").classList.add("hidden");
     $("menu").addEventListener("click", onMenuClick);
+    document.addEventListener("pointerdown", function () { syncMenuSong(); }, { passive: true });
     renderMenu();
     pullHall();
     setInterval(pullHall, 40000);
