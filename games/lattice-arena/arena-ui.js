@@ -508,6 +508,7 @@
     const names = lineupNames() || "no one fielded";
     return "<div class='title-screen'>" +
       "<div class='title-art'><img src='./assets/menu.jpg' alt='Four fighters at a cyan lattice gate in a torchlit stone crypt' width='1280' height='720'>" +
+        "<video class='menu-film' src='./assets/menu-live.mp4' poster='./assets/menu.jpg' muted loop autoplay playsinline></video>" +
         "<canvas class='menu-live' aria-hidden='true'></canvas></div>" +
       "<div class='title-panel'>" +
         "<p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LYGO Arena</h1>" +
@@ -643,6 +644,8 @@
     stopMenuLive();
     const box = document.querySelector("#menu .title-art");
     const cv = box && box.querySelector(".menu-live");
+    const film = box && box.querySelector(".menu-film");
+    if (film) { film.muted = true; const p = film.play(); if (p && p.catch) p.catch(function () {}); }
     if (!cv || !box) return;
     const ctx = cv.getContext("2d");
     const embers = Array.from({ length: 26 }, () => ({
@@ -1121,7 +1124,11 @@
     document.body.classList.add("ready");
     $("boot").classList.add("hidden");
     $("menu").addEventListener("click", onMenuClick);
-    document.addEventListener("pointerdown", function () { syncMenuSong(); }, { passive: true });
+    document.addEventListener("pointerdown", function () {
+      syncMenuSong();
+      const film = document.querySelector(".menu-film");
+      if (film && film.paused) { film.muted = true; const p = film.play(); if (p && p.catch) p.catch(function () {}); }
+    }, { passive: true });
     renderMenu();
     pullHall();
     setInterval(pullHall, 40000);
