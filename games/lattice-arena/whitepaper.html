@@ -278,15 +278,18 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
     <li><b>A closing ring.</b> A share of maximum health per second from 80 seconds, climbing as the fight
     drags, so sustain cannot draw a match out indefinitely.</li>
   </ul>
-  <p class="warn"><b>Where it stands today, honestly:</b> the field average is 50.0% and the middle is
-  tight — nineteen kits inside 38–64%. The tails are real, though. Eight kits, the light creatures and the
-  short-reach melee, hold 24–44%: they die two fights in three because they are the body the pack finishes
-  first. The strongest seven sit at 73–79%, and it is no longer only the bosses — the kits that fight from
-  eight tiles and never have to walk in own the top of the table. Two members of the floor were not weak at
-  all, they were broken: the imp and the stone-hurler fought at bolt range carrying a melee punch, so they
-  stood outside their own reach for the whole match. That one is a defect and not a balance problem — it is
-  fixed, and the table cannot even resolve what the fix bought, which is exactly the point of the paragraph
-  below.</p>
+  <p class="warn"><b>Where it stands today, honestly:</b> the ladder's last 420-match run prints a field
+  average of 47.5% — the table is a spread, not a score. The tails are real. Eight kits hold 25–37%: the
+  light creatures and the short-reach melee die two fights in three, because they are the body the pack
+  finishes first. The strongest seven sit at 64–75%, and the same fact explains them from the other end —
+  the kits at the top die only 14–27% of the time, so it is no longer only the bosses: a body that fights
+  from eight tiles and never has to walk in owns the top of the table. Two members of the floor were not
+  weak at all, they were broken: the imp and the stone-hurler fought at bolt range carrying a melee punch,
+  so they stood outside their own reach for the whole match. That one was a defect, not a balance problem,
+  and it is fixed. The floor was then lifted a fourth time the only way this table allows — through
+  survivability, never damage: the five kits whose 95% interval sits wholly under 50% while they die
+  63–88% of the time took 1–2 armour and 8–10% health, armour-led, because a first pass at 14–21% health
+  pushed the harness' own mean 3v3 past its two-minute mark.</p>
 
   <h2>7. The hall</h2>
   <p>A callsign is optional and nothing else is collected. When a match ends and a call is set, the result
@@ -360,12 +363,18 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   with the match speed, so a line at 8× does not hang there after the voice has gone.</p>
   <h2>How the balance is measured</h2>
   <p>Every roster change is measured, not guessed. <code>tools/arena_check.js</code> runs 90
-  headless battles and asserts what a spectator would notice — 58 checks now, from "no fighter
-  ships with a dead kit" to "a cave where nobody lands a hit is a cave nobody fought in".
+  headless battles and asserts what a spectator would notice — 66 checks now, from "no fighter
+  ships with a dead kit" to "only one mouth talks at a time".
   <code>tools/arena_ladder.js 420</code> runs the whole field through 420 matches and prints a
-  win rate, a death rate and a damage-per-match line for all 33 kits. The field average is held
-  at 50%, and the floor of the roster — the kits that were losing more than two fights in three —
-  has been raised three times off the back of that table.</p>
+  win rate, a death rate and a damage-per-match line for all 33 kits, each with its own 95%
+  interval. The floor of the roster — the kits that were losing more than two fights in three —
+  has been raised four times off the back of that table.</p>
+  <p><b>Ninety battles is not a verdict.</b> That harness is marginal at its own sample: on the build
+  this page describes it passed 66 of 66 on one run, then tripped a different assertion on each of
+  the next two — once a battle that ended with nobody hurt, once a mean 3v3 of 113s against its own
+  110s mark, which read 62.7s on the following run after a 4% health change. A failed run is a reason
+  to re-run, not a reason to revert. The 420-match table, and a cause that can be named, are what
+  settle a question.</p>
   <p><b>The table knows its own noise.</b> Teams are drawn at random, so the same build measured twice does
   not produce the same table: two runs of 420 matches disagreed by up to sixteen points on a single kit (the
   bulwark <em>gate</em> read 60% in one run and 76% in the next; the <em>smith</em> 43% and then 64%). The
