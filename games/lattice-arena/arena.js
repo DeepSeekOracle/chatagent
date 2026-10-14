@@ -1000,6 +1000,14 @@
       if (e.blockedT > 0.25) { e.strafeDir = -e.strafeDir; }
       const sAmt = stl.strafe == null ? 0.5 : stl.strafe;
       const sa = Math.atan2(t.y - e.y, t.x - e.x) + Math.PI / 2;
+      /* holding on the rim drifts inward. Swapping shoulders along the border
+         is how a body spends the match grinding a wall. */
+      const ringW = S.lv.W * TILE, ringH = S.lv.H * TILE;
+      const rim = Math.max(TILE * 2.25, Math.min(ringW, ringH) * 0.09);
+      if (e.x < rim || e.y < rim || e.x > ringW - rim || e.y > ringH - rim) {
+        const ix = e.x < ringW * 0.5 ? 1 : -1, iy = e.y < ringH * 0.5 ? 1 : -1;
+        if (Math.cos(sa) * e.strafeDir * ix + Math.sin(sa) * e.strafeDir * iy < 0) e.strafeDir = -e.strafeDir;
+      }
       const mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
       const mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
       const want2 = Math.hypot(mvx2, mvy2);
@@ -1071,8 +1079,14 @@
        some call sites without a stone test. A goal like that is a body grinding the border for
        the rest of the match. Clamp it into the ring and snap it out of stone, in one place, so
        no call site in the brain has to remember. */
-    gx2 = clamp(gx2, TILE, MAP_W * TILE - TILE);
-    gy2 = clamp(gy2, TILE, MAP_H * TILE - TILE);
+    /* One tile of inset still stands a body on the first floor tile, shoulder
+       on the border. Keep a wider margin unless this step is the last reach
+       onto somebody already stuck in that rim — finishing them is allowed. */
+    const ringW = S.lv.W * TILE, ringH = S.lv.H * TILE;
+    const finish = t && !t.dead && dist2(gx2, gy2, t.x, t.y) < 78 && dist2(e.x, e.y, t.x, t.y) < 120;
+    const edge = finish ? TILE * 1.15 : Math.max(TILE * 2.25, Math.min(ringW, ringH) * 0.09);
+    gx2 = clamp(gx2, edge, ringW - edge);
+    gy2 = clamp(gy2, edge, ringH - edge);
     if (solidAt(S.lv, gx2, gy2)) {
       const ot2 = openTile(Math.floor(gx2 / TILE), Math.floor(gy2 / TILE));
       gx2 = ot2.x * TILE + TILE / 2; gy2 = ot2.y * TILE + TILE / 2;

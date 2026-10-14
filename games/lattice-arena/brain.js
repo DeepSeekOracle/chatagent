@@ -16,8 +16,11 @@
        picks ONE task.
 
    A task is an intent, not a script: { task, target, point, band, gait, why }.
-   The engine does the walking, the pathing and the wall handling; the task only
-   says where the body wants to be and how hard it wants to get there.
+   The engine does the walking and the pathing. The task says where the body
+   wants to be. That place is always a zone on the live map: our starting third
+   is defensive, the centre third is the fight, their starting third is offensive.
+   No task aims a body at the border or a corner. A body already on the edge
+   repairs inward unless it is in reach of a swing.
 
    The names are the real ones, because they are the real ideas: bounding
    overwatch, flanking, refusing a flank, enfilade, screening, choke control,
@@ -141,6 +144,127 @@
     return (b.moves || []).find((m) => m.st && m.st.heal && (m.aim === "allylow" || m.aim === "allies" || m.shape === "allies" || m.shape === "ally"));
   }
 
+  /* --------------------------------------------------------------- the map ---
+     Generic arenas. The only size that matters is the one this fight loaded
+     (S.lv.W, S.lv.H, TILE). The border wall is the edge. Inside it the floor
+     is three bands across the width:
+
+       defensive  the third on the side this team started
+       mid        the centre third — tactical ground, where a fight should live
+       offensive  the third on the side the other team started
+
+     Home is latched from the first centroid, so a team that crosses mid does
+     not forget which side it is defending. Nothing here is a pixel layout. */
+  function fieldOf(S) {
+    const W = S.lv.W * TILE, H = S.lv.H * TILE;
+    const m = Math.max(TILE * 2.35, Math.min(W, H) * 0.10);
+    return { W: W, H: H, m: m, x0: m, y0: m, x1: W - m, y1: H - m, cx: W * 0.5, cy: H * 0.5 };
+  }
+  function clampBox(x, y, x0, y0, x1, y1) {
+    return {
+      x: Math.max(x0, Math.min(x1, x)),
+      y: Math.max(y0, Math.min(y1, y))
+    };
+  }
+  /* how far a point sits outside the playable inset. 0 means it is off the wall. */
+  function rimPush(S, x, y) {
+    const f = fieldOf(S);
+    const dx = x < f.x0 ? f.x0 - x : (x > f.x1 ? x - f.x1 : 0);
+    const dy = y < f.y0 ? f.y0 - y : (y > f.y1 ? y - f.y1 : 0);
+    return Math.hypot(dx, dy);
+  }
+  function zoneAt(S, Q, x) {
+    const f = fieldOf(S);
+    const span = (f.x1 - f.x0) / 3;
+    const home = (Q && Q.home) || -1;
+    const third = x < f.x0 + span ? -1 : (x > f.x1 - span ? 1 : 0);
+    if (third === 0) return "mid";
+    return third === home ? "def" : "off";
+  }
+  /* defensive tasks fall in on the inner half of our third, not on the back wall.
+     Offensive points may use mid or their third, and stop short of their wall. */
+  function zoneRole(task) {
+    if (task === "withdraw" || task === "rally") return "def";
+    if (task === "flank" || task === "press" || task === "advance") return "off";
+    return "any";
+  }
+  function zoneBox(S, Q, role) {
+    const f = fieldOf(S);
+    const home = (Q && Q.home) || -1;
+    const span = (f.x1 - f.x0) / 3;
+    let x0 = f.x0, x1 = f.x1;
+    if (role === "def") {
+      if (home < 0) { x0 = f.x0 + span * 0.38; x1 = f.x0 + span; }
+      else { x0 = f.x1 - span; x1 = f.x1 - span * 0.38; }
+    } else if (role === "off") {
+      const pad = span * 0.28;
+      if (home < 0) { x0 = f.x0 + span; x1 = f.x1 - pad; }
+      else { x0 = f.x0 + pad; x1 = f.x1 - span; }
+    } else if (role === "mid") {
+      x0 = f.x0 + span;
+      x1 = f.x1 - span;
+    }
+    return { x0: x0, x1: x1, y0: f.y0, y1: f.y1 };
+  }
+  function pullCorner(f, p) {
+    const band = f.m * 0.55;
+    const nearL = p.x < f.x0 + band, nearR = p.x > f.x1 - band;
+    const nearT = p.y < f.y0 + band, nearB = p.y > f.y1 - band;
+    if ((nearL || nearR) && (nearT || nearB)) {
+      return clampBox(
+        p.x + (nearL ? 1 : -1) * f.m * 0.85,
+        p.y + (nearT ? 1 : -1) * f.m * 0.65,
+        f.x0, f.y0, f.x1, f.y1
+      );
+    }
+    return p;
+  }
+  function stepOpen(S, p) {
+    const f = fieldOf(S);
+    let x = p.x, y = p.y;
+    for (let i = 0; i < 8 && stone(S, x, y); i++) {
+      x += (f.cx - x) * 0.22;
+      y += (f.cy - y) * 0.22;
+    }
+    return clampBox(x, y, f.x0, f.y0, f.x1, f.y1);
+  }
+  function settle(S, Q, point, role) {
+    if (!point) return null;
+    const f = fieldOf(S);
+    let p = clampBox(point.x, point.y, f.x0, f.y0, f.x1, f.y1);
+    p = pullCorner(f, p);
+    if (role && role !== "any") {
+      const box = zoneBox(S, Q, role);
+      p = clampBox(p.x, p.y, box.x0, box.y0, box.x1, box.y1);
+      p = pullCorner(f, p);
+    }
+    return stepOpen(S, p);
+  }
+  function defendPoint(S, Q) {
+    const f = fieldOf(S);
+    const home = (Q && Q.home) || -1;
+    const span = (f.x1 - f.x0) / 3;
+    const x = home < 0 ? f.x0 + span * 0.62 : f.x1 - span * 0.62;
+    const y = Math.max(f.y0, Math.min(f.y1, Q.cy || f.cy));
+    return stepOpen(S, { x: x, y: y });
+  }
+  /* a body already on the rim walks back into the zone its task belongs in.
+     Attackers leave their own back wall for the centre. Defenders fall in on
+     the inner side of their third. Nobody is sent at a corner to "get clear". */
+  function repairPoint(S, Q, e, role) {
+    const f = fieldOf(S);
+    const home = (Q && Q.home) || (e.team === 0 ? -1 : 1);
+    const span = (f.x1 - f.x0) / 3;
+    const y = Math.max(f.y0, Math.min(f.y1, (e.y + f.cy) * 0.5));
+    let x;
+    if (role === "def") x = home < 0 ? f.x0 + span * 0.62 : f.x1 - span * 0.62;
+    else if (role === "off") {
+      const onHome = home < 0 ? e.x < f.cx : e.x > f.cx;
+      x = onHome ? f.cx : (home < 0 ? f.x0 + span * 2.15 : f.x1 - span * 2.15);
+    } else x = f.cx;
+    return stepOpen(S, { x: x, y: (e.y < f.y0 || e.y > f.y1) ? f.cy : y });
+  }
+
   /* ------------------------------------------------------------- squad brain ---
      One record per team. Recomputed on a timer because the shape of a fight does
      not change every frame, and a call that flickers is worse than a call that is
@@ -168,10 +292,12 @@
     Q.axis = Math.atan2(Q.ecx - Q.cx, Q.ecy - Q.cy);
     Q.front = mine.filter((e) => e.b.range <= 100).length;
     Q.back = mine.length - Q.front;
-    /* the standard: where this team falls back to. Behind the line, away from them. */
-    const ux = (Q.cx - Q.ecx) / (dist(Q.cx, Q.cy, Q.ecx, Q.ecy) || 1);
-    const uy = (Q.cy - Q.ecy) / (dist(Q.cx, Q.cy, Q.ecx, Q.ecy) || 1);
-    Q.rally = { x: Q.cx + ux * 120, y: Q.cy + uy * 120 };
+    /* home is the side we spawned on. Relatch only while the fight is still
+       on the start line, so crossing mid later does not flip defence and attack. */
+    if (Q.home == null || S.time < 1.2) Q.home = Q.cx < S.lv.W * TILE * 0.5 ? -1 : 1;
+    /* the standard sits on the inner side of our third. A point behind the
+       centroid walks into the back wall the moment the line is already there. */
+    Q.rally = defendPoint(S, Q);
     /* the wound */
     Q.wounded = mine.reduce((a, b) => (b.hp / b.max < a.hp / a.max ? b : a));
     if (Q.t > 0 && Q.focus && !Q.focus.dead) return;
@@ -500,8 +626,10 @@
     if (st.leash && stray > st.leash && hp > 0.35) {
       /* leashed kits do not get dragged off their own line: run back to the rim of
          it, not to the middle of it (everybody walking to the centroid is a scrum) */
-      const ux = (e.x - Q.cx) / (stray || 1), uy = (e.y - Q.cy) / (stray || 1);
-      task = "hold"; point = { x: Q.cx + ux * st.leash * 0.9, y: Q.cy + uy * st.leash * 0.9 };
+      /* back toward the line, never further toward the wall the body is already on */
+      const ux = (Q.cx - e.x) / (stray || 1), uy = (Q.cy - e.y) / (stray || 1);
+      const back = Math.max(0, stray - st.leash * 0.85);
+      task = "hold"; point = { x: e.x + ux * back, y: e.y + uy * back };
       gait = 1; band = band0; why = "back on the line";
       return set(e, { task, target, point, band, gait, why }, S);
     }
@@ -515,6 +643,23 @@
 
   /* store the plan, count it (the check tool reads these), and hand it back */
   function set(e, plan, S) {
+    /* every tactic names a point in a zone. Settle is the one gate: defensive
+       tasks stay in our third, offensive tasks stay in mid or theirs, and no
+       point is allowed to sit on the border or in a corner. */
+    if (S && S.lv) {
+      const Q = SQ[e.team] || blank();
+      const role = zoneRole(plan.task);
+      if (plan.point) plan.point = settle(S, Q, plan.point, role);
+      const tg = plan.target;
+      const melee = tg && !tg.dead && dist(e.x, e.y, tg.x, tg.y) < 78;
+      if (!melee && rimPush(S, e.x, e.y) > 8) {
+        plan.point = repairPoint(S, Q, e, role);
+        plan.task = "repair";
+        plan.gait = 1;
+        plan.band = 0;
+        plan.why = "off the edge";
+      }
+    }
     plan.t = plan.task;
     e.task = plan.task;
     /* The axes a spectator can actually see, sampled as the plan is made, so the
@@ -553,6 +698,17 @@
     e.taskRun = (e.taskRun || 0) + dt;
     if (e.tgtHold > 0) e.tgtHold -= dt;
     if (e.rallyCd > 0) e.rallyCd -= dt;
+    /* where this body actually stood. The check reads rim against the fight,
+       not a single stuck frame. */
+    if (!CUR || !CUR.lv || e.dead) return;
+    if (!e.smp) e.smp = { n: 0, engage: 0, close: 0, far: 0, pick: 0, weak: 0, onFocus: 0, melee: 0 };
+    const sp = e.smp;
+    sp.pos = (sp.pos || 0) + 1;
+    if (rimPush(CUR, e.x, e.y) > 8) sp.rim = (sp.rim || 0) + 1;
+    const z = zoneAt(CUR, SQ[e.team], e.x);
+    if (z === "def") sp.zDef = (sp.zDef || 0) + 1;
+    else if (z === "off") sp.zOff = (sp.zOff || 0) + 1;
+    else sp.zMid = (sp.zMid || 0) + 1;
   }
 
   /* which enemy a style would rather have, given the squad's call */
@@ -597,7 +753,7 @@
     isSupport: isSupport,
     /* the check tool's windows */
     styles: () => Object.keys(STYLES),
-    tasks: () => ["advance", "press", "flank", "hold", "choke", "screen", "aid", "rally", "withdraw", "overwatch", "bait", "screen"],
+    tasks: () => ["advance", "press", "flank", "hold", "choke", "screen", "aid", "rally", "withdraw", "overwatch", "bait", "repair"],
     help: () => ({ styles: Object.keys(STYLES).length })
   };
 })(window);

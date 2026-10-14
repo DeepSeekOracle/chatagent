@@ -253,7 +253,7 @@ const BRAIN = E.brain();
 const bxSTY = {};        // style -> the axes a spectator can actually see
 const bxtaskUse = {};    // task -> how often it was handed out
 const bxkinds = {};      // colosseum kind -> seats
-let bxhealOut = 0, bxhealBodies = 0, bxworstStuck = 0;
+let bxhealOut = 0, bxhealBodies = 0, bxworstStuck = 0, bxRim = 0, bxPos = 0, bxDef = 0, bxMid = 0, bxOff = 0;
 const bxBM = 200;
 for (let m = 0; m < bxBM; m++) {
   const n = MODES[m % MODES.length];
@@ -273,6 +273,8 @@ for (let m = 0; m < bxBM; m++) {
     A.stuck = Math.max(A.stuck, e.stuckWorst || 0);
     bxworstStuck = Math.max(bxworstStuck, e.stuckWorst || 0);
     Object.keys(e.tk || {}).forEach((k) => { bxtaskUse[k] = (bxtaskUse[k] || 0) + e.tk[k]; });
+    bxRim += s.rim || 0; bxPos += s.pos || 0;
+    bxDef += s.zDef || 0; bxMid += s.zMid || 0; bxOff += s.zOff || 0;
   });
 }
 /* 4a. every kit knows what it is, and no two of them are the same fighter */
@@ -286,6 +288,11 @@ must("every style in the book is worn by somebody", BRAIN.styles().every((s) => 
 /* 4b. the brain hands out real work, not one universal task */
 const bxtasks = E.brain().tasks().filter((t) => bxtaskUse[t] > 0);
 must("the brain works from a book of real bxtasks", bxtasks.length >= 6, bxtasks.length + " of " + E.brain().tasks().length + " bxtasks used");
+const bxRimShare = bxRim / Math.max(1, bxPos);
+console.log("      map: rim " + (100 * bxRimShare).toFixed(1) + "% · def " + (100 * bxDef / Math.max(1, bxPos)).toFixed(0) + "% · mid " + (100 * bxMid / Math.max(1, bxPos)).toFixed(0) + "% · off " + (100 * bxOff / Math.max(1, bxPos)).toFixed(0) + "%");
+must("bodies stay off the arena edge", bxPos > 1000 && bxRimShare < 0.18, (100 * bxRimShare).toFixed(1) + "% of samples on the rim");
+must("the fight uses the centre and both sides", bxDef > bxPos * 0.08 && bxMid > bxPos * 0.12 && bxOff > bxPos * 0.08,
+  "def " + bxDef + " mid " + bxMid + " off " + bxOff);
 must("somebody is always mending somebody", bxhealOut > 0 && bxhealBodies > 30, "healed on others " + Math.round(bxhealOut) + " by " + bxhealBodies + " bodies");
 
 /* 4c. the team works together: one call, and most of the bxguns on it */
