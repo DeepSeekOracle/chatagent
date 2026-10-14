@@ -275,8 +275,10 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
     low-damage kits; it is 1.1× now, floored at 3 damage.</li>
     <li><b>A frustration timer.</b> Five seconds without landing a hit forces the charge in §4, which
     turned the worst stalemate class into decisive fights.</li>
-    <li><b>A closing ring.</b> A share of maximum health per second from 80 seconds, climbing as the fight
-    drags, so sustain cannot draw a match out indefinitely.</li>
+    <li><b>A closing clock.</b> From three minutes every blow lands for a quarter more, climbing a step a
+    minute to double, so a match that drags is decided by who is landing hits. There is no shrinking floor:
+    an earlier version of this page claimed a ring that closed from eighty seconds and the sim has never
+    done that.</li>
   </ul>
   <p class="warn"><b>Where it stands today, honestly:</b> the ladder's last 420-match run prints a field
   average of 47.5% — the table is a spread, not a score. The tails are real. Eight kits hold 25–37%: the
@@ -381,6 +383,22 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   ladder therefore prints a 95% interval beside every win rate and marks a <code>~</code> on each kit whose
   interval covers 50% — that kit is average, not weak, and tuning it is tuning a coin toss. Only the tails
   are stable between runs: the same handful sits at the top and the same handful at the bottom every time.</p>
+  <p><b>A win rate is an outcome, not a behaviour.</b> <code>tools/arena_doctrine.js</code> samples a battle
+  four times a second and reports what the bodies were actually doing rather than who won: how long each kit
+  spent fighting with no ally inside 200px, how long it spent closing on a longest-reach enemy whose shot was
+  loaded, how long the engine's own stuck counter was tripped, how often it shared a target with an ally,
+  which deaths were isolated, and &mdash; read straight off every plan's own reason line &mdash; a census of
+  what the whole field was thinking. On the shipped build it reports the picture this page had been missing:
+  across 144 controlled duels of the six shortest-reach kits against the six longest, the contact kits win a
+  third of them and spend a fifth of their health before they land a hit. A third of the deaths in the field
+  are bodies with no ally within 165px. Of thirteen withdrawals, not one body was still alive six seconds
+  later. There is no wall-grinding to fix: the stuck counter is tripped for zero seconds in every battle,
+  because the clamp-and-snap work holds. Three doctrine variants were written against those numbers &mdash;
+  lead the walk toward where the target will be, wait out the reload window instead of walking into a loaded
+  gun, and take the middle of the arena away from a kiter so its only retreat is a wall. All three were
+  reverted. The census proves they fired, and the duel win rate did not move, which is a result and not a
+  failure: a 48px body in the open against a 269px rifle is losing to reach, and reach is not a thing a
+  better plan fixes.</p>
   <p>So every change here is made against a cause that can be named, never against a number: a kit whose
   reach exceeds its attack (the imp, the hurler), a signature ability that decides maps on its own (the
   vanguard's revive, now forty seconds and a 30% return), a body so light it dies before it arrives. Two
