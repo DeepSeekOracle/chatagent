@@ -427,7 +427,8 @@
       : (!(persist.name || "").trim() ? "put your name in to start" : "");
     const names = lineupNames() || "no one fielded";
     return "<div class='title-screen'>" +
-      "<div class='title-art'><img src='./assets/menu.jpg' alt='Four fighters at a cyan lattice gate in a torchlit stone crypt' width='1280' height='720'></div>" +
+      "<div class='title-art'><img src='./assets/menu.jpg' alt='Four fighters at a cyan lattice gate in a torchlit stone crypt' width='1280' height='720'>" +
+        "<canvas class='menu-live' aria-hidden='true'></canvas></div>" +
       "<div class='title-panel'>" +
         "<p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LYGO Arena</h1>" +
         "<p class='lede'>Two AI teams. One stone ring. Name yourself, build a team, then watch them fight.</p>" +
@@ -545,6 +546,53 @@
     if (col) col.scrollTop = keepScroll;
     const seen = root.querySelector(".rpick.on");
     if (seen && keepScroll === 0) seen.scrollIntoView({ block: "nearest" });
+    if (menuTab === "home") startMenuLive();
+    else stopMenuLive();
+  }
+  let menuRaf = 0;
+  function stopMenuLive() { if (menuRaf) cancelAnimationFrame(menuRaf); menuRaf = 0; }
+  /* The title photo stays the photo. Torches, the lattice gate, the staff gem and
+     the drifting embers are drawn over it, so the menu is a scene and not a slide. */
+  function startMenuLive() {
+    stopMenuLive();
+    const box = document.querySelector("#menu .title-art");
+    const cv = box && box.querySelector(".menu-live");
+    if (!cv || !box) return;
+    const ctx = cv.getContext("2d");
+    const embers = Array.from({ length: 26 }, () => ({
+      x: Math.random(), y: Math.random(), v: 0.012 + Math.random() * 0.028,
+      s: 1 + Math.random() * 2.2, gold: Math.random() > 0.72, ph: Math.random() * 6
+    }));
+    const t0 = performance.now();
+    const glow = (x, y, r, col, a) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = a; ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+    };
+    const frame = (now) => {
+      menuRaf = requestAnimationFrame(frame);
+      const w = box.clientWidth, h = box.clientHeight;
+      if (!w || !h) return;
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      const t = (now - t0) / 1000;
+      ctx.clearRect(0, 0, w, h);
+      const flick = 0.45 + 0.55 * Math.abs(Math.sin(t * 7.2) * Math.sin(t * 2.7));
+      glow(w * 0.075, h * 0.64, w * 0.09, "rgba(251,146,60,0.95)", 0.42 * flick);
+      glow(w * 0.47, h * 0.20, w * 0.055, "rgba(251,146,60,0.9)", 0.28 * (0.4 + 0.6 * Math.abs(Math.sin(t * 6.1))));
+      glow(w * 0.93, h * 0.56, w * 0.07, "rgba(251,146,60,0.95)", 0.36 * (0.4 + 0.6 * Math.abs(Math.sin(t * 8.4))));
+      glow(w * 0.20, h * 0.50, w * 0.24, "rgba(34,211,238,0.9)", 0.16 + 0.10 * (0.5 + 0.5 * Math.sin(t * 1.5)));
+      glow(w * 0.63, h * 0.40, w * 0.04, "rgba(103,232,249,0.95)", 0.28 + 0.22 * (0.5 + 0.5 * Math.sin(t * 3.1)));
+      embers.forEach((p) => {
+        p.y -= p.v * 0.016;
+        if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); }
+        ctx.globalAlpha = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3 + p.ph));
+        ctx.fillStyle = p.gold ? "#fde68a" : "#fb923c";
+        ctx.fillRect(p.x * w, p.y * h, p.s, p.s);
+      });
+      ctx.globalAlpha = 1;
+    };
+    menuRaf = requestAnimationFrame(frame);
   }
 
   function onMenuClick(ev) {
@@ -759,7 +807,13 @@
   }
   function paintFocus() {
     const cb = $("caster");
-    if (cb) cb.classList.toggle("onair", !!(onAir && onAir.caster));
+    const talking = !!(onAir && onAir.caster);
+    if (cb) cb.classList.toggle("onair", talking);
+    const face = $("cface");
+    if (face) {
+      const want = talking ? "./assets/caster-talk.gif" : "./assets/caster-idle.gif";
+      if (face.getAttribute("src") !== want) face.setAttribute("src", want);
+    }
     ["you", "foe"].forEach((side) => {
       (rows[side] || []).forEach((r) => {
         const hot = !!(onAir && !onAir.caster && onAir.who && r.e.b && r.e.b.id === onAir.who);

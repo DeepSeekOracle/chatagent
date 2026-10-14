@@ -67,7 +67,28 @@
     hunter:     { band: 0.90, retreat: 0.24, leash: 0,   strafe: 0.50, commit: 1.0, prefer: "weakest", brave: 1.5, flank: 1 },
     bulwark:    { band: 0.88, retreat: 0.18, leash: 120, strafe: 0.30, commit: 3.0, prefer: "protect", brave: 1.4, screen: 1 }
   };
-  const styleOf = (b) => STYLES[(b && b.style) || "duelist"] || STYLES.duelist;
+  /* The style is the doctrine. The tune is that one kit: band, leash, panic, retreat,
+     strafe, commit. The roster already wrote a tune for every fighter. Reading it
+     is what makes two bulwarks fight as two people. */
+  function styleOf(b) {
+    const base = STYLES[(b && b.style) || "duelist"] || STYLES.duelist;
+    const tune = b && b.tune;
+    if (!tune) return base;
+    const st = Object.assign({}, base);
+    const num = (k, lo, hi) => {
+      if (typeof tune[k] === "number") st[k] = Math.max(lo, Math.min(hi, tune[k]));
+    };
+    num("band", 0.45, 1.05);
+    num("retreat", 0, 0.55);
+    num("leash", 0, 320);
+    num("strafe", 0, 1.6);
+    num("commit", 0.45, 3.6);
+    num("brave", 0.4, 3.2);
+    num("panic", 70, 240);
+    num("recoil", 0.5, 2);
+    num("aid", 0.45, 0.92);
+    return st;
+  }
 
   /* ------------------------------------------------------------------ helpers --- */
   function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
@@ -377,7 +398,8 @@
     }
 
     /* — 4. FLANK: do not walk into the same doorway as everybody else. */
-    if (st.flank && dFocus > 150) {
+    /* A lone body has nobody to arrive beside. Circling the only enemy is a walk, not a flank. */
+    if (st.flank && dFocus > 150 && !lastOne) {
       const myBearing = Math.atan2(focus.y - e.y, focus.x - e.x);
       const off = Math.abs(((myBearing - Q.axis + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
       if (off < 0.7) {

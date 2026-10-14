@@ -41,7 +41,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./arena.css?v=6.02">
+<link rel="stylesheet" href="./arena.css?v=6.03">
 <link rel="stylesheet" href="/games/hub.css?v=2">
 <!-- the donation gate is deliberately not loaded here: its fixed "Supporter access" tab
        sits over this page's own controls and blocks them -->
@@ -58,6 +58,7 @@
   <div class="title-screen">
     <div class="title-art">
       <img src="./assets/menu.jpg" alt="Four fighters at a cyan lattice gate in a torchlit stone crypt" width="1280" height="720">
+      <canvas class="menu-live" aria-hidden="true"></canvas>
     </div>
     <div class="title-panel" id="menuPanel">
       <p class="kicker">Δ9Φ963 · chatagent.ca</p>
@@ -118,8 +119,8 @@
       <div class="caster" id="caster">
         <div class="cbubble" id="casterSays"></div>
         <span class="conair">ON AIR</span>
-        <img class="cface" src="./assets/caster.svg" alt="The caster calling the fight">
-        <span class="cname">THE CASTER</span>
+        <img class="cface" id="cface" src="./assets/caster-idle.gif" alt="Lightfather calling the fight">
+        <span class="cname">LIGHTFATHER</span>
       </div>
     </aside>
   </main>
@@ -155,8 +156,8 @@
 <script src="./attacks.js?v=1"></script>
 <script src="./banter.js?v=1.02"></script>
 <script src="./director.js?v=1"></script>
-<script src="./brain.js?v=4"></script>
-<script src="./arena.js?v=5.05"></script>
-<script src="./arena-ui.js?v=8.08"></script>
+<script src="./brain.js?v=5"></script>
+<script src="./arena.js?v=5.06"></script>
+<script src="./arena-ui.js?v=8.09"></script>
 </body>
 </html>

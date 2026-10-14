@@ -895,7 +895,7 @@
        turning on the spot, which is what a spectator reads as "it does not know what to do".
        A dead target releases the hold at once -- switching off a corpse is not dithering. */
     if (e.target && !e.target.dead && e.target !== t && (e.tgtHold || 0) > 0) t = e.target;
-    else if (e.target && e.target !== t) e.tgtHold = TGT_HOLD;
+    else if (e.target && e.target !== t) e.tgtHold = Math.max(0.45, Math.min(3.4, stl.commit || TGT_HOLD));
     e.target = t;
 
     /* ---- the kit: whatever is in reach and off cooldown, in the kit's own order.
@@ -917,6 +917,14 @@
           return;
         }
       }
+    }
+
+    /* ---- own blood. A heal aimed at yourself is drunk when you are the one bleeding,
+       even if the enemy is already out of reach. Waiting until they walk back into
+       range is how a mender dies with a full bottle. */
+    if (e.hp / e.max < Math.max(0.42, (stl.retreat || 0.25) + 0.12)) {
+      const si = b.moves.findIndex((mv) => mv.st && mv.st.heal && (mv.aim === "self" || mv.shape === "self"));
+      if (si >= 0 && e.cds[si] <= 0 && e.mana >= moveCost(b.moves[si]) && castMove(e, b.moves[si], si)) return;
     }
 
     /* ---- the rusher. This is the one move in a kit that has to be spent at the right
