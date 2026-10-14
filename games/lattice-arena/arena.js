@@ -1617,6 +1617,113 @@
     return cv;
   }
 
+  /* The intro is a broadcast, not a teleport. Positions in the sim stay on the
+     marks the whole time — headless fights never see this. Draw-time only. */
+  function presentOf(e) {
+    if (!e || e.dead || S.phase !== "count") return null;
+    const elapsed = INTRO_S - S.countdown;
+    const start = e.team === 0 ? 3.2 : 8.0;
+    const u = clamp((elapsed - start) / 5.6, 0, 1);
+    const s = u * u * (3 - 2 * u);
+    if (s >= 0.995) return null;
+    const team = e.team === 0 ? S.your : S.foe;
+    const idx = team.indexOf(e);
+    const face = e.team === 0 ? 3 : 2;
+    if ((idx & 1) === 1) {
+      const top = TILE * 0.85;
+      return { x: e.x, y: top + (e.y - top) * s, lift: true, face: face };
+    }
+    const gx = e.team === 0 ? 36 : MAP_W * TILE - 40;
+    return { x: gx + (e.x - gx) * s, y: e.y, lift: false, face: face };
+  }
+  function poseBody(e, fn) {
+    const p = presentOf(e);
+    if (!p) { fn(null); return; }
+    const ox = e.x, oy = e.y, oface = e.face, ow = e.walk;
+    e.x = p.x; e.y = p.y; e.face = p.face;
+    const frames = e.b.spr.sheet === "heroes" ? 2 : 4;
+    e.walk = Math.floor((INTRO_S - S.countdown) * 8) % frames;
+    try { fn(p); }
+    finally { e.x = ox; e.y = oy; e.face = oface; e.walk = ow; }
+  }
+  function drawMouths() {
+    const H = MAP_H * TILE, W = MAP_W * TILE;
+    const arch = (x, glow) => {
+      ctx.save();
+      ctx.fillStyle = "#0f172a";
+      ctx.fillRect(x, 8, 16, H - 16);
+      ctx.fillRect(x + 52, 8, 16, H - 16);
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(x - 2, 4, 72, 16);
+      ctx.globalAlpha = 0.34;
+      ctx.fillStyle = glow;
+      ctx.fillRect(x + 16, 22, 36, H - 40);
+      ctx.restore();
+    };
+    /* The mouth stops short of the spawn mark, so a body finishes the walk in the open. */
+    arch(2, "#22d3ee");
+    arch(W - 72, "#f87171");
+  }
+  function houseMood() {
+    let m = 0.28;
+    if (S.phase === "count") m = (INTRO_S - S.countdown) < 3 ? 0.22 : 0.58;
+    else if (S.phase === "live") m = S.time < 2.4 ? 0.95 : (S.sudden ? 0.82 : 0.42);
+    else if (S.phase === "over") m = 1;
+    if (S.shake > 0.15) m = 1;
+    const ev = S.events.length ? S.events[S.events.length - 1] : null;
+    if (ev && (S.time - ev.t) < 1.5 && (ev.kind === "kill" || ev.text === "FIGHT.")) m = 1;
+    return m;
+  }
+  function drawHouse(wpx, hpx, ox, oy, scale) {
+    const mapW = S.lv.W * TILE * scale, mapH = S.lv.H * TILE * scale;
+    const banks = [
+      { x: ox, y: 0, w: mapW, h: oy },
+      { x: ox, y: oy + mapH, w: mapW, h: Math.max(0, hpx - oy - mapH) },
+      { x: 0, y: oy, w: ox, h: mapH },
+      { x: ox + mapW, y: oy, w: Math.max(0, wpx - ox - mapW), h: mapH }
+    ];
+    const mood = houseMood();
+    const clock = S.phase === "count" ? (INTRO_S - S.countdown) : (S.time + INTRO_S);
+    const tunics = ["#b91c1c", "#1d4ed8", "#a16207", "#047857", "#6d28d9", "#9f1239", "#0f766e"];
+    ctx.save();
+    banks.forEach((bk, bi) => {
+      if (bk.w < 8 || bk.h < 8) return;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#1c1410";
+      ctx.fillRect(bk.x, bk.y, bk.w, bk.h);
+      ctx.fillStyle = "#292524";
+      ctx.fillRect(bk.x, bk.y + 3, bk.w, Math.max(0, bk.h - 6));
+      ctx.fillStyle = "#78716c";
+      if (bi === 0) ctx.fillRect(bk.x, bk.y + bk.h - 4, bk.w, 4);
+      else if (bi === 1) ctx.fillRect(bk.x, bk.y, bk.w, 4);
+      else if (bi === 2) ctx.fillRect(bk.x + bk.w - 4, bk.y, 4, bk.h);
+      else ctx.fillRect(bk.x, bk.y, 4, bk.h);
+      const tall = bi < 2;
+      const gap = tall ? 16 : 18;
+      const rows = Math.max(1, Math.min(tall ? 2 : 8, Math.floor((bk.h - 8) / 18)));
+      const cols = Math.max(1, Math.floor((bk.w - 8) / gap));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const n = ((bi * 131 + r * 17 + c * 29) * 1103515245 + 12345) >>> 0;
+          const px = bk.x + 6 + (c + 0.5) * ((bk.w - 10) / cols);
+          const bob = Math.sin(clock * (mood > 0.7 ? 8 : 2.2) + (n % 16)) * (mood > 0.7 ? 2.6 : 0.5);
+          const py = bk.y + 10 + (r + 0.5) * ((bk.h - 14) / rows) + bob;
+          const up = mood > 0.62 && (n % 4) !== 0;
+          ctx.fillStyle = "#e7c8a0";
+          ctx.fillRect(px - 2, py - 9, 4, 4);
+          ctx.fillStyle = tunics[n % tunics.length];
+          ctx.fillRect(px - 3, py - 5, 6, 7);
+          if (up) {
+            ctx.fillStyle = "#e7c8a0";
+            ctx.fillRect(px - 6, py - 10, 2, 5);
+            ctx.fillRect(px + 4, py - 10, 2, 5);
+          }
+        }
+      }
+    });
+    ctx.restore();
+  }
+
   function drawSprite(e) {
     const b = e.b, sheet = b.spr.sheet, img = AT[sheet];
     if (!img) return 0;
@@ -1657,13 +1764,17 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, wpx, hpx);
-    const scale = Math.min(wpx / (S.lv.W * TILE), hpx / (S.lv.H * TILE));
-    const ox = (wpx - S.lv.W * TILE * scale) / 2, oy = (hpx - S.lv.H * TILE * scale) / 2;
+    /* The sand stays the fight. The pad around it is the building: stands, not cover. */
+    const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
+    const padX = 86, padY = 70;
+    const scale = Math.min(wpx / (mapW + padX * 2), hpx / (mapH + padY * 2));
+    const ox = (wpx - mapW * scale) / 2, oy = (hpx - mapH * scale) / 2;
     const kick = S.shake > 0 ? S.shake * 16 : 0;
     const sx = kick ? (Math.random() - 0.5) * kick : 0;
     const sy = kick ? (Math.random() - 0.5) * kick : 0;
     ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * (ox + sx), dpr * (oy + sy));
     if (floorCv) ctx.drawImage(floorCv, 0, 0);
+    drawMouths();
     drawLaw();
 
     /* pending blasts are telegraphed before they land: a spectator needs to see it coming */
@@ -1690,10 +1801,24 @@
     });
     /* shadows, then bodies sorted by depth */
     ctx.save(); ctx.globalAlpha = 0.32; ctx.fillStyle = "#000";
-    all().forEach((e) => { if (e.dead) return; ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 13, 5, 0, 0, 6.283); ctx.fill(); });
+    all().forEach((e) => {
+      if (e.dead) return;
+      poseBody(e, () => { ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 13, 5, 0, 0, 6.283); ctx.fill(); });
+    });
     ctx.restore();
-    const order = all().filter((e) => !e.dead).sort((a, b) => a.y - b.y);
+    const shownY = (e) => { const p = presentOf(e); return p ? p.y : e.y; };
+    const order = all().filter((e) => !e.dead).sort((a, b) => shownY(a) - shownY(b));
     order.forEach((e) => {
+      poseBody(e, (p) => {
+      if (p && p.lift) {
+        ctx.save();
+        ctx.globalAlpha = 0.95;
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(e.x - 20, e.y + 4, 40, 8);
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillRect(e.x - 1, TILE * 0.35, 2, Math.max(0, e.y - TILE * 0.35));
+        ctx.restore();
+      }
       const size = drawSprite(e);
       /* team ring under the feet: the only thing a spectator must never have to guess */
       ctx.save();
@@ -1729,6 +1854,7 @@
         ctx.textAlign = "center";
         ctx.fillText(e.stun > 0 ? "STUN" : e.root > 0 ? "ROOT" : "HUSH", e.x, by - 11);
       }
+      });
     });
     if (w.LYGO_ATTACKS) w.LYGO_ATTACKS.draw(ctx, S);
     /* projectiles */
@@ -1792,6 +1918,8 @@
       ctx.strokeRect(0, 0, S.lv.W * TILE, S.lv.H * TILE);
       ctx.restore();
     }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawHouse(wpx, hpx, ox, oy, scale);
   }
 
   /* ----------------------------------------------------------------- API --- */
