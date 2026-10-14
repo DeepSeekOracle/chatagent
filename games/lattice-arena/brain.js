@@ -314,6 +314,10 @@
       sc += isSupport(o.b) ? 22 : 0;                      // the menders are worth killing, not worth everything
       sc += o.b.range > 160 ? 22 : 0;                     // and the guns behind the line
       sc += near * 26;                                    // and what enough of us can reach
+      /* A full-health door scores nothing on the wound term, so a team used to walk
+         past it and shoot the back line while the door took none of the hits. If we
+         are already standing on a boss, that boss is the fight. */
+      if (o.b.boss && near >= 1) sc += 36;
       sc -= dist(Q.cx, Q.cy, o.x, o.y) * 0.16;            // without walking the arena
       if (o === Q.focus) sc += 45;                        // do not dither between targets
       if (sc > bestScore) { bestScore = sc; best = o; }

@@ -101,6 +101,7 @@
     unmake:    { name: "Unmake",         text: "Silence a name mid-sentence and hold it there while it burns.", cd: 13, range: 2.2, aim: "weakest", shape: "melee", dmg: 1.55, fx: "hit_halo", st: { silence: 4, burn: [7, 5], root: 1.1, wound: [0.45, 5] } },
     gateslam:  { name: "Gate Slam",      text: "The gate answers. Nothing near it keeps its footing.",  cd: 11, range: 0, aim: "self", shape: "aura", dmg: 1.5, radius: 3.6, fx: "nova", st: { stun: 1.0, knock: 2.2 } },
     wardfield: { name: "Ward Field",     text: "The crypt closes its ward around the gate.",             cd: 16, range: 0, aim: "self", shape: "self", st: { aegis: 0.4, thorns: [0.4, 6] } },
+    gateward:  { name: "Gate Ward",      text: "The door sets a ward. It is a pause, not a second life.", cd: 18, range: 0, aim: "self", shape: "self", st: { aegis: 0.16, thorns: [0.2, 5] } },
     callwards: { name: "Call the Wards", text: "Two wardens step out of the dark.",                     cd: 22, range: 0, aim: "self", shape: "summon", n: 2, token: "ward" },
     regalvolley:{ name: "Regal Volley",  text: "A crown's three shells, lobbed wide.",                   cd: 10, range: 10, aim: "clump", shape: "multi", n: 3, dmg: 0.9, lob: true, radius: 1.4, w: "comet", fx: "nova" },
     anvil:     { name: "Anvil",          text: "Bring the anvil down and let the coal do the rest.",     cd: 11, range: 2.4, aim: "enemy", shape: "blast", dmg: 1.4, radius: 2.0, fx: "hit_cinder", st: { burn: [8, 5] } },
@@ -159,7 +160,7 @@
 
   add({ id: "nia", name: "Nia", tag: "Path Archer", cls: "champ", spr: { sheet: "heroes", key: "hero_nia" }, portrait: "p-nia.jpg", color: "#4ade80",
     bio: "She maps the corridors by running them. A slow warden is a closed door.",
-    style: "kite", tune: { band: 0.95, panic: 200, retreat: 0.3, strafe: 1.1, commit: 0.6 }, temper: "Never stands where the last shot landed.",
+    style: "kite", tune: { band: 0.95, panic: 140, retreat: 0.3, strafe: 1.1, commit: 0.6 }, temper: "Never stands where the last shot landed.",
     hp: 707, dmg: 27, rate: 0.92, speed: 4.4, armor: 4, range: 8.6, mana: 70, manaRegen: 6, crit: 0.22, cdMul: 0.84,
     atk: { name: "Path Arrow", type: "bolt", w: "needle", pierce: 1 },
     moves: ["pinvolley", "dash", "needlerain"], cards: ["swift", "lucky", "volley"],
@@ -224,7 +225,7 @@
   add({ id: "sancora", name: "Sancora", tag: "Weave Chemist", cls: "champ", spr: { sheet: "heroes", key: "hero_sancora" }, portrait: "p-sancora.jpg", color: "#fde68a",
     bio: "Collective healing nexus. Her flask is a chorus: one drink, four pulses.",
     style: "medic", tune: { band: 0.8, leash: 175, retreat: 0.5, strafe: 0.45 }, temper: "Follows whoever is hurt most and pours them back together.",
-    hp: 655, dmg: 28, rate: 0.78, speed: 3.2, armor: 4, range: 8.0, mana: 145, manaRegen: 13, crit: 0.13, cdMul: 0.72,
+    hp: 580, dmg: 28, rate: 0.78, speed: 3.2, armor: 4, range: 8.0, mana: 145, manaRegen: 13, crit: 0.13, cdMul: 0.72,
     atk: { name: "Chemist Vial", type: "bolt", w: "cinder", nova: 1.0 },
     moves: ["chorusflask", "weavebloom", "cover"], cards: ["regen", "giant", "aegisgift"],
     counter: "Keeps four bodies standing. Brings no damage of her own." });
@@ -298,9 +299,9 @@
   add({ id: "gate", name: "Gate", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_gate" }, color: "#38bdf8",
     bio: "Half door, half animal, entirely unwilling.",
     style: "bulwark", tune: { band: 0.95, leash: 45, commit: 2.6, strafe: 0.05 }, temper: "Everything it does happens slowly, on purpose.",
-    hp: 1210, dmg: 40, rate: 0.60, speed: 1.6, armor: 9, range: 1.9, mana: 80, manaRegen: 5, crit: 0.08, cdMul: 0.94, boss: true,
+    hp: 1020, dmg: 40, rate: 0.60, speed: 1.6, armor: 7, range: 1.9, mana: 80, manaRegen: 5, crit: 0.08, cdMul: 0.94, boss: true,
     atk: { name: "Gate Slam", type: "melee", w: "shard", splash: 1.7 },
-    moves: ["gateslam", "wardfield", "callwards"], cards: ["iron", "thorns", "giant"],
+    moves: ["gateslam", "gateward", "callwards"], cards: ["iron", "thorns", "giant"],
     counter: "The anvil of the roster. Everything it does happens slowly." });
 
   add({ id: "crown", name: "Crown", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_crown" }, color: "#fbbf24",
@@ -363,7 +364,7 @@
   add({ id: "wolf", name: "Ashmane", tag: "Wolf", cls: "pet", spr: { sheet: "pets", key: "pet_wolf" }, color: "#94a3b8",
     bio: "Dash · bite. It arrives before the decision does.",
     style: "hunter", tune: { band: 0.8, commit: 1.0, strafe: 0.7, retreat: 0.36 }, temper: "Arrives before the decision does.",
-    hp: 700, dmg: 35, rate: 0.96, speed: 3.9, armor: 5, range: 1.5, mana: 40, manaRegen: 4, crit: 0.18, cdMul: 0.84,
+    hp: 780, dmg: 38, rate: 0.96, speed: 3.9, armor: 5, range: 1.5, mana: 40, manaRegen: 4, crit: 0.18, cdMul: 0.84,
     atk: { name: "Bite", type: "melee", w: "needle" },
     moves: ["bite", "roar"], cards: ["swift", "fury", "leech"],
     counter: "Jumps the weakest body and hamstrings it for the pack. Still too eager to survive long." });
@@ -387,7 +388,7 @@
   add({ id: "elephant", name: "Tuskward", tag: "Elephant", cls: "pet", spr: { sheet: "pets", key: "pet_elephant" }, color: "#67e8f9",
     bio: "Stomp. It does not need a second move.",
     style: "vanguard", tune: { band: 0.95, leash: 60, commit: 2.0, strafe: 0.12 }, temper: "Moves with the herd and lands where the herd lands.",
-    hp: 886, dmg: 30, rate: 0.68, speed: 2.1, armor: 8, range: 1.9, mana: 40, manaRegen: 4, crit: 0.12, cdMul: 0.9,
+    hp: 886, dmg: 35, rate: 0.68, speed: 2.5, armor: 8, range: 1.9, mana: 40, manaRegen: 4, crit: 0.12, cdMul: 0.9,
     atk: { name: "Tusk", type: "melee", w: "shard", splash: 1.6 },
     moves: ["stomp", "pound"], cards: ["iron", "bulwark", "heart"],
     counter: "The heaviest thing on legs. Everything outruns it." });

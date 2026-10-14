@@ -122,7 +122,7 @@
     gate: {
       atk: { vis: "stomp", sfx: "gate_slam" },
       gateslam: { vis: "quake", sfx: "gate_quake" },
-      wardfield: { vis: "ward", sfx: "gate_ward", name: "Gate Ward", text: "The door closes its own ward around itself." },
+      gateward: { vis: "ward", sfx: "gate_ward", name: "Gate Ward", text: "The door closes its own ward around itself." },
       callwards: { vis: "summon", sfx: "gate_call" }
     },
     crown: {

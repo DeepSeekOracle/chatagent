@@ -617,9 +617,9 @@
     /* the recall cards get their one moment */
     if (!e.usedRevive && e.b.cards.some((c) => c.hook === "secondLife")) {
       e.usedRevive = true;
-      e.hp = Math.round(e.max * 0.4);
+      e.hp = Math.round(e.max * 0.28);
       e.dead = false;
-      e.shd += Math.round(e.max * 0.15);
+      e.shd += Math.round(e.max * 0.08);
       pushEvent(e.b.name + " is called back — Name Recall, " + Math.round(e.max * 0.4) + " back.", "gift");
       e.edgeSaid = false;
       pushTalk("rise", e, src, true);
