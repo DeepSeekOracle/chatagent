@@ -40,7 +40,7 @@
     giant:      { name: "Deeper Well",       tag: "GIANT", text: "+40% maximum health, −12% move speed.", mods: { hpMul: 0.40, spdMul: -0.12 } },
     nimble:     { name: "Ember Step",        tag: "NIMBLE",text: "−15% maximum health, +25% move speed.", mods: { hpMul: -0.15, spdMul: 0.25 } },
     vampiric:   { name: "Cup of the Cut",    tag: "VAMP",  text: "Recover 22% of maximum health on every kill.", mods: { vamp: 0.22 } },
-    manaflow:   { name: "Chorus Charge",     tag: "RES",   text: "+60% magic regeneration, +20% maximum magic.", mods: { manaMul: 0.60, cdMul: -0.08 } },
+    manaflow:   { name: "Chorus Charge",     tag: "RES",   text: "+60% magic regeneration, +20% maximum magic.", mods: { manaMul: 0.60, manaMaxMul: 0.20, cdMul: -0.08 } },
     overclock:  { name: "Overclock",         tag: "CLOCK", text: "All move cooldowns −32%, −10% maximum health.", mods: { cdMul: -0.32, hpMul: -0.10 } },
     aegisgift:  { name: "A New Accord",      tag: "AURA",  text: "Allies gain +2 armor while you live.", mods: { auraArmor: 2 } },
     standard:   { name: "Hall Standard",     tag: "AURA",  text: "Allies deal +12% damage while you live.", mods: { auraDmg: 0.12 } },
@@ -407,7 +407,7 @@
   function build(fighter, allies, enemies, rng) {
     const cards = fighter.cards.map((c) => CARDS[c]).filter(Boolean);
     const mods = { armorAdd: 0, hpMul: 0, dmgMul: 0, rateMul: 0, spdMul: 0, critAdd: 0, critMulAdd: 0, cdMul: 0, pierceAdd: 0, volleyAdd: 0,
-      leech: 0, thorns: 0, regen: 0, veil: 0, fury: 0, bulwark: 0, execute: 0, vamp: 0, manaMul: 0, auraArmor: 0, auraDmg: 0, echo: 0, startShield: 0, firstDouble: 0 };
+      leech: 0, thorns: 0, regen: 0, veil: 0, fury: 0, bulwark: 0, execute: 0, vamp: 0, manaMul: 0, manaMaxMul: 0, auraArmor: 0, auraDmg: 0, echo: 0, startShield: 0, firstDouble: 0 };
     cards.forEach((c) => { const m = c.mods || {}; for (const k in m) if (k in mods) mods[k] += m[k]; });
 
     /* auras from living teammates, resolved after every fighter is built (two passes) */
@@ -445,11 +445,11 @@
       armor: fighter.armor + mods.armorAdd + (melee ? 1 : 0),
       range: fighter.range * 32,
       minRange: fighter.minRange ? fighter.minRange * 32 : 0,
-      manaMax: Math.round(fighter.mana * (1 + mods.manaMul)),
+      manaMax: Math.round(fighter.mana * (1 + mods.manaMaxMul)),
       manaRegen: fighter.manaRegen * (1 + mods.manaMul),
       crit: Math.min(0.75, fighter.crit + mods.critAdd),
       critMul: critMul,
-      cdMul: Math.max(0.4, 1 + mods.cdMul),
+      cdMul: Math.max(0.4, (fighter.cdMul || 1) * (1 + mods.cdMul)),
       pierce: (fighter.atk.pierce || 0) + mods.pierceAdd,
       atk: Object.assign({}, fighter.atk, (kit.atk || {})),
       cards, cardIds: fighter.cards.slice(), mods,

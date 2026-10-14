@@ -306,7 +306,9 @@
       armorBuff: 0, armorBuffT: 0,
       stun: 0, root: 0, silence: 0, slowT: 0, slowV: 0, swiftT: 0, swiftV: 0, hasteT: 0, hasteV: 0,
       woundT: 0, woundV: 0,
-      rageT: 0, rageV: 0, weakT: 0, weakV: 0, burnT: 0, burnDps: 0, bleedT: 0, bleedDps: 0,
+      rageT: 0, rageV: 0, weakT: 0, weakV: 0,
+      burnT: 0, burnDps: 0, burnBank: 0, burnFrom: null,
+      bleedT: 0, bleedDps: 0, bleedBank: 0, bleedFrom: null,
       regenT: 0, regenHps: 0, thornsT: 0, thornsV: 0, reflectT: 0, reflectV: 0, veilT: 0, veilV: 0,
       lifestealT: 0, lifestealV: 0, tauntT: 0, shieldWallT: 0,
       cds: built.moves.map(() => 0), atkCd: 0.6 + Math.random() * 0.5,
@@ -433,8 +435,14 @@
     if (st.haste) { e.hasteT = Math.max(e.hasteT, st.haste[1]); e.hasteV = Math.max(e.hasteV, st.haste[0]); }
     if (st.rage) { e.rageT = Math.max(e.rageT, st.rage[1]); e.rageV = Math.max(e.rageV, st.rage[0]); }
     if (st.weak) { e.weakT = Math.max(e.weakT, st.weak[1]); e.weakV = Math.max(e.weakV, st.weak[0]); }
-    if (st.burn) { e.burnT = Math.max(e.burnT, st.burn[1]); e.burnDps = Math.max(e.burnDps, st.burn[0]); }
-    if (st.bleed) { e.bleedT = Math.max(e.bleedT, st.bleed[1]); e.bleedDps = Math.max(e.bleedDps, st.bleed[0]); }
+    if (st.burn) {
+      if (st.burn[0] >= (e.burnDps || 0)) { e.burnDps = st.burn[0]; e.burnFrom = from || null; }
+      e.burnT = Math.max(e.burnT, st.burn[1]);
+    }
+    if (st.bleed) {
+      if (st.bleed[0] >= (e.bleedDps || 0)) { e.bleedDps = st.bleed[0]; e.bleedFrom = from || null; }
+      e.bleedT = Math.max(e.bleedT, st.bleed[1]);
+    }
     if (st.regen) { e.regenT = Math.max(e.regenT, st.regen[1]); e.regenHps = Math.max(e.regenHps, st.regen[0]); }
     if (st.thorns) { e.thornsT = Math.max(e.thornsT, st.thorns[1]); e.thornsV = Math.max(e.thornsV, st.thorns[0]); }
     if (st.reflect) { e.reflectT = Math.max(e.reflectT, st.reflect[1]); e.reflectV = Math.max(e.reflectV, st.reflect[0]); }
@@ -512,8 +520,8 @@
     if (!from) return;
     const a = Math.atan2(from.y - e.y, from.x - e.x);
     const nx = e.x + Math.cos(a) * px, ny = e.y + Math.sin(a) * px;
-    if (!solidAt(S.lv, nx, e.y)) e.x = nx;
-    if (!solidAt(S.lv, e.x, ny)) e.y = ny;
+    if (!solidAt(S.lv, nx, e.y)) e.x = clamp(nx, TILE * 1.1, (MAP_W - 1.1) * TILE);
+    if (!solidAt(S.lv, e.x, ny)) e.y = clamp(ny, TILE * 1.1, (MAP_H - 1.1) * TILE);
   }
 
   /* -------------------------------------------------------------- damage --- */
@@ -532,11 +540,22 @@
       crit = true;
       dmg *= src.b.critMul;
     }
-    if (opts.doubleFirst && src && !src.firstUsed) { dmg *= 2; src.firstUsed = true; }
+    /* Named Pulse is stamped on the cast, so a fan and a blast all share the one double. */
+    if (opts.opening) dmg *= 2;
     const exec = (src && src.b.mods.execute) || (opts.execute ? 0.7 : 0);
     if (exec && tgt.hp / tgt.max < 0.32) dmg *= 1 + exec;
     if (tgt.b.mods.bulwark && tgt.hp / tgt.max > 0.6) dmg *= 1 - tgt.b.mods.bulwark;
-    if (!opts.ignoreArmor) dmg = Math.max(3, dmg - (tgt.b.armor + tgt.armorBuff) * 1.1);
+    /* Armor is a flat cut, including a living ally's aura. A hit the plate fully stops
+       deals nothing — the old floor of 3 made the printed armor a lie. */
+    if (!opts.ignoreArmor) {
+      const raw = dmg;
+      dmg -= buffed(tgt).armor * 1.1;
+      if (dmg < 0.5 && raw >= 1) {
+        S.texts.push({ x: tgt.x, y: tgt.y - 26, t: "block", life: 0.5, col: "#94a3b8" });
+        return 0;
+      }
+      if (dmg < 0) dmg = 0;
+    }
     if (opts.strips && tgt.shd > 0) { dmg *= 2; tgt.shd = 0; }
     if (tgt.shd > 0) {
       const absorbed = Math.min(tgt.shd, dmg);
@@ -544,6 +563,7 @@
       dmg -= absorbed;
     }
     dmg = Math.round(dmg);
+    if (dmg <= 0) return 0;
     tgt.hp -= dmg;
     tgt.taken += dmg;
     /* about to die: one clean hit from the recap, and everybody says so */
@@ -722,6 +742,13 @@
     faceTo(caster, P.x, P.y);
     flourish(caster, mv.vis || "slash", P.x, P.y);
     if (mv.fx) S.marks.push({ x: caster.x, y: caster.y - 10, r: 0, life: 0.22, col: caster.b.color, spark: true });
+    /* The first damaging move, not the first basic. Spent on the cast so every
+       pellet of that move shares it, and a whiff still spends it. */
+    let opening = false;
+    if (mv.dmg && caster.b.mods.firstDouble && !caster.firstUsed) {
+      opening = true;
+      caster.firstUsed = true;
+    }
 
     switch (mv.shape) {
       case "melee":
@@ -736,7 +763,7 @@
           return diff < 1.15;
         });
         hits.forEach((o) => {
-          const dealt = damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, doubleFirst: !!caster.b.mods.firstDouble, ignoreArmor: !!mv.ignoreArmor, execute: !!mv.execute });
+          const dealt = damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor, execute: !!mv.execute });
           if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
           applySt(o, mv.st, caster);
         });
@@ -750,7 +777,7 @@
         S.marks.push({ x: cx, y: cy, r: radius, life: 0.4, col: caster.b.color, ring: true });
         enemiesOf(caster).forEach((o) => {
           if (dist2(cx, cy, o.x, o.y) > radius) return;
-          if (mv.dmg) damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, ignoreArmor: !!mv.ignoreArmor });
+          if (mv.dmg) damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor });
           applySt(o, mv.st, caster);
         });
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);
@@ -758,7 +785,7 @@
         break;
       }
       case "blast": {
-        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: !!mv.strips });
+        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: !!mv.strips, opening: opening });
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);
         break;
       }
@@ -772,7 +799,7 @@
           if (along < 0 || along > len) return;
           const side = Math.abs(-dx * Math.sin(a) + dy * Math.cos(a));
           if (side > 14) return;
-          damage(caster, o, caster.b.dmg * mv.dmg, { ignoreArmor: !!mv.ignoreArmor || !!mv.pierce, ranged: true });
+          damage(caster, o, caster.b.dmg * mv.dmg, { ignoreArmor: !!mv.ignoreArmor || !!mv.pierce, ranged: true, opening: opening });
           applySt(o, mv.st, caster);
         });
         break;
@@ -806,7 +833,8 @@
             vis: mv.vis || caster.b.atk.vis, col: caster.b.color,
             life: 2.6, pierce: (mv.pierce || 0), lob: !!mv.lob,
             radius: (mv.radius || 1.4) * TILE,
-            tx: tx, ty: ty, st: mv.st, frame: 0, ignoreWall: !!mv.lob || !!caster.b.ghost
+            tx: tx, ty: ty, st: mv.st, frame: 0, ignoreWall: !!mv.lob || !!caster.b.ghost,
+            opening: opening
           });
         }
         break;
@@ -815,7 +843,7 @@
         S.projectiles.push({
           x: caster.x, y: caster.y - 8, a: Math.atan2(P.y - caster.y, P.x - caster.x), spd: 200,
           dmg: caster.b.dmg * mv.dmg, src: caster, team: caster.team, w: mv.w || "comet",
-          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0,
+          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0, opening: opening,
           vis: mv.vis || "stone", col: caster.b.color
         });
         break;
@@ -836,7 +864,7 @@
           if (caster.b.ghost || !solidAt(S.lv, land.x, land.y)) { caster.x = land.x; caster.y = land.y; }
           S.marks.push({ x: caster.x, y: caster.y, r: 14, life: 0.4, col: caster.b.color, ring: true });
           if (mv.dmg) {
-            const dealt = damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true, execute: !!mv.execute });
+            const dealt = damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true, opening: opening, execute: !!mv.execute });
             if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
           }
           if (mv.st) applySt(t2, mv.st, caster);       // what the landing does to them
@@ -1247,7 +1275,7 @@
     const echo = b.mods.echo || 0;
     const dmg = st.dmg * (1 + (b.atk.dmg || 0));
     if (isMelee) {
-      const dealt = damage(e, t, dmg, { melee: true, doubleFirst: !!b.mods.firstDouble });
+      const dealt = damage(e, t, dmg, { melee: true });
       if (b.atk.drain && dealt > 0) heal(e, Math.round(dealt * b.atk.drain), e);
       /* Truth Lens on a hand weapon: the blow carries into the next body in reach. */
       if (b.pierce > 0) {
@@ -1268,7 +1296,7 @@
       S.projectiles.push({
         x: e.x, y: e.y - 8, a: Math.atan2(t.y - e.y, t.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
         w: b.atk.w, vis: b.atk.vis, col: b.color, life: 2.0, pierce: b.pierce || 0, frame: 0,
-        direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5, doubleFirst: !!b.mods.firstDouble,
+        direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5,
         ignoreWall: !!b.ghost, drain: b.atk.drain || 0
       });
     }
@@ -1289,7 +1317,7 @@
       if (!p.ignoreWall && solidAt(S.lv, p.x, p.y)) done = true;
       if (p.lob) {
         if (dist2(p.x, p.y, p.tx, p.ty) < Math.max(14, p.spd * dt)) {
-          blast(p.x, p.y, p.radius, p.dmg, p.src, p.st, p.team);
+          blast(p.x, p.y, p.radius, p.dmg, p.src, p.st, p.team, false, false, !!p.opening);
           done = true;
         }
       } else {
@@ -1299,7 +1327,7 @@
           if (p.hit[h.uid]) return;
           p.hit[h.uid] = 1;
           const amount = p.direct != null ? p.direct : p.dmg;
-          const dealt = damage(p.src, h, amount, { ranged: true, doubleFirst: !!p.doubleFirst });
+          const dealt = damage(p.src, h, amount, { ranged: true, opening: !!p.opening });
           if (p.drain && dealt > 0 && p.src) heal(p.src, Math.round(dealt * p.drain), p.src);
           applySt(h, p.st, p.src);
           if (p.splashR) blast(p.x, p.y, p.splashR, amount * (p.splashMul || 0.5), p.src, null, p.team, true);
@@ -1313,15 +1341,31 @@
       }
     }
   }
-  function blast(x, y, radius, dmg, src, st, team, quiet, strips) {
+  function blast(x, y, radius, dmg, src, st, team, quiet, strips, opening) {
     if (!quiet) S.marks.push({ x: x, y: y, r: radius, life: 0.35, col: (src && src.b.color) || "#fbbf24", ring: true });
     all().forEach((o) => {
       if (o.dead) return;
       if (team != null && o.team === team) return;
       if (dist2(x, y, o.x, o.y) > radius) return;
-      if (dmg) damage(src, o, dmg, { ranged: true, strips: !!strips });
+      if (dmg) damage(src, o, dmg, { ranged: true, strips: !!strips, opening: !!opening });
       applySt(o, st, src);
     });
+  }
+  /* Burn and bleed are stated in health per second. A per-frame fraction rounds
+     away to zero, so the points bank on the body and land as whole hits. */
+  function soak(e, kind, dt) {
+    const T = kind + "T", D = kind + "Dps", B = kind + "Bank", F = kind + "From";
+    if (e[T] <= 0) return false;
+    e[T] -= dt;
+    e[B] = (e[B] || 0) + (e[D] || 0) * dt;
+    if (e[B] >= 1) {
+      const bite = Math.floor(e[B]);
+      e[B] -= bite;
+      damage(e[F] || null, e, bite, { dot: true, sure: true, noCrit: true, ignoreArmor: true });
+      if (e.dead) return true;
+    }
+    if (e[T] <= 0) { e[T] = 0; e[D] = 0; e[B] = 0; e[F] = null; }
+    return false;
   }
 
   /* -------------------------------------------------------------- the tick --- */
@@ -1372,8 +1416,8 @@
           }
         }
       }
-      if (e.burnT > 0) { e.burnT -= dt; damage(null, e, e.burnDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
-      if (e.bleedT > 0) { e.bleedT -= dt; damage(null, e, e.bleedDps * dt, { dot: true, sure: true, noCrit: true, ignoreArmor: true }); }
+      if (soak(e, "burn", dt)) return;
+      if (soak(e, "bleed", dt)) return;
       if (e.woundT > 0) e.woundT -= dt;
       if (S.sudden) {
         /* the arena closes for real: a share of maximum health per second, climbing, so no
@@ -1404,7 +1448,7 @@
       if (p.t > 0) continue;
       if (p.single) {
         if (!p.single.dead) damage(p.src, p.single, p.dmg, { ranged: true, dot: true });
-      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null, false, !!p.strips);
+      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null, false, !!p.strips, !!p.opening);
       S.pending.splice(i, 1);
     }
     S.texts.forEach((t) => { t.life -= dt; t.y -= 18 * dt; });

@@ -40,7 +40,7 @@ const R = win.LYGO_ARENA, E = win.ArenaEngine;
 
 function scrub(e) {
   ["stun", "root", "silence", "slowT", "slowV", "swiftT", "swiftV", "hasteT", "hasteV",
-    "rageT", "rageV", "weakT", "weakV", "burnT", "burnDps", "bleedT", "bleedDps",
+    "rageT", "rageV", "weakT", "weakV", "burnT", "burnDps", "burnBank", "bleedT", "bleedDps", "bleedBank",
     "regenT", "regenHps", "thornsT", "thornsV", "reflectT", "reflectV", "veilT", "veilV",
     "lifestealT", "lifestealV", "tauntT", "shieldWallT", "woundT", "woundV", "armorBuff", "armorBuffT", "shd"
   ].forEach((k) => { e[k] = 0; });
@@ -205,6 +205,98 @@ E.newMatch({ you: ["lyra"], foe: ["brute"] }, 1, 12);
   brute.max = 250000; brute.hp = brute.max;
   if (!E.forceCast(lyra, 0)) problems.push("cleanse setup: hymn refused");
   else if (brute.stun > 0 || !brute.usedCleanse) problems.push("Unwrite Ink did not shrug the first stun");
+}
+
+/* The sheet's own numbers: cooldown, mana, bleed, armor, the first move. */
+{
+  const vale = R.build(R.byId.vale, [], null, Math.random);
+  const kairos = R.build(R.byId.kairos, [], null, Math.random);
+  const orinB = R.build(R.byId.orin, [], null, Math.random);
+  if (Math.abs(vale.cdMul - 0.82) > 0.001) problems.push("Vale cooldown mul " + vale.cdMul + " (sheet is 0.82)");
+  if (kairos.cdMul !== 0.4) problems.push("Kairos cooldown mul " + kairos.cdMul + " (capped at 0.4)");
+  if (orinB.manaMax !== 180) problems.push("Orin mana max " + orinB.manaMax + " (150 and +20%)");
+  if (Math.abs(orinB.manaRegen - 19.2) > 0.05) problems.push("Orin mana regen " + orinB.manaRegen + " (12 and +60%)");
+}
+
+E.newMatch({ you: ["kael"], foe: ["brute"] }, 1, 31);
+{
+  const S = E.state(); S.phase = "live";
+  if (S.lv) S.lv.realm = "stone";
+  const kael = S.your[0], foe = S.foe[0];
+  foe.max = 250000; foe.hp = foe.max; foe.b.armor = 0; foe.armorBuff = 0; foe.shd = 0;
+  kael.b.crit = 0; kael.b.mods.execute = 0; kael.b.mods.fury = 0;
+  kael.x = 480; kael.y = 340; foe.x = 520; foe.y = 340;
+  if (!E.forceCast(kael, 0)) problems.push("Rend refused");
+  else {
+    const before = foe.taken;
+    freeze(S);
+    E.stepHeadless(2);
+    const bled = foe.taken - before;
+    if (bled < 12) problems.push("Rend bleed dealt " + bled + " over 2s (10 a second)");
+  }
+}
+
+E.newMatch({ you: ["vale"], foe: ["brute"] }, 1, 32);
+{
+  const S = E.state(); S.phase = "live";
+  if (S.lv) S.lv.realm = "stone";
+  const vale = S.your[0], brute = S.foe[0];
+  vale.b.armor = 40; vale.armorBuff = 0; vale.b.mods.bulwark = 0; vale.b.mods.veil = 0;
+  vale.hp = vale.max; vale.stun = 30; vale.mana = 0; vale.b.speed = 0;
+  brute.b.crit = 0; brute.b.mods.execute = 0; brute.b.mods.fury = 0; brute.b.dmg = 8; brute.b.speed = 0;
+  brute.x = 480; brute.y = 340; vale.x = 510; vale.y = 340;
+  brute.mana = 0; brute.cds = brute.b.moves.map(() => 30); brute.atkCd = 0; brute.stun = 0;
+  const hp0 = vale.hp;
+  E.stepHeadless(0.2);
+  if (vale.hp !== hp0 || vale.taken > 0) problems.push("armor 40 let a chip of " + vale.taken + " through");
+}
+
+E.newMatch({ you: ["sancora", "vale"], foe: ["brute"] }, 2, 33);
+{
+  const S = E.state(); S.phase = "live";
+  if (S.lv) S.lv.realm = "stone";
+  const sancora = S.your[0], vale = S.your[1], brute = S.foe[0];
+  vale.b.armor = 0; vale.armorBuff = 0; vale.b.mods.bulwark = 0; vale.b.mods.veil = 0;
+  brute.b.crit = 0; brute.b.mods.execute = 0; brute.b.mods.fury = 0; brute.b.dmg = 40; brute.b.speed = 0;
+  const place = () => {
+    brute.x = 480; brute.y = 340; vale.x = 510; vale.y = 340; sancora.x = 80; sancora.y = 80;
+    brute.mana = 0; brute.cds = brute.b.moves.map(() => 40); brute.atkCd = 0; brute.stun = 0;
+    vale.stun = 40; vale.mana = 0; vale.b.speed = 0; sancora.stun = 40;
+    vale.taken = 0; vale.hp = vale.max;
+  };
+  place();
+  E.stepHeadless(0.2);
+  const withAura = vale.taken;
+  sancora.dead = true; sancora.hp = 0;
+  place();
+  E.stepHeadless(0.2);
+  const without = vale.taken;
+  if (!(withAura + 1 < without)) problems.push("Sancora's armor aura did not cut the hit (" + withAura + " vs " + without + ")");
+}
+
+E.newMatch({ you: ["orin"], foe: ["brute"] }, 1, 34);
+{
+  const S = E.state(); S.phase = "live";
+  if (S.lv) S.lv.realm = "stone";
+  const orin = S.your[0], foe = S.foe[0];
+  foe.max = 250000; foe.hp = foe.max; foe.b.armor = 0; foe.armorBuff = 0; foe.shd = 0;
+  foe.b.mods.bulwark = 0; foe.b.mods.veil = 0; foe.b.mods.thorns = 0;
+  orin.b.crit = 0; orin.b.mods.execute = 0; orin.b.mods.fury = 0; orin.b.speed = 0;
+  orin.x = 400; orin.y = 340; foe.x = 500; foe.y = 340;
+  orin.mana = 0; orin.cds = orin.b.moves.map(() => 30); orin.atkCd = 0; orin.stun = 0; orin.silence = 0;
+  foe.stun = 40;
+  E.stepHeadless(0.7);
+  if (orin.firstUsed) problems.push("Orin's basic spent Named Pulse");
+  const land = () => {
+    foe.taken = 0; foe.hp = foe.max; foe.shd = 0; foe.stun = 40; foe.b.armor = 0;
+    if (!E.forceCast(orin, 0)) { problems.push("Unwrite refused"); return 0; }
+    orin.silence = 30; orin.atkCd = 30;
+    E.stepHeadless(0.5);
+    return foe.taken;
+  };
+  const first = land();
+  const second = land();
+  if (!(first > second * 1.85 && first < second * 2.15)) problems.push("Named Pulse " + first + " then " + second);
 }
 
 if (problems.length) {
