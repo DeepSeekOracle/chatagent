@@ -841,6 +841,8 @@
   function paintHud() {
     const S = E.state();
     if (!S.your.length) return;
+    /* Rows are built at the bell. A summon, and only a summon, changes the length. */
+    if (rows.you.length !== S.your.length || rows.foe.length !== S.foe.length) buildRows();
     ["you", "foe"].forEach((side) => {
       rows[side].forEach((r) => {
         const e = r.e;
@@ -859,7 +861,9 @@
           if (!c) return;
           const ready = e.cds[i] <= 0 && e.mana >= E.moveCost(m);
           c.className = "cd" + (ready ? " ready" : " cool") + (e.dead ? " off" : "");
-          if (!ready && !e.dead) c.style.setProperty("--p", (1 - Math.min(1, e.cds[i] / (m.cd * e.b.cdMul))) * 100 + "%");
+          /* Close and Slip store a flat 30s. cdMul is for the rest of the kit. */
+          const span = m.shape === "stride" ? m.cd : m.cd * (e.b.cdMul || 1);
+          if (!ready && !e.dead && span > 0) c.style.setProperty("--p", (1 - Math.min(1, e.cds[i] / span)) * 100 + "%");
         });
       });
     });

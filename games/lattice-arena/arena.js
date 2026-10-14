@@ -1027,18 +1027,23 @@
       }
       case "summon": {
         const tk = R.TOKENS[mv.token];
-        const tpl = { id: mv.token + "_" + (++caster.tokens), name: tk.name, tag: "Summoned", cls: "token", spr: tk.spr,
-          hp: tk.hp, dmg: tk.dmg, rate: tk.rate, speed: tk.speed, armor: tk.armor, range: tk.range, mana: 30, manaRegen: 4, crit: 0.1, cdMul: 1,
-          atk: { name: "Warden Bolt", type: "bolt", w: tk.w }, moves: [], cards: [], bio: "", counter: "", ttl: tk.ttl };
-        R.byId[tpl.id] = tpl;
-        const built = R.build(tpl, [], null, Math.random);
-        built.power = 0;
-        for (let i = 0; i < (mv.n || 1); i++) {
-          const e2 = mkEntity(built, caster.team, caster.x / TILE + (i ? 0.9 : -0.9), caster.y / TILE + 0.4, true);
-          e2.b = built;
-          (caster.team === 0 ? S.your : S.foe).push(e2);
+        const n = mv.n || 1;
+        const side = caster.team === 0 ? S.your : S.foe;
+        /* Each warden is its own body. One shared template made both doors the same
+           person: one id, one sheet, and a hit or a line about either of them. */
+        for (let i = 0; i < n; i++) {
+          const tpl = { id: mv.token + "_" + (++caster.tokens), name: tk.name, tag: "Summoned", cls: "token", spr: tk.spr,
+            hp: tk.hp, dmg: tk.dmg, rate: tk.rate, speed: tk.speed, armor: tk.armor, range: tk.range, mana: 30, manaRegen: 4, crit: 0.1, cdMul: 1,
+            atk: { name: "Warden Bolt", type: "bolt", w: tk.w }, moves: [], cards: [], bio: "", counter: "", ttl: tk.ttl };
+          R.byId[tpl.id] = tpl;
+          const built = R.build(tpl, [], null, Math.random);
+          built.power = 0;
+          const tx = Math.round(caster.x / TILE + (i ? 0.9 : -0.9));
+          const ty = Math.round(caster.y / TILE + 0.4);
+          const spot = openTile(tx, ty);
+          side.push(mkEntity(built, caster.team, spot.x, spot.y, true));
         }
-        pushEvent(caster.b.name + " calls " + (mv.n || 1) + " " + tk.name.toLowerCase() + " into the arena.", "summon");
+        pushEvent(caster.b.name + " calls " + n + " " + tk.name.toLowerCase() + " into the arena.", "summon");
         break;
       }
       default: return false;
@@ -2293,8 +2298,18 @@
     S.talkT = 9;
   }
 
+  /* Summon sheets are match-local. A long show would otherwise keep every warden
+     the doors have ever called. */
+  function dropSummoned() {
+    const book = R.byId;
+    Object.keys(book).forEach((id) => {
+      if (book[id] && book[id].cls === "token") delete book[id];
+    });
+  }
+
   function newMatch(ids, mode, seed, meta) {
     meta = meta || {};
+    dropSummoned();
     S.mode = mode;
     S.lv = buildMap(seed == null ? rnd(9999) : seed);
     fieldCache.clear();

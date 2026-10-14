@@ -354,6 +354,24 @@
       ctx.fillRect(14, -18, 2, 14);
     }
     else if (v === "blast") rings(ctx, p, 2);
+    else if (v === "shard") {
+      ctx.beginPath();
+      ctx.moveTo(4, 0); ctx.lineTo(20 + p * 12, -5); ctx.lineTo(14, 0); ctx.lineTo(20 + p * 12, 5); ctx.closePath();
+      ctx.fill();
+    }
+    else if (v === "sigil") {
+      ctx.strokeRect(-7, -7, 14, 14);
+      ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(7, 0); ctx.moveTo(0, -7); ctx.lineTo(0, 7); ctx.stroke();
+    }
+    else if (v === "charge") {
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(16 + p * 30, 0); ctx.stroke();
+    }
+    /* A gun's basic already flies as a shot. The flourish at the hand was a sword arc. */
+    else if (v === "arrow" || v === "needle" || v === "hour" || v === "wisp" || v === "forge" || v === "lock") {
+      ctx.globalAlpha *= 0.8;
+      ctx.beginPath(); ctx.arc(8 + p * 6, 0, 3.5 + p * 2.5, 0, 6.2832); ctx.stroke();
+    }
     else arc(ctx, p, 0.9);
     ctx.restore();
   }
