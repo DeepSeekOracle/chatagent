@@ -1669,28 +1669,19 @@
     ["watch", "cheer", "jump"].forEach((k) => {
       const img = new Image();
       img.onload = () => { CROWD[k] = img; };
-      img.src = "./assets/crowd/" + k + ".jpg";
+      img.src = "./assets/crowd/" + k + ".jpg?v=2";
     });
   }
-  function blitCrowd(img, bk, alpha, bob, fx) {
+  /* One bowl, cover-scaled to the whole canvas. The sand is a hole, so the corners are crowd. */
+  function paintBowl(img, alpha, bob, wpx, hpx) {
     if (!img || !img.width || alpha < 0.04) return;
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(bk.x, bk.y, bk.w, bk.h);
-    ctx.clip();
     ctx.globalAlpha = alpha;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    const wide = bk.w >= bk.h;
-    const lift = Math.max(0, bob);
-    /* Wide banks zoom in so the top and bottom stands are different parts of the same house, not one photo stamped twice. */
-    const zoom = wide ? 1.4 : 1;
-    const sc = Math.max(bk.w / img.width, (bk.h + lift) / img.height) * zoom;
+    const sc = Math.max(wpx / img.width, hpx / img.height) * 1.08;
     const dw = img.width * sc, dh = img.height * sc;
-    const focusY = wide ? 0.54 : 0.48;
-    const x = bk.x + bk.w * 0.5 - dw * fx;
-    const y = bk.y + bk.h * 0.5 - dh * focusY - bob;
-    ctx.drawImage(img, x, y, dw, dh);
+    ctx.drawImage(img, (wpx - dw) / 2, (hpx - dh) / 2 - bob, dw, dh);
     ctx.restore();
   }
   function houseMood() {
@@ -1705,40 +1696,24 @@
   }
   function drawHouse(wpx, hpx, ox, oy, scale) {
     const mapW = S.lv.W * TILE * scale, mapH = S.lv.H * TILE * scale;
-    const banks = [
-      { x: ox, y: 0, w: mapW, h: oy },
-      { x: ox, y: oy + mapH, w: mapW, h: Math.max(0, hpx - oy - mapH) },
-      { x: 0, y: oy, w: ox, h: mapH },
-      { x: ox + mapW, y: oy, w: Math.max(0, wpx - ox - mapW), h: mapH }
-    ];
     const mood = houseMood();
     const clock = S.phase === "count" ? (INTRO_S - S.countdown) : (S.time + INTRO_S);
     const mid = mood < 0.42 ? mood / 0.42 : (mood - 0.42) / 0.58;
     const lo = mood < 0.42 ? CROWD.watch : CROWD.cheer;
     const hi = mood < 0.42 ? CROWD.cheer : CROWD.jump;
-    const focusX = [0.34, 0.7, 0.18, 0.84];
+    const hop = Math.sin(clock * (mood > 0.72 ? 6.2 : 1.3)) * (mood > 0.72 ? 7 : 1.2);
     ctx.save();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#14110e";
-    ctx.fillRect(0, 0, ox, oy);
-    ctx.fillRect(ox + mapW, 0, Math.max(0, wpx - ox - mapW), oy);
-    ctx.fillRect(0, oy + mapH, ox, Math.max(0, hpx - oy - mapH));
-    ctx.fillRect(ox + mapW, oy + mapH, Math.max(0, wpx - ox - mapW), Math.max(0, hpx - oy - mapH));
-    banks.forEach((bk, bi) => {
-      if (bk.w < 8 || bk.h < 8) return;
-      const amp = mood > 0.72 ? 11 : 1.3;
-      const hop = Math.sin(clock * (mood > 0.72 ? 6.5 : 1.4) + bi * 0.85) * amp;
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#1c1410";
-      ctx.fillRect(bk.x, bk.y, bk.w, bk.h);
-      blitCrowd(lo, bk, 1, hop, focusX[bi]);
-      blitCrowd(hi, bk, mid, hop, focusX[bi]);
-      ctx.fillStyle = "#78716c";
-      if (bi === 0) ctx.fillRect(bk.x, bk.y + bk.h - 4, bk.w, 4);
-      else if (bi === 1) ctx.fillRect(bk.x, bk.y, bk.w, 4);
-      else if (bi === 2) ctx.fillRect(bk.x + bk.w - 4, bk.y, 4, bk.h);
-      else ctx.fillRect(bk.x, bk.y, 4, bk.h);
-    });
+    ctx.beginPath();
+    ctx.rect(0, 0, wpx, hpx);
+    ctx.rect(ox, oy, mapW, mapH);
+    ctx.clip("evenodd");
+    paintBowl(lo, 1, hop, wpx, hpx);
+    paintBowl(hi, mid, hop, wpx, hpx);
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = "#78716c";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(ox + 2, oy + 2, Math.max(0, mapW - 4), Math.max(0, mapH - 4));
     ctx.restore();
   }
 
