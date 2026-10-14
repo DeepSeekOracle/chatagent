@@ -602,6 +602,7 @@
       "<li>Challengers are drawn from the full roster, so you never know what walks in.</li>" +
       "<li>The word on each health bar is what that body has decided to do about the fight: <b>press</b> to close, <b>hold</b> the ground it has, <b>overwatch</b> from cover, <b>choke</b> a doorway, <b>flank</b> the long way round, <b>screen</b> an ally, <b>bait</b> and step off, <b>aid</b> the wounded, <b>rally</b> the line, <b>withdraw</b> when it is losing, <b>repair</b> itself out of a corner. The map is three zones on whatever arena loaded: their own starting side is defensive, the centre is the fight, and the far side is offensive. Bodies stay off the walls.</li>" +
       "<li>Every ring has a law, named before the fight. Stone takes no side. Frost shortens every stride. Ember burns the centre. Gold sparks the killer. Lattice hurries cooldowns. Void leaves a slow pocket where a body falls. Tide shoves the floor. Root feeds whoever is still standing.</li>" +
+      "<li>Sudden death starts at three minutes. It does not drain health. Every hit lands 25% harder, then another 25% each minute, until hits are doubled. At ten minutes, if both sides are still up, the map is a draw.</li>" +
       "<li>Gauntlet keeps this team and draws a new ring after each win. The streak stays on this browser. Each fight still posts as a normal hall line.</li>" +
       "<li>Options has the announcer and the fight sounds, each with its own switch and volume. <b>M</b> mutes the fight sounds only. The radio is separate.</li>" +
       "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
@@ -834,7 +835,11 @@
         });
       });
     });
-    $("arenaClock").textContent = clockOf(S.time);
+    const clock = $("arenaClock");
+    const dmgMul = E.suddenMul ? E.suddenMul(S.time) : 1;
+    const hot = S.phase === "live" && dmgMul > 1;
+    clock.textContent = clockOf(S.time) + (hot ? " +" + Math.round((dmgMul - 1) * 100) + "%" : "");
+    clock.classList.toggle("hot", hot);
     $("youTag").textContent = alive(0) + " standing";
     $("foeTag").textContent = alive(1) + " standing";
     const cd = $("announce");

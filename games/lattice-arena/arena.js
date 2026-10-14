@@ -32,8 +32,15 @@
   }
   const MAP_W = 34, MAP_H = 22;
   const STEP = 1 / 60;
-  const SUDDEN = 80;           // seconds before the arena starts closing
-  const HARD_STOP = 200;
+  const SUDDEN = 180;          // sudden death: damage starts climbing at three minutes
+  const HARD_STOP = 600;       // ten minutes, then the map is a draw
+  const SUDDEN_STEPS = 4;      // +25% each minute, four steps, cap +100% (double)
+  /* A pure function of the clock. 1 before 3:00, then 1.25, 1.50, 1.75, and 2.00 from 6:00. */
+  function suddenScale(t) {
+    if (t < SUDDEN) return 1;
+    const mins = Math.floor((t - SUDDEN) / 60) + 1;
+    return 1 + Math.min(SUDDEN_STEPS, mins) * 0.25;
+  }
 
   const $ = (id) => document.getElementById(id);
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -556,6 +563,9 @@
     const exec = (src && src.b.mods.execute) || (opts.execute ? 0.7 : 0);
     if (exec && tgt.hp / tgt.max < 0.32) dmg *= 1 + exec;
     if (tgt.b.mods.bulwark && tgt.hp / tgt.max > 0.6) dmg *= 1 - tgt.b.mods.bulwark;
+    /* Sudden death raises the blow, then armor still cuts it. Heals never come through
+       here. A reflected share is already taken from a risen hit, so it is not risen again. */
+    if (!opts.reflect) dmg *= suddenScale(S.time);
     /* Armor is a flat cut, including a living ally's aura. A hit the plate fully stops
        deals nothing — the old floor of 3 made the printed armor a lie. */
     if (!opts.ignoreArmor) {
@@ -1395,10 +1405,20 @@
     S.time += dt;
     /* the team call is made on the squad's own clock, before anybody moves */
     if (w.LYGO_BRAIN) w.LYGO_BRAIN.tick(S, dt);
-    if (!S.sudden && S.time > SUDDEN) {
-      S.sudden = true;
-      pushEvent("The arena begins to close — every body starts losing the floor.", "warn");
-      pushCast("sudden", {});
+    const dmgMul = suddenScale(S.time);
+    if (dmgMul > 1) {
+      const tier = Math.round((dmgMul - 1) / 0.25);
+      if (!S.sudden) {
+        S.sudden = true;
+        S.suddenTier = tier;
+        pushEvent("Sudden death. Hits land 25% harder, and they climb each minute.", "warn");
+        pushCast("sudden", {});
+      } else if (tier > (S.suddenTier || 1)) {
+        S.suddenTier = tier;
+        pushEvent(tier >= SUDDEN_STEPS
+          ? "Sudden death peaks. Every hit lands at double."
+          : "Sudden death climbs. Hits land " + (tier * 25) + "% harder.", "warn");
+      }
     }
     /* one line about the ring, once the bell's quiet is over and the fight is real */
     if (!S.lawSaid && S.time > 6.5 && !S.over) {
@@ -1450,12 +1470,6 @@
       if (soak(e, "burn", dt)) return;
       if (soak(e, "bleed", dt)) return;
       if (e.woundT > 0) e.woundT -= dt;
-      if (S.sudden) {
-        /* the arena closes for real: a share of maximum health per second, climbing, so no
-           two healers can out-sustain the floor and leave a match unresolved. */
-        const bite = e.max * (0.045 + Math.max(0, S.time - SUDDEN) * 0.0018) * dt;
-        e.hp -= bite;
-      }
       if (e.hp <= 0 && !e.dead) { die(e, null); return; }
       if (e.shd < 0) e.shd = 0;
       /* the last-stand card */
@@ -1532,10 +1546,10 @@
         });
       }
     }
-    if (!S.over && S.time > HARD_STOP) {
-      const a = live(0).reduce((s, e) => s + e.hp, 0), b2 = live(1).reduce((s, e) => s + e.hp, 0);
-      S.over = true; S.phase = "over"; S.winner = a >= b2 ? 0 : 1;
-      pushEvent("The clock runs out — the arena calls it on health remaining.", "over");
+    if (!S.over && S.time >= HARD_STOP) {
+      S.over = true; S.phase = "over"; S.winner = -1;
+      pushEvent("Ten minutes. Neither side fell. The map is a draw.", "over");
+      pushCast("draw", {});
     }
   }
 
@@ -1969,14 +1983,14 @@
       ctx.fillStyle = t.col; ctx.fillText(t.t, t.x, t.y);
       ctx.restore();
     });
-    /* the closing arena */
+    /* A thin warning while hits are risen. The sand does not shrink. */
     if (S.sudden) {
-      const k = clamp((S.time - SUDDEN) / 60, 0, 1);
+      const k = clamp(suddenScale(S.time) - 1, 0, 1);
       ctx.save();
-      ctx.strokeStyle = "rgba(248,113,113," + (0.25 + k * 0.5) + ")";
-      ctx.lineWidth = 10 + k * 30;
-      ctx.setLineDash([18, 14]);
-      ctx.strokeRect(0, 0, S.lv.W * TILE, S.lv.H * TILE);
+      ctx.strokeStyle = "rgba(248,113,113," + (0.28 + k * 0.45) + ")";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]);
+      ctx.strokeRect(6, 6, S.lv.W * TILE - 12, S.lv.H * TILE - 12);
       ctx.restore();
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2066,7 +2080,7 @@
     S.foe = mkTeam(ids.foe, 1);
     S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
     S.bubbles = []; S.talk = [];
-    S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
+    S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.suddenTier = 0; S.events = []; S.paused = false;
     S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";
     S.cam = null;
@@ -2127,6 +2141,7 @@
     iconFor: iconFor,
     assets: () => AT,
     state: () => S,
+    suddenMul: (t) => suddenScale(t == null ? S.time : t),
     statusList: statusList,
     moveCost: moveCost,
     lawFor: lawForSeed,

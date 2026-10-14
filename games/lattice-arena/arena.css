@@ -100,6 +100,7 @@ h1, h2, h3, .brand, .kicker, .btn { font-family: Syne, sans-serif; }
 .meters .mo { background: linear-gradient(90deg, #34d399, #5eead4); width: 50%; }
 .meters .mf { background: linear-gradient(90deg, #fb923c, #f87171); width: 50%; margin-left: auto; }
 .meters span { font-family: "IBM Plex Mono", monospace; font-size: .74rem; color: var(--text); flex: 0 0 auto; }
+.meters span.hot { color: #fca5a5; }
 .feed { position: absolute; left: 10px; bottom: 10px; width: min(330px, 56%); max-height: 40%;
   overflow: hidden; display: flex; flex-direction: column; gap: .18rem; pointer-events: none; }
 .feed p { margin: 0; font-size: .76rem; line-height: 1.25; color: var(--text);

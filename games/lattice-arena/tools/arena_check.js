@@ -180,6 +180,28 @@ const lawNames = [];
 for (let i = 0; i < 8; i++) lawNames.push(E.lawFor(i).name);
 must("each ring seed names a law", new Set(lawNames).size === 8, lawNames.join(", "));
 
+/* --- 2b. sudden death is a damage rise, then a draw at ten minutes ------- */
+must("damage is flat before three minutes", E.suddenMul(0) === 1 && E.suddenMul(179.9) === 1, E.suddenMul(179.9));
+must("sudden death adds 25% a minute and caps at double",
+  E.suddenMul(180) === 1.25 && E.suddenMul(240) === 1.5 && E.suddenMul(300) === 1.75 && E.suddenMul(360) === 2 && E.suddenMul(599) === 2,
+  [180, 240, 300, 360, 599].map((t) => E.suddenMul(t)).join(","));
+E.newMatch({ you: ["kael"], foe: ["wraith"] }, 1, 3);
+{
+  const S = E.state();
+  S.phase = "live";
+  S.time = 200;
+  S.your.concat(S.foe).forEach((e) => { e.stun = 8; e.hp = e.max; });
+  const before = S.your[0].hp;
+  E.stepHeadless(1);
+  must("sudden death does not drain health", S.your[0].hp >= before - 0.5, before + " -> " + S.your[0].hp);
+  const lied = S.events.some((ev) => /losing the floor|health remaining|ring is closing/i.test(ev.text));
+  must("the booth does not call a closing floor", !lied);
+  S.time = 599.95;
+  S.over = false; S.winner = null; S.phase = "live";
+  E.stepHeadless(0.1);
+  must("ten minutes is a draw", S.over && S.winner === -1, "winner=" + S.winner + " t=" + S.time.toFixed(2));
+}
+
 /* --- 3. battles ----------------------------------------------------------- */
 const MODES = [1, 2, 3, 5];
 const tally = {};         // fighterId -> {wins, losses, dmg, kills, uses}
@@ -188,7 +210,7 @@ built.forEach((b) => b.moves.forEach((m) => { moveUse[m.name] = 0; }));
 const modeStats = {};
 R.ROSTER.forEach((f) => { tally[f.id] = { wins: 0, losses: 0, dmg: 0, kills: 0, uses: 0, matches: 0 }; });
 
-let noWinner = 0, nan = 0, stuck = 0, zeroMoves = 0, zeroDmg = 0, slow = 0;
+let noWinner = 0, stillLive = 0, nan = 0, stuck = 0, zeroMoves = 0, zeroDmg = 0, slow = 0;
 const durations = {};
 for (let m = 0; m < MATCHES; m++) {
   const n = MODES[m % MODES.length];
@@ -200,7 +222,14 @@ for (let m = 0; m < MATCHES; m++) {
   const ms = Date.now() - t0;
   if (ms > 1500) slow++;
   (durations[n] = durations[n] || []).push(S.time);
-  if (!S.over || S.winner == null || S.winner < 0) noWinner++;
+  /* A draw is ten minutes. The harness stops at 200s, so a map still being fought
+     there is a long match, not a broken one and not a draw. */
+  if (S.winner < 0) noWinner++;
+  else if (!S.over || S.winner == null) {
+    const bothUp = S.your.some((e) => !e.dead) && S.foe.some((e) => !e.dead);
+    if (bothUp && S.time >= 199) stillLive++;
+    else noWinner++;
+  }
   /* every value the renderer touches must be finite */
   S.your.concat(S.foe).forEach((e) => {
     if (![e.x, e.y, e.hp, e.max, e.mana, e.shd, e.armorBuff, e.atkCd, e.aimA, e.walk].every(Number.isFinite)) nan++;
@@ -223,13 +252,13 @@ for (let m = 0; m < MATCHES; m++) {
     const t = tally[e.b.id];
     if (!t) return;
     t.matches++;
-    if (e.team === S.winner) t.wins++; else t.losses++;
+    if (S.winner === 0 || S.winner === 1) { if (e.team === S.winner) t.wins++; else t.losses++; }
     t.dmg += e.dmgDone; t.kills += e.kills;
     t.uses += Object.values(e.uses).reduce((a, b) => a + b, 0);
     Object.keys(e.uses).forEach((mn) => { moveUse[mn] = (moveUse[mn] || 0) + e.uses[mn]; });
   });
 }
-must("every battle ends with a winner", noWinner === 0, "unfinished=" + noWinner + "/" + MATCHES);
+must("every battle ends with a winner or is still live at the sim cap", noWinner === 0, "unfinished=" + noWinner + " still-live=" + stillLive + "/" + MATCHES);
 must("no NaN in any live body", nan === 0, "bad=" + nan);
 must("nobody leaves the arena", stuck === 0, "out of bounds=" + stuck);
 must("both sides actually use their moves", zeroMoves === 0 && zeroDmg === 0, "no-move=" + zeroMoves + " no-damage=" + zeroDmg);

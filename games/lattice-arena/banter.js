@@ -670,12 +670,12 @@
       "{ring}. {note}",
       "Remember where you are standing. {note}"
     ],
-    /* the closing floor, once, when the clock says the healers cannot stall it */
+    /* three minutes: hits get heavier. The floor does not close and nobody loses health to the clock. */
     sudden: [
-      "Sudden death! The ring is closing on everybody still standing!",
-      "The floor turns! Sudden death — nobody out-heals this!",
-      "Sudden death! The arena starts taking the rest of them!",
-      "Time! The ring closes. Finish it, or the floor will!"
+      "Sudden death! From here, every hit lands harder!",
+      "Three minutes! Sudden death — the damage climbs every minute!",
+      "Sudden death! The blows get heavier. Finish it!",
+      "Time! Hits are up, and they keep climbing until somebody drops!"
     ],
     /* a killing blow that did not stay a killing blow */
     recall: [
