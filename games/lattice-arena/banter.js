@@ -614,6 +614,36 @@
       "It is done! {team}, {score}, and the arena has a name on it!",
       "Close the book! {team} win the match {score}!"
     ],
+    /* Battle TV. Short on the open, because the fifteen-second programme does not stretch.
+       The reign lines play on the bumper, between cards, while the next team is walking in. */
+    introShow: [
+      "Battle TV is live. {card}.",
+      "Welcome back to Battle TV. {card}.",
+      "This is the show. {card}. The winner stays.",
+      "Battle TV. {card}. {streak}.",
+      "Live card. {card}. The title: {streak}.",
+      "The show rolls on. {card}. Winner stays, loser leaves."
+    ],
+    tvKeep: [
+      "Still the team to beat. {n} straight. Next card is {card}.",
+      "The champions hold. That is {n}. We go to {card}.",
+      "No new champions. {n} in a row. {card} is next.",
+      "They keep the title. {n} on this run. Next up, {card}.",
+      "The counter stays with {champ}. {n} straight. {card} next."
+    ],
+    tvCrown: [
+      "New champions. {champ} take the show. Next card, {card}.",
+      "The title changes hands. {champ}. We go to {card}.",
+      "Down go the old names. {champ} are the team to beat. {card} next.",
+      "Write it down. {champ} own the show. The card turns to {card}.",
+      "A new team to beat. {champ}. {card} is the next format."
+    ],
+    tvDraw: [
+      "No decision. The champions stay on. Fresh challengers.",
+      "A draw. Nobody is defeated, so nobody leaves the title.",
+      "The book calls it even. The show does not stop.",
+      "Neither side falls. Same champions. New names in the other corner."
+    ],
     ace: [
       "{me} is the last one standing! Can they close it out?",
       "It is {me} against all of them — and {me} is smiling!",

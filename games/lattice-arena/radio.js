@@ -109,14 +109,21 @@
       a.volume = st.vol;
     }
   }
-  function setVol(n) {
+  function setVol(n, hold) {
     st.vol = Math.max(0, Math.min(1, +n || 0));
     if (st.vol > 0 && st.muted) {
       st.muted = false;
       const a = el();
       if (a) a.muted = false;
     }
-    saveRadio();
+    if (!hold) saveRadio();
+    paint();
+  }
+  function setMuted(on, hold) {
+    st.muted = !!on;
+    const a = el();
+    if (a) a.muted = st.muted;
+    if (!hold) saveRadio();
     paint();
   }
   function bindVol(node) {
@@ -214,6 +221,7 @@
     pause: pauseKeep,
     playing: function () { return st.playing; },
     setVol: setVol,
+    setMuted: setMuted,
     vol: function () { return st.vol; },
     bindVol: bindVol,
     muted: function () { return st.muted; }

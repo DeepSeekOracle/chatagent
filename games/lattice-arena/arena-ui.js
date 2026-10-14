@@ -15,8 +15,13 @@
     (() => { try { return JSON.parse(localStorage.getItem(SAVE) || "{}"); } catch (e) { return {}; } })()
   );
   function save() {
-    persist.team = your.slice();
-    try { localStorage.setItem(SAVE, JSON.stringify(persist)); } catch (e) {}
+    if (!(battleTv && showHold)) persist.team = your.slice();
+    const blob = Object.assign({}, persist);
+    if (battleTv && showHold) {
+      blob.team = showHold.team.slice();
+      blob.mode = showHold.mode;
+    }
+    try { localStorage.setItem(SAVE, JSON.stringify(blob)); } catch (e) {}
   }
 
   let your = (persist.team || []).filter((id) => R.byId[id]).slice(0, 5);
@@ -31,6 +36,13 @@
   let hallRows = [];
   let gauntlet = false;
   let streak = 0;
+  let battleTv = false;
+  let showHold = null;
+  let tvCore = null;
+  let tvTimer = 0;
+  let radioHold = null;
+  let tvPostN = 0;
+  const TV_WHEEL = [1, 2, 3, 5];
   let feedLog = 0, shownAir = null;
 
   /* --------------------------------------------------------------- voices ---
@@ -400,6 +412,15 @@
     let html = "";
     if (pub.length) html += pub.slice(0, 12).map((r) => recordLine(r, false)).join("");
     else html += "<p class='muted'>The public hall is empty. A named finish is the first line.</p>";
+    if (persist.tvBest && persist.tvBest.wins) {
+      html += recordLine({
+        name: "Battle TV",
+        wins: persist.tvBest.wins,
+        losses: 0,
+        mode: "record",
+        team: persist.tvBest.team || ""
+      }, true);
+    }
     if (mine.length) {
       html += "<p class='kicker' style='margin-top:.8rem'>This browser</p>";
       html += mine.slice(0, 8).map((r) => recordLine(r, true)).join("");
@@ -524,6 +545,7 @@
         "<label class='name-block'>Your name<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'></label>" +
         "<div class='menu-actions'>" +
           "<button type='button' class='btn gold' id='btnFight' data-ready='" + (ready ? "1" : "0") + "'><b>Fight</b><span>" + (hold ? esc(hold) : MODE_LABEL[persist.mode] + " · " + esc(names)) + "</span></button>" +
+          "<button type='button' class='btn tv' id='btnBattleTv'><b>BATTLE TV</b><span>One click. Endless card. The winner stays. Best reign " + ((persist.tvBest && persist.tvBest.wins) || 0) + ".</span></button>" +
           "<button type='button' class='btn' id='btnGauntlet'><b>Gauntlet</b><span>Same team. A new ring after every win. Best streak " + (persist.bestStreak || 0) + ".</span></button>" +
           "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
           "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Announcer, fight sounds, and the radio</span></button>" +
@@ -532,7 +554,8 @@
         "</div>" +
         "<p class='tally'><b>This lineup</b> <span class='wins'>" + (line.wins || 0) + "W</span> / <span class='losses'>" + (line.losses || 0) + "L</span>" +
           " · <b>This browser</b> <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
-          " · <b>Best gauntlet</b> " + (persist.bestStreak || 0) + "</p>" +
+          " · <b>Best gauntlet</b> " + (persist.bestStreak || 0) +
+          " · <b>Battle TV</b> " + ((persist.tvBest && persist.tvBest.wins) || 0) + "</p>" +
         (ready ? "" : "<p class='muted'>" + (your.length < persist.mode ? "Team select still needs " + (persist.mode - your.length) + " more." : "Put your name in. The hall keeps it with this team.") + "</p>") +
         "<div class='donate-row'>" +
           "<a class='donate-paypal' href='https://www.paypal.com/paypalme/ExcavationPro' target='_blank' rel='noopener'>PayPal.me/ExcavationPro</a>" +
@@ -605,6 +628,7 @@
       "<li>Every ring has a law, named before the fight. Stone takes no side. Frost shortens every stride. Ember burns the centre. Gold sparks the killer. Lattice hurries cooldowns. Void leaves a slow pocket where a body falls. Tide shoves the floor. Root feeds whoever is still standing.</li>" +
       "<li>Sudden death starts at three minutes. It does not drain health. Every hit lands 25% harder, then another 25% each minute, until hits are doubled. At ten minutes, if both sides are still up, the map is a draw.</li>" +
       "<li>Gauntlet keeps this team and draws a new ring after each win. The streak stays on this browser. Each fight still posts as a normal hall line.</li>" +
+      "<li>Battle TV is one click and it does not ask for a team. The card is random, best of three, and the format turns from one-on-one to pairs to three to five. The winner stays. The loser is replaced. The counter on the screen is this reign, and it starts over when a new team takes the title. The best reign is posted to the live hall under the name Battle TV. Leave the show from the menu, or with Escape. The radio comes up under the fights and the mute on the dock turns it off.</li>" +
       "<li>Options has the announcer and the fight sounds, each with its own switch and volume. <b>M</b> mutes the fight sounds only. The radio is separate.</li>" +
       "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
       "</ol></div>";
@@ -774,7 +798,10 @@
   /* --------------------------------------------------------------- battle --- */
   function teamPanel(team) {
     const box = $("team" + (team === 0 ? "You" : "Foe"));
-    box.innerHTML = "<div class='theading'><h3>" + (team === 0 ? "Your team" : "Challengers") +
+    const head = battleTv
+      ? (team === 0 ? (streak > 0 ? "Defending" : "This side") : "Challengers")
+      : (team === 0 ? "Your team" : "Challengers");
+    box.innerHTML = "<div class='theading'><h3>" + head +
       "</h3><span class='tag' id='" + (team === 0 ? "youTag" : "foeTag") + "'></span></div>" +
       "<div class='trows' id='" + (team === 0 ? "youRows" : "foeRows") + "'></div>";
   }
@@ -884,7 +911,9 @@
       const law = E.law();
       note.textContent = (S.lv && S.lv.kind ? S.lv.kind + " · " : "") + (law ? law.line : "") +
         (series && !series.over ? " · " + seriesTag() : "") +
+        (battleTv ? " · Battle TV " + (streak > 0 ? streak + " straight" : "no champion yet") : "") +
         (gauntlet ? " · Gauntlet streak " + streak : "");
+    paintTvBug();
     }
     if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }
@@ -955,18 +984,23 @@
     lastBell = 0;
     const ib = $("intro");
     if (ib) { ib.dataset.filled = ""; ib.classList.remove("show"); }
+    const mapNo = series ? series.played + 1 : 1;
     E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode, nextSeed,
-      { map: series ? series.played + 1 : 1, me: persist.name || "",
-        score: series && series.played ? scoreLine() : "" });
+      { map: mapNo, me: battleTv ? (streak > 0 ? "the champions" : "this side") : (persist.name || ""),
+        score: series && series.played ? scoreLine() : "",
+        tv: battleTv ? { card: MODE_LABEL[persist.mode], streak: streak } : null });
+    paintShowTags();
     buildRows();
     feedLen = 0;
     lastCount = "";
     fought = false;
     gateHold(true);
     const lawNow = E.law();
-    $("matchPill").textContent = (gauntlet ? "Gauntlet " + streak + " · " : "") +
+    $("matchPill").textContent = (battleTv ? "BATTLE TV · " + (streak > 0 ? streak + " · " : "") : "") +
+      (gauntlet ? "Gauntlet " + streak + " · " : "") +
       (series ? seriesTag() + " · " : "") +
       MODE_LABEL[persist.mode] + (lawNow ? " · " + lawNow.name : "");
+    paintTvBug();
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
     syncMenuSong();
   }
@@ -980,6 +1014,10 @@
   }
   function scoreLine() {
     if (!series || !series.played) return "";
+    if (battleTv) {
+      const home = streak > 0 ? "Champions" : "This side";
+      return home + " " + series.you + " \u2013 " + series.foe + " Challengers";
+    }
     return "You " + series.you + " \u2013 " + series.foe + " Them";
   }
   function statRows(all) {
@@ -1024,16 +1062,24 @@
     series.log.push({ map: series.played, won: won, time: S.time, falls: S.events.filter((e) => e.kind === "kill").length });
     const sWon = series.you > series.foe ? 0 : series.foe > series.you ? 1 : -1;
     const over = series.over;
-    /* the caster calls the map that just ended, and the match when it is decided */
-    if (w.LYGO_BANTER && DIR) {
+    /* the caster calls the map that just ended, and the match when it is decided.
+       On Battle TV the match call is the show line from settleShow. A second matchEnd
+       holds the booth long enough that the reign line goes stale and is never said. */
+    if (w.LYGO_BANTER && DIR && !(battleTv && over)) {
       DIR.push({ caster: true, kind: over ? "matchEnd" : "mapEnd",
         text: w.LYGO_BANTER.cast(over ? "matchEnd" : "mapEnd", {
-          team: sWon === 0 ? "your team" : sWon === 1 ? "the challengers" : "nobody",
+          team: battleTv
+            ? (sWon === 0 ? (streak > 0 ? "the champions" : "this side") : sWon === 1 ? "the challengers" : "nobody")
+            : (sWon === 0 ? "your team" : sWon === 1 ? "the challengers" : "nobody"),
           score: series.you + " to " + series.foe, t: clockOf(S.time), n: series.played
         }, () => ((series.played * 977) % 100) / 100) });
     }
     let streakNote = "";
-    if (over) {
+    let showNote = "";
+    const playedLabel = MODE_LABEL[persist.mode];
+    const foughtNames = teamNames().concat(foeIds.map((id) => (R.byId[id] ? R.byId[id].name : id)));
+    if (over && battleTv) showNote = settleShow(sWon);
+    else if (over) {
       if (sWon !== -1) {
         persist[sWon === 0 ? "wins" : "losses"]++;
         if (gauntlet) {
@@ -1053,30 +1099,47 @@
     const book = (persist.books || {})[teamKey()] || { wins: 0, losses: 0 };
     const mapLine = series.log.map((l) => "Map " + l.map + ": " +
       (l.won === 0 ? "you" : l.won === 1 ? "them" : "draw") + " (" + clockOf(l.time) + ", " + l.falls + " down)").join(" &middot; ");
-    const head = over
+    const tvSide = streak > 0 ? "Champions" : "This side";
+    const tvHead = !battleTv ? ""
+      : over
+        ? (sWon === -1 ? "No decision on Battle TV" : streak <= 1 ? "New champions" : "The champions stay")
+        : (won === 0 ? tvSide + " take map " + series.played : won === 1 ? "Challengers take map " + series.played : "Map " + series.played + " is a draw");
+    const head = battleTv ? tvHead + " <span class='sscore'>" + (over ? (streak > 0 ? streak + " straight" : "fresh card") : series.you + "\u2013" + series.foe) + "</span>"
+      : over
       ? (sWon === 0 ? "Your team takes the match" : sWon === 1 ? "The challengers take the match" : "The match is drawn") +
         " <span class='sscore'>" + series.you + "\u2013" + series.foe + "</span>"
       : (won === 0 ? "Your team takes map " + series.played : won === 1 ? "The challengers take map " + series.played : "Map " + series.played + " is a draw");
-    const lede = over
+    const lede = battleTv
+      ? (over
+          ? esc(showNote || "The card turns.") + " " + (mvp ? esc(mvp.name) + " led the damage." : "") + " The next card starts itself."
+          : scoreLine() + " — best of three, and the show does not wait.")
+      : over
       ? "Best of three, " + series.played + " map" + (series.played === 1 ? "" : "s") + " played. " +
         (mvp ? esc(mvp.name) + " led the damage on the last map." : "")
       : needMore() + " " + scoreLine() + " \u2014 " +
         (sWon === 0 ? "you are one map from it." : sWon === 1 ? "they are one map from it." : "the next map decides who leads.");
     $("overlay").className = "overlay show";
     $("overlay").innerHTML = "<div class='sheet res-sheet " + (over ? (sWon === 0 ? "won" : sWon === 1 ? "lost" : "") : (won === 0 ? "won" : won === 1 ? "lost" : "")) + "'>" +
-      "<p class='kicker'>" + MODE_LABEL[persist.mode] + (gauntlet ? " \u00b7 Gauntlet " + streak : "") + " \u00b7 " + (over ? "best of three, " + series.played + " map" + (series.played === 1 ? "" : "s") + " played" : "map " + series.played + " done") + " \u00b7 " + clockOf(S.time) + "</p>" +
+      "<p class='kicker'>" + (battleTv ? "BATTLE TV · " : "") + playedLabel + (gauntlet ? " \u00b7 Gauntlet " + streak : "") + " \u00b7 " + (over ? "best of three, " + series.played + " map" + (series.played === 1 ? "" : "s") + " played" : "map " + series.played + " done") + " \u00b7 " + clockOf(S.time) + "</p>" +
       "<h1>" + head + "</h1>" +
       "<p class='lede center'>" + lede + "</p>" +
       "<p class='mapsum'>" + mapLine + "</p>" +
       deathRecap(S) +
       recapTable(S).html +
-      "<div class='tally'>This lineup: <span class='wins'>" + book.wins + "W</span> / <span class='losses'>" + book.losses + "L</span>" +
+      (battleTv
+        ? "<div class='tally'>This reign: <span class='wins'>" + streak + " straight</span>" +
+          " \u00b7 best " + ((persist.tvBest && persist.tvBest.wins) || 0) +
+          "<br>" + esc(foughtNames.join(" \u00b7 ")) + "</div>"
+        : "<div class='tally'>This lineup: <span class='wins'>" + book.wins + "W</span> / <span class='losses'>" + book.losses + "L</span>" +
       " \u00b7 " + esc(teamNames().join(" \u00b7 ")) +
       "<br>This browser: <span class='wins'>" + persist.wins + "W</span> / <span class='losses'>" + persist.losses + "L</span>" +
       (persist.name ? " \u00b7 " + esc(persist.name) : "") +
-      (streakNote ? "<br>" + esc(streakNote) : "") + "</div>" +
+      (streakNote ? "<br>" + esc(streakNote) : "") + "</div>") +
       "<div class='modes'>" +
-        (over
+        (battleTv
+          ? "<button type='button' class='btn gold big' id='btnTvNext'>" + (over ? "Next card" : "Next map") + "</button>" +
+            "<button type='button' class='btn' id='btnMenu2'>Leave the show</button>"
+          : (over
           ? (gauntlet && sWon === 0
             ? "<button type='button' class='btn gold big' id='btnAgain'>Next gauntlet match</button>" +
               "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>"
@@ -1086,12 +1149,20 @@
               "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>")
           : "<button type='button' class='btn gold big' id='btnNextMap'>Next map " + (series.played + 1) + " of 3 \u25b6</button>" +
             "<button type='button' class='btn' id='btnNewFoe'>New challengers</button>") +
-        "<button type='button' class='btn' id='btnMenu2'>Change team</button>" +
+        "<button type='button' class='btn' id='btnMenu2'>Change team</button>") +
       "</div></div>";
     gateHold(false, 120000);
     blip(over ? (sWon === 0 ? "win" : sWon === 1 ? "lose" : "click") : (won === 0 ? "win" : "click"));
-    if (over) postResult(sWon === 0, persist.mode, mvp ? mvp.name : "");
+    if (over && !battleTv) postResult(sWon === 0, persist.mode, mvp ? mvp.name : "");
+    if (battleTv) tvLater(() => tvContinue(over), over ? 7200 : 5600);
     $("overlay").onclick = (ev) => {
+      if (battleTv) {
+        const go = ev.target.closest && ev.target.closest("#btnTvNext");
+        const back = ev.target.closest && ev.target.closest("#btnMenu2");
+        if (go) tvContinue(over);
+        else if (back) { if (tvTimer) { clearTimeout(tvTimer); tvTimer = 0; } leaveToMenu("home"); }
+        return;
+      }
       const again = ev.target.closest && ev.target.closest("#btnAgain");
       const fresh = ev.target.closest && ev.target.closest("#btnNewFoe");
       const nextMap = ev.target.closest && ev.target.closest("#btnNextMap");
@@ -1104,9 +1175,176 @@
   }
 
   function rollSeed() { nextSeed = (Math.random() * 9999) | 0; }
+  function tvNames(ids) {
+    return ids.map((id) => (R.byId[id] ? R.byId[id].name : id));
+  }
+  function fitLine(ids, n) {
+    const keep = [];
+    ids.forEach((id) => { if (R.byId[id] && keep.indexOf(id) < 0) keep.push(id); });
+    while (keep.length > n) keep.pop();
+    if (keep.length < n) R.draw(n - keep.length, keep).forEach((f) => keep.push(f.id));
+    return keep;
+  }
+  function nextCard() {
+    const i = TV_WHEEL.indexOf(persist.mode);
+    persist.mode = TV_WHEEL[(i + 1) % TV_WHEEL.length] || 1;
+  }
+  function paintShowTags() {
+    const a = document.querySelector("#introYou .itag");
+    const b = document.querySelector("#introFoe .itag");
+    if (a) a.textContent = battleTv ? (streak > 0 ? "Defending" : "This side") : "Your team";
+    if (b) b.textContent = battleTv ? "Challengers" : "The challengers";
+  }
+  function paintTvBug() {
+    const bug = $("tvBug");
+    if (!bug) return;
+    bug.hidden = !battleTv;
+    const n = $("tvBugN"), lab = $("tvBugL");
+    if (!battleTv || !n || !lab) return;
+    const best = (persist.tvBest && persist.tvBest.wins) || 0;
+    n.textContent = String(streak);
+    lab.textContent = streak > 0 ? "straight · record " + best : "no champion yet";
+  }
+  function sayShow(kind, vars) {
+    if (!battleTv || !w.LYGO_BANTER || !DIR) return;
+    const text = w.LYGO_BANTER.cast(kind, vars || {}, () => ((streak * 13 + persist.mode) % 100) / 100);
+    if (!text) return;
+    DIR.push({ caster: true, kind: kind, text: text, prio: 9 });
+  }
+  function postTv(won) {
+    if (!tvCore || !w.ArcadeLedger || !w.ArcadeLedger.arena) return;
+    tvPostN += 1;
+    const match = (Date.now().toString(36) + tvPostN.toString(36) + Math.random().toString(36).slice(2, 6))
+      .replace(/[^A-Za-z0-9]/g, "").slice(0, 40);
+    try {
+      w.ArcadeLedger.arena({
+        name: "Battle TV",
+        mode: tvCore.mode,
+        team: tvCore.names.join(" · ").slice(0, 120),
+        teamKey: tvCore.ids.join(","),
+        outcome: won ? "win" : "loss",
+        mvp: "",
+        match: match,
+        date: new Date().toISOString().slice(0, 10),
+        score: won ? streak : 0,
+        wins: won ? streak : 0,
+        losses: won ? 0 : 1
+      });
+    } catch (e) {}
+  }
+  function rememberReign() {
+    const best = (persist.tvBest && persist.tvBest.wins) || 0;
+    if (!tvCore || streak <= best) return;
+    persist.tvBest = {
+      wins: streak,
+      mode: tvCore.mode,
+      team: tvCore.names.join(" · "),
+      teamKey: tvCore.ids.join(",")
+    };
+  }
+  function settleShow(sWon) {
+    if (sWon === -1) {
+      nextCard();
+      if (streak > 0) your = fitLine(your, persist.mode);
+      else your = R.draw(persist.mode).map((f) => f.id);
+      foeIds = R.draw(persist.mode, your).map((f) => f.id);
+      const card = MODE_LABEL[persist.mode];
+      sayShow("tvDraw", { card: card, n: String(streak), champ: tvNames(your).join(", ") });
+      save();
+      return streak > 0
+        ? "No decision. The champions stay. Next card is " + card + "."
+        : "No decision. Fresh card. Next is " + card + ".";
+    }
+    const defending = streak > 0 && sWon === 0;
+    const winnerIds = (sWon === 0 ? your : foeIds).slice();
+    if (streak > 0 && sWon === 1 && tvCore) postTv(false);
+    if (defending) {
+      streak += 1;
+      postTv(true);
+    } else {
+      streak = 1;
+      tvCore = { ids: winnerIds.slice(), mode: MODE_LABEL[persist.mode], names: tvNames(winnerIds) };
+      your = winnerIds.slice();
+      postTv(true);
+    }
+    rememberReign();
+    nextCard();
+    your = fitLine(your, persist.mode);
+    foeIds = R.draw(persist.mode, your).map((f) => f.id);
+    const card = MODE_LABEL[persist.mode];
+    const champ = tvNames(your).join(", ");
+    sayShow(defending ? "tvKeep" : "tvCrown", { n: String(streak), card: card, champ: champ });
+    save();
+    return defending
+      ? "Still the team to beat. " + streak + " straight. Next card is " + card + "."
+      : "New champions. The counter starts at 1. Next card is " + card + ".";
+  }
+  function tvLater(fn, ms) {
+    if (tvTimer) clearTimeout(tvTimer);
+    tvTimer = setTimeout(() => {
+      tvTimer = 0;
+      if (!battleTv || overlayMode === "menu") return;
+      fn();
+    }, ms);
+  }
+  function tvContinue(matchOver) {
+    if (tvTimer) { clearTimeout(tvTimer); tvTimer = 0; }
+    if (!battleTv) return;
+    if (matchOver) series = newSeries();
+    rollSeed();
+    begin(false);
+  }
+  function armShowRadio() {
+    const radio = w.LatticeRadio;
+    if (!radio) return;
+    if (!radioHold) radioHold = { vol: radio.vol(), muted: !!radio.muted() };
+    if (radio.setMuted) radio.setMuted(false, true);
+    radio.setVol(0.2, true);
+    radio.play();
+  }
+  function restoreShowRadio() {
+    const radio = w.LatticeRadio;
+    if (!radio || !radioHold) { radioHold = null; return; }
+    /* write the listener's own level back. Mute and the volume slider save while the show is up. */
+    radio.setVol(radioHold.vol);
+    if (radio.setMuted) radio.setMuted(!!radioHold.muted);
+    radioHold = null;
+  }
+  function endBattleTv() {
+    if (tvTimer) { clearTimeout(tvTimer); tvTimer = 0; }
+    const was = !!(battleTv || showHold);
+    battleTv = false;
+    if (showHold) {
+      your = showHold.team.filter((id) => R.byId[id]);
+      persist.mode = showHold.mode;
+      showHold = null;
+    }
+    tvCore = null;
+    if (was) streak = 0;
+    restoreShowRadio();
+    paintTvBug();
+    if (was) save();
+  }
+  function startBattleTv() {
+    blip("click");
+    if (!showHold) showHold = { team: your.slice(), mode: persist.mode };
+    gauntlet = false;
+    battleTv = true;
+    streak = 0;
+    tvCore = null;
+    persist.mode = TV_WHEEL[(Math.random() * TV_WHEEL.length) | 0];
+    your = R.draw(persist.mode).map((f) => f.id);
+    foeIds = R.draw(persist.mode, your).map((f) => f.id);
+    series = newSeries();
+    rollSeed();
+    save();
+    begin(false);
+    armShowRadio();
+  }
   function endGauntlet() { gauntlet = false; streak = 0; }
   function leaveToMenu(tab) {
     hush();
+    endBattleTv();
     endGauntlet();
     menuTab = tab || "home";
     $("battle").classList.add("hidden");
@@ -1164,8 +1402,8 @@
       const act = t.dataset.act;
       if (act === "pause") { const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
       if (act === "menu") leaveToMenu("home");
-      if (act === "rematch") { series = newSeries(); begin(false); }
-      if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
+      if (act === "rematch" && !battleTv) { series = newSeries(); begin(false); }
+      if (act === "newfoe" && !battleTv) { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
       if (act === "mute") { persist.sfx = !sfxOn(); save(); paintSfx(); }
       if (act === "menuSong") { persist.menuSong = !menuSongOn(); save(); paintMenuSong(); syncMenuSong(); }
       if (act === "skip") skipIntro();
@@ -1177,7 +1415,10 @@
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
       else if (ev.code === "Enter" && overlayMode === "battle") { ev.preventDefault(); skipIntro(); }
       else if (ev.code === "KeyM") { persist.sfx = !sfxOn(); save(); paintSfx(); }
-      else if (ev.code === "KeyR" && overlayMode === "battle") { series = newSeries(); begin(false); }
+      else if (ev.code === "KeyR" && overlayMode === "battle") {
+        if (!battleTv) series = newSeries();
+        begin(false);
+      }
       else if (ev.code === "Escape") {
         if (overlayMode === "battle" || overlayMode === "results" || overlayMode === "vs") {
           leaveToMenu("home");
@@ -1206,6 +1447,7 @@
     });
     document.body.addEventListener("click", (ev) => {
       if (ev.target.closest && ev.target.closest("#btnFight")) startListed(false);
+      else if (ev.target.closest && ev.target.closest("#btnBattleTv")) startBattleTv();
       else if (ev.target.closest && ev.target.closest("#btnGauntlet")) startListed(true);
     });
   }

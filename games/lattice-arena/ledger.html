@@ -102,6 +102,16 @@ a { color:#5eead4; }
           date: "this browser"
         });
       });
+      if (s.tvBest && s.tvBest.wins) {
+        out.push({
+          name: "Battle TV",
+          wins: s.tvBest.wins,
+          losses: 0,
+          mode: "record",
+          team: s.tvBest.team || "",
+          date: "best reign on this browser"
+        });
+      }
     } catch (e) {}
     return out.sort(function(a,b){ return (b.wins||0)-(a.wins||0); });
   }

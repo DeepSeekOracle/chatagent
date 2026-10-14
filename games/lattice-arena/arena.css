@@ -145,6 +145,17 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
 .menu-actions .btn span { display: block; font-family: "Source Sans 3", sans-serif; font-weight: 600;
   font-size: .78rem; color: var(--mute); margin-top: .12rem; }
 .menu-actions .btn.gold span { color: #5c3b08; }
+.menu-actions .btn.tv { border-color: #fbbf24; }
+.menu-actions .btn.tv b { letter-spacing: .12em; }
+.tv-bug { position: absolute; left: 14px; bottom: 54px; z-index: 7; pointer-events: none;
+  min-width: 7.2rem; padding: .35rem .6rem .4rem; background: rgba(3, 6, 12, .88);
+  border: 1px solid #fbbf24; border-radius: 4px; color: #fbbf24;
+  font-family: "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.tv-bug b { display: block; font-size: .62rem; font-weight: 700; }
+.tv-bug strong { display: block; margin: .12rem 0 .05rem; font-size: 1.7rem; line-height: 1;
+  letter-spacing: 0; color: #f8fafc; font-family: "Source Sans 3", sans-serif; }
+.tv-bug em { font-style: normal; font-size: .58rem; color: #cbd5e1; letter-spacing: .08em; }
+.tv-bug[hidden] { display: none; }
 .plain-screen { height: 100%; overflow: auto; padding: 1.1rem 1.2rem 2rem; max-width: 760px; }
 .plain-screen h1 { margin-top: .2rem; }
 .team-screen { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: .45rem; padding: .65rem .75rem .7rem; }

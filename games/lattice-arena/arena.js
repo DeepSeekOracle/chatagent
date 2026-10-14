@@ -22,7 +22,7 @@
     ready: 4, cleanse: 4, saved: 5, rise: 6, kill: 7, ace: 8, win: 8 };
   const PRIO_CAST = { hold: 3, tide: 4, save: 5, edge: 6, law: 6, kill: 7, draw: 7, recall: 7,
     firstBlood: 8, wipe: 8, ace: 8, sudden: 8,
-    mapEnd: 8, matchEnd: 9, open: 9, introRing: 9, introTeam: 9, introScore: 9, ready: 9, bell: 10 };
+    mapEnd: 8, matchEnd: 9, open: 9, introRing: 9, introTeam: 9, introScore: 9, introShow: 9, ready: 9, bell: 10 };
 
   /* A line never touches Math.random: the sim is seeded, and a pick that shifted the stream
      would move every number the harness measures. Picks ride the talk counter instead. */
@@ -2238,9 +2238,18 @@
        else is allowed in there: the bodies answer the bell, they do not talk under the booth. */
     S.cues = [
       { at: 0.5, p: 9, run() {
-        pushCast(mapNo > 1 ? "introScore" : "introRing", mapNo > 1
-          ? { n: mapNo, mode: S.mode + "v" + S.mode, score: meta.score || "nothing decided yet" }
-          : { ring: ring });
+        if (meta.tv && mapNo <= 1) {
+          pushCast("introShow", {
+            ring: ring,
+            card: meta.tv.card || (S.mode + "v" + S.mode),
+            n: String(meta.tv.streak || 0),
+            streak: meta.tv.streak ? (meta.tv.streak + " straight") : "no champion yet"
+          });
+        } else {
+          pushCast(mapNo > 1 ? "introScore" : "introRing", mapNo > 1
+            ? { n: mapNo, mode: S.mode + "v" + S.mode, score: meta.score || "nothing decided yet" }
+            : { ring: ring });
+        }
       } },
       { at: 4.4, p: 9, run() { pushCast("introTeam", { side: meta.me || "your team", names: names(S.your) }); S.introShow = 1; } },
       { at: 9.2, p: 9, run() { pushCast("introTeam", { side: "the challengers", names: names(S.foe) }); S.introShow = 2; } },
