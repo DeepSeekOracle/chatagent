@@ -29,6 +29,8 @@
   let lastMatch = null;
   let rows = { you: [], foe: [] };
   let feedLen = 0;
+  let feedMark = null;
+  let talkMark = null;
   let overlayMode = null;
   let gateHeld = false;
   let menuTab = "home";
@@ -287,6 +289,19 @@
       o.connect(g); g.connect(ctx.destination);
       o.start(t); o.stop(t + 0.09);
     } catch (e) {}
+  }
+  function unseenEvents(events, mark) {
+    if (!mark) return events;
+    const i = events.indexOf(mark);
+    if (i < 0) return events;
+    return events.slice(i + 1);
+  }
+  /* Newest nine by the clock of THIS card. Callers drop the previous card first. */
+  function recentFeed(events, talk, n) {
+    const evs = events.map((ev) => ({ t: ev.t, kind: ev.kind, text: esc(ev.text), raw: ev.text, caster: null }));
+    const tk = talk.map((x) => ({ t: x.t, kind: x.caster ? "cast" : "talk", raw: x.text,
+      who: x.who || "", caster: !!x.caster }));
+    return evs.concat(tk).sort((p, q) => p.t - q.t).slice(-(n || 9));
   }
   function playEvent(ev) {
     const now = performance.now();
@@ -889,17 +904,25 @@
     } else { cd.classList.remove("show"); hideIntro(); }
     pumpTalk();
     paintFocus();
-    if (S.events.length !== feedLen || talkLog.length !== feedLog || onAir !== shownAir) {
-      const fresh = S.events.slice(feedLen);
-      feedLen = S.events.length;
-      feedLog = talkLog.length;
+    /* Length is not a change. The fight log stops at 140 lines and then shifts, so a
+       full card used to sit still. The last object is the change. A new card also
+       has to drop the previous card's lines: those clocks are later than 0:00, and
+       the newest-nine sort would keep showing the fight that already ended. */
+    const evTail = S.events.length ? S.events[S.events.length - 1] : null;
+    const tkTail = talkLog.length ? talkLog[talkLog.length - 1] : null;
+    if (evTail !== feedMark || tkTail !== talkMark || onAir !== shownAir) {
+      if (evTail !== feedMark) {
+        unseenEvents(S.events, feedMark).forEach(playEvent);
+        feedMark = evTail;
+        feedLen = S.events.length;
+      }
+      if (tkTail !== talkMark) {
+        talkMark = tkTail;
+        feedLog = talkLog.length;
+      }
       shownAir = onAir;
-      fresh.forEach(playEvent);
-      const evs = S.events.map((ev) => ({ t: ev.t, kind: ev.kind, text: esc(ev.text), raw: ev.text, caster: null }));
-      const tk = talkLog.map((x) => ({ t: x.t, kind: x.caster ? "cast" : "talk", raw: x.text,
-        who: x.who || "", caster: !!x.caster }));
       const f = $("feed");
-      if (f) f.innerHTML = evs.concat(tk).sort((p, q) => p.t - q.t).slice(-9).reverse()
+      if (f) f.innerHTML = recentFeed(S.events, talkLog, 9).slice().reverse()
         .map((x) => {
           const live = !!(onAir && x.raw === onAir.text && x.caster !== null && x.caster === !!onAir.caster);
           const body = x.caster === null ? x.text : (x.caster ? esc(x.raw) : "<b>" + esc(x.who) + "</b> " + esc(x.raw));
@@ -996,6 +1019,13 @@
     paintShowTags();
     buildRows();
     feedLen = 0;
+    feedLog = 0;
+    feedMark = null;
+    talkMark = null;
+    talkLog.length = 0;
+    shownAir = null;
+    const feedBox = $("feed");
+    if (feedBox) feedBox.innerHTML = "";
     lastCount = "";
     fought = false;
     gateHold(true);
@@ -1456,7 +1486,7 @@
     });
   }
 
-  w.ArenaUI = { tick: paintHud, sfx: blip, voices: humanVoices, talk: () => talkLog, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }), series: () => series };
+  w.ArenaUI = { tick: paintHud, sfx: blip, voices: humanVoices, talk: () => talkLog, rows: () => rows, state: () => ({ overlayMode, your, foeIds, persist }), series: () => series, recentFeed: recentFeed, unseenEvents: unseenEvents };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })(window);
