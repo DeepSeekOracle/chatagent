@@ -15,7 +15,7 @@
       series. He names the bodies, because that is what makes it a broadcast.
 
    Tokens: {me} the speaker, {foe} the other body, {n} a count, and for the caster
-   {killer} {victim} {mender} {team} {score} {mode} {ring} {t} {youN} {foeN} {move}.
+   {killer} {victim} {mender} {team} {score} {mode} {ring} {t} {youN} {foeN} {move} {note}.
    Nothing here talks to the DOM. arena.js draws the bubbles; arena-ui.js speaks them. */
 (function (w) {
   "use strict";
@@ -38,7 +38,12 @@
       "Bigger names than you have lain down here.",
       "I am not here to be fair. I am here to be first.",
       "Keep your distance, {foe}. Everyone says that. Nobody does.",
-      "The book already has your name. In the loss column."
+      "The book already has your name. In the loss column.",
+      "The sand has my name on it already.",
+      "Pick a side, {foe}. I will take the other.",
+      "No speeches after this. Just the work.",
+      "I counted the bodies. I like my odds.",
+      "{foe} gets the first look. I get the last one."
     ],
     taunt: [
       "That all? My file says you had more.",
@@ -65,7 +70,15 @@
       "Nobody is coming to help you. They are busy losing.",
       "The crowd has gone quiet. They know.",
       "You are the warm-up. Smile for it.",
-      "Two more of you and I have a set."
+      "Two more of you and I have a set.",
+      "You are saving the good hit. I can wait.",
+      "Closer. I do not bite from here.",
+      "That was practice. The next one is the bill.",
+      "Your line is watching you lose.",
+      "I have had worse mornings.",
+      "Swing. I will tell you if it mattered.",
+      "You keep resetting. The sand does not.",
+      "Pretty footwork. Empty hands."
     ],
     kill: [
       "Stay down. I will not say it twice.",
@@ -91,7 +104,13 @@
       "I am not even breathing hard.",
       "You blinked.",
       "That is the sound a plan makes when it dies.",
-      "Next body. Same result."
+      "Next body. Same result.",
+      "{foe} goes down. The book can have them.",
+      "That was {foe}. That was all of it.",
+      "Down, and I still have the next one.",
+      "The sand keeps what I give it.",
+      "You may get up. I would not.",
+      "One name less on that side."
     ],
     die: [
       "Not like this. Not in the first—",
@@ -111,7 +130,12 @@
       "I was going to be somebody here.",
       "You cut the wrong way. I would have—",
       "Do not look at me. Look at them.",
-      "It went dark before the plan did."
+      "It went dark before the plan did.",
+      "Tell them I stood up straight.",
+      "Win it, then. You earned the telling.",
+      "I will be in the recap. Make it honest.",
+      "Leave my name where it is.",
+      "That was the whole of me. Use it well."
     ],
     hurt: [
       "Still here. Still here.",
@@ -126,7 +150,12 @@
       "Back. Get back, all of you.",
       "The mender is coming. Hold.",
       "Every body has a floor. Mine is lower.",
-      "I am not the one who should be worried."
+      "I am not the one who should be worried.",
+      "Still standing. Annoyingly.",
+      "You are close. Not close enough.",
+      "Patch me or finish me. Pick one.",
+      "I can hear the recap being written.",
+      "Not the floor. Not today."
     ],
     cc: [
       "Stay. Right there.",
@@ -140,7 +169,12 @@
       "That is what a charge is worth on this sand.",
       "Rooted. Eat it.",
       "Try walking that off.",
-      "I do not need to outrun you. I need you late."
+      "I do not need to outrun you. I need you late.",
+      "The rush ends here.",
+      "Legs first. Then the rest.",
+      "You can swing. You cannot leave.",
+      "Stay in the picture, {foe}.",
+      "That charge is over. You are not."
     ],
     saved: [
       "Up. You are not done.",
@@ -153,7 +187,11 @@
       "Hold on. I have the thread.",
       "Not on my line. Not while I breathe.",
       "Get up and be worth it.",
-      "You are welcome. Now hurt somebody."
+      "You are welcome. Now hurt somebody.",
+      "On your feet. The line is thin.",
+      "I spent that on you. Spend it back.",
+      "Live. That is the whole order.",
+      "Up. The fight moved on without you."
     ],
     win: [
       "Say it louder. They did not hear.",
@@ -164,20 +202,30 @@
       "Bring them all. I have all day.",
       "Somebody tell my line I said thank you.",
       "Undefeated on this sand. Check the book.",
-      "That is how it is done. Watch the record."
+      "That is how it is done. Watch the record.",
+      "The book and the sand agree.",
+      "Leave the gate open. I am not tired.",
+      "That is the match. Write the names.",
+      "We came to take the floor. We took it."
     ],
     lose: [
       "Run it again. It goes differently.",
       "You got lucky with the sand.",
       "Fine. You have the book. Not the floor.",
       "I will be back for the next one.",
-      "Next time I take your line apart first."
+      "Next time I take your line apart first.",
+      "The sand keeps the score. I keep the grudge.",
+      "You have this one. The next is mine.",
+      "Write it down. I will want the rematch."
     ],
     ace: [
       "It is just me now. That is enough.",
       "They are all down. So I am the line.",
       "Alone. Fine. Fewer to worry about.",
-      "I will take the rest of them myself."
+      "I will take the rest of them myself.",
+      "Last body. Best body. Come on.",
+      "They fell. I did not. Remember which.",
+      "One of me is still a problem."
     ],
     /* said once, right before the bell, by one body a side */
     ready: [
@@ -188,7 +236,55 @@
       "Say it quietly: {me} is about to do this to {foe}.",
       "Fifteen seconds of listening. Then it is {me}'s turn to talk.",
       "{me} brought one plan and no patience for {foe}.",
-      "They have rung for {me} before. It did not go well for {foe}."
+      "They have rung for {me} before. It did not go well for {foe}.",
+      "{me} hears the crowd. {me} does not need it.",
+      "When it rings, {foe} finds out.",
+      "{me} is done listening."
+    ],
+    /* a swing that met nothing: the body that was not there */
+    miss: [
+      "You swung at fog.",
+      "That one went through me.",
+      "Miss. Try looking.",
+      "I was not there. Try again.",
+      "Air. You hit air.",
+      "The file did not say I step aside.",
+      "Close. The next one will not be."
+    ],
+    /* the plate ate the whole hit */
+    block: [
+      "Off the plate.",
+      "That did not get through.",
+      "The armor ate it.",
+      "Again. The plate is still here.",
+      "You will need more than that.",
+      "Stopped. Clean.",
+      "I felt it. It did not count."
+    ],
+    /* a hit that actually mattered, said by the one who landed it */
+    crit: [
+      "That one counted.",
+      "There. That is the one.",
+      "Feel that? That was the real hit.",
+      "I was saving that.",
+      "Now you are paying attention.",
+      "Mark it. That one goes in the book."
+    ],
+    /* the first hold slides off */
+    cleanse: [
+      "The hold does not stick.",
+      "Shrug it off. Keep walking.",
+      "You do not get the first one.",
+      "Ink says no. So no.",
+      "I am still moving. Disappointing, I know."
+    ],
+    /* called back after a killing blow */
+    rise: [
+      "Not done. I said not done.",
+      "Once more. That is the rule.",
+      "You cut me down. I got back up.",
+      "The name is still on the book.",
+      "Again. From the top."
     ]
   };
 
@@ -321,8 +417,75 @@
     bear: {
       open: ["This is my ground, {foe}."],
       kill: ["Go back to sleep.", "Mauled. That is the word."],
-      taunt: ["Come into the reach. I dare you."],
+      taunt: ["Come into the reach. I dare you.", "Wide arms. Bad idea."],
       die: ["Bears do not fall. They settle."]
+    },
+    kael: {
+      open: ["The blade goes first, {foe}."],
+      kill: ["Measured. Finished.", "The gallant cut. That was it."],
+      taunt: ["Stand still and be measured.", "Your guard is a suggestion."],
+      die: ["The blade... stays in the line."]
+    },
+    orin: {
+      open: ["The first draught is the loud one."],
+      kill: ["Unwritten. As promised.", "The sigil closes. So do you."],
+      taunt: ["Drink nothing I hand you.", "I have already changed the ending."],
+      die: ["The ink ran out before I did."]
+    },
+    lyra: {
+      open: ["Hold the note, {foe}. I will take the rest."],
+      kill: ["That was the chorus.", "The song ends on you."],
+      saved: ["Stay in the harmony.", "I have the note. You have the feet."],
+      taunt: ["You are flat. I am not."],
+      die: ["The last note... was yours."]
+    },
+    arkos: {
+      open: ["The line is the weapon."],
+      kill: ["Step where I stepped. Then fall.", "The lattice takes the angle."],
+      taunt: ["You are off the line.", "Lances do not miss twice."],
+      die: ["Hold the formation without me."]
+    },
+    seidon: {
+      open: ["The water decides, {foe}. Not you."],
+      kill: ["The current takes the rest.", "Under. Stay under."],
+      taunt: ["You are already downstream.", "Fight the tide. See how that goes."],
+      die: ["The tide... goes out."]
+    },
+    crown: {
+      open: ["Kneel, or fall. Same ending."],
+      kill: ["The crown does not miss.", "Down. The court is adjourned."],
+      taunt: ["You do not look up at me. You should."],
+      die: ["The crown... rolls."]
+    },
+    smith: {
+      open: ["Hot metal. Hold still."],
+      kill: ["Quenched.", "Struck on the anvil. Done."],
+      taunt: ["I only need one clean hit.", "Stand in the heat."],
+      die: ["The forge goes cold."]
+    },
+    hurler: {
+      open: ["Catch. Or do not. I have more."],
+      kill: ["Lobbed. Your problem, then not.", "Caught it with your face."],
+      taunt: ["Eyes up. Always eyes up.", "I do not need to be near you."],
+      die: ["Dropped... the last one."]
+    },
+    levi: {
+      open: ["The deep does not negotiate."],
+      kill: ["Pulled under.", "The deep keeps what it takes."],
+      taunt: ["Come closer to the water.", "You are small from down here."],
+      die: ["Even the deep... has a floor."]
+    },
+    elephant: {
+      open: ["The ground remembers my weight, {foe}."],
+      kill: ["Trampled. That is the whole story.", "The tusk finds the end."],
+      taunt: ["Move, or be the road.", "I do not step aside."],
+      die: ["The herd... will feel this."]
+    },
+    scorpion: {
+      open: ["The tail is the argument."],
+      kill: ["Venom. Then quiet.", "The barb lands. You do not."],
+      taunt: ["Watch the tail, not the claws.", "One prick. That is the plan."],
+      die: ["The sting... turns inward."]
     },
     wraithlike: {}
   };
@@ -343,7 +506,17 @@
     sancora: { pitch: 1.16, rate: 0.98 },
     lightfather: { pitch: 0.74, rate: 0.9 },
     kairos: { pitch: 0.8, rate: 0.96 },
-    nia: { pitch: 1.18, rate: 1.0 }
+    nia: { pitch: 1.18, rate: 1.0 },
+    kael: { pitch: 0.78, rate: 0.94 },
+    orin: { pitch: 0.96, rate: 0.98 },
+    lyra: { pitch: 1.14, rate: 0.96 },
+    arkos: { pitch: 0.84, rate: 0.94 },
+    seidon: { pitch: 0.88, rate: 1.0 },
+    crown: { pitch: 0.68, rate: 0.88 },
+    smith: { pitch: 0.62, rate: 0.9 },
+    hurler: { pitch: 0.72, rate: 1.04 },
+    levi: { pitch: 0.56, rate: 0.84 },
+    scorpion: { pitch: 1.08, rate: 1.02 }
   };
 
   /* ------------------------------------------------------------- the caster --- */
@@ -362,7 +535,9 @@
       "And {killer} strikes first — {victim} never got a read on it!",
       "First blood to {killer}! That is {t} into the map and the crowd is up!",
       "Oh, first blood! {killer} takes it, and look at the faces on that line!",
-      "It is {killer} who draws first! {victim} becomes the first line in the recap!"
+      "It is {killer} who draws first! {victim} becomes the first line in the recap!",
+      "{killer} with the first! {victim} is the name this map remembers!",
+      "First blood, and it is ugly — {killer} finds {victim} before the read!"
     ],
     kill: [
       "{killer} puts {victim} down! {t} on the clock!",
@@ -376,14 +551,23 @@
       "Another one! {killer} takes {victim} apart and the books are filling up!",
       "{killer} ends {victim}! That is how you take a line apart — one name at a time!",
       "{victim} is down and OUT! {killer} is making this look routine!",
-      "The kill goes to {killer}! {victim} gave everything and it was not enough!"
+      "The kill goes to {killer}! {victim} gave everything and it was not enough!",
+      "{killer}'s {move} ends {victim}! {t} on the clock!",
+      "{move} from {killer}! {victim} does not get back up!",
+      "That is {n} for {killer}! {victim} is the latest name!",
+      "{victim} is out! {killer} did it with {move} and kept walking!",
+      "Listen to that — {move}, and {victim} is a line in the recap!",
+      "{killer} is hunting! {n} down, and {victim} was not the hard part!"
     ],
     edge: [
       "{victim} is on the edge! One clean hit and we are reading the recap!",
       "Look at {victim} — that health bar is a rumour!",
       "{victim} is nearly done! Somebody get that body off the sand!",
       "{victim} is hurt, hurt badly, and the line is not coming!",
-      "One more exchange and {victim} is a paragraph in the recap!"
+      "One more exchange and {victim} is a paragraph in the recap!",
+      "{victim} is one breath from the recap!",
+      "Get a mender on {victim}, or start writing the eulogy!",
+      "Look at the bar on {victim}! That is a courtesy, not a life!"
     ],
     save: [
       "{mender} keeps {victim} alive! That is why the menders get paid!",
@@ -391,41 +575,57 @@
       "{mender} with the mending! This fight is not over, I promise you that!",
       "Textbook from {mender} — {victim} back from the brink!",
       "{mender} refuses to lose the body! Somebody remember that!",
-      "The line holds because {mender} says it holds!"
+      "The line holds because {mender} says it holds!",
+      "What a mend! {mender} drags {victim} back into this fight!",
+      "{victim} was gone! {mender} says otherwise, and the sand agrees!",
+      "Save of the map from {mender}! {victim} owes that body a drink!"
     ],
     hold: [
       "{me} nails them to the sand — that charge is dead before it started!",
       "They cannot move! {me} has this whole exchange tied off!",
       "Look at that — {me} takes the legs out of the rush!",
       "{me} answers the charge! That is what the folk with the crowd control are for!",
-      "Held! {me} says stay, and on the bare sand there is nowhere to argue!"
+      "Held! {me} says stay, and on the bare sand there is nowhere to argue!",
+      "Stuck! {me} owns the next two seconds of this fight!",
+      "{me} plants them! A charge with nowhere to go is just a target!",
+      "No footwork! {me} has the legs and the crowd can see it!"
     ],
     wipe: [
       "WIPED! The whole line down — {team} takes the map!",
       "That is a wipe! {team} are the only ones breathing!",
       "Every last one of them! {team} takes the map and the momentum!",
-      "Wiped clean! {team} did not leave a single body standing!"
+      "Wiped clean! {team} did not leave a single body standing!",
+      "Clean wipe! {team} walk off this map with the floor to themselves!",
+      "That is the map, emptied! {team} did the emptying!"
     ],
     mapEnd: [
       "And that is the map — {team}! The score reads {score}!",
       "Map done! {team} take it, and the score is {score}!",
       "{team} closes the map in {t}! Score: {score}!",
-      "That is one in the book for {team}. The match reads {score}!"
+      "That is one in the book for {team}. The match reads {score}!",
+      "{team} take the map in {t}! We are at {score}, and the sand is still warm!",
+      "Map to {team}! Score {score}. Somebody is running out of answers!"
     ],
     matchEnd: [
       "It is OVER! {team} take the match {score}!",
       "The match is done, and {team} take it {score}! What a fight!",
       "That is the series! {team} win it {score} and the arena belongs to them!",
-      "Final! {team} take the match {score}! Somebody write that one down!"
+      "Final! {team} take the match {score}! Somebody write that one down!",
+      "It is done! {team}, {score}, and the arena has a name on it!",
+      "Close the book! {team} win the match {score}!"
     ],
     ace: [
       "{me} is the last one standing! Can they close it out?",
       "It is {me} against all of them — and {me} is smiling!",
-      "One body left on that side: {me}. And that body is not backing up!"
+      "One body left on that side: {me}. And that body is not backing up!",
+      "Last one standing — {me}! The whole line is on that back!",
+      "{me} alone! And alone is not the same as finished!"
     ],
     draw: [
       "Both sides down! We have called this map a draw — and nobody is happy!",
-      "A double wipe! We do this map again, and the sand does not care!"
+      "A double wipe! We do this map again, and the sand does not care!",
+      "Nobody standing! The book calls a draw and we do it again!",
+      "Both lines down! A draw, and I have never liked writing one!"
     ],
     /* the intro programme: the countdown to the bell is the booth's time and nobody else's */
     /* Short on purpose: a fifteen second program with a beat between lines leaves room for
@@ -434,7 +634,8 @@
       "Fifteen seconds to the bell in the {ring}.",
       "The {ring} is open. Fifteen seconds.",
       "Welcome to the {ring}. Fifteen seconds.",
-      "Fifteen seconds. The {ring} takes no side."
+      "Fifteen seconds. The {ring} takes no side.",
+      "Listen. Fifteen seconds. The {ring}."
     ],
     introTeam: [
       "For {side}: {names}.",
@@ -458,7 +659,37 @@
       "There is the bell! Who is going to win?",
       "Fight! So — who's gonna win?",
       "There it is, {n} bodies! Who's gonna win?",
-      "Fight! Anybody's guess. Who's gonna win?"
+      "Fight! Anybody's guess. Who's gonna win?",
+      "Fight! The sand is live. Who's gonna win?",
+      "Bell! {n} on the sand. Who's gonna win?"
+    ],
+    /* the ring has a law, and the booth says it once the fight is actually happening */
+    law: [
+      "This is the {ring}. {note}",
+      "Mind the floor. {note}",
+      "{ring}. {note}",
+      "Remember where you are standing. {note}"
+    ],
+    /* the closing floor, once, when the clock says the healers cannot stall it */
+    sudden: [
+      "Sudden death! The ring is closing on everybody still standing!",
+      "The floor turns! Sudden death — nobody out-heals this!",
+      "Sudden death! The arena starts taking the rest of them!",
+      "Time! The ring closes. Finish it, or the floor will!"
+    ],
+    /* a killing blow that did not stay a killing blow */
+    recall: [
+      "{me} is called back! Name Recall — that body is not finished!",
+      "Up again! {me} rises, and the recap has to wait!",
+      "{me} was down! The book says not yet!",
+      "Name Recall! {me} gets a second standing on this sand!"
+    ],
+    /* the tide ring shoves the whole floor */
+    tide: [
+      "The tide turns! Everybody on the sand gets a shove!",
+      "Tide! The floor moves, and nobody voted for it!",
+      "There goes the tide — find your feet!",
+      "The water has a vote! The tide just spent it!"
     ]
   };
 

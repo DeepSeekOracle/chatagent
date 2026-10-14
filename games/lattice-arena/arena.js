@@ -18,8 +18,10 @@
   const INTRO_S = 15;
   /* What outranks what. The booth outranks a body at equal priority, a wipe outranks a taunt,
      and the bell outranks everything -- the director decides who actually gets to talk. */
-  const PRIO_BODY = { die: 2, hurt: 2, lose: 2, taunt: 3, cc: 3, ready: 4, saved: 5, kill: 7, win: 8 };
-  const PRIO_CAST = { hold: 3, save: 5, edge: 6, kill: 7, draw: 7, firstBlood: 8, wipe: 8, ace: 8,
+  const PRIO_BODY = { die: 2, hurt: 2, lose: 2, miss: 2, taunt: 3, cc: 3, block: 3, crit: 3,
+    ready: 4, cleanse: 4, saved: 5, rise: 6, kill: 7, ace: 8, win: 8 };
+  const PRIO_CAST = { hold: 3, tide: 4, save: 5, edge: 6, law: 6, kill: 7, draw: 7, recall: 7,
+    firstBlood: 8, wipe: 8, ace: 8, sudden: 8,
     mapEnd: 8, matchEnd: 9, open: 9, introRing: 9, introTeam: 9, introScore: 9, ready: 9, bell: 10 };
 
   /* A line never touches Math.random: the sim is seeded, and a pick that shifted the stream
@@ -412,6 +414,13 @@
       prio: PRIO_CAST[kind] != null ? PRIO_CAST[kind] : 6 });
     if (S.talk.length > 80) S.talk.shift();
   }
+  /* Misses, blocks and crits are colour, not the story. One of them every few seconds,
+     and never loud enough to step on a kill. */
+  function colorLine(kind, who, foe) {
+    if (S.time - (S.lastColor == null ? -9 : S.lastColor) < 8) return;
+    S.lastColor = S.time;
+    pushTalk(kind, who, foe, false);
+  }
   function isMender(b) { return !!(b && (b.moves || []).some((m) => m.st && m.st.heal)); }
   function applySt(e, st, from) {
     if (!st) return;
@@ -422,6 +431,7 @@
       st = Object.assign({}, st);
       delete st.stun; delete st.root; delete st.silence;
       pushEvent(e.b.name + " shrugs the first hold — Unwrite Ink.", "gift");
+      pushTalk("cleanse", e, from, false);
     }
     if (st.stun) e.stun = Math.max(e.stun, st.stun);
     if (from && from.team !== e.team && (st.stun || st.root)) {
@@ -533,6 +543,7 @@
     const veil = (tgt.veilT > 0 ? tgt.veilV : 0) + (tgt.b.mods.veil || 0);
     if (!opts.sure && Math.random() < veil) {
       S.texts.push({ x: tgt.x, y: tgt.y - 24, t: "miss", life: 0.7, col: "#cbd5e1" });
+      colorLine("miss", tgt, src);
       return 0;
     }
     let crit = false;
@@ -552,6 +563,7 @@
       dmg -= buffed(tgt).armor * 1.1;
       if (dmg < 0.5 && raw >= 1) {
         S.texts.push({ x: tgt.x, y: tgt.y - 26, t: "block", life: 0.5, col: "#94a3b8" });
+        colorLine("block", tgt, src);
         return 0;
       }
       if (dmg < 0) dmg = 0;
@@ -564,6 +576,7 @@
     }
     dmg = Math.round(dmg);
     if (dmg <= 0) return 0;
+    if (src && opts.name) src.lastBlow = opts.name;
     tgt.hp -= dmg;
     tgt.taken += dmg;
     /* about to die: one clean hit from the recap, and everybody says so */
@@ -576,6 +589,8 @@
     if (!opts.dot) {
       tgt.flash = 0.16;
       S.texts.push({ x: tgt.x, y: tgt.y - 26, t: dmg + (crit ? "!" : ""), life: crit ? 1.0 : 0.75, col: crit ? "#fbbf24" : "#f8fafc", big: crit });
+      /* a crit that does not end the body still deserves a mouth, on a long leash */
+      if (crit && src && tgt.hp > 0) colorLine("crit", src, tgt);
     }
     if (src) { src.dmgDone += dmg; src.idleT = 0; }
     /* lifesteal, leech and vampirism all feed the attacker */
@@ -606,6 +621,9 @@
       e.dead = false;
       e.shd += Math.round(e.max * 0.15);
       pushEvent(e.b.name + " is called back — Name Recall, " + Math.round(e.max * 0.4) + " back.", "gift");
+      e.edgeSaid = false;
+      pushTalk("rise", e, src, true);
+      pushCast("recall", { me: e.b.name });
       S.marks.push({ x: e.x, y: e.y, r: 0, life: 0.9, col: "#fbbf24" });
       return;
     }
@@ -623,11 +641,13 @@
       pushTalk("kill", src, e, true);
       pushTalk("die", e, src, true);
       pushCast(S.kills === 1 ? "firstBlood" : "kill",
-        { killer: src.b.name, victim: e.b.name, t: mmss(S.time), n: src.kills });
+        { killer: src.b.name, victim: e.b.name, t: mmss(S.time), n: src.kills, move: src.lastBlow || "the strike" });
       const matesLeft = (e.team === 0 ? S.your : S.foe).filter((o) => !o.dead).length;
       if (matesLeft === 1 && !S.aceSaid) {
         S.aceSaid = true;
-        pushCast("ace", { me: (e.team === 0 ? S.your : S.foe).find((o) => !o.dead).b.name });
+        const last = (e.team === 0 ? S.your : S.foe).find((o) => !o.dead);
+        pushCast("ace", { me: last.b.name });
+        pushTalk("ace", last, src, true);
       }
     } else {
       pushEvent(e.b.name + " falls.", "kill");
@@ -763,7 +783,7 @@
           return diff < 1.15;
         });
         hits.forEach((o) => {
-          const dealt = damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor, execute: !!mv.execute });
+          const dealt = damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor, execute: !!mv.execute, name: mv.name });
           if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
           applySt(o, mv.st, caster);
         });
@@ -777,7 +797,7 @@
         S.marks.push({ x: cx, y: cy, r: radius, life: 0.4, col: caster.b.color, ring: true });
         enemiesOf(caster).forEach((o) => {
           if (dist2(cx, cy, o.x, o.y) > radius) return;
-          if (mv.dmg) damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor });
+          if (mv.dmg) damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, opening: opening, ignoreArmor: !!mv.ignoreArmor, name: mv.name });
           applySt(o, mv.st, caster);
         });
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);
@@ -785,7 +805,7 @@
         break;
       }
       case "blast": {
-        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: !!mv.strips, opening: opening });
+        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: !!mv.strips, opening: opening, name: mv.name });
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);
         break;
       }
@@ -799,7 +819,7 @@
           if (along < 0 || along > len) return;
           const side = Math.abs(-dx * Math.sin(a) + dy * Math.cos(a));
           if (side > 14) return;
-          damage(caster, o, caster.b.dmg * mv.dmg, { ignoreArmor: !!mv.ignoreArmor || !!mv.pierce, ranged: true, opening: opening });
+          damage(caster, o, caster.b.dmg * mv.dmg, { ignoreArmor: !!mv.ignoreArmor || !!mv.pierce, ranged: true, opening: opening, name: mv.name });
           applySt(o, mv.st, caster);
         });
         break;
@@ -834,7 +854,7 @@
             life: 2.6, pierce: (mv.pierce || 0), lob: !!mv.lob,
             radius: (mv.radius || 1.4) * TILE,
             tx: tx, ty: ty, st: mv.st, frame: 0, ignoreWall: !!mv.lob || !!caster.b.ghost,
-            opening: opening
+            opening: opening, name: mv.name
           });
         }
         break;
@@ -843,7 +863,7 @@
         S.projectiles.push({
           x: caster.x, y: caster.y - 8, a: Math.atan2(P.y - caster.y, P.x - caster.x), spd: 200,
           dmg: caster.b.dmg * mv.dmg, src: caster, team: caster.team, w: mv.w || "comet",
-          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0, opening: opening,
+          life: 3, pierce: 0, radius: (mv.radius || 2) * TILE, lob: true, tx: P.x, ty: P.y, st: mv.st, ignoreWall: true, frame: 0, opening: opening, name: mv.name,
           vis: mv.vis || "stone", col: caster.b.color
         });
         break;
@@ -864,7 +884,7 @@
           if (caster.b.ghost || !solidAt(S.lv, land.x, land.y)) { caster.x = land.x; caster.y = land.y; }
           S.marks.push({ x: caster.x, y: caster.y, r: 14, life: 0.4, col: caster.b.color, ring: true });
           if (mv.dmg) {
-            const dealt = damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true, opening: opening, execute: !!mv.execute });
+            const dealt = damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true, opening: opening, execute: !!mv.execute, name: mv.name });
             if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
           }
           if (mv.st) applySt(t2, mv.st, caster);       // what the landing does to them
@@ -1275,14 +1295,14 @@
     const echo = b.mods.echo || 0;
     const dmg = st.dmg * (1 + (b.atk.dmg || 0));
     if (isMelee) {
-      const dealt = damage(e, t, dmg, { melee: true });
+      const dealt = damage(e, t, dmg, { melee: true, name: b.atk.name });
       if (b.atk.drain && dealt > 0) heal(e, Math.round(dealt * b.atk.drain), e);
       /* Truth Lens on a hand weapon: the blow carries into the next body in reach. */
       if (b.pierce > 0) {
         enemiesOf(e).filter((o) => o !== t && dist2(e.x, e.y, o.x, o.y) <= st.range + 18)
           .sort((a, c) => dist2(t.x, t.y, a.x, a.y) - dist2(t.x, t.y, c.x, c.y))
           .slice(0, b.pierce)
-          .forEach((o) => damage(e, o, dmg, { melee: true }));
+          .forEach((o) => damage(e, o, dmg, { melee: true, name: b.atk.name }));
       }
       if (b.atk.splash) {
         enemiesOf(e).forEach((o) => {
@@ -1297,11 +1317,11 @@
         x: e.x, y: e.y - 8, a: Math.atan2(t.y - e.y, t.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
         w: b.atk.w, vis: b.atk.vis, col: b.color, life: 2.0, pierce: b.pierce || 0, frame: 0,
         direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5,
-        ignoreWall: !!b.ghost, drain: b.atk.drain || 0
+        ignoreWall: !!b.ghost, drain: b.atk.drain || 0, name: b.atk.name
       });
     }
     /* Echo Round: the shot arrives twice — the second one a beat later */
-    if (echo) S.pending.push({ t: 0.32, x: t.x, y: t.y, r: 16, dmg: dmg * echo, src: e, col: e.b.color, echo: true, single: t });
+    if (echo) S.pending.push({ t: 0.32, x: t.x, y: t.y, r: 16, dmg: dmg * echo, src: e, col: e.b.color, echo: true, single: t, name: b.atk.name });
   }
 
   /* -------------------------------------------------------------- projectiles */
@@ -1317,7 +1337,7 @@
       if (!p.ignoreWall && solidAt(S.lv, p.x, p.y)) done = true;
       if (p.lob) {
         if (dist2(p.x, p.y, p.tx, p.ty) < Math.max(14, p.spd * dt)) {
-          blast(p.x, p.y, p.radius, p.dmg, p.src, p.st, p.team, false, false, !!p.opening);
+          blast(p.x, p.y, p.radius, p.dmg, p.src, p.st, p.team, false, false, !!p.opening, p.name);
           done = true;
         }
       } else {
@@ -1327,10 +1347,10 @@
           if (p.hit[h.uid]) return;
           p.hit[h.uid] = 1;
           const amount = p.direct != null ? p.direct : p.dmg;
-          const dealt = damage(p.src, h, amount, { ranged: true, opening: !!p.opening });
+          const dealt = damage(p.src, h, amount, { ranged: true, opening: !!p.opening, name: p.name });
           if (p.drain && dealt > 0 && p.src) heal(p.src, Math.round(dealt * p.drain), p.src);
           applySt(h, p.st, p.src);
-          if (p.splashR) blast(p.x, p.y, p.splashR, amount * (p.splashMul || 0.5), p.src, null, p.team, true);
+          if (p.splashR) blast(p.x, p.y, p.splashR, amount * (p.splashMul || 0.5), p.src, null, p.team, true, false, false, p.name);
           done = true;
         });
       }
@@ -1341,13 +1361,13 @@
       }
     }
   }
-  function blast(x, y, radius, dmg, src, st, team, quiet, strips, opening) {
+  function blast(x, y, radius, dmg, src, st, team, quiet, strips, opening, name) {
     if (!quiet) S.marks.push({ x: x, y: y, r: radius, life: 0.35, col: (src && src.b.color) || "#fbbf24", ring: true });
     all().forEach((o) => {
       if (o.dead) return;
       if (team != null && o.team === team) return;
       if (dist2(x, y, o.x, o.y) > radius) return;
-      if (dmg) damage(src, o, dmg, { ranged: true, strips: !!strips, opening: !!opening });
+      if (dmg) damage(src, o, dmg, { ranged: true, strips: !!strips, opening: !!opening, name: name });
       applySt(o, st, src);
     });
   }
@@ -1376,6 +1396,15 @@
     if (!S.sudden && S.time > SUDDEN) {
       S.sudden = true;
       pushEvent("The arena begins to close — every body starts losing the floor.", "warn");
+      pushCast("sudden", {});
+    }
+    /* one line about the ring, once the bell's quiet is over and the fight is real */
+    if (!S.lawSaid && S.time > 6.5 && !S.over) {
+      S.lawSaid = true;
+      const law = lawById(S.lv && S.lv.realm);
+      const raw = String(law.line).split("—").pop().trim();
+      const note = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : law.line;
+      pushCast("law", { ring: law.name, note: note });
     }
     all().forEach((e) => {
       if (e.dead) { e.dieT += dt; return; }
@@ -1447,8 +1476,8 @@
       p.t -= dt;
       if (p.t > 0) continue;
       if (p.single) {
-        if (!p.single.dead) damage(p.src, p.single, p.dmg, { ranged: true, dot: true });
-      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null, false, !!p.strips, !!p.opening);
+        if (!p.single.dead) damage(p.src, p.single, p.dmg, { ranged: true, dot: true, name: p.name });
+      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null, false, !!p.strips, !!p.opening, p.name);
       S.pending.splice(i, 1);
     }
     S.texts.forEach((t) => { t.life -= dt; t.y -= 18 * dt; });
@@ -1493,6 +1522,7 @@
         S.tideIn = 12;
         const cx = MAP_W * TILE * 0.5, cy = MAP_H * TILE * 0.5;
         pushEvent("The tide turns.", "law");
+        if (!S.tideSaid) { S.tideSaid = true; pushCast("tide", { ring: "Tide Ring" }); }
         S.marks.push({ x: cx, y: cy, r: 40, life: 0.7, col: "#38bdf8", ring: true });
         live().forEach((e) => {
           const a = Math.atan2(e.y - cy, e.x - cx) + 1.5708;
@@ -1854,7 +1884,8 @@
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
     S.bubbles = []; S.talk = []; S.talkT = INTRO_S + 9; S.kills = 0; S.aceSaid = false;
     S.talkSeq = S.talkSeq || 0;
-    S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9;
+    S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9; S.lastColor = -9;
+    S.lawSaid = false; S.tideSaid = false;
     buildIntro(meta);
   }
 

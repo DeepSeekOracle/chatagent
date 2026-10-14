@@ -385,7 +385,8 @@ must("most of the roster has its own mouth", (BAN && BAN.sayers ? BAN.sayers.len
 /* Every caster line must hang off something that actually happened. The intro is a program
    on the clock -- the match starting IS the event -- so its cues belong on the list too. */
 const CAST_OK = { open: 1, kill: 1, firstBlood: 1, wipe: 1, hold: 1, save: 1, edge: 1, ace: 1, draw: 1,
-  mapEnd: 1, matchEnd: 1, introRing: 1, introTeam: 1, introScore: 1, ready: 1, bell: 1 };
+  mapEnd: 1, matchEnd: 1, introRing: 1, introTeam: 1, introScore: 1, ready: 1, bell: 1,
+  law: 1, sudden: 1, recall: 1, tide: 1 };
 let banMatches = 24, banLines = 0, banHot = 0, banStray = 0, banNamed = 0, banCalls = 0, banBub = 0, banFar = 0;
 const banKinds = new Set();
 for (let m = 0; m < banMatches; m++) {

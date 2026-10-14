@@ -23,10 +23,10 @@
   /* What a line is worth. A bell outranks everything; a body taking a hit outranks nothing.
      Anything at PRIO_URGENT or better ignores the cooldowns and the budget -- a wipe may not wait. */
   var PRIO = {
-    die: 2, hurt: 2, lose: 2,
-    taunt: 3, cc: 3, ready: 4,
-    save: 5,
-    kill: 7, ace: 8, mapEnd: 8, win: 8,
+    die: 2, hurt: 2, lose: 2, miss: 2,
+    taunt: 3, cc: 3, block: 3, crit: 3, hold: 3, ready: 4, cleanse: 4, tide: 4,
+    save: 5, edge: 6, law: 6, rise: 6,
+    kill: 7, draw: 7, recall: 7, ace: 8, mapEnd: 8, win: 8, wipe: 8, firstBlood: 8, sudden: 8,
     matchEnd: 9, intro: 9, bell: 10
   };
   var PRIO_DEFAULT = 3;

@@ -118,6 +118,26 @@
   };
   /* the director's estimate, repeated only for the voices-off path so the timing is identical */
   function durOf(line) { return Math.max(1.0, Math.min(6.5, 0.55 + String(line.text || "").length / 13.4)); }
+  /* How a line is said. The director still holds the floor on its own clock. A slower
+     voice can only make that hold longer. The booth stays at pitch 1. Bodies keep the
+     pitch and pace written for that kit, leaned a little by what just happened. */
+  function speakRate(line, prof, machine) {
+    const floor = line.rate || (line.caster ? 0.96 : 1);
+    const k = line.kind || "";
+    if (line.caster) {
+      if (k === "bell" || k.indexOf("intro") === 0) return floor;
+      if (k === "kill" || k === "firstBlood" || k === "wipe" || k === "sudden" || k === "ace") return Math.min(1.14, floor * 1.06);
+      if (k === "save" || k === "edge" || k === "recall" || k === "draw" || k === "law") return Math.max(0.88, floor * 0.94);
+      return floor;
+    }
+    let mul = 1;
+    if (k === "die" || k === "hurt" || k === "lose") mul = 0.9;
+    else if (k === "kill" || k === "win" || k === "ace" || k === "crit") mul = 1.06;
+    else if (k === "taunt" || k === "cc" || k === "miss") mul = 1.04;
+    else if (k === "saved" || k === "ready" || k === "rise" || k === "block") mul = 0.96;
+    const base = machine ? 1 : (prof.rate || 1);
+    return Math.max(0.84, Math.min(1.16, base * mul));
+  }
 
   /* Say one line the director accepted. The floor is held for the whole of it, the feed and the
      bubble are written now, and `done` hands the floor back -- by the voice itself when there is
@@ -152,7 +172,7 @@
     ut.lang = line.caster ? "en-GB" : ((chosen && chosen.lang) || "en");
     /* a human voice stays at its own pitch. Dropping the booth to 0.78 is what made David a robot. */
     ut.pitch = line.caster ? 1 : (machine ? Math.max(0.92, Math.min(1.12, prof.pitch)) : prof.pitch);
-    ut.rate = line.rate || (line.caster ? 0.96 : Math.max(0.88, Math.min(1.12, machine ? 1 : prof.rate)));
+    ut.rate = speakRate(line, prof, machine);
     ut.volume = 0.95;
     micHolder = line.caster ? "cast" : "talk";
     ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; finish(); };
