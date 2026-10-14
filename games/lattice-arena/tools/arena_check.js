@@ -560,6 +560,11 @@ console.log("");
 console.log("best-usage kits: " + Object.entries(tally).sort((a, b) => b[1].uses - a[1].uses).slice(0, 5).map(([id, t]) => id + " " + t.uses).join(", "));
 console.log("top damage kits: " + Object.entries(tally).sort((a, b) => b[1].dmg - a[1].dmg).slice(0, 6).map(([id, t]) => id + " " + Math.round(t.dmg)).join(", "));
 console.log("win-rate spread: " + Object.entries(tally).filter(([, t]) => t.matches > 6).map(([id, t]) => id + " " + Math.round(100 * t.wins / t.matches) + "%").sort().join(", "));
+/* every move on every kit, cast through the real resolver */
+const kit = require("child_process").spawnSync(process.execPath, [path.join(__dirname, "kit_probe.js")], { encoding: "utf8" });
+const kitOut = ((kit.stdout || "") + (kit.stderr || "")).trim().split("\n").filter(Boolean);
+must("every kit's moves, buffs and basics resolve", kit.status === 0, kitOut.slice(-3).join(" · "));
+
 console.log("");
 console.log((fails ? "FAILED" : "PASSED") + " — " + results.filter((r) => r.ok).length + "/" + results.length + " checks, " + warns + " warnings, " + MATCHES + " battles simulated");
 process.exit(fails ? 1 : 0);

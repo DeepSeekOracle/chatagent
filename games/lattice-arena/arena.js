@@ -312,7 +312,7 @@
       cds: built.moves.map(() => 0), atkCd: 0.6 + Math.random() * 0.5,
       face: 0, walk: 0, animT: 0, animMax: 0.34, animVis: "", aimA: 0, flash: 0, dead: false, dieT: 0,
       target: null, retarget: 0, stuck: 0, lastX: 0, lastY: 0, kite: 0, idleT: 0,
-      firstUsed: false, usedLastStand: false, usedRevive: false, lastCardCheck: 0,
+      firstUsed: false, usedLastStand: false, usedRevive: false, usedCleanse: false, lastCardCheck: 0,
       kills: 0, dmgDone: 0, healDone: 0, taken: 0, uses: {}, tokens: 0, ttl: isToken ? (built.ttl || 20) : 0,
       isToken: !!isToken
     };
@@ -341,13 +341,22 @@
     const hpFrac = e.hp / e.max;
     let dmg = b.dmg * (1 + (e.rageT > 0 ? e.rageV : 0)) * (1 - (e.weakT > 0 ? e.weakV : 0));
     if (b.mods.fury && hpFrac < 0.4) dmg *= 1 + b.mods.fury;
+    /* Hall Standard and A New Accord belong to the ally who is still standing.
+       They are not baked into the sheet, so they leave when that body does. */
+    let auraDmg = 0, auraArmor = 0;
+    alliesOf(e).forEach((a) => {
+      if (a === e) return;
+      auraDmg += a.b.mods.auraDmg || 0;
+      auraArmor += a.b.mods.auraArmor || 0;
+    });
+    dmg *= 1 + auraDmg;
     let speed = b.speed * (1 + (e.swiftT > 0 ? e.swiftV : 0)) * (1 - (e.slowT > 0 ? e.slowV : 0)) * (e.stun > 0 || e.root > 0 ? 0 : 1);
     if (S.lv && S.lv.realm === "frost") speed *= 0.88;
     return {
       dmg: dmg,
       rate: b.rate * (1 + (e.hasteT > 0 ? e.hasteV : 0)),
       speed: speed,
-      armor: b.armor + e.armorBuff,
+      armor: b.armor + e.armorBuff + auraArmor,
       range: b.range + (e.shieldWallT > 0 ? 12 : 0)
     };
   }
@@ -370,6 +379,7 @@
     if (e.shd > 0) out.push(["aegis", e.shd]);
     if (e.tauntT > 0) out.push(["taunt", e.tauntT]);
     if (e.lifestealT > 0) out.push(["drink", e.lifestealT]);
+    if (e.woundT > 0) out.push(["wound", e.woundT]);
     return out;
   }
   /* ----------------------------------------------------------------- talk ---
@@ -403,6 +413,14 @@
   function isMender(b) { return !!(b && (b.moves || []).some((m) => m.st && m.st.heal)); }
   function applySt(e, st, from) {
     if (!st) return;
+    /* Unwrite Ink: the first stun, root or silence aimed at this body does not land. */
+    if (from && from !== e && from.team !== e.team && !e.usedCleanse &&
+        e.b.cards.some((c) => c.hook === "cleanse") && (st.stun || st.root || st.silence)) {
+      e.usedCleanse = true;
+      st = Object.assign({}, st);
+      delete st.stun; delete st.root; delete st.silence;
+      pushEvent(e.b.name + " shrugs the first hold — Unwrite Ink.", "gift");
+    }
     if (st.stun) e.stun = Math.max(e.stun, st.stun);
     if (from && from.team !== e.team && (st.stun || st.root)) {
       pushTalk("cc", from, e, false);
@@ -424,6 +442,11 @@
     if (st.wound) { e.woundT = Math.max(e.woundT || 0, st.wound[1]); e.woundV = Math.max(e.woundV || 0, st.wound[0]); }
     if (st.lifesteal) { e.lifestealT = Math.max(e.lifestealT, st.lifesteal[1]); e.lifestealV = Math.max(e.lifestealV, st.lifesteal[0]); }
     if (st.aegis) e.shd += Math.round(e.max * st.aegis);
+    /* Shield Wall: the body becomes the thing the other team has to hit. */
+    if (st.taunt) {
+      e.tauntT = Math.max(e.tauntT || 0, st.taunt);
+      e.shieldWallT = Math.max(e.shieldWallT || 0, st.taunt);
+    }
     if (st.armor) { e.armorBuff = Math.max(e.armorBuff, st.armor[0]); e.armorBuffT = Math.max(e.armorBuffT, st.armor[1]); }
     if (st.heal) { const amt = Math.round(e.max * st.heal); heal(e, amt, from); }
     if (st.cdReset) e.cds = e.cds.map(() => 0.15);
@@ -510,7 +533,8 @@
       dmg *= src.b.critMul;
     }
     if (opts.doubleFirst && src && !src.firstUsed) { dmg *= 2; src.firstUsed = true; }
-    if (src && src.b.mods.execute && tgt.hp / tgt.max < 0.32) dmg *= 1 + src.b.mods.execute;
+    const exec = (src && src.b.mods.execute) || (opts.execute ? 0.7 : 0);
+    if (exec && tgt.hp / tgt.max < 0.32) dmg *= 1 + exec;
     if (tgt.b.mods.bulwark && tgt.hp / tgt.max > 0.6) dmg *= 1 - tgt.b.mods.bulwark;
     if (!opts.ignoreArmor) dmg = Math.max(3, dmg - (tgt.b.armor + tgt.armorBuff) * 1.1);
     if (opts.strips && tgt.shd > 0) { dmg *= 2; tgt.shd = 0; }
@@ -670,6 +694,9 @@
 
   function castMove(e, mv, idx) {
     const cost = moveCost(mv);
+    /* A revive with nobody down, or a summon with no token, must not eat the mana. */
+    if (mv.shape === "revive" && !(e.team === 0 ? S.your : S.foe).some((x) => x.dead)) return false;
+    if (mv.shape === "summon" && !R.TOKENS[mv.token]) return false;
     if (e.mana < cost || e.silence > 0 || e.stun > 0) return false;
     e.mana -= cost;
     e.cds[idx] = mv.cd * e.b.cdMul;
@@ -709,7 +736,8 @@
           return diff < 1.15;
         });
         hits.forEach((o) => {
-          damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, doubleFirst: !!caster.b.mods.firstDouble, ignoreArmor: !!mv.ignoreArmor });
+          const dealt = damage(caster, o, caster.b.dmg * mv.dmg, { melee: true, doubleFirst: !!caster.b.mods.firstDouble, ignoreArmor: !!mv.ignoreArmor, execute: !!mv.execute });
+          if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
           applySt(o, mv.st, caster);
         });
         if (!hits.length) applySt(anchorAlly || caster, mv.selfSt, caster);
@@ -730,7 +758,7 @@
         break;
       }
       case "blast": {
-        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: mv.strips });
+        S.pending.push({ t: 0.32, x: P.x, y: P.y, r: (mv.radius || 2) * TILE, dmg: caster.b.dmg * mv.dmg, src: caster, st: mv.st, col: caster.b.color, strips: !!mv.strips });
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);
         break;
       }
@@ -751,17 +779,34 @@
       }
       case "bolt":
       case "multi": {
-        const n = (mv.n || 1) + (mv.n ? (caster.b.mods.volleyAdd || 0) : 0);
+        const baseN = mv.n || 1;
+        const extra = mv.n ? (caster.b.mods.volleyAdd || 0) : 0;
+        const n = baseN + extra;
         const a0 = Math.atan2(P.y - caster.y, P.x - caster.x);
         for (let i = 0; i < n; i++) {
-          const spread = n > 1 ? (i - (n - 1) / 2) * 0.24 : 0;
+          /* the aimed bearing stays in the fan. An extra volley shot is added
+             beside it — stretching the fan to an even count was leaving the
+             called body standing in the gap between two arrows. */
+          let spread = baseN > 1 ? (i - (baseN - 1) / 2) * 0.24 : 0;
+          if (i >= baseN) {
+            const k = i - baseN;
+            const side = k % 2 ? 1 : -1;
+            const tier = 1 + (k / 2 | 0);
+            spread = side * 0.24 * ((baseN - 1) / 2 + tier);
+          }
           const a = a0 + spread;
+          /* a lobbed fan lands on its own ray, at the same depth as the called target.
+             One shared point makes the side shells orbit that point and never burst. */
+          const depth = Math.hypot(P.x - caster.x, P.y - caster.y) || TILE;
+          const tx = mv.lob ? caster.x + Math.cos(a) * depth : P.x;
+          const ty = mv.lob ? caster.y + Math.sin(a) * depth : P.y;
           S.projectiles.push({
-            x: caster.x, y: caster.y - 8, a: a, spd: 430,
+            x: caster.x, y: caster.y - 8, a: a, spd: mv.lob ? 220 : 430,
             dmg: caster.b.dmg * mv.dmg, src: caster, team: caster.team, w: mv.w || caster.b.atk.w,
             vis: mv.vis || caster.b.atk.vis, col: caster.b.color,
-            life: 2.2, pierce: (mv.pierce || 0), lob: false,
-            tx: P.x, ty: P.y, st: mv.st, frame: 0, ignoreWall: false
+            life: 2.6, pierce: (mv.pierce || 0), lob: !!mv.lob,
+            radius: (mv.radius || 1.4) * TILE,
+            tx: tx, ty: ty, st: mv.st, frame: 0, ignoreWall: !!mv.lob || !!caster.b.ghost
           });
         }
         break;
@@ -788,9 +833,12 @@
         if (t2) {
           const a = Math.atan2(caster.y - t2.y, caster.x - t2.x);
           const land = { x: t2.x + Math.cos(a) * 26, y: t2.y + Math.sin(a) * 26 };
-          if (!solidAt(S.lv, land.x, land.y)) { caster.x = land.x; caster.y = land.y; }
+          if (caster.b.ghost || !solidAt(S.lv, land.x, land.y)) { caster.x = land.x; caster.y = land.y; }
           S.marks.push({ x: caster.x, y: caster.y, r: 14, life: 0.4, col: caster.b.color, ring: true });
-          if (mv.dmg) damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true });
+          if (mv.dmg) {
+            const dealt = damage(caster, t2, caster.b.dmg * mv.dmg, { melee: true, execute: !!mv.execute });
+            if (mv.drain && dealt > 0) heal(caster, Math.round(dealt * mv.drain), caster);
+          }
           if (mv.st) applySt(t2, mv.st, caster);       // what the landing does to them
         }
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);   // and what it does for us
@@ -888,14 +936,15 @@
     const called = !!(t && !t.dead);          /* the brain named this one: it is not a guess */
     if (!t || t.dead) t = pickTarget(e, !stl.prefer || stl.prefer === "attack" ? "nearest" : stl.prefer);
     if (!t) return;
-    /* Every path lands here -- the brain's call, the squad's focus, a style's preference, the raw
-       nearest -- so the commitment belongs here: a body stays on the enemy it is fighting for a
-       beat before it may choose another. The brain is rebuilt every 0.18s, and the preference and
-       the focus trade places at that rate; a target that changes 1.8 times a second is a body
-       turning on the spot, which is what a spectator reads as "it does not know what to do".
-       A dead target releases the hold at once -- switching off a corpse is not dithering. */
-    if (e.target && !e.target.dead && e.target !== t && (e.tgtHold || 0) > 0) t = e.target;
-    else if (e.target && e.target !== t) e.tgtHold = Math.max(0.45, Math.min(3.4, stl.commit || TGT_HOLD));
+    /* Shield Wall outranks the plan. While somebody is holding the door, that is the target. */
+    const taunters = enemiesOf(e).filter((o) => o.tauntT > 0 || o.shieldWallT > 0);
+    if (taunters.length) {
+      t = taunters.reduce((p, o) => (dist2(e.x, e.y, o.x, o.y) < dist2(e.x, e.y, p.x, p.y) ? o : p));
+    } else if (e.target && !e.target.dead && e.target !== t && (e.tgtHold || 0) > 0) {
+      /* the brain is rebuilt every 0.18s. A target that changes that often is a body
+         turning on the spot. A dead target releases the hold at once. */
+      t = e.target;
+    } else if (e.target && e.target !== t) e.tgtHold = Math.max(0.45, Math.min(3.4, stl.commit || TGT_HOLD));
     e.target = t;
 
     /* ---- the kit: whatever is in reach and off cooldown, in the kit's own order.
@@ -1152,6 +1201,13 @@
   }
 
   function moveEntity(e, dx, dy) {
+    /* Ghosts are not bodies the stone can hold. They still cannot leave the ring. */
+    if (e.b && e.b.ghost) {
+      const x0 = e.x, y0 = e.y;
+      e.x = clamp(e.x + dx, TILE * 1.15, (MAP_W - 1.15) * TILE);
+      e.y = clamp(e.y + dy, TILE * 1.15, (MAP_H - 1.15) * TILE);
+      return Math.hypot(e.x - x0, e.y - y0);
+    }
     const x0 = e.x, y0 = e.y;
     const before = overlapAt(x0, y0);
     const nx = e.x + dx;
@@ -1191,7 +1247,15 @@
     const echo = b.mods.echo || 0;
     const dmg = st.dmg * (1 + (b.atk.dmg || 0));
     if (isMelee) {
-      damage(e, t, dmg, { melee: true, doubleFirst: !!b.mods.firstDouble });
+      const dealt = damage(e, t, dmg, { melee: true, doubleFirst: !!b.mods.firstDouble });
+      if (b.atk.drain && dealt > 0) heal(e, Math.round(dealt * b.atk.drain), e);
+      /* Truth Lens on a hand weapon: the blow carries into the next body in reach. */
+      if (b.pierce > 0) {
+        enemiesOf(e).filter((o) => o !== t && dist2(e.x, e.y, o.x, o.y) <= st.range + 18)
+          .sort((a, c) => dist2(t.x, t.y, a.x, a.y) - dist2(t.x, t.y, c.x, c.y))
+          .slice(0, b.pierce)
+          .forEach((o) => damage(e, o, dmg, { melee: true }));
+      }
       if (b.atk.splash) {
         enemiesOf(e).forEach((o) => {
           if (o === t) return;
@@ -1204,7 +1268,8 @@
       S.projectiles.push({
         x: e.x, y: e.y - 8, a: Math.atan2(t.y - e.y, t.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
         w: b.atk.w, vis: b.atk.vis, col: b.color, life: 2.0, pierce: b.pierce || 0, frame: 0,
-        direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5, doubleFirst: !!b.mods.firstDouble
+        direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5, doubleFirst: !!b.mods.firstDouble,
+        ignoreWall: !!b.ghost, drain: b.atk.drain || 0
       });
     }
     /* Echo Round: the shot arrives twice — the second one a beat later */
@@ -1229,9 +1294,13 @@
         }
       } else {
         const hits = all().filter((e) => !e.dead && e.team !== p.team && dist2(e.x, e.y - 6, p.x, p.y) < 15);
+        if (!p.hit) p.hit = {};
         hits.forEach((h) => {
+          if (p.hit[h.uid]) return;
+          p.hit[h.uid] = 1;
           const amount = p.direct != null ? p.direct : p.dmg;
-          damage(p.src, h, amount, { ranged: true, doubleFirst: !!p.doubleFirst });
+          const dealt = damage(p.src, h, amount, { ranged: true, doubleFirst: !!p.doubleFirst });
+          if (p.drain && dealt > 0 && p.src) heal(p.src, Math.round(dealt * p.drain), p.src);
           applySt(h, p.st, p.src);
           if (p.splashR) blast(p.x, p.y, p.splashR, amount * (p.splashMul || 0.5), p.src, null, p.team, true);
           done = true;
@@ -1244,13 +1313,13 @@
       }
     }
   }
-  function blast(x, y, radius, dmg, src, st, team, quiet) {
+  function blast(x, y, radius, dmg, src, st, team, quiet, strips) {
     if (!quiet) S.marks.push({ x: x, y: y, r: radius, life: 0.35, col: (src && src.b.color) || "#fbbf24", ring: true });
     all().forEach((o) => {
       if (o.dead) return;
       if (team != null && o.team === team) return;
       if (dist2(x, y, o.x, o.y) > radius) return;
-      if (dmg) damage(src, o, dmg, { ranged: true });
+      if (dmg) damage(src, o, dmg, { ranged: true, strips: !!strips });
       applySt(o, st, src);
     });
   }
@@ -1335,7 +1404,7 @@
       if (p.t > 0) continue;
       if (p.single) {
         if (!p.single.dead) damage(p.src, p.single, p.dmg, { ranged: true, dot: true });
-      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null);
+      } else blast(p.x, p.y, p.r, p.dmg, p.src, p.st, p.src ? p.src.team : null, false, !!p.strips);
       S.pending.splice(i, 1);
     }
     S.texts.forEach((t) => { t.life -= dt; t.y -= 18 * dt; });
@@ -1813,6 +1882,17 @@
       return true;
     },
     introLength: () => INTRO_S,
+    /* The kit probe casts one move with the real resolver. Mana and stun are cleared
+       for that swing only — a silenced or empty body is not what the probe is asking. */
+    forceCast(e, idx) {
+      if (!e || !e.b || e.dead) return false;
+      const mv = e.b.moves[idx];
+      if (!mv) return false;
+      e.stun = 0; e.silence = 0;
+      e.mana = Math.max(e.mana, moveCost(mv));
+      e.cds[idx] = 0;
+      return castMove(e, mv, idx);
+    },
     stepHeadless(seconds) {
       const n = Math.round(seconds / STEP);
       for (let i = 0; i < n && !S.over; i++) step(STEP);

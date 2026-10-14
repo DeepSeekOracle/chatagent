@@ -439,10 +439,10 @@
       boss: !!fighter.boss, ghost: !!fighter.ghost,
       style: fighter.style || null, temper: fighter.temper || null, tune: fighter.tune || null,
       max: Math.max(120, Math.round(hp)),
-      dmg: fighter.dmg * 1.15 * (1 + mods.dmgMul + auraDmg),
+      dmg: fighter.dmg * 1.15 * (1 + mods.dmgMul),
       rate: fighter.rate * (1 + mods.rateMul),
       speed: fighter.speed * (1 + mods.spdMul) * 32,
-      armor: fighter.armor + mods.armorAdd + auraArmor + (melee ? 1 : 0),
+      armor: fighter.armor + mods.armorAdd + (melee ? 1 : 0),
       range: fighter.range * 32,
       minRange: fighter.minRange ? fighter.minRange * 32 : 0,
       manaMax: Math.round(fighter.mana * (1 + mods.manaMul)),
@@ -459,6 +459,7 @@
         return Object.assign({ moveId: m }, base, (kit.moves && kit.moves[m]) || {});
       }).filter(Boolean),
       moveIds: fighter.moves.slice(),
+      ttl: fighter.ttl || 0,
       auraArmor, auraDmg, logic: fighter.logic || null
     };
     out.dps = out.dmg * out.rate * (1 + out.crit * (out.critMul - 1));
