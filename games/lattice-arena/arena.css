@@ -135,9 +135,8 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
 .title-screen { height: 100%; display: grid; grid-template-columns: 1.25fr minmax(280px, 420px); }
 .title-art { position: relative; min-height: 0; background: #05060a; }
 .title-art img, .title-art .menu-film { width: 100%; height: 100%; object-fit: cover; display: block; }
-.title-art .menu-film { position: absolute; inset: 0; }
-.title-art .menu-live { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .title-art .menu-film { display: none; } }
+.title-art .menu-film { position: absolute; inset: 0; z-index: 1; }
+.title-art .menu-live { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; }
 .title-panel { padding: 1.3rem 1.25rem 1.5rem; overflow: auto; border-left: 1px solid var(--line);
   height: 100%; background: #080b12; display: flex; flex-direction: column; gap: .15rem; }
 .menu-actions { display: flex; flex-direction: column; gap: .45rem; margin: .35rem 0 .6rem; }
