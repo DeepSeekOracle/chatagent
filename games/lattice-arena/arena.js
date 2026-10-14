@@ -1883,16 +1883,14 @@
         ctx.restore();
       }
       const size = drawSprite(e);
-      /* team ring under the feet: the only thing a spectator must never have to guess */
-      ctx.save();
-      ctx.strokeStyle = e.team === 0 ? "#22d3ee" : "#f87171";
-      ctx.lineWidth = 2; ctx.globalAlpha = 0.85;
-      ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 14, 6, 0, 0, 6.283); ctx.stroke();
+      /* Team colour stays on the bar over the head. A disc at the feet painted on
+         top of the sprite and read as a marker stuck to the body. */
       if (e.tauntT > 0 || e.shieldWallT > 0) {
+        ctx.save();
         ctx.globalAlpha = 0.5; ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.ellipse(e.x, e.y + 2, 20, 9, 0, 0, 6.283); ctx.stroke();
+        ctx.restore();
       }
-      ctx.restore();
       /* health bar over the head with the shield stacked on top */
       const bw = e.b.boss ? 54 : 40, bx = e.x - bw / 2, by = e.y - size * 0.86 - 8;
       ctx.fillStyle = "rgba(3,6,12,0.82)";
