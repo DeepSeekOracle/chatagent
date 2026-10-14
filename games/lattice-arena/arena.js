@@ -68,13 +68,13 @@
   }
   /* Photo skins. Sponsor type is already in the file, so the booth floor is a picture, not a tile. */
   function loadFloors() {
-    REALMS.forEach((k) => {
+    FLOORS.forEach((k) => {
       const img = new Image();
       img.onload = () => {
         FLOOR_SKIN[k] = img;
-        if (S.lv && S.lv.realm === k) floorCv = paintFloor(S.lv);
+        if (S.lv && (S.lv.floor || S.lv.realm) === k) floorCv = paintFloor(S.lv);
       };
-      img.src = "./assets/floors/" + k + ".png?v=2";
+      img.src = "./assets/floors/" + k + ".png?v=3";
     });
   }
   function atlasFor(sheet) { return AT[sheet]; }
@@ -113,6 +113,18 @@
      on each flank, a central spine with gaps top and bottom, and four alcoves. Everything a
      spectator needs to read a fight: two ways round, cover to break sight, open middle. */
   const REALMS = ["stone", "frost", "ember", "gold", "lattice", "void", "tide", "root"];
+  /* The law stays on the realm. The mat is a separate draw, so the canvas
+     rotates through the set instead of locking to the ring. */
+  const FLOORS = [
+    "stone", "frost", "ember", "gold", "lattice", "void", "tide", "root",
+    "ca-canvas", "ca-night", "ca-ember",
+    "circle-gold", "circle-frost", "ring-tide",
+    "bare-sand", "bare-night", "bare-earth"
+  ];
+  function floorPick(seed) {
+    const n = Math.abs(seed | 0);
+    return FLOORS[((Math.imul(n, 13) + 7) >>> 0) % FLOORS.length];
+  }
   /* Each ring is a small readable law. Numbers stay mild so a 3v3 still ends. */
   const LAWS = {
     stone: { name: "Stone Ring", line: "Stone Ring — the floor takes no side." },
@@ -237,7 +249,7 @@
         while (y !== 11) { t[y][x] = "floor"; y += Math.sign(11 - y) || 0; if (y === 11) break; }
       }
     });
-    return { W: MAP_W, H: MAP_H, tiles: t, realm: REALMS[seed % REALMS.length], kind: kind };
+    return { W: MAP_W, H: MAP_H, tiles: t, realm: REALMS[seed % REALMS.length], kind: kind, floor: floorPick(seed) };
   }
   function spawnSlots() {
     const out = [];
@@ -1571,7 +1583,7 @@
     const cv = document.createElement("canvas");
     cv.width = lv.W * TILE; cv.height = lv.H * TILE;
     const cx = cv.getContext("2d");
-    const skin = FLOOR_SKIN[lv.realm];
+    const skin = FLOOR_SKIN[lv.floor || lv.realm];
     if (skin && skin.width) {
       cx.imageSmoothingEnabled = true;
       cx.imageSmoothingQuality = "high";
@@ -1874,7 +1886,7 @@
     const holeCx = ox + mapW * scale / 2, holeCy = oy + mapH * scale / 2;
     ctx.setTransform(dpr * zs, 0, 0, dpr * zs, dpr * (holeCx - cam.x * zs + sx), dpr * (holeCy - cam.y * zs + sy));
     if (floorCv) {
-      const photo = S.lv && FLOOR_SKIN[S.lv.realm];
+      const photo = S.lv && FLOOR_SKIN[S.lv.floor || S.lv.realm];
       if (photo && photo.width) {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
@@ -2148,13 +2160,13 @@
       ctx.globalAlpha = 0.05 + 0.03 * Math.sin(S.time * 2);
       ctx.fillStyle = "#4ade80";
       ctx.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
-    } else if (realm === "gold" && !(FLOOR_SKIN.gold && FLOOR_SKIN.gold.width)) {
+    } else if (realm === "gold" && !(S.lv.floor && FLOOR_SKIN[S.lv.floor] && FLOOR_SKIN[S.lv.floor].width)) {
       ctx.globalAlpha = 0.35; ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 78 + 8 * Math.sin(S.time * 2), 0, 6.283); ctx.stroke();
-    } else if (realm === "lattice" && !(FLOOR_SKIN.lattice && FLOOR_SKIN.lattice.width)) {
+    } else if (realm === "lattice" && !(S.lv.floor && FLOOR_SKIN[S.lv.floor] && FLOOR_SKIN[S.lv.floor].width)) {
       ctx.globalAlpha = 0.22; ctx.strokeStyle = "#5eead4"; ctx.lineWidth = 1;
       for (let i = 1; i < 4; i++) ctx.strokeRect(cx - i * 48, cy - i * 34, i * 96, i * 68);
-    } else if (realm === "tide" && !(FLOOR_SKIN.tide && FLOOR_SKIN.tide.width)) {
+    } else if (realm === "tide" && !(S.lv.floor && FLOOR_SKIN[S.lv.floor] && FLOOR_SKIN[S.lv.floor].width)) {
       ctx.globalAlpha = 0.2; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 90 + 14 * Math.sin(S.time * 1.4), 0, 6.283); ctx.stroke();
     }
