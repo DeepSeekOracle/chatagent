@@ -1822,12 +1822,13 @@
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, wpx, hpx);
-    /* The sand stays the fight. The pad around it is the building: stands, not cover. */
+    /* The sand stays the fight. The stands are a thin ring, about half the old bowl,
+       and the ring sits a little high so the fight is the picture. */
     const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
-    /* Pad is stand room, in world pixels. Taller banks keep a band of faces instead of a sliver. */
-    const padX = 140, padY = 198;
-    const scale = Math.min(wpx / (mapW + padX * 2), hpx / (mapH + padY * 2));
-    const ox = (wpx - mapW * scale) / 2, oy = (hpx - mapH * scale) / 2;
+    const topBand = Math.max(34, hpx * 0.08);
+    const botBand = Math.max(40, hpx * 0.105);
+    const scale = (hpx - topBand - botBand) / mapH;
+    const ox = (wpx - mapW * scale) / 2, oy = topBand;
     const kick = S.shake > 0 ? S.shake * 10 : 0;
     const sx = kick ? (Math.random() - 0.5) * kick : 0;
     const sy = kick ? (Math.random() - 0.5) * kick : 0;
