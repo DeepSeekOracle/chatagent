@@ -435,15 +435,22 @@
   }
   /* The title screen has its own theme. The radio waits until team select or the fight. */
   function onStartPage() { return overlayMode === "menu" && menuTab === "home"; }
+  function menuSongOn() { return persist.menuSong !== false; }
   function syncMenuSong() {
     const a = $("menuSong");
     if (!a) return;
     a.volume = 0.25;
-    if (onStartPage()) {
+    if (onStartPage() && menuSongOn()) {
       if (w.LatticeRadio && w.LatticeRadio.playing()) w.LatticeRadio.pause();
       const p = a.play();
       if (p && p.catch) p.catch(function () {});
     } else if (!a.paused) a.pause();
+  }
+  function paintMenuSong() {
+    document.querySelectorAll("[data-act='menuSong']").forEach((b) => {
+      b.classList.toggle("on", menuSongOn());
+      b.textContent = menuSongOn() ? "Music on" : "Music off";
+    });
   }
   function paintSfx() {
     document.querySelectorAll("[data-act='mute']").forEach((b) => {
@@ -513,6 +520,7 @@
       "<div class='title-panel'>" +
         "<p class='kicker'>Δ9Φ963 · chatagent.ca</p><h1>LYGO Arena</h1>" +
         "<p class='lede'>Two AI teams. One stone ring. Name yourself, build a team, then watch them fight.</p>" +
+        "<button type='button' class='btn ghost" + (menuSongOn() ? " on" : "") + "' data-act='menuSong'>" + (menuSongOn() ? "Music on" : "Music off") + "</button>" +
         "<label class='name-block'>Your name<input class='callsign' id='callSign' maxlength='18' value='" + esc(persist.name || "") + "' placeholder='What should the hall call you?' autocomplete='nickname'></label>" +
         "<div class='menu-actions'>" +
           "<button type='button' class='btn gold' id='btnFight' data-ready='" + (ready ? "1" : "0") + "'><b>Fight</b><span>" + (hold ? esc(hold) : MODE_LABEL[persist.mode] + " · " + esc(names)) + "</span></button>" +
@@ -565,6 +573,9 @@
     return "<div class='plain-screen'>" +
       "<button type='button' class='btn' data-tab='home'>Back</button>" +
       "<p class='kicker'>Options</p><h1>Options</h1>" +
+      "<h2>Title music</h2>" +
+      "<p class='lede'>The start-page theme. Off leaves the title quiet. The radio is separate.</p>" +
+      "<button type='button' class='btn" + (menuSongOn() ? " on" : "") + "' data-act='menuSong'>" + (menuSongOn() ? "Music on" : "Music off") + "</button>" +
       "<h2>Announcer</h2>" +
       "<p class='lede'>The booth and the fighters. Off keeps the words on screen and holds the same pauses.</p>" +
       "<button type='button' class='btn" + (persist.talk ? " on" : "") + "' data-act='talk'>" + (persist.talk ? "Voices on" : "Voices off") + "</button>" +
@@ -1150,6 +1161,7 @@
       if (act === "rematch") { series = newSeries(); begin(false); }
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
       if (act === "mute") { persist.sfx = !sfxOn(); save(); paintSfx(); }
+      if (act === "menuSong") { persist.menuSong = !menuSongOn(); save(); paintMenuSong(); syncMenuSong(); }
       if (act === "skip") skipIntro();
       if (act === "talk") { persist.talk = !persist.talk; save(); paintTalk(); if (!persist.talk) hush(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
