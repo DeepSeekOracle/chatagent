@@ -11,6 +11,23 @@
   const TILE = 32;
   const R = w.LYGO_ARENA;
   const BANTER = w.LYGO_BANTER || null;      // optional: the fight runs without it
+
+  /* The fifteen seconds before the bell belong to the booth. He names the ring, names both
+     teams, and asks the only question that matters; nothing else in the arena speaks until he
+     is done. Every cue is on the clock, so the overlay can reveal each roster with the words. */
+  const INTRO_S = 15;
+  /* What outranks what. The booth outranks a body at equal priority, a wipe outranks a taunt,
+     and the bell outranks everything -- the director decides who actually gets to talk. */
+  const PRIO_BODY = { die: 2, hurt: 2, lose: 2, taunt: 3, cc: 3, ready: 4, saved: 5, kill: 7, win: 8 };
+  const PRIO_CAST = { hold: 3, save: 5, edge: 6, kill: 7, draw: 7, firstBlood: 8, wipe: 8, ace: 8,
+    mapEnd: 8, matchEnd: 9, open: 9, introRing: 9, introTeam: 9, introScore: 9, ready: 9, bell: 10 };
+
+  /* A line never touches Math.random: the sim is seeded, and a pick that shifted the stream
+     would move every number the harness measures. Picks ride the talk counter instead. */
+  function picker(seed) {
+    let s = (seed >>> 0) || 1;
+    return function () { s = (s * 1103515245 + 12345) >>> 0; return (s >>> 8) / 16777216; };
+  }
   const MAP_W = 34, MAP_H = 22;
   const STEP = 1 / 60;
   const SUDDEN = 80;           // seconds before the arena starts closing
@@ -365,20 +382,22 @@
     S.talk = S.talk || []; S.bubbles = S.bubbles || [];
     if (!hot && S.time - (S.lastTalk == null ? -9 : S.lastTalk) < 1.1) return;
     if (S.bubbles.length > 3) return;
-    const text = BANTER.line(kind, who.b, foe && foe.b);
+    const text = BANTER.line(kind, who.b, foe && foe.b, picker(S.talkSeq * 31 + 7));
     if (!text) return;
     S.lastTalk = S.time;
     S.bubbles.push({ who: who, text: text, life: 3.6, col: who.b.color || "#fbbf24" });
     S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: false, who: who.b.id, whoName: who.b.name,
-      foeName: (foe && foe.b && foe.b.name) || "", text: text, t: S.time, hot: !!hot });
+      foeName: (foe && foe.b && foe.b.name) || "", text: text, t: S.time, hot: !!hot,
+      prio: PRIO_BODY[kind] != null ? PRIO_BODY[kind] : 3 });
     if (S.talk.length > 80) S.talk.shift();
   }
   function pushCast(kind, vars) {
     if (!BANTER) return;
-    const text = BANTER.cast(kind, vars || {});
+    const text = BANTER.cast(kind, vars || {}, picker(S.talkSeq * 17 + 3));
     if (!text) return;
     S.talk = S.talk || [];
-    S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: true, text: text, t: S.time, hot: true });
+    S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: true, text: text, t: S.time, hot: true,
+      prio: PRIO_CAST[kind] != null ? PRIO_CAST[kind] : 6 });
     if (S.talk.length > 80) S.talk.shift();
   }
   function isMender(b) { return !!(b && (b.moves || []).some((m) => m.st && m.st.heal)); }
@@ -583,6 +602,9 @@
     }
   }
 
+  /* how long a body stays on a target before it may pick again */
+  var TGT_HOLD = 0.9;
+
   function checkOver() {
     if (S.over) return;
     const a = live(0).length, b = live(1).length;
@@ -603,9 +625,7 @@
 
   /* ---------------------------------------------------------------- moves --- */
   function moveCost(mv) { return Math.min(mv.cd * 1.1, 40); }
-  function pickTarget(e, mode) {
-    const en = enemiesOf(e);
-    if (!en.length) return null;
+  function pickRaw(e, en, mode) {
     if (mode === "weakest") return en.reduce((a, b) => (b.hp / b.max < a.hp / a.max ? b : a));
     if (mode === "clump") {
       let best = null, bestScore = -1;
@@ -628,6 +648,24 @@
       const sb = dist2(e.x, e.y, b.x, b.y) - (1 - b.hp / b.max) * 60;
       return sb < sa ? b : a;
     });
+  }
+
+  /* Choosing is not the same as choosing again. The raw pick is scored fresh every time it is
+     asked for, and two enemies a hair apart swap places several times a second -- a body that
+     turns on the spot instead of walking, which is what "they do not know what to do" looks
+     like. The body keeps the enemy it already picked unless the new one is a clear improvement:
+     a quarter closer, or sixty pixels nearer. Scored inside the choice, so a style that ASKS
+     for a particular kind of body (the knife's weakest, the gun's clump) still gets it. */
+  function pickTarget(e, mode) {
+    const en = enemiesOf(e);
+    if (!en.length) return null;
+    const best = pickRaw(e, en, mode);
+    const held = e.target;
+    if (best && held && !held.dead && held !== best && en.indexOf(held) >= 0) {
+      const dHeld = dist2(e.x, e.y, held.x, held.y), dBest = dist2(e.x, e.y, best.x, best.y);
+      if (!(dBest < dHeld * 0.75 || dBest < dHeld - 60)) return held;
+    }
+    return best;
   }
 
   function castMove(e, mv, idx) {
@@ -847,8 +885,17 @@
     e.plan = plan;
 
     let t = plan.target;
+    const called = !!(t && !t.dead);          /* the brain named this one: it is not a guess */
     if (!t || t.dead) t = pickTarget(e, !stl.prefer || stl.prefer === "attack" ? "nearest" : stl.prefer);
     if (!t) return;
+    /* Every path lands here -- the brain's call, the squad's focus, a style's preference, the raw
+       nearest -- so the commitment belongs here: a body stays on the enemy it is fighting for a
+       beat before it may choose another. The brain is rebuilt every 0.18s, and the preference and
+       the focus trade places at that rate; a target that changes 1.8 times a second is a body
+       turning on the spot, which is what a spectator reads as "it does not know what to do".
+       A dead target releases the hold at once -- switching off a corpse is not dithering. */
+    if (e.target && !e.target.dead && e.target !== t && (e.tgtHold || 0) > 0) t = e.target;
+    else if (e.target && e.target !== t) e.tgtHold = TGT_HOLD;
     e.target = t;
 
     /* ---- the kit: whatever is in reach and off cooldown, in the kit's own order.
@@ -933,7 +980,12 @@
        the clock and the floor decides it. */
     const holdClass = plan.task === "hold" || plan.task === "overwatch" || plan.task === "screen";
     const inBand = d <= band + 18;
-    const standing = plan.point ? false : (holdClass || inBand);
+    /* A body told to hold, jammed against stone or the border while it holds, cannot strafe its
+       way out: it swaps its shoulder from one side to the other for the rest of the match. That
+       is the "standing on an edge with no idea what to do" report. Being pinned outranks the
+       order -- walk clear, then hold again. */
+    if (e.blockedT > 1.2) e.bailT = 0.7;
+    const standing = e.bailT > 0 ? false : (plan.point ? false : (holdClass || inBand));
     if (standing) {
       /* in position: face the enemy, drift across its front. A body blocked on that
          drift turns around instead of grinding its shoulder into a wall. */
@@ -942,7 +994,14 @@
       const sa = Math.atan2(t.y - e.y, t.x - e.x) + Math.PI / 2;
       const mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
       const mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
-      moveEntity(e, mvx2, mvy2);
+      const want2 = Math.hypot(mvx2, mvy2);
+      const got2 = moveEntity(e, mvx2, mvy2);
+      /* the strafe has to measure itself the way the walk does, or a body pinned while holding
+         never registers as pinned and so never earns its bail */
+      if (want2 > 0.06 && got2 < want2 * 0.45) {
+        e.blockedT += dt;
+        if (e.blockedT > e.blockedWorst) e.blockedWorst = e.blockedT;
+      } else e.blockedT = Math.max(0, e.blockedT - dt * 2);
       faceTo(e, t.x, t.y);
       e.aimA = Math.atan2(t.y - e.y, t.x - e.x);
       stampStuck(e, dt, false);
@@ -993,12 +1052,22 @@
     /* a body that has been trying to move for over a second and gets nowhere walks
        to the middle of the arena for a moment. The pockets between the border and a
        pillar are the one place a wall-slide cannot reason its way out of. */
-    if (e.blockedT > 1.2) e.bailT = 0.7;
     const bail = e.bailT > 0;
     if (bail) {
       e.bailT -= dt;
       gx2 = MAP_W * TILE * 0.5; gy2 = MAP_H * TILE * 0.5;
       e.pathOn = true; e.pathT = 0.7;      // and take the route, not the straight line
+    }
+    /* The brain may name a goal that cannot be walked to: a retreat extrapolated from a body
+       that is already against the wall lands outside the arena, and cover cells are picked at
+       some call sites without a stone test. A goal like that is a body grinding the border for
+       the rest of the match. Clamp it into the ring and snap it out of stone, in one place, so
+       no call site in the brain has to remember. */
+    gx2 = clamp(gx2, TILE, MAP_W * TILE - TILE);
+    gy2 = clamp(gy2, TILE, MAP_H * TILE - TILE);
+    if (solidAt(S.lv, gx2, gy2)) {
+      const ot2 = openTile(Math.floor(gx2 / TILE), Math.floor(gy2 / TILE));
+      gx2 = ot2.x * TILE + TILE / 2; gy2 = ot2.y * TILE + TILE / 2;
     }
     let a = Math.atan2(gy2 - e.y, gx2 - e.x);
     if (!inStone && e.slideT > 0) a += e.slideDir * Math.PI / 2;
@@ -1570,7 +1639,8 @@
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 1.35);
     if (S.phase === "count") {
       S.countdown -= dt;
-      if (S.countdown <= 0) { S.phase = "live"; pushEvent("FIGHT.", "over"); }
+      runCues(INTRO_S - S.countdown);
+      if (S.countdown <= 0) { S.phase = "live"; bell(); }
     } else if (S.phase === "live" && !S.paused && S.hitStop > 0) {
       S.hitStop -= dt;
     } else if (S.phase === "live" && !S.paused) {
@@ -1578,6 +1648,7 @@
       let steps = 0;
       while (acc >= STEP && steps < 24) { step(STEP); acc -= STEP; steps++; }
       if (acc > STEP * 24) acc = 0;
+      runCues(INTRO_S + S.time);              // the cues after the bell ride the match clock
     }
     draw();
     if (w.ArenaUI) w.ArenaUI.tick();
@@ -1591,7 +1662,47 @@
     return true;
   }
 
-  function newMatch(ids, mode, seed) {
+  /* Every cue the booth owes the crowd before the bell, in order, on the clock. Names come
+     from the built teams, so the introduction cannot drift from who is actually standing there. */
+  function buildIntro(meta) {
+    const ring = lawById((S.lv && S.lv.realm) || "colosseum").name;
+    const names = (team) => team.map((e) => e.b.name).join(", ");
+    const mapNo = meta.map || 1;
+    /* The programme is fifteen seconds and the clock does not stretch for anybody. The announcer
+       reads it at 1.22x, the cue times are laid out against the worst case (a five-name team is a
+       five second list), and the bell cuts him off if he runs long -- see director.js. Nothing
+       else is allowed in there: the bodies answer the bell, they do not talk under the booth. */
+    S.cues = [
+      { at: 0.5, p: 9, run() {
+        pushCast(mapNo > 1 ? "introScore" : "introRing", mapNo > 1
+          ? { n: mapNo, mode: S.mode + "v" + S.mode, score: meta.score || "nothing decided yet" }
+          : { ring: ring });
+      } },
+      { at: 4.4, p: 9, run() { pushCast("introTeam", { side: meta.me || "your team", names: names(S.your) }); S.introShow = 1; } },
+      { at: 9.2, p: 9, run() { pushCast("introTeam", { side: "the challengers", names: names(S.foe) }); S.introShow = 2; } },
+      /* the bell rings at fifteen and the room goes quiet; then the bodies answer it */
+      { at: INTRO_S + 5.6, p: 4, run() { if (S.your[0] && !S.your[0].dead) pushTalk("ready", S.your[0], null, true); } },
+      { at: INTRO_S + 9.0, p: 4, run() { if (S.foe[0] && !S.foe[0].dead) pushTalk("ready", S.foe[0], null, true); } }
+    ];
+    S.introShow = 0;
+  }
+  function runCues(elapsed) {
+    if (!S.cues || !S.cues.length) return;
+    for (let i = 0; i < S.cues.length; i++) {
+      if (S.cues[i].at <= elapsed) { const c = S.cues.splice(i, 1)[0]; c.run(); }
+    }
+  }
+  /* The bell: the fight is live, the booth asks the question everybody is thinking, and the
+     room goes quiet behind it for three to five seconds. */
+  function bell() {
+    pushEvent("FIGHT.", "over");
+    pushCast("bell", { n: S.your.length + S.foe.length });
+    S.bellAt = S.talkSeq;
+    S.talkT = 9;
+  }
+
+  function newMatch(ids, mode, seed, meta) {
+    meta = meta || {};
     S.mode = mode;
     S.lv = buildMap(seed == null ? rnd(9999) : seed);
     fieldCache.clear();
@@ -1600,18 +1711,16 @@
     S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
     S.bubbles = []; S.talk = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.events = []; S.paused = false;
-    S.countdown = 3.2; S.shake = 0; S.hitStop = 0; S.tideIn = 12;
+    S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";
     floorCv = paintFloor(S.lv);
     pushEvent(KIND_BLURB[S.lv.kind || "colosseum"], "law");
     pushEvent(lawById(S.lv.realm).line, "law");
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
-    S.bubbles = []; S.talk = []; S.talkT = 7; S.kills = 0; S.aceSaid = false; S.talkSeq = S.talkSeq || 0;
+    S.bubbles = []; S.talk = []; S.talkT = INTRO_S + 9; S.kills = 0; S.aceSaid = false;
+    S.talkSeq = S.talkSeq || 0;
     S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9;
-    const yl = S.your[0], fl = S.foe[0];
-    if (yl && fl) { pushTalk("open", yl, fl, true); pushTalk("open", fl, yl, true); }
-    pushCast("open", { ring: lawById(S.lv.realm).name,
-      youN: S.your.length, foeN: S.foe.length, mode: S.mode + "v" + S.mode });
+    buildIntro(meta);
   }
 
   function drawLaw() {
@@ -1665,6 +1774,23 @@
       const kind = kindOf(seed);
       return { law: lawForSeed(seed), kind: kind, blurb: KIND_BLURB[kind] };
     },
+    /* the countdown before the bell, driven without the renderer (used by the check tool) */
+    stepIntro(seconds) {
+      const n = Math.max(1, Math.round((seconds || 0.05) / STEP));
+      for (let i = 0; i < n; i++) {
+        S.countdown -= STEP;
+        runCues(INTRO_S - S.countdown);
+        if (S.countdown <= 0) { S.phase = "live"; bell(); }
+      }
+      return S;
+    },
+    skipIntro() {
+      if (S.phase !== "count") return false;
+      S.cues.length = 0;                      // the programme is cut, but the bell still rings
+      S.countdown = 0.03;
+      return true;
+    },
+    introLength: () => INTRO_S,
     stepHeadless(seconds) {
       const n = Math.round(seconds / STEP);
       for (let i = 0; i < n && !S.over; i++) step(STEP);

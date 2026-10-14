@@ -178,6 +178,17 @@
       "They are all down. So I am the line.",
       "Alone. Fine. Fewer to worry about.",
       "I will take the rest of them myself."
+    ],
+    /* said once, right before the bell, by one body a side */
+    ready: [
+      "Bell rings, {me} goes. That is all the speech you get.",
+      "{me} is ready. Ask the ones who have stood here before.",
+      "No speech. {me} came to end something.",
+      "{me} does not warm up. {me} arrives.",
+      "Say it quietly: {me} is about to do this to {foe}.",
+      "Fifteen seconds of listening. Then it is {me}'s turn to talk.",
+      "{me} brought one plan and no patience for {foe}.",
+      "They have rung for {me} before. It did not go well for {foe}."
     ]
   };
 
@@ -415,6 +426,39 @@
     draw: [
       "Both sides down! We have called this map a draw — and nobody is happy!",
       "A double wipe! We do this map again, and the sand does not care!"
+    ],
+    /* the intro programme: the countdown to the bell is the booth's time and nobody else's */
+    /* Short on purpose: a fifteen second program with a beat between lines leaves room for
+       roughly three of them, and a line that overruns its slot is a line that steps on the bell. */
+    introRing: [
+      "Fifteen seconds to the bell in the {ring}.",
+      "The {ring} is open. Fifteen seconds.",
+      "Welcome to the {ring}. Fifteen seconds.",
+      "Fifteen seconds. The {ring} takes no side."
+    ],
+    introTeam: [
+      "For {side}: {names}.",
+      "{side}, then: {names}.",
+      "In the corner for {side}: {names}.",
+      "{side}: {names}."
+    ],
+    introScore: [
+      "Map {n}. {score}.",
+      "To map {n}, at {score}.",
+      "Map {n}, {score}. No more introductions."
+    ],
+    ready: [
+      "The ring is closed.",
+      "Bell in three, two —",
+      "Nobody leaves until one side is down.",
+      "Corner rules. Wait for the bell."
+    ],
+    bell: [
+      "FIGHT! Who's gonna win this one?",
+      "There is the bell! Who is going to win?",
+      "Fight! So — who's gonna win?",
+      "There it is, {n} bodies! Who's gonna win?",
+      "Fight! Anybody's guess. Who's gonna win?"
     ]
   };
 

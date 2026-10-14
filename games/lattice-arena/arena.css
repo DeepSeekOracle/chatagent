@@ -383,3 +383,40 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
   .feed.docked { max-height: 38%; }
   .caster .cface { max-height: 20vh; object-fit: contain; }
 }
+
+/* --- the programme before the bell, and who is talking ----------------------------------- */
+.intro { position: absolute; inset: 0; display: none; flex-direction: column; gap: .5rem;
+  padding: .8rem .9rem .7rem; z-index: 6;
+  background: linear-gradient(180deg, rgba(9,10,16,.62), rgba(9,10,16,.88)); backdrop-filter: blur(2px); }
+.intro.show { display: flex; animation: ifade .3s ease-out; }
+@keyframes ifade { from { opacity: 0; } to { opacity: 1; } }
+.intro .ihead { display: flex; align-items: center; gap: .6rem; }
+.intro .iring { font-family: "IBM Plex Mono", monospace; font-size: .72rem; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--gold); }
+.intro .iskip { margin-left: auto; font-family: "IBM Plex Mono", monospace; font-size: .66rem;
+  letter-spacing: .1em; color: var(--mute); background: #0b101c; border: 1px solid var(--line);
+  border-radius: 5px; padding: .18rem .5rem; cursor: pointer; }
+.intro .iskip:hover { color: var(--text); border-color: var(--line-2); }
+.intro .isides { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: center; }
+.intro .iside { border: 1px solid var(--line); border-radius: .5rem; padding: .55rem .6rem; background: #0a0e1699;
+  opacity: .18; transform: translateY(7px); transition: opacity .35s ease, transform .35s ease, border-color .35s ease; }
+.intro .iside.on { opacity: 1; transform: none; border-color: #fbbf2488; box-shadow: 0 0 0 1px #fbbf2433 inset; }
+.intro .iside.isfoe.on { border-color: #f8717188; box-shadow: 0 0 0 1px #f8717133 inset; }
+.intro .itag { font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--mute); }
+.intro .iside ul { list-style: none; margin: .3rem 0 0; padding: 0; }
+.intro .iside li { font-size: .84rem; padding: .14rem 0; }
+.intro .iside li + li { border-top: 1px solid var(--line); }
+.intro .ifoot { font-size: .68rem; color: var(--mute); text-align: center; }
+.intro .ifoot b { color: var(--gold); }
+
+/* exactly one thing is marked as talking, so a spectator never has to guess */
+.caster .conair { position: absolute; top: .42rem; right: .45rem; font-family: "IBM Plex Mono", monospace;
+  font-size: .56rem; letter-spacing: .14em; padding: .06rem .32rem; border-radius: .2rem;
+  color: #fee2e2; background: #7f1d1d; border: 1px solid #7f1d1d; opacity: 0; transition: opacity .18s ease; }
+.caster.onair .conair { opacity: 1; background: #b91c1c; border-color: #fecaca; box-shadow: 0 0 14px rgba(239,68,68,.55); }
+.caster.onair .cface { box-shadow: 0 0 0 2px rgba(239,68,68,.7), 0 0 20px rgba(239,68,68,.3); }
+.caster.onair .cbubble { border-color: #fecaca88; box-shadow: 0 0 14px rgba(239,68,68,.25); }
+.trow.speaking { background: linear-gradient(90deg, rgba(251,191,36,.15), transparent 70%);
+  box-shadow: inset 2px 0 0 var(--gold); border-radius: 4px; }
+.feed p.live { background: rgba(251,191,36,.09); box-shadow: inset 2px 0 0 var(--gold); }
+.feed p.cast.live { background: rgba(239,68,68,.1); box-shadow: inset 2px 0 0 var(--red); }

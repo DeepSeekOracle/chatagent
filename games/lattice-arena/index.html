@@ -95,6 +95,18 @@
     <div class="viewport">
       <canvas id="arena" aria-label="LYGO Arena battle"></canvas>
       <div class="announce" id="announce"></div>
+      <!-- the programme before the bell: fifteen seconds, the booth introduces both teams -->
+      <div class="intro" id="intro">
+        <div class="ihead">
+          <span class="iring" id="introRing">THE ARENA</span>
+          <button type="button" class="iskip" data-act="skip" id="btnSkip">Skip &#9656;</button>
+        </div>
+        <div class="isides">
+          <div class="iside isyou" id="introYou"><span class="itag">Your team</span><ul id="introYouNames"></ul></div>
+          <div class="iside isfoe" id="introFoe"><span class="itag">The challengers</span><ul id="introFoeNames"></ul></div>
+        </div>
+        <div class="ifoot">Fifteen seconds to the bell &middot; the caster calls it &middot; <b>Enter</b> skips</div>
+      </div>
       <div class="meters">
         <i class="mo" id="meterYou"></i>
         <span id="arenaClock">0:00</span>
@@ -105,6 +117,7 @@
       <div class="colbody" id="teamFoe"></div>
       <div class="caster" id="caster">
         <div class="cbubble" id="casterSays"></div>
+        <span class="conair">ON AIR</span>
         <img class="cface" src="./assets/caster.svg" alt="The caster calling the fight">
         <span class="cname">THE CASTER</span>
       </div>
@@ -140,9 +153,10 @@
 <script src="/games/arcade-ledger.js?v=6"></script>
 <script src="./roster.js?v=3.06"></script>
 <script src="./attacks.js?v=1"></script>
-<script src="./banter.js?v=1.01"></script>
-<script src="./brain.js?v=3"></script>
-<script src="./arena.js?v=5.03"></script>
-<script src="./arena-ui.js?v=8.06"></script>
+<script src="./banter.js?v=1.02"></script>
+<script src="./director.js?v=1"></script>
+<script src="./brain.js?v=4"></script>
+<script src="./arena.js?v=5.05"></script>
+<script src="./arena-ui.js?v=8.08"></script>
 </body>
 </html>

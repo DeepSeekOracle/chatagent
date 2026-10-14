@@ -53,6 +53,7 @@ const ctx = vm.createContext(win);
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
 load("roster.js");
 load("banter.js");
+load("director.js");
 load("attacks.js");
 load("brain.js");
 load("arena.js");
@@ -374,7 +375,10 @@ must("there is plenty to say", bs.fighterLines >= 200 && bs.casterLines >= 50,
 must("most of the roster has its own mouth", (BAN && BAN.sayers ? BAN.sayers.length : 0) >= 18,
   (BAN && BAN.sayers ? BAN.sayers.length : 0) + " kits with personal lines");
 
-const CAST_OK = { open: 1, kill: 1, firstBlood: 1, wipe: 1, hold: 1, save: 1, edge: 1, ace: 1, draw: 1, mapEnd: 1, matchEnd: 1 };
+/* Every caster line must hang off something that actually happened. The intro is a program
+   on the clock -- the match starting IS the event -- so its cues belong on the list too. */
+const CAST_OK = { open: 1, kill: 1, firstBlood: 1, wipe: 1, hold: 1, save: 1, edge: 1, ace: 1, draw: 1,
+  mapEnd: 1, matchEnd: 1, introRing: 1, introTeam: 1, introScore: 1, ready: 1, bell: 1 };
 let banMatches = 24, banLines = 0, banHot = 0, banStray = 0, banNamed = 0, banCalls = 0, banBub = 0, banFar = 0;
 const banKinds = new Set();
 for (let m = 0; m < banMatches; m++) {
@@ -406,6 +410,124 @@ must("the caster only speaks on a real event", banStray === 0, banStray + " cast
 must("the caster names the dead", banCalls > 0 && banNamed === banCalls, banNamed + "/" + banCalls + " kill calls name the fallen");
 must("a spoken line has a bubble over the speaker", banBub > 0 && banFar <= banBub * 0.01,
   banBub + " bubble frames over the right head, " + banFar + " left behind (a blink frame)");
+
+/* 4h. the director. One microphone, one mouth at a time, and a timeline that can be measured.
+   The engine only ever offers lines; the director decides. This replays the real offers of real
+   matches through the director on a fake clock and asserts the timeline it produced. */
+const DIRF = win.LYGO_DIRECTOR;
+must("the director is loaded", !!(DIRF && DIRF.create), DIRF ? "director.js present" : "director.js missing");
+
+/* Offer a stream of lines to a director on a fake clock and record what it actually said.
+   Offers are keyed by the engine's own seq: S.talk is capped, so index arithmetic lies. */
+function collect(S, lastSeq, offers, at) {
+  (S.talk || []).forEach((x) => {
+    if (x.seq <= lastSeq.v) return;
+    lastSeq.v = x.seq;
+    offers.push({ at: +at.toFixed(3), cand: { caster: !!x.caster, who: x.caster ? "cast" : x.who,
+      whoName: x.whoName || "", text: x.text, kind: x.kind, prio: x.prio } });
+  });
+}
+function timeline(offers, secs) {
+  const step = 0.05;
+  let t = 0, i = 0, live = null, out = [], overlap = 0, tight = 0, last = null, bell = null, afterBell = null;
+  const d = DIRF.create({ now: () => t, say: (line) => { live = line; }, cancel: () => { live = null; } });
+  for (let k = 0; k * step <= secs + 14; k++) {
+    t = +(k * step).toFixed(4);
+    while (i < offers.length && offers[i].at <= t) {
+      d.push(offers[i++].cand);
+    }
+    const was = d.onAir();
+    const started = d.tick();
+    if (started) {
+      if (last && started.startedAt < last.end - 1e-6) overlap++;
+      /* a normal line owes the room the beat; a wipe or a bell may step in, and a line that was
+         cut does not owe anything */
+      if (last && started.startedAt - last.end < 0.9 && !last.cut && last.prio < 8 && started.prio < 8) tight++;
+      if (bell && afterBell == null) afterBell = started.startedAt - bell.end;
+    }
+    if (was && !d.onAir()) {
+      last = d.log()[d.log().length - 1];
+      out.push(last);
+      if (last.kind === "bell") bell = last;
+    }
+  }
+  return { out: out, overlap: overlap, tight: tight, bell: bell, afterBell: afterBell, d: d };
+}
+
+/* the programme, match by match: every body named, the bell on the clock, then the silence */
+let introRuns = 0, introBad = [], bellLate = 0, quietBad = [], resumed = 0, furthestBell = 0;
+for (let m = 0; m < 6; m++) {
+  const n = MODES[m % MODES.length];
+  const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
+  E.newMatch({ you: you, foe: foe }, n, (m * 4211 + 17) % 9967, { map: 1, me: "Justin", score: "" });
+  const S = E.state();
+  const names = S.your.map((e) => e.b.name).concat(S.foe.map((e) => e.b.name));
+  const offers = [], lastSeq = { v: 0 };
+  let elapsed = 0, guard = 0;
+  while (S.phase === "count" && guard++ < 800) {
+    E.stepIntro(0.05); elapsed += 0.05;
+    collect(S, lastSeq, offers, elapsed);
+  }
+  introRuns++;
+  const TL = timeline(offers, 30);
+  const said = TL.out.filter((l) => l.kind !== "bell" && l.text).map((l) => l.text).join(" ");
+  const missing = names.filter((nm) => said.indexOf(nm) < 0);
+  if (missing.length) introBad.push(missing.join("/"));
+  if (!TL.bell) { bellLate++; } else if (TL.bell.start < 13.0 || TL.bell.start > 16.0) bellLate++;
+  if (TL.bell) furthestBell = Math.max(furthestBell, TL.bell.start);
+  /* the fight starts: offers arrive right after the bell, and the room must stay quiet anyway */
+  const after = [];
+  ["kill", "taunt", "hurt", "cc", "kill", "taunt", "save", "taunt"].forEach((kind, k) => {
+    after.push({ at: TL.bell ? TL.bell.end + 0.2 + k * 0.7 : 20,
+      cand: { caster: kind === "kill" || kind === "save", who: kind === "kill" ? "cast" : "kael",
+        whoName: "Kael", text: "test line " + k + " " + kind, kind: kind, prio: 3 } });
+  });
+  const TL2 = timeline((TL.bell ? offers.concat(after) : offers), 40);
+  const first = TL2.out.filter((l) => l.kind !== "bell").find((l) => l.start > (TL.bell ? TL.bell.end : 99));
+  const gap = first && TL.bell ? first.start - TL.bell.end : null;
+  if (gap != null && gap < 3.2) quietBad.push(gap.toFixed(1));
+  if (TL2.out.length > TL.out.length) resumed++;
+}
+must("every body is introduced by name before the bell", introBad.length === 0,
+  introBad.length ? "unintroduced: " + introBad.slice(0, 3).join(" | ") : "all names spoken across " + introRuns + " lineups");
+must("the bell is the last thing said in the programme, on the clock", bellLate === 0,
+  bellLate ? bellLate + "/" + introRuns + " bells late or missing" : "latest bell " + furthestBell.toFixed(1) + "s");
+must("the room is quiet for three to five seconds after the bell", quietBad.length === 0 && resumed === introRuns,
+  quietBad.length ? "first line only " + quietBad.join("s, ") + "s after the bell" : "silence held in " + resumed + "/" + introRuns + " matches");
+
+/* a real fight, replayed through the director */
+const fightOffers = [], fseq = { v: 0 };
+let fightSecs = 0, offset = 0;
+for (let m = 0; m < 8; m++) {
+  const n = MODES[m % MODES.length];
+  const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
+  const S = E.runHeadless({ you, foe }, n, 0.01, (m * 9137 + 53) % 9967);
+  while (!S.over && S.time < 140) {
+    E.stepHeadless(0.2);
+    /* eight bouts, one after another on the clock: a pooled stream, not eight stacked at zero */
+    collect(S, fseq, fightOffers, offset + S.time);
+    fightSecs = offset + S.time;
+  }
+  offset = fightSecs + 6;
+}
+const FT = timeline(fightOffers, fightSecs);
+must("one voice at a time: nothing ever talks over anything", FT.overlap === 0,
+  FT.out.length + " lines spoken, " + FT.overlap + " overlaps");
+must("there is a beat of silence between lines", FT.tight <= Math.max(1, FT.out.length * 0.05),
+  FT.tight + " of " + FT.out.length + " lines came inside the beat");
+let burst = 0;
+for (let i = 0; i < FT.out.length; i++) {
+  const inWin = FT.out.filter((l) => l.start >= FT.out[i].start && l.start < FT.out[i].start + 10).length;
+  burst = Math.max(burst, inWin);
+}
+must("no booth in the world says four things in ten seconds", burst <= 5, "worst ten seconds: " + burst + " lines");
+must("most offers never get said -- that is the point", FT.out.length >= 4 && FT.out.length <= fightOffers.length * 0.75,
+  FT.out.length + " spoken of " + fightOffers.length + " offered over " + fightSecs.toFixed(0) + "s");
+must("both the booth and the bodies get their turn", FT.out.filter((l) => l.caster).length >= 2 && FT.out.filter((l) => !l.caster).length >= 2,
+  FT.out.filter((l) => l.caster).length + " from the booth, " + FT.out.filter((l) => !l.caster).length + " from the bodies");
+console.log("      the talk: " + FT.out.length + " lines in " + fightSecs.toFixed(0) + "s of fight (" +
+  (100 * FT.out.length / Math.max(1, fightOffers.length)).toFixed(0) + "% of " + fightOffers.length + " offers), longest burst " + burst +
+  ", one line every " + (fightSecs / Math.max(1, FT.out.length)).toFixed(1) + "s");
 console.log("");
 console.log("      style   n  stand-off  in-contact  backups  weak-bxpick  on-call  mended  worst-stall");
 Object.keys(bxSTY).sort().forEach((s) => {

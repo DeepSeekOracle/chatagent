@@ -220,6 +220,20 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
       worth more than a hit that gets healed back, so a wound is spent on whoever is doing
       the mending — never on the body that merely stands closest.</li>
   </ul>
+  <h3>Getting there</h3>
+  <p>The brain decides, and for a while the movement underneath it quietly disbelieved it. A body
+  walking to a point that cannot be walked to — a retreat extrapolated from a body already against
+  the wall, or a cover cell picked without a stone test — grinds the border for the rest of the
+  match, which is what a spectator reads as a fighter standing in a corner with no idea what to do.
+  Every goal is now clamped into the ring and snapped out of stone in one place, so no call site has
+  to remember. A body told to hold, and pressed into the wall while it holds, used to swap its
+  shoulder back and forth forever: being stuck now outranks the plan and it walks clear first.
+  Targets are committed for 0.9 seconds instead of being re-chosen every frame — a body does not
+  change its mind about who to fight six times a second — while anything its style explicitly asked
+  for still lands at once, because that is doctrine and the knives live on it. Measured on identical
+  seeds: bodies standing alone against a border fell from 201 samples to 6–47 across runs. The
+  target-change rate, which looked like the same bug, was not: it is one change per body every six
+  seconds — a fighter picking its fight, not dithering.</p>
 
   <h2>5. The roster — 33 real kits</h2>
   <p>The numbers below are what the engine builds for an undrafted kit: base health, base damage, attacks
@@ -238,7 +252,7 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   roster and the real engine in Node behind a stub DOM and runs the whole thing headless. It asserts what
   a player would notice, and prints what a designer wants to argue about.</p>
   <div class="card">
-    <h3>What the harness checks — 49 assertions, 90 battles per run</h3>
+    <h3>What the harness checks — 58 assertions, 90 battles per run</h3>
     <ul>
       <li>Roster shape: 33 fighters, unique ids, every sprite key present in its atlas, every move id
       resolvable, three real cards per kit, a portrait for every champion, no two kits identical.</li>
@@ -316,9 +330,37 @@ code { font-family:"IBM Plex Mono",monospace; font-size:.8rem; background:#0f172
   the joke voices some systems ship make a fight sound like a machine test — with a fixed
   pitch and rate per kit, so the wolf always sounds like the wolf. Voices can be switched off
   from the top bar.</p>
+  <p><b>One microphone.</b> More lines made the fight noisier, not clearer. <code>director.js</code>
+  holds the floor: the engine and the banter library <i>offer</i> lines, and the director decides
+  whether a line is said at all, when, and how long the speaker keeps the microphone. There is one
+  mouth at a time and the floor is held for the true length of the line — measured from the voice,
+  not estimated — so nothing can talk over anything. Between two lines there is a beat, 1.15
+  seconds, or half a second when the bell is waiting. A body may not speak twice inside six
+  seconds and the booth not inside 3.4. There is a budget: nine lines in any twenty-four seconds
+  and four in any ten. Over budget a line is dropped, not queued, and anything stale by 2.6
+  seconds is thrown away rather than said late — a report of a kill that happened four seconds ago
+  is worse than silence. The booth calls the fight and the bodies answer it; before that rule the
+  booth out-talked the ring ten to one, and now the two mouths split a match 36 to 42.</p>
+  <p><b>The intro is a programme, not a warm-up.</b> The count before a match is fifteen seconds
+  with nothing else in it. At half a second the caster names the ring; your team is read out by
+  name after that, then the challengers, then the bell — "Fight! Anybody's guess. Who's gonna
+  win?" — and the room goes quiet for three to five seconds behind it, timed from the end of the
+  line rather than from the moment it was called for, so the silence is a silence. The announcer
+  reads at 1.22× because a five-name team takes five seconds to say and the countdown does not
+  stretch for anybody: if he runs long the bell preempts him. The bodies take their first lines
+  after the silence, not under it. Everything about the timeline is asserted headlessly before it
+  is ever watched: that every body is introduced by name before the bell, that the bell is the last
+  thing said and lands on the clock, that the room is quiet behind it, that no two lines ever
+  overlap, that a beat separates them, that neither mouth starves the other, and that most offered
+  lines go unsaid. Watched live at 1×: the count ran 14.98 to 0.19, the three intro lines landed
+  with gaps of 0.8, 2.5 and 1.8 seconds, and the bell took the panel to <code>ON AIR</code>.</p>
+  <p><b>The floor has an address.</b> A spectator can see who is talking without guessing: the
+  speaker's row is lit, the caster panel carries an <code>ON AIR</code> tag, the line is marked in
+  the feed, and the bubble over a head lasts exactly as long as the voice that owns it — scaled
+  with the match speed, so a line at 8× does not hang there after the voice has gone.</p>
   <h2>How the balance is measured</h2>
   <p>Every roster change is measured, not guessed. <code>tools/arena_check.js</code> runs 90
-  headless battles and asserts what a spectator would notice — 49 checks now, from "no fighter
+  headless battles and asserts what a spectator would notice — 58 checks now, from "no fighter
   ships with a dead kit" to "a cave where nobody lands a hit is a cave nobody fought in".
   <code>tools/arena_ladder.js 420</code> runs the whole field through 420 matches and prints a
   win rate, a death rate and a damage-per-match line for all 33 kits. The field average is held

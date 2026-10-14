@@ -228,6 +228,17 @@
       const reach = st.prefer === "weakest" ? Math.max(dFocus + 210, 420) : Math.max(dFocus + 130, 320);
       if (dPref < reach) target = pref;
     }
+    /* The plan is rebuilt every 0.18s, and a preference that sits on the edge of its reach makes
+       it alternate between the body the style wants and the squad's focus: the target changes
+       1.9 times a second and the body turns on the spot. The damper is one-sided. A target the
+       style asked for always lands -- that is doctrine, and the knives live on it. What is
+       refused is the *focus* taking a target back off a body that had a reason for its own:
+       it keeps what it holds unless the focus is a clear improvement. */
+    const prevT = e.plan && e.plan.target;
+    if (prevT && !prevT.dead && prevT !== target && target !== pref) {
+      const dPrev = dist(e.x, e.y, prevT.x, prevT.y), dNew = dist(e.x, e.y, target.x, target.y);
+      if (!(dNew < dPrev * 0.75 || dNew < dPrev - 60)) target = prevT;
+    }
     let task = "press", point = null, band = band0, gait = 1, why = Q.why;
     const wound = st.wound && hp < 0.55;                  // the berserker closes as it bleeds
     /* A last body standing has no line to fall back into — breaking contact in a 1v1
@@ -518,6 +529,7 @@
   /* how long the current task has been running (bodies call this every frame) */
   function age(e, dt) {
     e.taskRun = (e.taskRun || 0) + dt;
+    if (e.tgtHold > 0) e.tgtHold -= dt;
     if (e.rallyCd > 0) e.rallyCd -= dt;
   }
 

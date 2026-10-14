@@ -31,7 +31,7 @@
   let hallRows = [];
   let gauntlet = false;
   let streak = 0;
-  let feedLog = 0;
+  let feedLog = 0, shownAir = null;
 
   /* --------------------------------------------------------------- voices ---
      The caster and the fighters are read out loud by the browser's voices. Only the human
@@ -59,45 +59,90 @@
     speechSynthesis.addEventListener("voiceschanged", () => { hvCache = null; humanVoices(); });
   }
   let talking = 0, micHolder = "";
-  function speak(text, kit, hot) {
-    if (!persist.talk || typeof speechSynthesis === "undefined" || !text) return;
+  /* ---------------------------------------------------------------- the director ---
+     One microphone. Everything the ring wants to say is offered to the director, and the
+     director decides who actually speaks: the floor is held for as long as the line takes, a
+     beat of silence follows it, the bell opens a quiet window of three to five seconds, and the
+     budget throws away the rest. Two voices at once is a fight nobody can hear, so the shell
+     never speaks on its own -- it only says what the director hands it, and only while it holds
+     the floor. */
+  const DIR = (w.LYGO_DIRECTOR ? w.LYGO_DIRECTOR.create({
+    now: () => performance.now() / 1000,
+    say: (line, done) => sayLine(line, done),
+    cancel: () => { try { speechSynthesis.cancel(); } catch (e) {} talking = 0; micHolder = ""; }
+  }) : null);
+  let onAir = null;
+
+  /* a read-only view of the talk: what has been said, who holds the floor, what was thrown away.
+     The harness drives its own director, but this is how anyone can watch the real timeline. */
+  w.ArenaTalk = {
+    log: () => (DIR ? DIR.log() : []),
+    onAir: () => (DIR ? DIR.onAir() : null),
+    stats: () => (DIR ? DIR.stats() : null)
+  };
+  /* the director's estimate, repeated only for the voices-off path so the timing is identical */
+  function durOf(line) { return Math.max(1.0, Math.min(6.5, 0.55 + String(line.text || "").length / 13.4)); }
+
+  /* Say one line the director accepted. The floor is held for the whole of it, the feed and the
+     bubble are written now, and `done` hands the floor back -- by the voice itself when there is
+     one, by the clock when voices are off. */
+  function sayLine(line, done) {
+    const started = performance.now() / 1000;
+    const S = E.state();
+    onAir = line;
+    if (!line.caster && line.who) {
+      /* a bubble over a body lives as long as the voice does, whatever the fight is running at */
+      (S.bubbles || []).forEach((b) => {
+        if (b.who && b.who.b && b.who.b.id === line.who) {
+          b.life = Math.max(b.life, (line.dur || durOf(line)) * (S.speed || 1) + 0.6);
+        }
+      });
+    }
+    if (line.caster) { casterText(line.text); talkLog.push({ t: S.time, caster: true, text: line.text, kind: line.kind }); }
+    else talkLog.push({ t: S.time, caster: false, who: line.whoName || "", text: line.text, kind: line.kind });
+    if (talkLog.length > 40) talkLog.shift();
+    const finish = () => { const held = performance.now() / 1000 - started; onAir = null; done(held); };
     const hv = humanVoices();
-    if (!hv.length) return;
-    const caster = !kit;
-    /* the caster has the microphone: he cuts the chatter, and is never cut himself */
-    if (caster && micHolder === "talk") { try { speechSynthesis.cancel(); } catch (e) {} talking = 0; micHolder = ""; }
-    if (!caster && (talking > 0 || micHolder === "cast")) return;   // fighters wait for quiet
-    if (talking > 1) return;
+    if (!persist.talk || typeof speechSynthesis === "undefined" || !hv.length) {
+      w.setTimeout(finish, (line.dur || durOf(line)) * 1000);
+      return;
+    }
     const B = w.LYGO_BANTER;
-    const prof = (B && B.voiceFor) ? B.voiceFor(caster ? "caster" : kit) : { pitch: 1, rate: 1, slot: 0 };
-    const ut = new SpeechSynthesisUtterance(String(text).slice(0, 220));
+    const prof = (B && B.voiceFor) ? B.voiceFor(line.caster ? "caster" : line.who) : { pitch: 1, rate: 1, slot: 0 };
+    const ut = new SpeechSynthesisUtterance(String(line.text).slice(0, 220));
     /* the caster is the voice of the ring: prefer a deep one, and let each body keep its own */
     const deep = hv.find((v) => VOICE_DEEP.test(v.name || ""));
-    ut.voice = (caster && deep ? deep : hv[prof.slot % hv.length]) || hv[0];
-    ut.pitch = caster ? 0.78 : prof.pitch;
-    ut.rate = caster ? 0.99 : Math.max(0.8, Math.min(1.2, prof.rate));
+    ut.voice = (line.caster && deep ? deep : hv[prof.slot % hv.length]) || hv[0];
+    ut.pitch = line.caster ? 0.78 : prof.pitch;
+    /* the rate the director held the floor for: an announcer reading the programme is quicker
+       than one calling a fight, and the voice has to match the length it was given */
+    ut.rate = line.rate || (line.caster ? 0.99 : Math.max(0.8, Math.min(1.2, prof.rate)));
     ut.volume = 0.95;
-    micHolder = caster ? "cast" : "talk";
-    ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; };
+    micHolder = line.caster ? "cast" : "talk";
+    ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; finish(); };
     talking++;
-    try { speechSynthesis.speak(ut); } catch (e) { talking = Math.max(0, talking - 1); micHolder = ""; }
+    try { speechSynthesis.speak(ut); } catch (e) { talking = Math.max(0, talking - 1); micHolder = ""; finish(); }
   }
-  function hush() { if (typeof speechSynthesis !== "undefined") { try { speechSynthesis.cancel(); } catch (e) {} } talking = 0; micHolder = ""; }
+  function hush() {
+    if (typeof speechSynthesis !== "undefined") { try { speechSynthesis.cancel(); } catch (e) {} }
+    talking = 0; micHolder = ""; onAir = null;
+    if (DIR) DIR.clear();
+  }
   function paintTalk() {
     const b = $("btnTalk");
     if (b) { b.classList.toggle("on", !!persist.talk); b.textContent = persist.talk ? "Voices on" : "Voices off"; }
   }
   let talkSeq = 0, talkLog = [];
-  function casterSay(text, voiced) {
+  function casterText(text) {
     if (!text) return;
     const box = $("casterSays");
     if (box) { box.textContent = text; box.classList.remove("said"); void box.offsetWidth; box.classList.add("said"); }
-    talkLog.push({ t: E.state().time, caster: true, text: text });
-    if (talkLog.length > 30) talkLog.shift();
-    if (voiced !== false) speak(text, null, true);
   }
   /* every line out of the arena is a real event: the engine names the bodies, this side says
      it, writes it into the feed and gives it a voice */
+  /* The engine offers lines; the director decides. Nothing is written to the feed or said out
+     loud here -- a line only becomes real when it wins the floor, which is what keeps the feed,
+     the bubble and the voice telling the same story. */
   function pumpTalk() {
     const S = E.state();
     const list = S.talk || [];
@@ -105,14 +150,19 @@
       const x = list[i];
       if (!x || !x.seq || x.seq <= talkSeq) continue;
       talkSeq = x.seq;
-      if (x.caster) casterSay(x.text, true);
-      else {
-        talkLog.push({ t: x.t, caster: false, who: x.whoName, text: x.text });
-        if (talkLog.length > 30) talkLog.shift();
-        speak(x.text, x.who, !!x.hot);
-      }
+      if (!DIR) continue;
+      DIR.push({ caster: !!x.caster, who: x.caster ? "cast" : x.who, whoName: x.whoName || "",
+        text: x.text, kind: x.kind, prio: x.prio, hot: !!x.hot });
     }
+    /* the bell takes the floor the instant it rings: whatever a body was saying, he stops */
+    /* The bell takes the floor and opens the silence by itself (director.js): the shell only has
+       to notice that the fight has started, so it can move the UI into the live state. */
+    if (S.bellAt && S.bellAt !== lastBell && DIR) {
+      lastBell = S.bellAt;
+    }
+    if (DIR) DIR.tick();
   }
+  let lastBell = 0, lastQuiet = 0;
   let nextSeed = 0;
   /* A match is a series of maps, not a single fight: three maps at most, and two wins in a
      row closes it early. The player drives it forward one map at a time from the recap. */
@@ -645,23 +695,31 @@
       cd.textContent = n;
       cd.classList.add("show");
       if (n !== lastCount) { lastCount = n; blip("count"); }
+      paintIntro();
     } else if (S.phase === "live" && S.time < 4) {
       cd.textContent = "FIGHT";
       cd.classList.add("show");
       if (!fought) { fought = true; blip("fight"); }
-    } else cd.classList.remove("show");
+      hideIntro();
+    } else { cd.classList.remove("show"); hideIntro(); }
     pumpTalk();
-    if (S.events.length !== feedLen || talkLog.length !== feedLog) {
+    paintFocus();
+    if (S.events.length !== feedLen || talkLog.length !== feedLog || onAir !== shownAir) {
       const fresh = S.events.slice(feedLen);
       feedLen = S.events.length;
       feedLog = talkLog.length;
+      shownAir = onAir;
       fresh.forEach(playEvent);
-      const evs = S.events.map((ev) => ({ t: ev.t, kind: ev.kind, text: esc(ev.text) }));
-      const tk = talkLog.map((x) => ({ t: x.t, kind: x.caster ? "cast" : "talk",
-        text: x.caster ? esc(x.text) : "<b>" + esc(x.who || "") + "</b> " + esc(x.text) }));
+      const evs = S.events.map((ev) => ({ t: ev.t, kind: ev.kind, text: esc(ev.text), raw: ev.text, caster: null }));
+      const tk = talkLog.map((x) => ({ t: x.t, kind: x.caster ? "cast" : "talk", raw: x.text,
+        who: x.who || "", caster: !!x.caster }));
       const f = $("feed");
       if (f) f.innerHTML = evs.concat(tk).sort((p, q) => p.t - q.t).slice(-9).reverse()
-        .map((x) => "<p class='" + x.kind + "'><span>" + clockOf(x.t) + "</span>" + x.text + "</p>").join("");
+        .map((x) => {
+          const live = !!(onAir && x.raw === onAir.text && x.caster !== null && x.caster === !!onAir.caster);
+          const body = x.caster === null ? x.text : (x.caster ? esc(x.raw) : "<b>" + esc(x.who) + "</b> " + esc(x.raw));
+          return "<p class='" + x.kind + (live ? " live" : "") + "'><span>" + clockOf(x.t) + "</span>" + body + "</p>";
+        }).join("");
     }
     const youBar = rows.you.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.you.reduce((s, r) => s + r.e.max, 0));
     const foeBar = rows.foe.reduce((s, r) => s + Math.max(0, r.e.hp), 0) / Math.max(1, rows.foe.reduce((s, r) => s + r.e.max, 0));
@@ -676,6 +734,40 @@
     }
     if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }
+  /* The programme is on the screen as well as in the ear: the roster cards come in as the
+     caster names each side, so a spectator can see who is being introduced. And whatever is
+     being said, exactly one thing is marked as talking -- the booth panel, or one body. */
+  function paintIntro() {
+    const S = E.state(), box = $("intro");
+    if (!box) return;
+    box.classList.add("show");
+    if (!box.dataset.filled) {
+      box.dataset.filled = "1";
+      const ul = (id, team) => { const n = $(id); if (n) n.innerHTML = team.map((e) => "<li>" + esc(e.b.name) + "</li>").join(""); };
+      ul("introYouNames", S.your); ul("introFoeNames", S.foe);
+    }
+    const show = S.introShow || 0;
+    const you = $("introYou"), foe = $("introFoe");
+    if (you) you.classList.toggle("on", show >= 1);
+    if (foe) foe.classList.toggle("on", show >= 2);
+    const ring = E.law(), lab = $("introRing");
+    if (lab) lab.textContent = (S.lv && S.lv.kind ? S.lv.kind.toUpperCase() + " \u00b7 " : "") + (ring ? ring.name : "THE ARENA");
+  }
+  function hideIntro() {
+    const box = $("intro");
+    if (box) box.classList.remove("show");
+  }
+  function paintFocus() {
+    const cb = $("caster");
+    if (cb) cb.classList.toggle("onair", !!(onAir && onAir.caster));
+    ["you", "foe"].forEach((side) => {
+      (rows[side] || []).forEach((r) => {
+        const hot = !!(onAir && !onAir.caster && onAir.who && r.e.b && r.e.b.id === onAir.who);
+        r.row.classList.toggle("speaking", hot);
+      });
+    });
+  }
+  function skipIntro() { if (E.skipIntro()) hush(); }
   function alive(team) { return E.state()[(team === 0 ? "your" : "foe")].filter((e) => !e.dead).length; }
   function clockOf(t) { const m = Math.floor(t / 60), s = Math.floor(t % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
 
@@ -691,7 +783,14 @@
     $("menu").classList.add("hidden");
     $("battle").classList.remove("hidden");
     teamPanel(0); teamPanel(1);
-    E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode, nextSeed);
+    /* the programme: fifteen seconds, the booth introduces both teams, then the bell */
+    if (DIR) DIR.clear();
+    lastBell = 0;
+    const ib = $("intro");
+    if (ib) { ib.dataset.filled = ""; ib.classList.remove("show"); }
+    E.newMatch({ you: your.slice(), foe: foeIds.slice() }, persist.mode, nextSeed,
+      { map: series ? series.played + 1 : 1, me: persist.name || "",
+        score: series && series.played ? scoreLine() : "" });
     buildRows();
     feedLen = 0;
     lastCount = "";
@@ -758,11 +857,12 @@
     const sWon = series.you > series.foe ? 0 : series.foe > series.you ? 1 : -1;
     const over = series.over;
     /* the caster calls the map that just ended, and the match when it is decided */
-    if (w.LYGO_BANTER) {
-      casterSay(w.LYGO_BANTER.cast(over ? "matchEnd" : "mapEnd", {
-        team: sWon === 0 ? "your team" : sWon === 1 ? "the challengers" : "nobody",
-        score: series.you + " to " + series.foe, t: clockOf(S.time), n: series.played
-      }), true);
+    if (w.LYGO_BANTER && DIR) {
+      DIR.push({ caster: true, kind: over ? "matchEnd" : "mapEnd",
+        text: w.LYGO_BANTER.cast(over ? "matchEnd" : "mapEnd", {
+          team: sWon === 0 ? "your team" : sWon === 1 ? "the challengers" : "nobody",
+          score: series.you + " to " + series.foe, t: clockOf(S.time), n: series.played
+        }, () => ((series.played * 977) % 100) / 100) });
     }
     let streakNote = "";
     if (over) {
@@ -894,12 +994,14 @@
       if (act === "rematch") { series = newSeries(); begin(false); }
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
       if (act === "mute") { muted = !muted; paintSfx(); }
+      if (act === "skip") skipIntro();
       if (act === "talk") { persist.talk = !persist.talk; save(); paintTalk(); if (!persist.talk) hush(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
     });
     document.addEventListener("keydown", (ev) => {
       if (ev.target.tagName === "INPUT") return;
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
+      else if (ev.code === "Enter" && overlayMode === "battle") { ev.preventDefault(); skipIntro(); }
       else if (ev.code === "KeyM") { muted = !muted; paintSfx(); }
       else if (ev.code === "KeyR" && overlayMode === "battle") { series = newSeries(); begin(false); }
       else if (ev.code === "Escape") {
