@@ -1664,6 +1664,35 @@
     arch(2, "#22d3ee");
     arch(W - 72, "#f87171");
   }
+  const CROWD = { watch: null, cheer: null, jump: null };
+  function loadCrowd() {
+    ["watch", "cheer", "jump"].forEach((k) => {
+      const img = new Image();
+      img.onload = () => { CROWD[k] = img; };
+      img.src = "./assets/crowd/" + k + ".jpg";
+    });
+  }
+  function blitCrowd(img, bk, alpha, bob, fx) {
+    if (!img || !img.width || alpha < 0.04) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bk.x, bk.y, bk.w, bk.h);
+    ctx.clip();
+    ctx.globalAlpha = alpha;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    const wide = bk.w >= bk.h;
+    const lift = Math.max(0, bob);
+    /* Wide banks zoom in so the top and bottom stands are different parts of the same house, not one photo stamped twice. */
+    const zoom = wide ? 1.4 : 1;
+    const sc = Math.max(bk.w / img.width, (bk.h + lift) / img.height) * zoom;
+    const dw = img.width * sc, dh = img.height * sc;
+    const focusY = wide ? 0.54 : 0.48;
+    const x = bk.x + bk.w * 0.5 - dw * fx;
+    const y = bk.y + bk.h * 0.5 - dh * focusY - bob;
+    ctx.drawImage(img, x, y, dw, dh);
+    ctx.restore();
+  }
   function houseMood() {
     let m = 0.28;
     if (S.phase === "count") m = (INTRO_S - S.countdown) < 3 ? 0.22 : 0.58;
@@ -1684,42 +1713,31 @@
     ];
     const mood = houseMood();
     const clock = S.phase === "count" ? (INTRO_S - S.countdown) : (S.time + INTRO_S);
-    const tunics = ["#b91c1c", "#1d4ed8", "#a16207", "#047857", "#6d28d9", "#9f1239", "#0f766e"];
+    const mid = mood < 0.42 ? mood / 0.42 : (mood - 0.42) / 0.58;
+    const lo = mood < 0.42 ? CROWD.watch : CROWD.cheer;
+    const hi = mood < 0.42 ? CROWD.cheer : CROWD.jump;
+    const focusX = [0.34, 0.7, 0.18, 0.84];
     ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#14110e";
+    ctx.fillRect(0, 0, ox, oy);
+    ctx.fillRect(ox + mapW, 0, Math.max(0, wpx - ox - mapW), oy);
+    ctx.fillRect(0, oy + mapH, ox, Math.max(0, hpx - oy - mapH));
+    ctx.fillRect(ox + mapW, oy + mapH, Math.max(0, wpx - ox - mapW), Math.max(0, hpx - oy - mapH));
     banks.forEach((bk, bi) => {
       if (bk.w < 8 || bk.h < 8) return;
+      const amp = mood > 0.72 ? 11 : 1.3;
+      const hop = Math.sin(clock * (mood > 0.72 ? 6.5 : 1.4) + bi * 0.85) * amp;
       ctx.globalAlpha = 1;
       ctx.fillStyle = "#1c1410";
       ctx.fillRect(bk.x, bk.y, bk.w, bk.h);
-      ctx.fillStyle = "#292524";
-      ctx.fillRect(bk.x, bk.y + 3, bk.w, Math.max(0, bk.h - 6));
+      blitCrowd(lo, bk, 1, hop, focusX[bi]);
+      blitCrowd(hi, bk, mid, hop, focusX[bi]);
       ctx.fillStyle = "#78716c";
       if (bi === 0) ctx.fillRect(bk.x, bk.y + bk.h - 4, bk.w, 4);
       else if (bi === 1) ctx.fillRect(bk.x, bk.y, bk.w, 4);
       else if (bi === 2) ctx.fillRect(bk.x + bk.w - 4, bk.y, 4, bk.h);
       else ctx.fillRect(bk.x, bk.y, 4, bk.h);
-      const tall = bi < 2;
-      const gap = tall ? 16 : 18;
-      const rows = Math.max(1, Math.min(tall ? 2 : 8, Math.floor((bk.h - 8) / 18)));
-      const cols = Math.max(1, Math.floor((bk.w - 8) / gap));
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const n = ((bi * 131 + r * 17 + c * 29) * 1103515245 + 12345) >>> 0;
-          const px = bk.x + 6 + (c + 0.5) * ((bk.w - 10) / cols);
-          const bob = Math.sin(clock * (mood > 0.7 ? 8 : 2.2) + (n % 16)) * (mood > 0.7 ? 2.6 : 0.5);
-          const py = bk.y + 10 + (r + 0.5) * ((bk.h - 14) / rows) + bob;
-          const up = mood > 0.62 && (n % 4) !== 0;
-          ctx.fillStyle = "#e7c8a0";
-          ctx.fillRect(px - 2, py - 9, 4, 4);
-          ctx.fillStyle = tunics[n % tunics.length];
-          ctx.fillRect(px - 3, py - 5, 6, 7);
-          if (up) {
-            ctx.fillStyle = "#e7c8a0";
-            ctx.fillRect(px - 6, py - 10, 2, 5);
-            ctx.fillRect(px + 4, py - 10, 2, 5);
-          }
-        }
-      }
     });
     ctx.restore();
   }
@@ -1766,7 +1784,8 @@
     ctx.fillRect(0, 0, wpx, hpx);
     /* The sand stays the fight. The pad around it is the building: stands, not cover. */
     const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
-    const padX = 86, padY = 70;
+    /* Pad is stand room, in world pixels. Taller banks keep a band of faces instead of a sliver. */
+    const padX = 140, padY = 198;
     const scale = Math.min(wpx / (mapW + padX * 2), hpx / (mapH + padY * 2));
     const ox = (wpx - mapW * scale) / 2, oy = (hpx - mapH * scale) / 2;
     const kick = S.shake > 0 ? S.shake * 16 : 0;
@@ -1950,6 +1969,7 @@
   async function init(cv) {
     canvas = cv;
     ctx = canvas.getContext("2d");
+    loadCrowd();
     await loadAssets();
     if (!raf) raf = requestAnimationFrame(frame);
     return true;

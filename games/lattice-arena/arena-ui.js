@@ -173,7 +173,7 @@
     /* a human voice stays at its own pitch. Dropping the booth to 0.78 is what made David a robot. */
     ut.pitch = line.caster ? 1 : (machine ? Math.max(0.92, Math.min(1.12, prof.pitch)) : prof.pitch);
     ut.rate = speakRate(line, prof, machine);
-    ut.volume = 0.95;
+    ut.volume = volOf("voiceVol", 0.9);
     micHolder = line.caster ? "cast" : "talk";
     ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; finish(); };
     talking++;
@@ -185,8 +185,10 @@
     if (DIR) DIR.clear();
   }
   function paintTalk() {
-    const b = $("btnTalk");
-    if (b) { b.classList.toggle("on", !!persist.talk); b.textContent = persist.talk ? "Voices on" : "Voices off"; }
+    document.querySelectorAll("[data-act='talk']").forEach((b) => {
+      b.classList.toggle("on", !!persist.talk);
+      b.textContent = persist.talk ? "Voices on" : "Voices off";
+    });
   }
   let talkSeq = 0, talkLog = [];
   function casterText(text) {
@@ -229,7 +231,14 @@
   /* ------------------------------------------------------------------ sound --- */
   const SFX_NAMES = ["click", "count", "fight", "hit", "big", "cast", "heal", "summon", "kill", "warn", "win", "lose"];
   const SFX_GAIN = { click: 0.35, count: 0.4, hit: 0.32, cast: 0.38, big: 0.5, heal: 0.42, summon: 0.46, kill: 0.5, warn: 0.46, fight: 0.5, win: 0.55, lose: 0.5 };
-  let audio = null, muted = false, sfxBuf = {}, sfxReady = false, sfxGate = 0, lastCount = "", fought = false;
+  let audio = null, sfxBuf = {}, sfxReady = false, sfxGate = 0, lastCount = "", fought = false;
+  let cheerNode = null, cheerGain = null, cheerWant = -1;
+  function sfxOn() { return persist.sfx !== false; }
+  function cheerOn() { return persist.cheer !== false; }
+  function volOf(key, fallback) {
+    const n = persist[key];
+    return typeof n === "number" ? Math.max(0, Math.min(1, n)) : fallback;
+  }
   function ensureAudio() {
     if (!audio) audio = new (w.AudioContext || w.webkitAudioContext)();
     if (audio.state === "suspended") audio.resume().catch(() => {});
@@ -243,10 +252,14 @@
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { sfxBuf[name] = decoded; })
-      .catch(() => {}))).then(() => { sfxReady = true; });
+      .catch(() => {}))).then(() => fetch("./assets/sfx/cheer.wav")
+      .then((r) => r.arrayBuffer())
+      .then((buf) => ctx.decodeAudioData(buf))
+      .then((decoded) => { sfxBuf.cheer = decoded; })
+      .catch(() => {})).then(() => { sfxReady = true; });
   }
   function blip(type, gain) {
-    if (muted) return;
+    if (!sfxOn()) return;
     try {
       const ctx = ensureAudio();
       const buf = sfxBuf[type];
@@ -254,7 +267,7 @@
         const src = ctx.createBufferSource();
         const g = ctx.createGain();
         src.buffer = buf;
-        g.gain.value = gain || SFX_GAIN[type] || 0.36;
+        g.gain.value = (gain || SFX_GAIN[type] || 0.36) * volOf("sfxVol", 0.85);
         src.connect(g); g.connect(ctx.destination);
         src.start();
         return;
@@ -427,9 +440,47 @@
   }
   function paintSfx() {
     document.querySelectorAll("[data-act='mute']").forEach((b) => {
-      b.classList.toggle("on", muted);
-      b.textContent = muted ? "SFX off" : "SFX on";
+      b.classList.toggle("on", sfxOn());
+      b.textContent = sfxOn() ? "SFX on" : "SFX off";
     });
+  }
+  function paintCheer() {
+    document.querySelectorAll("[data-act='cheer']").forEach((b) => {
+      b.classList.toggle("on", cheerOn());
+      b.textContent = cheerOn() ? "Cheer on" : "Cheer off";
+    });
+  }
+  function mixCheer() {
+    try {
+      const ctx = ensureAudio();
+      if (!sfxBuf.cheer) return;
+      if (!cheerNode) {
+        cheerNode = ctx.createBufferSource();
+        cheerNode.buffer = sfxBuf.cheer;
+        cheerNode.loop = true;
+        cheerGain = ctx.createGain();
+        cheerGain.gain.value = 0;
+        cheerNode.connect(cheerGain);
+        cheerGain.connect(ctx.destination);
+        cheerNode.start();
+      }
+      const S = E.state();
+      let v = 0;
+      if (cheerOn() && overlayMode === "battle" && S && (S.phase === "count" || S.phase === "live" || S.phase === "over")) {
+        const base = volOf("cheerVol", 0.65);
+        v = base * 0.16;
+        if (S.phase === "count") v = base * 0.32;
+        if (S.phase === "live" && S.time < 3) v = base * 0.4;
+        if (S.shake > 0.15 || S.phase === "over") v = base * 0.42;
+      }
+      if (Math.abs(v - cheerWant) < 0.01) return;
+      cheerWant = v;
+      cheerGain.gain.setTargetAtTime(v, ctx.currentTime, 0.25);
+    } catch (e) {}
+  }
+  function mixRow(key, label, fallback) {
+    const v = Math.round(volOf(key, fallback) * 100);
+    return "<label class='mix'>" + label + "<input type='range' min='0' max='100' value='" + v + "' data-vol='" + key + "'><b>" + v + "</b></label>";
   }
   function lineupNames() {
     return your.map((id) => (R.byId[id] ? R.byId[id].name : id)).join(", ");
@@ -493,7 +544,7 @@
           "<button type='button' class='btn gold' id='btnFight' data-ready='" + (ready ? "1" : "0") + "'><b>Fight</b><span>" + (hold ? esc(hold) : MODE_LABEL[persist.mode] + " · " + esc(names)) + "</span></button>" +
           "<button type='button' class='btn' id='btnGauntlet'><b>Gauntlet</b><span>Same team. A new ring after every win. Best streak " + (persist.bestStreak || 0) + ".</span></button>" +
           "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
-          "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Fight sounds, speed, and the radio</span></button>" +
+          "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Announcer, crowd, fight sounds, and the radio</span></button>" +
           "<button type='button' class='btn' data-tab='how'><b>How to play</b><span>What the teams actually do</span></button>" +
           "<button type='button' class='btn' data-tab='hall'><b>Hall</b><span>Win / loss lines for named teams</span></button>" +
         "</div>" +
@@ -540,9 +591,18 @@
     return "<div class='plain-screen'>" +
       "<button type='button' class='btn' data-tab='home'>Back</button>" +
       "<p class='kicker'>Options</p><h1>Options</h1>" +
+      "<h2>Announcer</h2>" +
+      "<p class='lede'>The booth and the fighters. Off keeps the words on screen and holds the same pauses.</p>" +
+      "<button type='button' class='btn" + (persist.talk ? " on" : "") + "' data-act='talk'>" + (persist.talk ? "Voices on" : "Voices off") + "</button>" +
+      mixRow("voiceVol", "Announcer", 0.9) +
+      "<h2>Crowd</h2>" +
+      "<p class='lede'>A low cheer under the intro and the fight. It stays behind the booth.</p>" +
+      "<button type='button' class='btn" + (cheerOn() ? " on" : "") + "' data-act='cheer'>" + (cheerOn() ? "Cheer on" : "Cheer off") + "</button>" +
+      mixRow("cheerVol", "Cheer", 0.65) +
       "<h2>Fight sounds</h2>" +
-      "<p class='lede'>These are the hits, casts, and the result. The radio is separate.</p>" +
-      "<button type='button' class='btn" + (muted ? " on" : "") + "' data-act='mute'>" + (muted ? "SFX off" : "SFX on") + "</button>" +
+      "<p class='lede'>Hits, casts, and the result. The radio is its own mute.</p>" +
+      "<button type='button' class='btn" + (sfxOn() ? " on" : "") + "' data-act='mute'>" + (sfxOn() ? "SFX on" : "SFX off") + "</button>" +
+      mixRow("sfxVol", "Effects", 0.85) +
       "<h2>Battle speed</h2><div class='speed'>" + speeds + "</div>" +
       "<h2>Radio</h2>" +
       "<p class='lede'>Excavationpro, from the listen portal. It keeps playing when the fight starts. Mute here is the music.</p>" +
@@ -562,7 +622,7 @@
       "<li>The word on each health bar is what that body has decided to do about the fight: <b>press</b> to close, <b>hold</b> the ground it has, <b>overwatch</b> from cover, <b>choke</b> a doorway, <b>flank</b> the long way round, <b>screen</b> an ally, <b>bait</b> and step off, <b>aid</b> the wounded, <b>rally</b> the line, <b>withdraw</b> when it is losing, <b>repair</b> itself out of a corner. The map is three zones on whatever arena loaded: their own starting side is defensive, the centre is the fight, and the far side is offensive. Bodies stay off the walls.</li>" +
       "<li>Every ring has a law, named before the fight. Stone takes no side. Frost shortens every stride. Ember burns the centre. Gold sparks the killer. Lattice hurries cooldowns. Void leaves a slow pocket where a body falls. Tide shoves the floor. Root feeds whoever is still standing.</li>" +
       "<li>Gauntlet keeps this team and draws a new ring after each win. The streak stays on this browser. Each fight still posts as a normal hall line.</li>" +
-      "<li>The radio lives in Options, and on the dock once a fight is open. <b>SFX</b> (or <b>M</b>) mutes the fight sounds only.</li>" +
+      "<li>Options has the announcer, the crowd cheer, and the fight sounds, each with its own switch and volume. <b>M</b> mutes the fight sounds only. The radio is separate.</li>" +
       "<li>Keys during a fight: <b>Space</b> pause · <b>1 2 3 4</b> speed · <b>M</b> fight sounds · <b>Esc</b> title · <b>R</b> rematch.</li>" +
       "</ol></div>";
   }
@@ -766,6 +826,7 @@
     return src;
   }
   function paintHud() {
+    mixCheer();
     const S = E.state();
     if (!S.your.length) return;
     ["you", "foe"].forEach((side) => {
@@ -1110,7 +1171,8 @@
       if (act === "menu") leaveToMenu("home");
       if (act === "rematch") { series = newSeries(); begin(false); }
       if (act === "newfoe") { foeIds = R.draw(persist.mode, your).map((f) => f.id); rollSeed(); renderVS(); }
-      if (act === "mute") { muted = !muted; paintSfx(); }
+      if (act === "mute") { persist.sfx = !sfxOn(); save(); paintSfx(); }
+      if (act === "cheer") { persist.cheer = !cheerOn(); save(); paintCheer(); }
       if (act === "skip") skipIntro();
       if (act === "talk") { persist.talk = !persist.talk; save(); paintTalk(); if (!persist.talk) hush(); }
       if (act === "full") { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
@@ -1119,7 +1181,7 @@
       if (ev.target.tagName === "INPUT") return;
       if (ev.code === "Space" && overlayMode === "battle") { ev.preventDefault(); const s = E.state(); E.pause(!s.paused); $("btnPause").classList.toggle("on", !s.paused); }
       else if (ev.code === "Enter" && overlayMode === "battle") { ev.preventDefault(); skipIntro(); }
-      else if (ev.code === "KeyM") { muted = !muted; paintSfx(); }
+      else if (ev.code === "KeyM") { persist.sfx = !sfxOn(); save(); paintSfx(); }
       else if (ev.code === "KeyR" && overlayMode === "battle") { series = newSeries(); begin(false); }
       else if (ev.code === "Escape") {
         if (overlayMode === "battle" || overlayMode === "results" || overlayMode === "vs") {
@@ -1138,6 +1200,16 @@
     });
     /* the fight button lives inside the sheet, so bind it here as well as the grid */
     paintTalk();
+    paintSfx();
+    paintCheer();
+    document.body.addEventListener("input", (ev) => {
+      const input = ev.target;
+      if (!input || !input.dataset || !input.dataset.vol) return;
+      persist[input.dataset.vol] = Number(input.value) / 100;
+      const label = input.parentElement && input.parentElement.querySelector("b");
+      if (label) label.textContent = input.value;
+      save();
+    });
     document.body.addEventListener("click", (ev) => {
       if (ev.target.closest && ev.target.closest("#btnFight")) startListed(false);
       else if (ev.target.closest && ev.target.closest("#btnGauntlet")) startListed(true);
