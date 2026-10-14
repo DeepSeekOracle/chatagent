@@ -49,6 +49,7 @@
 
   /* ------------------------------------------------------------- atlases --- */
   const AT = { heroes: null, creatures: null, pets: null, tiles: null, fx: null, meta: {} };
+  const FLOOR_SKIN = {};
   function loadImg(src) {
     return new Promise((res, rej) => {
       const i = new Image();
@@ -62,7 +63,19 @@
     const pairs = [["heroes", "heroes.png"], ["creatures", "creatures.png"], ["pets", "pets.png"], ["tiles", "tiles.png"], ["fx", "fx.png"]];
     const out = await Promise.all(pairs.map(([k, f]) => Promise.all([loadImg("./assets/" + f), fetch("./assets/" + k + ".json").then((r) => r.json())])));
     pairs.forEach(([k], i) => { AT[k] = out[i][0]; AT.meta[k] = out[i][1]; });
+    loadFloors();
     return AT;
+  }
+  /* Photo skins. Sponsor type is already in the file, so the booth floor is a picture, not a tile. */
+  function loadFloors() {
+    REALMS.forEach((k) => {
+      const img = new Image();
+      img.onload = () => {
+        FLOOR_SKIN[k] = img;
+        if (S.lv && S.lv.realm === k) floorCv = paintFloor(S.lv);
+      };
+      img.src = "./assets/floors/" + k + ".png?v=1";
+    });
   }
   function atlasFor(sheet) { return AT[sheet]; }
   function cellOf(sheet, key, frame) {
@@ -1555,10 +1568,20 @@
 
   /* ---------------------------------------------------------------- render --- */
   function paintFloor(lv) {
-    if (!AT.tiles || !AT.meta.tiles) return null;
     const cv = document.createElement("canvas");
     cv.width = lv.W * TILE; cv.height = lv.H * TILE;
     const cx = cv.getContext("2d");
+    const skin = FLOOR_SKIN[lv.realm];
+    if (skin && skin.width) {
+      cx.imageSmoothingEnabled = true;
+      cx.imageSmoothingQuality = "high";
+      cx.drawImage(skin, 0, 0, cv.width, cv.height);
+      cx.globalAlpha = 0.45; cx.strokeStyle = "#0b1220"; cx.lineWidth = 6;
+      cx.strokeRect(3, 3, cv.width - 6, cv.height - 6);
+      return cv;
+    }
+    if (!AT.tiles || !AT.meta.tiles) return null;
+    cv.width = lv.W * TILE; cv.height = lv.H * TILE;
     cx.imageSmoothingEnabled = false;
     cx.fillStyle = "#05060a"; cx.fillRect(0, 0, cv.width, cv.height);
     const m = AT.meta.tiles, img = AT.tiles;
@@ -1850,7 +1873,15 @@
     const zs = scale * cam.z;
     const holeCx = ox + mapW * scale / 2, holeCy = oy + mapH * scale / 2;
     ctx.setTransform(dpr * zs, 0, 0, dpr * zs, dpr * (holeCx - cam.x * zs + sx), dpr * (holeCy - cam.y * zs + sy));
-    if (floorCv) ctx.drawImage(floorCv, 0, 0);
+    if (floorCv) {
+      const photo = S.lv && FLOOR_SKIN[S.lv.realm];
+      if (photo && photo.width) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+      }
+      ctx.drawImage(floorCv, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+    }
     drawMouths();
     drawLaw();
 
@@ -2117,13 +2148,13 @@
       ctx.globalAlpha = 0.05 + 0.03 * Math.sin(S.time * 2);
       ctx.fillStyle = "#4ade80";
       ctx.fillRect(0, 0, MAP_W * TILE, MAP_H * TILE);
-    } else if (realm === "gold") {
+    } else if (realm === "gold" && !(FLOOR_SKIN.gold && FLOOR_SKIN.gold.width)) {
       ctx.globalAlpha = 0.35; ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 78 + 8 * Math.sin(S.time * 2), 0, 6.283); ctx.stroke();
-    } else if (realm === "lattice") {
+    } else if (realm === "lattice" && !(FLOOR_SKIN.lattice && FLOOR_SKIN.lattice.width)) {
       ctx.globalAlpha = 0.22; ctx.strokeStyle = "#5eead4"; ctx.lineWidth = 1;
       for (let i = 1; i < 4; i++) ctx.strokeRect(cx - i * 48, cy - i * 34, i * 96, i * 68);
-    } else if (realm === "tide") {
+    } else if (realm === "tide" && !(FLOOR_SKIN.tide && FLOOR_SKIN.tide.width)) {
       ctx.globalAlpha = 0.2; ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, 90 + 14 * Math.sin(S.time * 1.4), 0, 6.283); ctx.stroke();
     }
