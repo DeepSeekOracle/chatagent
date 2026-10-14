@@ -350,7 +350,8 @@
 
     const hp = e.hp / e.max;
     const range = b.range || 40;
-    const band0 = Math.max(range * st.band, range <= 100 ? 26 : 60);
+    /* Close kits stand a shoulder apart. 26px put two bodies on the same pixel. */
+    const band0 = Math.max(range * st.band, range <= 100 ? 42 : 60);
     const focus = Q.focus && !Q.focus.dead ? Q.focus : en[0];
     const dFocus = dist(e.x, e.y, focus.x, focus.y);
     /* what is actually on me right now */
@@ -557,6 +558,22 @@
       return set(e, { task, target, point, band, gait, why }, S);
     }
 
+    /* A gun with a fist inside its pocket steps straight back to the range it
+       shoots from. Strafing that pocket draws a circle and the arrows miss. */
+    if (range > 130 && target && (target.b.range || 40) <= 110 && dTargetNow < band0 * 0.78) {
+      const away = dTargetNow || 1;
+      const step = Math.min(100, Math.max(52, band0 * 0.78 - dTargetNow + 28));
+      task = "bait";
+      point = {
+        x: e.x + ((e.x - target.x) / away) * step,
+        y: e.y + ((e.y - target.y) / away) * step
+      };
+      gait = 1;
+      band = band0;
+      why = "keeping the shot";
+      return set(e, { task, target, point, band, gait, why }, S);
+    }
+
     /* — 5. THE LINE: holding is a decision, and it is usually the right one for a
            body whose job is to be in the way. Front rank holds; the ones behind
            hold at band and shoot. Bounding: a pair takes turns. */
@@ -656,7 +673,10 @@
       if (plan.point) plan.point = settle(S, Q, plan.point, role);
       const tg = plan.target;
       const melee = tg && !tg.dead && dist(e.x, e.y, tg.x, tg.y) < 78;
-      if (!melee && rimPush(S, e.x, e.y) > 8) {
+      /* A gun backing off a fist is allowed to use the rim. Pulling it
+         back to centre is what turns the kite into a lap of the arena. */
+      const gunBait = plan.task === "bait" && tg && (tg.b.range || 40) <= 110 && (e.b.range || 40) > 130;
+      if (!melee && !gunBait && rimPush(S, e.x, e.y) > 8) {
         plan.point = repairPoint(S, Q, e, role);
         plan.task = "repair";
         plan.gait = 1;

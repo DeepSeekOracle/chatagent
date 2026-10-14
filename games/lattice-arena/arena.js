@@ -866,7 +866,8 @@
         const baseN = mv.n || 1;
         const extra = mv.n ? (caster.b.mods.volleyAdd || 0) : 0;
         const n = baseN + extra;
-        const a0 = Math.atan2(P.y - caster.y, P.x - caster.x);
+        const lead = (tgt && !mv.lob) ? shotAt(caster, tgt, 430) : P;
+        const a0 = Math.atan2(lead.y - caster.y, lead.x - caster.x);
         for (let i = 0; i < n; i++) {
           /* the aimed bearing stays in the fan. An extra volley shot is added
              beside it — stretching the fan to an even count was leaving the
@@ -996,6 +997,24 @@
     return n;
   }
 
+  /* Shoulder room. Two sprites are 46px. Centres closer than 40 draw as one body. */
+  function bodyGap(e, speed) {
+    let sx = 0, sy = 0;
+    all().forEach((o) => {
+      if (o === e || o.dead) return;
+      const dd = dist2(e.x, e.y, o.x, o.y);
+      if (dd < 40 && dd > 0.01) {
+        const push = (40 - dd) / 40;
+        sx += ((e.x - o.x) / dd) * push;
+        sy += ((e.y - o.y) / dd) * push;
+      }
+    });
+    const n = Math.hypot(sx, sy);
+    if (n < 1e-6) return { x: 0, y: 0 };
+    const vel = Math.min(78 * n, speed * 1.05);
+    return { x: (sx / n) * vel, y: (sy / n) * vel };
+  }
+
   function think(e, dt) {
     const b = e.b;
     const st = buffed(e);
@@ -1107,7 +1126,7 @@
     /* ---- the ground. A plan either names a point or asks the body to hold where
        it stands; both are executed with the same walker. */
     const d = dist2(e.x, e.y, t.x, t.y);
-    const band = Math.max(plan.band || (b.range > 100 ? b.range * 0.9 : 26), b.range <= 100 ? 24 : 58);
+    const band = Math.max(plan.band || (b.range > 100 ? b.range * 0.9 : 42), b.range <= 100 ? 40 : 58);
     let gx2 = plan.point ? plan.point.x : t.x;
     let gy2 = plan.point ? plan.point.y : t.y;
     /* hit-and-run: a body that just threw something steps back off its line */
@@ -1132,7 +1151,14 @@
       /* in position: face the enemy, drift across its front. A body blocked on that
          drift turns around instead of grinding its shoulder into a wall. */
       if (e.blockedT > 0.25) { e.strafeDir = -e.strafeDir; }
-      const sAmt = stl.strafe == null ? 0.5 : stl.strafe;
+      /* A held strafe in one direction is a circle. Reverse it, and keep a
+         gun's weave small enough that a shot can still meet the body. */
+      e.weaveT = (e.weaveT || 0) + dt;
+      if (e.weaveT > 0.62) { e.weaveT = 0; e.strafeDir = -e.strafeDir; }
+      let sAmt = stl.strafe == null ? 0.5 : stl.strafe;
+      const foeMelee = (t.b.range || 40) <= 110;
+      if ((b.range || 40) > 130) sAmt = Math.min(sAmt, foeMelee ? 0.22 : 0.36);
+      else if (d < 78) sAmt = Math.min(sAmt, 0.22);
       const sa = Math.atan2(t.y - e.y, t.x - e.x) + Math.PI / 2;
       /* holding on the rim drifts inward. Swapping shoulders along the border
          is how a body spends the match grinding a wall. */
@@ -1142,8 +1168,11 @@
         const ix = e.x < ringW * 0.5 ? 1 : -1, iy = e.y < ringH * 0.5 ? 1 : -1;
         if (Math.cos(sa) * e.strafeDir * ix + Math.sin(sa) * e.strafeDir * iy < 0) e.strafeDir = -e.strafeDir;
       }
-      const mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
-      const mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      let mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      let mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      const gap2 = bodyGap(e, st.speed);
+      mvx2 += gap2.x * dt;
+      mvy2 += gap2.y * dt;
       const want2 = Math.hypot(mvx2, mvy2);
       const got2 = moveEntity(e, mvx2, mvy2);
       /* the strafe has to measure itself the way the walk does, or a body pinned while holding
@@ -1232,18 +1261,9 @@
     let mvy = Math.sin(a) * st.speed * dt;
     /* separation — a nudge, never a wall. Uncapped, four allies crowded round one
        slow body sum to more push-back than that body's walking speed. */
-    let sx = 0, sy = 0;
-    all().forEach((o) => {
-      if (o === e || o.dead) return;
-      const dd = dist2(e.x, e.y, o.x, o.y);
-      if (dd < 17 && dd > 0.01) { sx += (e.x - o.x) / dd; sy += (e.y - o.y) / dd; }
-    });
-    const sepN = Math.hypot(sx, sy);
-    if (sepN > 1e-6) {
-      const sepVel = Math.min(26 * sepN, st.speed * 0.45);
-      mvx += (sx / sepN) * sepVel * dt;
-      mvy += (sy / sepN) * sepVel * dt;
-    }
+    const gap = bodyGap(e, st.speed);
+    mvx += gap.x * dt;
+    mvy += gap.y * dt;
     const wanted = Math.hypot(mvx, mvy);
     const walked = moveEntity(e, mvx, mvy);
     if (wanted > 0.06 && walked < wanted * 0.45) {
@@ -1315,6 +1335,20 @@
     if (w.LYGO_ATTACKS) w.LYGO_ATTACKS.cast(S, e, e.animVis, x2, y2);
   }
 
+  /* Where the body will be when the bolt arrives. A shot at the feet they
+     have already left is the miss that reads as two people spinning. */
+  function shotAt(src, tgt, spd) {
+    const vx = tgt.vx || 0, vy = tgt.vy || 0;
+    const dist = Math.hypot(tgt.x - src.x, tgt.y - src.y) || 1;
+    let t = Math.min(0.42, dist / Math.max(120, spd));
+    let x = tgt.x + vx * t, y = tgt.y + vy * t;
+    const d2 = Math.hypot(x - src.x, y - src.y) || 1;
+    t = Math.min(0.42, d2 / Math.max(120, spd));
+    x = clamp(tgt.x + vx * t, 18, MAP_W * TILE - 18);
+    y = clamp(tgt.y + vy * t, 18, MAP_H * TILE - 18);
+    return { x: x, y: y };
+  }
+
   function attack(e) {
     if (e.atkCd > 0 || e.stun > 0) return;
     const b = e.b;
@@ -1350,8 +1384,10 @@
       if (b.atk.burn) applySt(t, { burn: [b.atk.burn, 3] }, e);
       S.marks.push({ x: t.x, y: t.y - 8, r: 0, life: 0.18, col: e.b.color, spark: true });
     } else {
+      const aim = shotAt(e, t, 420);
+      faceTo(e, aim.x, aim.y);
       S.projectiles.push({
-        x: e.x, y: e.y - 8, a: Math.atan2(t.y - e.y, t.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
+        x: e.x, y: e.y - 8, a: Math.atan2(aim.y - (e.y - 8), aim.x - e.x), spd: 420, dmg: 0, src: e, team: e.team,
         w: b.atk.w, vis: b.atk.vis, col: b.color, life: 2.0, pierce: b.pierce || 0, frame: 0,
         direct: dmg, splashR: (b.atk.nova || 0) * TILE, splashMul: 0.5,
         ignoreWall: !!b.ghost, drain: b.atk.drain || 0, name: b.atk.name
@@ -1378,7 +1414,7 @@
           done = true;
         }
       } else {
-        const hits = all().filter((e) => !e.dead && e.team !== p.team && dist2(e.x, e.y - 6, p.x, p.y) < 15);
+        const hits = all().filter((e) => !e.dead && e.team !== p.team && dist2(e.x, e.y - 6, p.x, p.y) < 22);
         if (!p.hit) p.hit = {};
         hits.forEach((h) => {
           if (p.hit[h.uid]) return;
@@ -1507,6 +1543,11 @@
       const cdStep = dt * ((S.lv && S.lv.realm === "lattice") ? 1.1 : 1);
       e.cds = e.cds.map((c) => Math.max(0, c - cdStep));
       e.atkCd = Math.max(0, e.atkCd - cdStep);
+      if (e.px != null && dt > 0) {
+        e.vx = (e.x - e.px) / dt;
+        e.vy = (e.y - e.py) / dt;
+      } else { e.vx = 0; e.vy = 0; }
+      e.px = e.x; e.py = e.y;
       think(e, dt);
       attack(e);
       /* contact damage for anything standing in something's face, so melee always matters */
