@@ -1888,12 +1888,16 @@
     order.forEach((e) => {
       poseBody(e, (p) => {
       if (p && p.lift) {
+        /* A short cage around the body. A line from the top of the sand read as a
+           blue stripe stuck to the second fighter on each side. */
         ctx.save();
-        ctx.globalAlpha = 0.95;
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(e.x - 20, e.y + 4, 40, 8);
-        ctx.fillStyle = "#38bdf8";
-        ctx.fillRect(e.x - 1, TILE * 0.35, 2, Math.max(0, e.y - TILE * 0.35));
+        ctx.globalAlpha = 0.92;
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(e.x - 22, e.y + 2, 44, 7);
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillRect(e.x - 20, e.y - 34, 3, 36);
+        ctx.fillRect(e.x + 17, e.y - 34, 3, 36);
+        ctx.fillRect(e.x - 20, e.y - 34, 40, 3);
         ctx.restore();
       }
       const size = drawSprite(e);

@@ -406,9 +406,11 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
   letter-spacing: .1em; color: var(--mute); background: #0b101c; border: 1px solid var(--line);
   border-radius: 5px; padding: .18rem .5rem; cursor: pointer; }
 .intro .iskip:hover { color: var(--text); border-color: var(--line-2); }
-.intro .isides, .intro .ifoot { display: none; }
-.intro .isides { flex: 0 0 auto; justify-content: space-between; align-items: flex-start; gap: 18%; }
-.intro .iside { width: min(220px, 30%); border: 1px solid var(--line); border-radius: .5rem; padding: .4rem .5rem; background: #0a0e16cc;
+/* Names sit in the middle, over the open sand, so the side gates stay visible. */
+.intro .ifoot { display: none; }
+.intro .isides { display: flex; position: absolute; top: 2.35rem; left: 50%; transform: translateX(-50%);
+  width: min(480px, 58%); justify-content: center; align-items: flex-start; gap: .55rem; pointer-events: none; }
+.intro .iside { width: min(220px, 48%); border: 1px solid var(--line); border-radius: .5rem; padding: .4rem .5rem; background: #0a0e16e6;
   opacity: .18; transform: translateY(7px); transition: opacity .35s ease, transform .35s ease, border-color .35s ease; }
 .intro .iside.on { opacity: 1; transform: none; border-color: #fbbf2488; box-shadow: 0 0 0 1px #fbbf2433 inset; }
 .intro .iside.isfoe.on { border-color: #f8717188; box-shadow: 0 0 0 1px #f8717133 inset; }
