@@ -63,19 +63,23 @@
     const pairs = [["heroes", "heroes.png"], ["creatures", "creatures.png"], ["pets", "pets.png"], ["tiles", "tiles.png"], ["fx", "fx.png"]];
     const out = await Promise.all(pairs.map(([k, f]) => Promise.all([loadImg("./assets/" + f), fetch("./assets/" + k + ".json").then((r) => r.json())])));
     pairs.forEach(([k], i) => { AT[k] = out[i][0]; AT.meta[k] = out[i][1]; });
-    loadFloors();
+    /* Mats load on demand: one ring per fight, and the set is 51 MB. */
     return AT;
   }
-  /* Photo skins. Sponsor type is already in the file, so the booth floor is a picture, not a tile. */
-  function loadFloors() {
-    FLOORS.forEach((k) => {
-      const img = new Image();
-      img.onload = () => {
-        FLOOR_SKIN[k] = img;
-        if (S.lv && (S.lv.floor || S.lv.realm) === k) floorCv = paintFloor(S.lv);
-      };
-      img.src = "./assets/floors/" + k + ".png?v=3";
-    });
+  /* Photo skins. Sponsor type is already in the file, so the booth floor is a picture, not a tile.
+     ONE ring, and only the ring a match is about to draw: eager-loading all seventeen was 51 MB
+     before the menu was usable, and the fifteen-second walk-in is long enough to fetch one. */
+  const FLOOR_TRIED = {};
+  function wantFloor(k) {
+    if (!k || FLOOR_SKIN[k] || FLOOR_TRIED[k]) return;
+    FLOOR_TRIED[k] = true;
+    const img = new Image();
+    img.onload = () => {
+      FLOOR_SKIN[k] = img;
+      if (S.lv && (S.lv.floor || S.lv.realm) === k) floorCv = paintFloor(S.lv);
+    };
+    img.onerror = () => { FLOOR_TRIED[k] = false; };   /* a failed mat may be retried */
+    img.src = "./assets/floors/" + k + ".png?v=3";
   }
   function atlasFor(sheet) { return AT[sheet]; }
   function cellOf(sheet, key, frame) {
@@ -707,7 +711,7 @@
     if (S.over) {
       S.hitStop = 0.42;
       S.shake = Math.max(S.shake, 0.72);
-      S.texts.push({ x: e.x, y: e.y - 48, t: "FINISH", life: 1.7, col: "#fbbf24", big: true });
+      S.texts.push({ x: e.x, y: e.y - 100, t: "FINISH", life: 1.7, col: "#fbbf24", big: true });
     }
     /* Draw-only. The death cam reads this. It does not change the hit. */
     S.camSpot = { x: e.x, y: e.y - 8, hold: S.over ? 1.7 : 1.15 };
@@ -1752,6 +1756,7 @@
     const cv = document.createElement("canvas");
     cv.width = lv.W * TILE; cv.height = lv.H * TILE;
     const cx = cv.getContext("2d");
+    wantFloor(lv.floor || lv.realm);
     const skin = FLOOR_SKIN[lv.floor || lv.realm];
     if (skin && skin.width) {
       cx.imageSmoothingEnabled = true;
@@ -2196,7 +2201,18 @@
     S.texts.forEach((t) => {
       ctx.save();
       ctx.globalAlpha = clamp(t.life * 1.6, 0, 1);
-      ctx.font = (t.t === "FINISH" ? "800 22px " : t.big ? "800 15px " : "700 12px ") + "'IBM Plex Mono', monospace";
+      const fin = t.t === "FINISH";
+      ctx.font = (fin ? "800 22px " : t.big ? "800 15px " : "700 12px ") + "'IBM Plex Mono', monospace";
+      /* A kill banner and the dying body's last words hang off the same body, so the two
+         used to print on top of each other. The banner sits in its own lane above the
+         bubble and gets a plate: either line on its own stays readable. */
+      if (fin) {
+        const bw = ctx.measureText(t.t).width + 20;
+        ctx.fillStyle = "rgba(3,7,18,0.84)";
+        ctx.fillRect(t.x - bw / 2, t.y - 20, bw, 26);
+        ctx.strokeStyle = "rgba(251,191,36,0.6)"; ctx.lineWidth = 1;
+        ctx.strokeRect(t.x - bw / 2, t.y - 20, bw, 26);
+      }
       ctx.fillStyle = "#000"; ctx.fillText(t.t, t.x + 1, t.y + 1);
       ctx.fillStyle = t.col; ctx.fillText(t.t, t.x, t.y);
       ctx.restore();

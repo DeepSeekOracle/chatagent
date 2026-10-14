@@ -102,6 +102,7 @@ const T = {};
 function rec(id) { return T[id] = T[id] || { m: 0, w: 0, dead: 0, dmg: 0, taken: 0, kills: 0, heal: 0, timeAlive: 0 }; }
 console.log("\n3v3 ladder, " + N + " matches");
 for (let i = 0; i < N; i++) {
+  if (i && i % 25 === 0) console.log("  ... " + i + "/" + N + " matches");
   const you = R.draw(3).map((f) => f.id);
   const foe = R.draw(3, you).map((f) => f.id);
   const r = fight(you, foe, (i * 4289 + 11) % 9973);

@@ -272,7 +272,7 @@
   add({ id: "hurler", name: "Hurler", tag: "Crypt Artillery", cls: "beast", spr: { sheet: "creatures", key: "foe_hurler" }, color: "#a3a3a3",
     bio: "It never wants a line of sight. The stone goes over the wall or not at all.",
     style: "artillery", tune: { band: 1.0, panic: 175, commit: 0.9, strafe: 0.15 }, temper: "Hurls from the back of the ring, then wades in to finish what it started.",
-    hp: 756, dmg: 33, rate: 0.72, speed: 2.4, armor: 4, range: 5.6, mana: 70, manaRegen: 6, crit: 0.10, cdMul: 0.9,
+    hp: 815, dmg: 33, rate: 0.72, speed: 2.4, armor: 5, range: 5.6, mana: 70, manaRegen: 6, crit: 0.10, cdMul: 0.9,
     atk: { name: "Stone Toss", type: "bolt", w: "shard" },
     moves: ["lobstone", "pound"], cards: ["might", "bulwark", "giant"],
     counter: "Hits the back line from behind stone. Helpless up close." });
@@ -369,7 +369,7 @@
   add({ id: "wolf", name: "Ashmane", tag: "Wolf", cls: "pet", spr: { sheet: "pets", key: "pet_wolf" }, color: "#94a3b8",
     bio: "Dash · bite. It arrives before the decision does.",
     style: "hunter", tune: { band: 0.8, commit: 1.0, strafe: 0.7, retreat: 0.36 }, temper: "Arrives before the decision does.",
-    hp: 780, dmg: 38, rate: 0.96, speed: 3.9, armor: 5, range: 1.5, mana: 40, manaRegen: 4, crit: 0.18, cdMul: 0.84,
+    hp: 860, dmg: 38, rate: 0.96, speed: 3.9, armor: 7, range: 1.5, mana: 40, manaRegen: 4, crit: 0.18, cdMul: 0.84,
     atk: { name: "Bite", type: "melee", w: "needle" },
     moves: ["bite", "roar"], cards: ["swift", "fury", "leech"],
     counter: "Jumps the weakest body and hamstrings it for the pack. Still too eager to survive long." });
@@ -377,7 +377,7 @@
   add({ id: "lion", name: "Solstride", tag: "Lion", cls: "pet", spr: { sheet: "pets", key: "pet_lion" }, color: "#fbbf24",
     bio: "Jump · roar · claw. It picks its fight out loud.",
     style: "hunter", tune: { band: 0.9, commit: 1.35, strafe: 0.55 }, temper: "Picks out the wounded and does not get distracted.",
-    hp: 789, dmg: 34, rate: 0.90, speed: 3.5, armor: 9, range: 1.6, mana: 50, manaRegen: 5, crit: 0.19, cdMul: 0.84,
+    hp: 855, dmg: 34, rate: 0.90, speed: 3.5, armor: 10, range: 1.6, mana: 50, manaRegen: 5, crit: 0.19, cdMul: 0.84,
     atk: { name: "Claw", type: "melee", w: "needle" },
     moves: ["soljump", "roar"], cards: ["lucky", "brutal", "might"],
     counter: "Hunts the wounded all match. Ignores the healthy one." });
@@ -385,7 +385,7 @@
   add({ id: "bear", name: "Ironhide", tag: "Bear", cls: "pet", spr: { sheet: "pets", key: "pet_bear" }, color: "#fb923c",
     bio: "Swipe · maul. The pack's door.",
     style: "bulwark", tune: { band: 0.9, leash: 70, commit: 1.9, strafe: 0.1 }, temper: "The pack's door — nothing walks past him.",
-    hp: 715, dmg: 36.96, rate: 0.74, speed: 2.3, armor: 7, range: 1.7, mana: 40, manaRegen: 4, crit: 0.14, cdMul: 0.88,
+    hp: 790, dmg: 36.96, rate: 0.74, speed: 2.3, armor: 9, range: 1.7, mana: 40, manaRegen: 4, crit: 0.14, cdMul: 0.88,
     atk: { name: "Swipe", type: "melee", w: "shard" },
     moves: ["maul", "wardfield"], cards: ["iron", "giant", "thorns"],
     counter: "A second wall for the price of a beast. No reach and no tricks." });
@@ -401,7 +401,7 @@
   add({ id: "scorpion", name: "Glassbarb", tag: "Scorpion", cls: "pet", spr: { sheet: "pets", key: "pet_scorpion" }, color: "#c4b5fd",
     bio: "Clamp · tail. The barb is the part that matters.",
     style: "rush", tune: { band: 0.65, commit: 1.2, strafe: 0.45 }, temper: "Gets in your face and leaves poison there.",
-    hp: 513, dmg: 33, rate: 1.02, speed: 2.9, armor: 5, range: 1.6, mana: 60, manaRegen: 6, crit: 0.20, cdMul: 0.82,
+    hp: 560, dmg: 33, rate: 1.02, speed: 2.9, armor: 6, range: 1.6, mana: 60, manaRegen: 6, crit: 0.20, cdMul: 0.82,
     atk: { name: "Tail Barb", type: "melee", w: "needle", burn: 4 },
     moves: ["clamp", "flicker"], cards: ["thorns", "fury", "veil"],
     counter: "Poisons everything it touches. Will lose a long fight." });
