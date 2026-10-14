@@ -74,7 +74,7 @@
         FLOOR_SKIN[k] = img;
         if (S.lv && S.lv.realm === k) floorCv = paintFloor(S.lv);
       };
-      img.src = "./assets/floors/" + k + ".png?v=1";
+      img.src = "./assets/floors/" + k + ".png?v=2";
     });
   }
   function atlasFor(sheet) { return AT[sheet]; }
