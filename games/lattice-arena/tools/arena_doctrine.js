@@ -29,6 +29,11 @@ const num = (i, d) => { const v = parseInt(POS[i], 10); return isFinite(v) ? v :
    `git show HEAD:games/lattice-arena/brain.js` against the working tree is the only
    honest before/after this sim allows, because the sim calls Math.random itself. */
 const BRAIN = (ARGV.find((a) => a.startsWith("--brain=")) || "").split("=")[1] || "";
+/* --only=<kitId> runs that one contact kit against every gun with real resolution.
+   A per-row win rate over a single fight is 0% or 100% and says nothing; one kit at
+   many seeds is how a structural question (does a gap-closer decide these duels?)
+   gets an answer. */
+const ONLY = (ARGV.find((a) => a.startsWith("--only=")) || "").split("=")[1] || "";
 const DUEL_SEEDS = num(0, 3);
 const FIELD_MATCHES = num(1, 24);
 const SAMPLE = 0.25;          // seconds per sample: fast enough to catch a 1s stuck window
@@ -99,8 +104,9 @@ function showCensus(book, title) {
   console.log("    " + title);
   rows.forEach((r) => console.log("      " + r.k.padEnd(34) + r.r.s.toFixed(0).padStart(6) + "s" + String(r.r.d).padStart(6) + " deaths"));
 }
-const MELEE = R.ROSTER.filter((f) => (f.range || 0) > 0 && (f.range || 0) <= 2.2)
-  .sort((a, b) => a.range - b.range).slice(0, num(2, 6));
+const MELEE = (ONLY ? R.ROSTER.filter((f) => f.id === ONLY)
+  : R.ROSTER.filter((f) => (f.range || 0) > 0 && (f.range || 0) <= 2.2)
+    .sort((a, b) => a.range - b.range).slice(0, num(2, 6)));
 const GUNS = R.ROSTER.filter((f) => (f.range || 0) >= 5)
   .sort((a, b) => b.range - a.range).slice(0, num(3, 6));
 
@@ -178,6 +184,8 @@ const MODES = [1, 2, 3, 5];
 const K = {};                 // kit id -> counters
 const bump = (id) => (K[id] = K[id] || { solo: 0, gun: 0, idle: 0, pinned: 0, eng: 0, shared: 0, isoD: 0, D: 0, wd: 0, wdSaved: 0, t: 0 });
 const fieldWhy = census();
+const T = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0 };
+let TS = null;
 let deaths = 0, isoDeaths = 0, gunDeaths = 0, idleSec = 0, soloSec = 0, gunSec = 0, pinnedSec = 0, engS = 0, sharedS = 0;
 for (let m = 0; m < FIELD_MATCHES; m++) {
   const n = MODES[m % MODES.length];
@@ -185,7 +193,7 @@ for (let m = 0; m < FIELD_MATCHES; m++) {
   const foe = draw(n, you).map((f) => f.id);
   const wdAt = {};            // body key -> sim time it withdrew
   const prevDead = {};
-  trace(you, foe, n, (m * 7919) % 9973, (S) => {
+  TS = trace(you, foe, n, (m * 7919) % 9973, (S) => {
     const all = S.your.concat(S.foe);
     all.forEach((e) => {
       const id = e.b.id, k = bump(id);
@@ -243,6 +251,10 @@ rows.slice(0, 14).forEach((r) => {
 console.log("    ---");
 console.log("    deaths " + deaths + " · isolated (no ally within 165px) " + isoDeaths + " (" + ((isoDeaths / (deaths || 1)) * 100).toFixed(0) + "%)" +
   " · killed while chasing a longer reach " + gunDeaths);
+if (TS.tele) Object.keys(T).forEach((k) => { T[k] += TS.tele[k] || 0; });
 showCensus(fieldWhy, "what the whole field was thinking (seconds, deaths):");
+console.log("    blows: " + T.melee + " melee swings, " + T.shots + " aimed shots fired | armour stopped " + T.blocks +
+  " | a ward ate " + T.wards + " | shots that arrived at nothing " + T.whiffs +
+  (T.shots ? " (" + ((T.whiffs / T.shots) * 100).toFixed(0) + "% of shots)" : ""));
 console.log("    field seconds: solo " + soloSec.toFixed(0) + " · gunwalk " + gunSec.toFixed(0) + " · idle " + idleSec.toFixed(0) +
   " · pinned " + pinnedSec.toFixed(0) + " · focus share " + ((sharedS / (engS || 1)) * 100).toFixed(0) + "%");

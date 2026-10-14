@@ -608,20 +608,32 @@
     /* Armor is a flat cut, including a living ally's aura. A hit the plate fully stops
        deals nothing — the old floor of 3 made the printed armor a lie. */
     if (!opts.ignoreArmor) {
-      const raw = dmg;
       dmg -= buffed(tgt).armor * 1.1;
-      if (dmg < 0.5 && raw >= 1) {
+      /* EVERY blow that deals nothing has to say so. A stopped hit that printed no
+         number is what a spectator reported as "the basic attack went straight through
+         the target": the swing animated, the plate ate the whole thing, and the screen
+         stayed silent. The plate is allowed to stop a weak hit. It is not allowed to
+         do it invisibly. */
+      if (dmg < 0.5) {
         S.texts.push({ x: tgt.x, y: tgt.y - 26, t: "block", life: 0.5, col: "#94a3b8" });
         colorLine("block", tgt, src);
+        if (S.tele) S.tele.blocks++;
         return 0;
       }
-      if (dmg < 0) dmg = 0;
     }
     if (opts.strips && tgt.shd > 0) { dmg *= 2; tgt.shd = 0; }
     if (tgt.shd > 0) {
       const absorbed = Math.min(tgt.shd, dmg);
       tgt.shd -= absorbed;
       dmg -= absorbed;
+      /* A ward that swallows the entire blow is a result, and a result nobody can read
+         is an attack that looks like it passed through the body. */
+      if (dmg < 0.5 && !opts.dot) {
+        S.texts.push({ x: tgt.x, y: tgt.y - 26, t: "ward", life: 0.5, col: "#7dd3fc" });
+        if (src) colorLine("block", tgt, src);
+        if (S.tele) S.tele.wards++;
+        return 0;
+      }
     }
     dmg = Math.round(dmg);
     if (dmg <= 0) return 0;
@@ -1495,6 +1507,7 @@
     flourish(e, b.atk.vis || (b.atk.type === "bolt" ? "shard" : "slash"), t.x, t.y);
     if (b.atk.sfx && w.ArenaUI && w.ArenaUI.sfx) w.ArenaUI.sfx(b.atk.sfx, 0.22);
     const isMelee = b.atk.type !== "bolt" && b.range <= 100;
+    if (S.tele) { if (isMelee) S.tele.melee++; else S.tele.shots++; }
     const echo = b.mods.echo || 0;
     const dmg = st.dmg * (1 + (b.atk.dmg || 0));
     if (isMelee) {
@@ -1553,6 +1566,7 @@
           p.hit[h.uid] = 1;
           const amount = p.direct != null ? p.direct : p.dmg;
           const dealt = damage(p.src, h, amount, { ranged: true, opening: !!p.opening, name: p.name });
+          p.landed = true;
           if (p.drain && dealt > 0 && p.src) heal(p.src, Math.round(dealt * p.drain), p.src);
           applySt(h, p.st, p.src);
           if (p.splashR) blast(p.x, p.y, p.splashR, amount * (p.splashMul || 0.5), p.src, null, p.team, true, false, false, p.name);
@@ -1562,7 +1576,16 @@
       if (p.life <= 0 || (p.x < 0 || p.y < 0 || p.x > MAP_W * TILE || p.y > MAP_H * TILE)) done = true;
       if (done) {
         if (p.pierce > 0 && p.life > 0) p.pierce--;
-        else S.projectiles.splice(i, 1);
+        else {
+          /* The other half of the report: an aimed shot that slid past a strafing body
+             and expired off the edge of the world without a word. It missed -- and now
+             it says so, which is how a miss stops being mistaken for a bug. */
+          if (!p.landed && p.direct != null && !p.lob) {
+            S.texts.push({ x: p.x, y: p.y - 18, t: "miss", life: 0.5, col: "#94a3b8" });
+            if (S.tele) S.tele.whiffs++;
+          }
+          S.projectiles.splice(i, 1);
+        }
       }
     }
   }
@@ -2345,6 +2368,10 @@
     S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
     S.bubbles = []; S.talk = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.suddenTier = 0; S.events = []; S.paused = false;
+    /* What the blows actually did. A spectator cannot tell a miss from a missing number,
+       and neither could this file: armour stops, ward swallows and shots that arrive at
+       nothing are counted here so the question has an answer instead of an impression. */
+    S.tele = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0 };
     S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";
     S.cam = null;
