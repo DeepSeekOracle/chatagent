@@ -34,15 +34,51 @@
   let feedLog = 0, shownAir = null;
 
   /* --------------------------------------------------------------- voices ---
-     The caster and the fighters are read out loud by the browser's voices. Only the human
-     ones are used: some systems ship joke voices (Bells, Zarvox, Bubbles, Bad News) that
-     make a fight sound like a machine test. Each body keeps one voice for the whole match,
-     so the wolf always sounds like the wolf and the imp always sounds like the imp. */
-  const VOICE_PREFER = ["Samantha", "Alex", "Karen", "Daniel", "Moira", "Tessa", "Fiona", "Ava", "Allison",
-    "Serena", "Jenny", "Aria", "Guy", "Michelle", "Ana", "Christopher", "Eric", "Zira", "David", "Mark",
-    "Google US English", "Google UK English Female", "Google UK English Male", "Microsoft Aria", "Microsoft Guy"];
-  const VOICE_DEEP = /david|mark|guy|alex|daniel|george|james|christopher|eric|male/i;
+     The caster and the fighters are read out loud by the browser's voices. Joke voices
+     (Bells, Zarvox, Bubbles) are skipped. The booth wants a human en-GB male — Google UK
+     English Male, Ryan, George, Daniel — and it is not pitched down. "Female" used to match
+     the old male test, and Microsoft David used to win, which is the robot at a dropped pitch.
+     Each body keeps one voice for the whole match. */
   const VOICE_JUNK = /bells|boing|bubbles|cellos|deranged|good news|bad news|bahh|hysterical|jester|organ|superstar|trinoids|whisper|wobble|zarvox|albert|junior|rishi|novelty|robot|synth|effect/i;
+  const VOICE_FEMALE = /\bfemale\b|\bzira\b|\bsusan\b|\bhazel\b|\bsonia\b|\blibby\b|\bsamantha\b|\bkaren\b|\bmoira\b|\btessa\b|\bfiona\b|\bava\b|\ballison\b|\bserena\b|\bjenny\b|\baria\b|\bmichelle\b|\bemma\b|\bamy\b|\bjoanna\b/i;
+  function voiceName(v) { return (v && v.name) || ""; }
+  function voiceUk(v) {
+    const name = voiceName(v), lang = ((v && v.lang) || "").toLowerCase();
+    return lang.indexOf("en-gb") === 0 || /united kingdom|british|en-gb|\buk\b/i.test(name);
+  }
+  function voiceMale(v) {
+    const name = voiceName(v);
+    if (VOICE_FEMALE.test(name)) return false;
+    if (/\bmale\b/i.test(name)) return true;
+    return /\bryan\b|\bgeorge\b|\bdaniel\b|\bbrian\b|\bthomas\b|\boliver\b|\balfie\b|\bguy\b|\bdavid\b|\bmark\b|\bjames\b|\bchristopher\b|\beric\b|\balex\b/i.test(name);
+  }
+  function voiceMachine(v) {
+    const name = voiceName(v);
+    return /\bdavid\b|\bzira\b|\bmark\b|\bhazel\b|desktop|espeak/i.test(name) && !/natural|neural|online/i.test(name);
+  }
+  function voiceScore(v, caster) {
+    const name = voiceName(v);
+    if (!name || VOICE_JUNK.test(name)) return -1;
+    if (v.lang && !/^en/i.test(v.lang)) return -1;
+    let s = 10;
+    if (/natural|neural|online|google/i.test(name)) s += 80;
+    if (voiceUk(v)) s += 60;
+    if (voiceMale(v)) s += 30;
+    if (voiceMachine(v)) s -= 70;
+    if (caster) {
+      if (/natural|neural/i.test(name)) s += 25;
+      if (voiceUk(v) && voiceMale(v)) s += 40;
+      if (VOICE_FEMALE.test(name)) s -= 40;
+      if (/\bdavid\b/i.test(name)) s -= 20;
+    }
+    return s;
+  }
+  function pickVoice(list, caster, slot) {
+    const ranked = list.slice().sort((a, b) => voiceScore(b, !!caster) - voiceScore(a, !!caster));
+    if (!ranked.length) return null;
+    if (caster) return ranked[0];
+    return ranked[(slot || 0) % ranked.length];
+  }
   let hvCache = null;
   function humanVoices() {
     if (hvCache && hvCache.length) return hvCache;
@@ -50,9 +86,8 @@
     let all = [];
     try { all = speechSynthesis.getVoices() || []; } catch (e) { all = []; }
     if (!all.length) return [];
-    const en = all.filter((v) => /^en/i.test(v.lang || "") && !VOICE_JUNK.test(v.name || ""));
-    const rank = (v) => { const i = VOICE_PREFER.findIndex((n) => (v.name || "").indexOf(n) >= 0); return i < 0 ? 99 : i; };
-    hvCache = (en.length ? en : all).slice().sort((a, b) => rank(a) - rank(b));
+    const usable = all.filter((v) => !VOICE_JUNK.test(voiceName(v)) && (!v.lang || /^en/i.test(v.lang)));
+    hvCache = usable.length ? usable : all.slice();
     return hvCache;
   }
   if (typeof speechSynthesis !== "undefined" && speechSynthesis.addEventListener) {
@@ -72,6 +107,7 @@
     cancel: () => { try { speechSynthesis.cancel(); } catch (e) {} talking = 0; micHolder = ""; }
   }) : null);
   let onAir = null;
+  let faceTalking = false;
 
   /* a read-only view of the talk: what has been said, who holds the floor, what was thrown away.
      The harness drives its own director, but this is how anyone can watch the real timeline. */
@@ -110,13 +146,13 @@
     const B = w.LYGO_BANTER;
     const prof = (B && B.voiceFor) ? B.voiceFor(line.caster ? "caster" : line.who) : { pitch: 1, rate: 1, slot: 0 };
     const ut = new SpeechSynthesisUtterance(String(line.text).slice(0, 220));
-    /* the caster is the voice of the ring: prefer a deep one, and let each body keep its own */
-    const deep = hv.find((v) => VOICE_DEEP.test(v.name || ""));
-    ut.voice = (line.caster && deep ? deep : hv[prof.slot % hv.length]) || hv[0];
-    ut.pitch = line.caster ? 0.78 : prof.pitch;
-    /* the rate the director held the floor for: an announcer reading the programme is quicker
-       than one calling a fight, and the voice has to match the length it was given */
-    ut.rate = line.rate || (line.caster ? 0.99 : Math.max(0.8, Math.min(1.2, prof.rate)));
+    const chosen = pickVoice(hv, !!line.caster, prof.slot) || hv[0];
+    ut.voice = chosen;
+    const machine = voiceMachine(chosen);
+    ut.lang = line.caster ? "en-GB" : ((chosen && chosen.lang) || "en");
+    /* a human voice stays at its own pitch. Dropping the booth to 0.78 is what made David a robot. */
+    ut.pitch = line.caster ? 1 : (machine ? Math.max(0.92, Math.min(1.12, prof.pitch)) : prof.pitch);
+    ut.rate = line.rate || (line.caster ? 0.96 : Math.max(0.88, Math.min(1.12, machine ? 1 : prof.rate)));
     ut.volume = 0.95;
     micHolder = line.caster ? "cast" : "talk";
     ut.onend = ut.onerror = () => { talking = Math.max(0, talking - 1); if (!talking) micHolder = ""; finish(); };
@@ -809,10 +845,17 @@
     const cb = $("caster");
     const talking = !!(onAir && onAir.caster);
     if (cb) cb.classList.toggle("onair", talking);
-    const face = $("cface");
-    if (face) {
-      const want = talking ? "./assets/caster-talk.gif" : "./assets/caster-idle.gif";
-      if (face.getAttribute("src") !== want) face.setAttribute("src", want);
+    if (talking !== faceTalking) {
+      faceTalking = talking;
+      const idle = $("cfaceIdle"), talk = $("cfaceTalk");
+      if (idle && talk) {
+        idle.classList.toggle("is-hidden", talking);
+        talk.classList.toggle("is-hidden", !talking);
+        if (talking) { try { talk.currentTime = 0; } catch (e) {} }
+        const play = (talking ? talk : idle).play();
+        if (play && play.catch) play.catch(function () {});
+        if (!talking) { try { talk.pause(); } catch (e) {} }
+      }
     }
     ["you", "foe"].forEach((side) => {
       (rows[side] || []).forEach((r) => {

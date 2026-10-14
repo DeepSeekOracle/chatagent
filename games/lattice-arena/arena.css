@@ -371,7 +371,8 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
 
 /* --- the caster: a photo and a mouth --- */
 .caster { flex: 0 0 auto; position: relative; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(#0b101c, #05070d); padding: .3rem; }
-.caster .cface { display: block; width: 100%; height: auto; border-radius: 6px; background: #05070d; }
+.caster .cface { display: block; width: 100%; height: auto; border-radius: 6px; background: #05070d; object-fit: cover; }
+.caster .cface.is-hidden { display: none; }
 .caster .cname { position: absolute; left: .55rem; bottom: .45rem; font-family: "IBM Plex Mono", monospace; font-size: .58rem;
   letter-spacing: .16em; color: #fbbf24; text-shadow: 0 1px 3px #000; }
 .cbubble { position: relative; margin: 0 0 .35rem; padding: .4rem .5rem; min-height: 2.1rem; border: 1px solid #fbbf2455;
