@@ -531,12 +531,22 @@
     if (real > 2) S.texts.push({ x: e.x, y: e.y - 22, t: "+" + Math.round(real), life: 0.9, col: "#6ee7b7" });
     return real;
   }
-  /* facing and aim in one place: sprites use 0 front, 2 side (mirrored), 3 the other side */
+  /* facing and aim in one place: sprites use 0 front, 2 side (mirrored), 3 the other side.
+     A swing owns the facing until it finishes. A body standing on its target used to
+     flip left and right every step, because the sign of a few pixels changed, and the
+     mirror read as a spin. The new face has to win three steps before it is drawn. */
   function faceTo(e, x, y) {
+    if (e.animT > 0.04) return;
     const dx = x - e.x, dy = y - e.y;
-    e.aimA = Math.atan2(dy, dx);
-    if (Math.abs(dx) > Math.abs(dy) * 0.7) e.face = dx > 0 ? 3 : 2;
-    else e.face = 0;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 18) e.aimA = Math.atan2(dy, dx);
+    if (dist < 18) return;
+    let next = 0;
+    if (Math.abs(dx) > Math.abs(dy) * 0.85 && Math.abs(dx) > 12) next = dx > 0 ? 3 : 2;
+    if (next === e.face) { e.faceN = 0; return; }
+    e.faceN = e.faceWant === next ? (e.faceN || 0) + 1 : 1;
+    e.faceWant = next;
+    if ((e.faceN || 0) >= 3) e.face = next;
   }
   /* is the straight line between two bodies free of stone? */
   function clearLine(x0, y0, x1, y1) {
@@ -1247,12 +1257,17 @@
        the clock and the floor decides it. */
     const holdClass = plan.task === "hold" || plan.task === "overwatch" || plan.task === "screen";
     const inBand = d <= band + 18;
+    /* A fist "in band" can still be a step short of its swing. Stopping there and
+       weaving reads as a body that cannot decide to hit. It keeps walking until the
+       blow will land, then it holds. */
     /* A body told to hold, jammed against stone or the border while it holds, cannot strafe its
        way out: it swaps its shoulder from one side to the other for the rest of the match. That
        is the "standing on an edge with no idea what to do" report. Being pinned outranks the
        order -- walk clear, then hold again. */
     if (e.blockedT > 1.2) e.bailT = 0.7;
-    const standing = e.bailT > 0 ? false : (plan.point ? false : (holdClass || inBand));
+    const fistHere = (b.range || 40) <= 110;
+    const inSwing = d <= (st.range || 40) + 10;
+    const standing = e.bailT > 0 ? false : (plan.point ? false : (holdClass ? !fistHere || inSwing : (fistHere ? inSwing : inBand)));
     if (standing) {
       /* in position: face the enemy, drift across its front. A body blocked on that
          drift turns around instead of grinding its shoulder into a wall. */
@@ -1263,7 +1278,9 @@
       if (e.weaveT > 0.62) { e.weaveT = 0; e.strafeDir = -e.strafeDir; }
       let sAmt = stl.strafe == null ? 0.5 : stl.strafe;
       const foeMelee = (t.b.range || 40) <= 110;
+      const fist = (b.range || 40) <= 110;
       if ((b.range || 40) > 130) sAmt = Math.min(sAmt, foeMelee ? 0.22 : 0.36);
+      else if (fist && d <= (st.range || 40) + 14) sAmt = Math.min(sAmt, 0.08);
       else if (d < 78) sAmt = Math.min(sAmt, 0.22);
       const sa = Math.atan2(t.y - e.y, t.x - e.x) + Math.PI / 2;
       /* holding on the rim drifts inward. Swapping shoulders along the border
@@ -1388,9 +1405,9 @@
     }
     if (e.slideT > 0) e.slideT -= dt;
     e.walk += walked > 0.02 ? dt * 6 : 0;
-    if (Math.abs(mvx) > Math.abs(mvy) * 0.7) e.face = mvx > 0 ? 3 : 2;
-    else e.face = mvy > 0 ? 0 : 1;
-    e.aimA = Math.atan2(t.y - e.y, t.x - e.x);
+    /* Look at the body being fought. Facing the velocity made every sidestep a
+       turn, and a walk away from the camera used a frame the sheet does not have. */
+    faceTo(e, t.x, t.y);
     stampStuck(e, dt, true);
   }
 
@@ -1924,7 +1941,9 @@
     const c = cellOf(sheet, b.spr.key, frame);
     if (!c) return 0;
     const size = b.cls === "token" ? 34 : b.boss ? 52 : b.cls === "pet" ? 40 : 46;
-    const flip = e.face === 2;
+    /* Creature and pet sheets are front-facing loops. Mirroring them on a sidestep
+       is the spin. Heroes have a real side frame, and that one is mirrored. */
+    const flip = b.spr.sheet === "heroes" && e.face === 2;
     const pose = w.LYGO_ATTACKS ? w.LYGO_ATTACKS.pose(e) : null;
     ctx.save();
     ctx.translate(Math.round(e.x + (pose ? pose.dx : 0)), Math.round(e.y + (pose ? pose.dy : 0)));

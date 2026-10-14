@@ -494,7 +494,10 @@
 
     /* — 3. SCREEN: stand between the enemy and whoever cannot take the hit. */
     if (st.screen) {
-      const ward = al.filter((o) => o !== e && o.b.range > 160 && o.hp > 0)
+      /* A summoned ward is a gun he placed. Standing in front of it is how Gate
+         leaves the body he was hitting and spends the rest of the fight walking
+         back to his own door. */
+      const ward = al.filter((o) => o !== e && o.b.range > 160 && o.hp > 0 && o.b.cls !== "token")
         .sort((a, c) => a.hp / a.max - c.hp / c.max)[0];
       if (ward) {
         const dW = dist(ward.x, ward.y, Q.ecx, Q.ecy);

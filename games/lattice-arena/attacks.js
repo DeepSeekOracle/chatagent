@@ -236,10 +236,15 @@
     const hop = melee[v] ? 12 * k : 5 * k;
     const heavy = v === "trample" || v === "stomp" || v === "quake";
     const sy = heavy ? 1 - 0.22 * Math.sin(k * Math.PI) : 1;
-    return { dx: Math.cos(a) * hop, dy: Math.sin(a) * hop * 0.72, sx: heavy ? 1.18 : 1, sy: sy };
+    /* A slam squats on the feet that threw it. Hopping along a heading that is
+       still settling is the lunge that reads as a spin. */
+    if (heavy) return { dx: 0, dy: 0, sx: 1.12, sy: sy };
+    return { dx: Math.cos(a) * hop, dy: Math.sin(a) * hop * 0.72, sx: 1, sy: sy };
   }
 
-  const AT_TARGET = { trample: 1, stomp: 1, quake: 1, blast: 1, heal: 1, bloom: 1, rain: 1, crown: 1, stone: 1, flask: 1, fire: 1, heart: 1 };
+  /* A stomp, a quake and a trample belong under the body that threw them.
+     Drawn on the target, Gate's slam played on somebody else while he twitched. */
+  const AT_TARGET = { blast: 1, heal: 1, bloom: 1, rain: 1, crown: 1, stone: 1, flask: 1, fire: 1, heart: 1 };
 
   function arc(ctx, p, wide) {
     const reach = 18 + p * 16;

@@ -303,7 +303,7 @@
 
   add({ id: "gate", name: "Gate", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_gate" }, color: "#38bdf8",
     bio: "Half door, half animal, entirely unwilling.",
-    style: "bulwark", tune: { band: 0.95, leash: 45, commit: 2.6, strafe: 0.05 }, temper: "Everything it does happens slowly, on purpose.",
+    style: "bulwark", tune: { band: 0.95, leash: 120, commit: 2.6, strafe: 0.05 }, temper: "Everything it does happens slowly, on purpose.",
     hp: 1020, dmg: 40, rate: 0.60, speed: 1.6, armor: 7, range: 1.9, mana: 80, manaRegen: 5, crit: 0.08, cdMul: 0.94, boss: true,
     atk: { name: "Gate Slam", type: "melee", w: "shard", splash: 1.7 },
     moves: ["gateslam", "gateward", "callwards"], cards: ["iron", "thorns", "giant"],
