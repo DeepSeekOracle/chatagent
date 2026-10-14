@@ -725,7 +725,67 @@
   }
 
   /* ---------------------------------------------------------------- moves --- */
-  function moveCost(mv) { return Math.min(mv.cd * 1.1, 40); }
+  function moveCost(mv) { return mv.cost != null ? mv.cost : Math.min(mv.cd * 1.1, 40); }
+
+  /* Where a Close or a Slip actually lands. Null means the step would not change
+     the fight — the rim, a wall, or a body already in its own reach — and the
+     caller must refuse before it spends mana. */
+  function strideSpot(caster, prefer) {
+    const foes = enemiesOf(caster).filter((o) => o && !o.dead);
+    if (!foes.length) return null;
+    const melee = (caster.b.range || 40) <= 110;
+    const edge = TILE * 1.2;
+    const maxX = (MAP_W - 1.2) * TILE;
+    const maxY = (MAP_H - 1.2) * TILE;
+    const nearest = (list) => list.reduce((a, b) => (dist2(caster.x, caster.y, b.x, b.y) < dist2(caster.x, caster.y, a.x, a.y) ? b : a));
+    if (melee) {
+      const window = 7 * TILE + 16;
+      let tgt = prefer && !prefer.dead && dist2(caster.x, caster.y, prefer.x, prefer.y) <= window ? prefer : null;
+      if (!tgt) {
+        const n = nearest(foes);
+        if (dist2(caster.x, caster.y, n.x, n.y) <= window) tgt = n;
+      }
+      if (!tgt) return null;
+      const a = Math.atan2(caster.y - tgt.y, caster.x - tgt.x);
+      const x = clamp(tgt.x + Math.cos(a) * 42, edge, maxX);
+      const y = clamp(tgt.y + Math.sin(a) * 42, edge, maxY);
+      if (!caster.b.ghost && solidAt(S.lv, x, y)) return null;
+      const before = dist2(caster.x, caster.y, tgt.x, tgt.y);
+      if (before - dist2(x, y, tgt.x, tgt.y) < 48) return null;
+      return { x: x, y: y };
+    }
+    const fists = foes.filter((o) => (o.b.range || 40) <= 110 && o.root <= 0 && o.stun <= 0);
+    const pool = fists.length ? fists : foes.filter((o) => (o.b.range || 40) <= 110);
+    const tgt = (pool.length ? pool : foes).length ? nearest(pool.length ? pool : foes) : null;
+    if (!tgt) return null;
+    const before = dist2(caster.x, caster.y, tgt.x, tgt.y) || 1;
+    const dx = (caster.x - tgt.x) / before;
+    const dy = (caster.y - tgt.y) / before;
+    const full = 5.2 * TILE;
+    for (let step = full; step >= 48; step -= 16) {
+      const x = clamp(caster.x + dx * step, edge, maxX);
+      const y = clamp(caster.y + dy * step, edge, maxY);
+      if (!caster.b.ghost && solidAt(S.lv, x, y)) continue;
+      if (dist2(x, y, tgt.x, tgt.y) - before < 48) continue;
+      return { x: x, y: y };
+    }
+    return null;
+  }
+
+  /* A short blink that can still reach the spot a Slip would land on. The long
+     step is not one of these — answering Slip with Close is a fair trade. */
+  function blinkCanChase(foe, fromDist) {
+    if (!foe || foe.dead || foe.stun > 0) return false;
+    const landed = fromDist + 5.2 * TILE;
+    const moves = foe.b.moves || [];
+    for (let i = 0; i < moves.length; i++) {
+      const mv = moves[i];
+      if (mv.shape !== "blink") continue;
+      if (foe.cds[i] > 0 || foe.mana < moveCost(mv)) continue;
+      if (landed <= (mv.range || 8) * TILE + 30) return true;
+    }
+    return false;
+  }
   function pickRaw(e, en, mode) {
     if (mode === "weakest") return en.reduce((a, b) => (b.hp / b.max < a.hp / a.max ? b : a));
     if (mode === "clump") {
@@ -774,9 +834,16 @@
     /* A revive with nobody down, or a summon with no token, must not eat the mana. */
     if (mv.shape === "revive" && !(e.team === 0 ? S.your : S.foe).some((x) => x.dead)) return false;
     if (mv.shape === "summon" && !R.TOKENS[mv.token]) return false;
+    let land = null;
+    if (mv.shape === "stride") {
+      land = strideSpot(e, e.target);
+      if (!land) return false;
+    }
     if (e.mana < cost || e.silence > 0 || e.stun > 0) return false;
     e.mana -= cost;
-    e.cds[idx] = mv.cd * e.b.cdMul;
+    /* The shared step stays on its own clock. cdMul would turn thirty seconds into
+       a second engage for the kits that already blink. */
+    e.cds[idx] = mv.shape === "stride" ? mv.cd : mv.cd * e.b.cdMul;
     e.uses[mv.name] = (e.uses[mv.name] || 0) + 1;
     const caster = e;
     const tgt = (mv.aim === "enemy" || mv.aim === "weakest" || mv.aim === "clump") ? pickTarget(e, mv.aim) :
@@ -928,6 +995,12 @@
           if (mv.st) applySt(t2, mv.st, caster);       // what the landing does to them
         }
         if (mv.selfSt) applySt(caster, mv.selfSt, caster);   // and what it does for us
+        break;
+      }
+      case "stride": {
+        caster.x = land.x;
+        caster.y = land.y;
+        S.marks.push({ x: caster.x, y: caster.y, r: 16, life: 0.35, col: caster.b.color, ring: true });
         break;
       }
       case "revive": {
@@ -1108,8 +1181,41 @@
       if (bi >= 0 && castMove(e, b.moves[bi], bi)) { if (stl.recoil) e.recoilT = 0.55; return; }
     }
 
+    /* The long step. A shorter blink or a root is spent first, above. Close is the
+       backup when that blink is down and the gun is still outside the swing. Slip
+       is the backup when a fist is on this body, the root did not land, and that
+       fist cannot chase the landing with its own short blink. */
+    {
+      const si = b.moves.findIndex((mv) => mv.shape === "stride");
+      if (si >= 0 && e.cds[si] <= 0 && e.mana >= moveCost(b.moves[si])) {
+        const gun = (b.range || 40) > 110;
+        const blinkReady = b.moves.some((mv, i) => i !== si && mv.shape === "blink" && e.cds[i] <= 0 && e.mana >= moveCost(mv));
+        if (!blinkReady) {
+          if (!gun) {
+            const dNow = dist2(e.x, e.y, t.x, t.y);
+            const reach = (b.moves[si].range || 7) * TILE + 16;
+            /* A fist already in the fight walks the last step. Close is for a gun
+               that is still outside the swing, not for undoing your own shove. */
+            const chasingGun = (t.b.range || 40) > 110;
+            if (chasingGun && dNow > (b.range || 40) + 48 && dNow <= reach && castMove(e, b.moves[si], si)) {
+              if (stl.recoil) e.recoilT = 0.55;
+              return;
+            }
+          } else {
+            const fists = enemiesOf(e).filter((o) => !o.dead && (o.b.range || 40) <= 110 && o.root <= 0 && o.stun <= 0 && dist2(e.x, e.y, o.x, o.y) < 150);
+            const chased = fists.some((o) => blinkCanChase(o, dist2(e.x, e.y, o.x, o.y)));
+            if (fists.length && !chased && castMove(e, b.moves[si], si)) {
+              if (stl.recoil) e.recoilT = 0.55;
+              return;
+            }
+          }
+        }
+      }
+    }
+
     for (let i = 0; i < b.moves.length; i++) {
       const mv = b.moves[i];
+      if (mv.shape === "stride") continue;
       if (e.cds[i] > 0 || e.mana < moveCost(mv)) continue;
       const d = dist2(e.x, e.y, t.x, t.y);
       const reach = (mv.range || 0) * TILE;

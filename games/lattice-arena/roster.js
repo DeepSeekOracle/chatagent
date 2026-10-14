@@ -120,7 +120,12 @@
     soljump:   { name: "Solstride",      text: "A long leap onto the one already hurt.", cd: 10, range: 10, aim: "weakest", shape: "blink", dmg: 1.25, fx: "hit_shard" },
     maul:      { name: "Maul",           text: "Ironhide comes down on everything in reach.",            cd: 11, range: 0, aim: "self", shape: "aura", dmg: 1.2, radius: 2.8, fx: "nova", st: { knock: 1.4 } },
     stomp:     { name: "Stomp",          text: "The ground answers the tusk.",                           cd: 12, range: 0, aim: "self", shape: "aura", dmg: 1.1, radius: 3.2, fx: "nova", st: { stun: 0.8 } },
-    clamp:     { name: "Glassbarb Clamp",text: "A clamp of glass barb and a tail you did not see.",      cd: 9,  range: 2.0, aim: "enemy", shape: "melee", dmg: 1.3, fx: "hit_needle", st: { burn: [5, 4] } }
+    clamp:     { name: "Glassbarb Clamp",text: "A clamp of glass barb and a tail you did not see.",      cd: 9,  range: 2.0, aim: "enemy", shape: "melee", dmg: 1.3, fx: "hit_needle", st: { burn: [5, 4] } },
+
+    /* One committed step on a flat clock. build() renames it Close or Slip.
+       cost is mana, not cd * 1.1 — a 30s button must stay pressable on a small pool.
+       The engine ignores cdMul on this shape so the clock stays thirty seconds. */
+    stride:    { name: "Stride", text: "One committed step. Fists close the gap. Guns take the step back. Thirty seconds before it is yours again.", cd: 30, cost: 8, range: 7, aim: "enemy", shape: "stride", vis: "charge", sfx: "cast" }
   };
 
   /* tokens summoned into the arena (moves that call allies) */
@@ -463,6 +468,17 @@
       ttl: fighter.ttl || 0,
       auraArmor, auraDmg, logic: fighter.logic || null
     };
+    /* Every kit carries one long step. A fist announces Close. A gun announces Slip.
+       Tokens stay on the moves they were summoned with. */
+    if (fighter.cls !== "token") {
+      const gun = out.range > 110;
+      out.moves.push(Object.assign({ moveId: "stride" }, MOVES.stride, {
+        name: gun ? "Slip" : "Close",
+        text: gun
+          ? "One step off the fist. Thirty seconds before it is yours again."
+          : "One step onto them. Thirty seconds before it is yours again."
+      }));
+    }
     out.dps = out.dmg * out.rate * (1 + out.crit * (out.critMul - 1));
     out.power = Math.round(out.max / 14 + out.dps * 1.15 + out.armor * 7 + (out.range > 100 ? 14 : 0) + out.moves.length * 3 + (out.max >= 900 ? 12 : 0));
     return out;
