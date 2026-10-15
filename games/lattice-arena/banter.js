@@ -541,6 +541,15 @@
   /* ------------------------------------------------------------- the caster --- */
   /* {killer} {victim} {mender} {team} {score} {mode} {ring} {t} {youN} {foeN} {n} */
   var CAST = {
+    /* the pre-stage: what each side chose to look like before the first blow */
+    formation: [
+      "Your side opens in {form} — {note}. The challengers answer in {foe}.",
+      "{form} against {foe}, and both of them picked that on purpose.",
+      "Look at the shape of it: {form} on one side, {foe} on the other.",
+      "{form} for your side, {temper} — and the challengers set up in {foe}.",
+      "Both teams have picked their ground: {form} and {foe}. Now somebody has to walk it.",
+      "The opening is set. {form} for yours, {foe} for theirs — and the bell settles it."
+    ],
     open: [
       "Welcome to the {ring}, {youN} against {foeN}! The sand is swept, the book is open — {mode}.",
       "And we are live in the {ring}! {youN} on one side, {foeN} on the other, and no cover to hide behind.",

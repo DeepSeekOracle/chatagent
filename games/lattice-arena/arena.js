@@ -1753,6 +1753,8 @@
   /* -------------------------------------------------------------- the tick --- */
   function step(dt) {
     S.time += dt;
+    /* the pre-stage runs its opening clock first: waves, seams, hard switches, release */
+    if (w.LYGO_FORMATION) w.LYGO_FORMATION.tick(S, dt);
     /* the team call is made on the squad's own clock, before anybody moves */
     if (w.LYGO_BRAIN) w.LYGO_BRAIN.tick(S, dt);
     const dmgMul = suddenScale(S.time);
@@ -2475,6 +2477,17 @@
     if (S.phase === "count") {
       S.countdown -= dt;
       runCues(INTRO_S - S.countdown);
+      /* THE MARCH. The countdown is the team's time to get into shape, so the bodies
+         move during it. Combat is not in here at all: nobody is in reach at spawn, the
+         damage path is not called, and the only thing a body can spend before the bell
+         is a self-buff -- which is what preparing for a fight is supposed to look like.
+         Everything else waits for the bell, exactly as before. */
+      if (w.LYGO_FORMATION && S.form) w.LYGO_FORMATION.march(S, dt);
+      /* Nothing else runs here on purpose. The per-body brain is asked for a plan, and a
+         body standing on its own mark with nothing in reach satisfies none of the
+         preconditions a plan needs -- it would return without a task, which reads in the
+         HUD as a fighter doing nothing. The march walks the bodies itself, and the first
+         decision any body makes is the one it makes after the bell. */
       if (S.countdown <= 0) { S.phase = "live"; bell(); }
     } else if (S.phase === "live" && !S.paused && S.hitStop > 0) {
       S.hitStop -= dt;
@@ -2543,6 +2556,15 @@
   function bell() {
     pushEvent("FIGHT.", "over");
     pushCast("bell", { n: S.your.length + S.foe.length });
+    /* The shape each side chose is the last thing worth saying before the first blow:
+       it tells the crowd what they are about to watch. ONE line and ONE feed entry --
+       two calls at the bell would step on the quiet the director protects. */
+    if (w.LYGO_FORMATION && S.form && S.mode > 1 && S.form.teams.length === 2) {
+      const a = S.form.teams[0], b = S.form.teams[1];
+      pushCast("formation", { form: a.name, foe: b.name, temper: a.temper, note: a.note });
+      pushEvent("Your side opens in " + a.name + " — " + a.note + ". The challengers answer in " + b.name + ".", "law");
+      S.form.called = true;
+    }
     S.bellAt = S.talkSeq;
     S.talkT = 20;
   }
@@ -2584,6 +2606,9 @@
     S.talkSeq = S.talkSeq || 0;
     S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9; S.lastColor = -9;
     S.lawSaid = false; S.tideSaid = false;
+    /* The pre-stage picks each side a shape and a post for every body before anybody
+       moves, so the countdown has something to walk into. */
+    if (w.LYGO_FORMATION) w.LYGO_FORMATION.stage(S, S.lv && S.lv.seed != null ? S.lv.seed : seed);
     buildIntro(meta);
   }
 

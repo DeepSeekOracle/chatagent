@@ -444,3 +444,8 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
   box-shadow: inset 2px 0 0 var(--gold); border-radius: 4px; }
 .feed p.live { background: rgba(251,191,36,.09); box-shadow: inset 2px 0 0 var(--gold); }
 .feed p.cast.live { background: rgba(239,68,68,.1); box-shadow: inset 2px 0 0 var(--red); }
+
+/* the shape each side opened in, on the intro card under the team tag */
+.intro .iform { margin: 2px 0 6px; font: 700 11px/1.3 "Trebuchet MS", system-ui, sans-serif;
+  letter-spacing: .07em; text-transform: uppercase; color: #fbbf24; opacity: .92; min-height: 14px; }
+.intro .isfoe .iform { color: #f87171; }

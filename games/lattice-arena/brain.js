@@ -339,6 +339,16 @@
     const b = e.b;
     const st = styleOf(b);
     const en = enemies(S, e), al = allies(S, e);
+    /* THE PRE-STAGE SPEAKS FIRST. While the formation layer owns this body -- the march
+       to its post under the countdown, and the opening after the bell -- that is the
+       plan. The moment the layer releases it (or never owned it: a ward, a stray, a
+       body with no post) this returns null and the whole brain below runs exactly as it
+       always did: style, personality, patience, the lot. The layer sets the opening; it
+       does not fight the fight. */
+    if (w.LYGO_FORMATION) {
+      const fp = w.LYGO_FORMATION.planFor(S, e);
+      if (fp) { e.task = fp.task; return fp; }
+    }
     if (!en.length) { e.task = "hold"; return { task: "hold", target: null, point: null, band: 0, gait: 0, why: "" }; }
     const Q = SQ[e.team] || blank();
     e.planT = (e.planT == null ? 0 : e.planT) - dt;

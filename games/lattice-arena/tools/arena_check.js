@@ -55,6 +55,7 @@ load("roster.js");
 load("banter.js");
 load("director.js");
 load("attacks.js");
+load("formation.js");
 load("brain.js");
 load("arena.js");
 
@@ -596,5 +597,84 @@ const kitOut = ((kit.stdout || "") + (kit.stderr || "")).trim().split("\n").filt
 must("every kit's moves, buffs and basics resolve", kit.status === 0, kitOut.slice(-3).join(" · "));
 
 console.log("");
+
+/* --- 8. the pre-stage ---------------------------------------------------------
+   Five bodies that walk in as five individuals lose to five that walked in as one,
+   and that is the whole reason this layer exists. What is asserted here is the
+   promise it makes: a shape for each side, a post for every body, a claim on every
+   enemy, the front rank standing ahead of the back rank, and a clean release back
+   into the personal brain so the opening is a layer and not a cage. */
+const SHAPE = {}, TEMPER = {};
+const open = { n: 0, released: 0, shapes: 0, slots: 0, bodies: 0, claims: 0, enemies: 0,
+  spread0: 0, spreadBell: 0, contact: [], frontAhead: 0, frontBehind: 0, switches: 0, formed: 0 };
+for (let m = 0; m < MATCHES; m++) {
+  const n = MODES[m % MODES.length];
+  const you = [], foe = [];
+  for (let i = 0; i < n; i++) { you.push(R.ROSTER[(m * 3 + i * 5) % R.ROSTER.length].id); foe.push(R.ROSTER[(m * 7 + i * 11 + 3) % R.ROSTER.length].id); }
+  const S = E.runHeadless({ you, foe }, n, 200, (m * 4441 + 17) % 9967);   // 200s: a real fight, not a setup
+  const F = S.form;
+  if (!F || !F.teams || F.teams.length !== 2) continue;
+  open.n++;
+  if (F.teams[0].name && F.teams[1].name) open.shapes++;
+  SHAPE[F.teams[0].name] = (SHAPE[F.teams[0].name] || 0) + 1;
+  SHAPE[F.teams[1].name] = (SHAPE[F.teams[1].name] || 0) + 1;
+  TEMPER[F.teams[0].temper] = (TEMPER[F.teams[0].temper] || 0) + 1;
+  TEMPER[F.teams[1].temper] = (TEMPER[F.teams[1].temper] || 0) + 1;
+  if (F.teams.every((t) => t.releasedAt != null)) open.released++;
+  open.switches += F.teams.reduce((a, t) => a + (t.switches || 0), 0);
+  [[S.your, S.foe, 0], [S.foe, S.your, 1]].forEach(([mine, theirs, i]) => {
+    const rec = F.teams[i];
+    open.spread0 += rec.spread0 || 0;
+    open.spreadBell += rec.spreadAtBell || 0;
+    if (rec.spreadAtBell != null) open.formed++;
+    mine.forEach((e) => {
+      /* a summoned ward is not a squad member: it has no post and nobody claims it */
+      if (e.b && e.b.cls === "token") return;
+      open.bodies++;
+      if (e.slot) open.slots++;
+    });
+    /* the geometry, measured against the axis the team latched at its own start line:
+       a front post must sit further along the way the team is facing than a back post.
+       (Measuring against where the enemies ENDED UP measures nothing: by then both
+       sides have crossed each other and the numbers are noise.) */
+    const dir = rec.axis, anc = rec.anchor;
+    const front = mine.filter((e) => e.slot && e.role === "front");
+    const back = mine.filter((e) => e.slot && e.role === "back");
+    if (dir && anc && front.length && back.length) {
+      const proj = (e) => (e.slot.x - anc.x) * dir.x + (e.slot.y - anc.y) * dir.y;
+      const dF = Math.max(...front.map(proj));
+      const dB = Math.max(...back.map(proj));
+      if (dF > dB) open.frontAhead++; else open.frontBehind++;
+    }
+    /* a claim on every enemy: nobody is left unaccounted for */
+    const realFoe = theirs.filter((o) => !(o.b && o.b.cls === "token"));
+    open.enemies += realFoe.length;
+    realFoe.forEach((o) => { if (mine.some((e) => e.claim === o)) open.claims++; });
+  });
+  if (F.contactAt != null) open.contact.push(F.contactAt);
+}
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+must("every battle stages a shape for both sides", open.n > 0 && open.shapes === open.n,
+  open.shapes + " of " + open.n);
+must("every body in the pre-stage owns a post", open.bodies > 0 && open.slots === open.bodies,
+  open.slots + " posts for " + open.bodies + " bodies");
+must("every enemy is claimed by somebody", open.enemies > 0 && open.claims >= open.enemies * 0.98,
+  open.claims + " claims on " + open.enemies + " enemies" +
+  " (a body summoned or revived after the stage cannot be in a plan drawn up before it existed)");
+must("the front rank stands ahead of the back rank", open.frontAhead > 0 && open.frontBehind === 0,
+  open.frontAhead + " ahead, " + open.frontBehind + " behind");
+must("the pre-stage releases the body back to the brain", open.released > open.n * 0.9,
+  open.released + " of " + open.n + " battles released both sides");
+must("a staged team is tighter than the spawn it started in", open.spread0 > 0 && open.spreadBell < open.spread0,
+  "spawn " + Math.round(open.spread0 / Math.max(1, open.n * 2)) + " -> contact " + Math.round(open.spreadBell / Math.max(1, open.n * 2)));
+if (open.contact.length) must("the first clash happens after the opening, not at the whistle",
+  mean(open.contact) > 0.6, "mean first contact " + mean(open.contact).toFixed(2) + "s");
+console.log("  the pre-stage: " + open.n + " battles, " + open.formed + " team-openings measured");
+console.log("    shapes " + Object.keys(SHAPE).map((k) => k + " x" + SHAPE[k]).join(", "));
+console.log("    tempers " + Object.keys(TEMPER).map((k) => k + " x" + TEMPER[k]).join(", "));
+console.log("    mean first contact " + mean(open.contact).toFixed(2) + "s | team spread " +
+  Math.round(open.spread0 / Math.max(1, open.n * 2)) + "px at spawn -> " +
+  Math.round(open.spreadBell / Math.max(1, open.n * 2)) + "px at contact | hard switches " + open.switches);
+
 console.log((fails ? "FAILED" : "PASSED") + " — " + results.filter((r) => r.ok).length + "/" + results.length + " checks, " + warns + " warnings, " + MATCHES + " battles simulated");
 process.exit(fails ? 1 : 0);

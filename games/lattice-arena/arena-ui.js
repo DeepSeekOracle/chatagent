@@ -985,6 +985,12 @@
     const you = $("introYou"), foe = $("introFoe");
     if (you) you.classList.toggle("on", show >= 1);
     if (foe) foe.classList.toggle("on", show >= 2);
+    /* The shape each side picked, so the crowd can see what it is about to watch. Set
+       every tick rather than once: the overlay element outlives a single match. */
+    const yf = $("introYouForm"), ff = $("introFoeForm");
+    const FT = (window.LYGO_FORMATION && S.form && S.form.teams) || null;
+    if (yf) yf.textContent = FT && FT[0] ? FT[0].name + " \u00b7 " + FT[0].temper : "";
+    if (ff) ff.textContent = FT && FT[1] ? FT[1].name + " \u00b7 " + FT[1].temper : "";
     const ring = E.law(), lab = $("introRing");
     if (lab) lab.textContent = (S.lv && S.lv.kind ? S.lv.kind.toUpperCase() + " \u00b7 " : "") + (ring ? ring.name : "THE ARENA");
   }
