@@ -372,7 +372,7 @@ server.on("error", (e) => {
 });
 const BOARD = `<!doctype html><meta charset="utf-8"><style>
 html,body{margin:0;background:transparent;color:#fff8e8;font:700 22px/1.1 "Segoe UI",sans-serif}
-#bar{display:none;height:114px;box-sizing:border-box;background:rgba(6,5,10,.94);border:2px solid #e7c27a;overflow:hidden}
+#bar{display:block;height:114px;box-sizing:border-box;background:rgba(6,5,10,.94);border:2px solid #e7c27a;overflow:hidden}
 #k{height:22px;text-align:center;font-size:12px;letter-spacing:.16em;color:#e7c27a;padding-top:5px}
 #row{display:flex;height:76px}
 .side{flex:1;min-width:0;padding:6px 14px 0}
@@ -383,7 +383,7 @@ html,body{margin:0;background:transparent;color:#fff8e8;font:700 22px/1.1 "Segoe
 #track{height:6px;margin:4px 8px 0;background:#2a2418}
 #fill{height:100%;width:0;background:#e7c27a}
 #win{display:none;text-align:center;font-size:28px;padding-top:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-</style><div id="bar"><div id="k"></div><div id="row"><div class="side left"><div class="n" id="ln"></div><div class="m" id="lm"></div></div><div class="side right"><div class="n" id="rn"></div><div class="m" id="rm"></div></div></div><div id="track"><div id="fill"></div></div><div id="win"></div></div>
+</style><div id="bar"><div id="k">VOTE IN TWITCH CHAT</div><div id="row"><div class="side left"><div class="n" id="ln">Cyan</div><div class="m" id="lm"></div></div><div class="side right"><div class="n" id="rn">Red</div><div class="m" id="rm"></div></div></div><div id="track"><div id="fill"></div></div><div id="win"></div></div>
 <script>
 function names(v){return Array.isArray(v)?v.filter(Boolean).join(" "):(v||"")}
 function meta(pts, users){
