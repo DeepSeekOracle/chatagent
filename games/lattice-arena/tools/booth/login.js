@@ -9,7 +9,8 @@ const { URL } = require("url");
 
 const PORT = 8792;
 const FILE = process.argv[2] || path.join(__dirname, "twitch.json");
-const REDIRECT = "http://127.0.0.1:" + PORT + "/callback";
+/* Twitch rejects http://127.0.0.1. It accepts http://localhost on this port. */
+const REDIRECT = "http://localhost:" + PORT + "/callback";
 const SCOPES = "channel:manage:predictions user:write:chat";
 
 function read() {
@@ -28,12 +29,13 @@ function page(body) {
 function form() {
   const cur = read();
   return page(`<h1>Connect the booth to Twitch</h1>
-  <p>One time. This page stays on this PC.</p>
+  <p>One time. This page stays on this PC. The API docs page is not the app form.</p>
   <ol>
   <li>Open <a href="https://dev.twitch.tv/console/apps">dev.twitch.tv/console/apps</a> and register an application.</li>
   <li>Name it <b>LYGO Arena Booth</b>. Category <b>Broadcasting Suite</b>.</li>
-  <li>OAuth redirect URL: <code>${REDIRECT}</code></li>
-  <li>Paste the client id and the client secret here.</li>
+  <li>OAuth Redirect URL, typed in the box: <code>${REDIRECT}</code></li>
+  <li>Do not click Add. An extra empty box makes Twitch demand HTTPS. Then click Create.</li>
+  <li>Open the app, copy the client id, click New Secret, and paste both here.</li>
   </ol>
   <form method="post" action="/save">
   <label>Client id<input name="clientId" value="${cur.clientId || ""}" autocomplete="off"></label>
@@ -110,4 +112,4 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404);
   res.end();
 });
-server.listen(PORT, "127.0.0.1", () => console.log("open http://127.0.0.1:" + PORT));
+server.listen(PORT, "127.0.0.1", () => console.log("open http://localhost:" + PORT));
