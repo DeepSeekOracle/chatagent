@@ -734,15 +734,6 @@
     S.marks.push({ x: e.x, y: e.y - 6, r: 0, life: 0.42, col: "#fff7ed", spark: true });
     S.texts.push({ x: e.x, y: e.y - 30, t: "DOWN", life: 1.2, col: "#f87171", big: true });
     checkOver();
-    if (S.over && !S.finish && S.winner != null && S.winner >= 0) {
-      S.finish = {
-        killer: src ? src.b.name : (e.killedBy || ""),
-        victim: e.b.name,
-        move: (src && src.lastBlow) || "the strike",
-        x: e.x,
-        y: e.y - 12
-      };
-    }
     if (S.over) {
       S.hitStop = 0.42;
       S.shake = Math.max(S.shake, 0.72);
@@ -1919,130 +1910,6 @@
       pushEvent("Ten minutes. Neither side fell. The map is a draw.", "over");
       pushCast("draw", {});
     }
-    noteTape();
-    maybeArmReplay();
-  }
-
-  /* The show keeps the last three seconds of the picture. It is not a second
-     fight: positions and flourishes are copied, and the sim has already stopped. */
-  const TAPE_HZ = 30;
-  let tapeWatch = false;
-  let tapeHold = null;
-  function wantTape() { return !!(canvas || tapeWatch); }
-  function copyTape() {
-    const ents = [];
-    all().forEach((e) => {
-      ents.push({
-        uid: e.uid, x: e.x, y: e.y, face: e.face, walk: e.walk,
-        dead: !!e.dead, dieT: e.dieT || 0, hp: e.hp, shd: e.shd || 0, flash: e.flash || 0,
-        stun: e.stun || 0, root: e.root || 0, silence: e.silence || 0,
-        tauntT: e.tauntT || 0, shieldWallT: e.shieldWallT || 0,
-        animT: e.animT || 0, animVis: e.animVis || "", animMax: e.animMax || 0.34, aimA: e.aimA || 0
-      });
-    });
-    return {
-      ents: ents,
-      projectiles: S.projectiles.map((p) => ({
-        x: p.x, y: p.y, a: p.a || 0, vis: p.vis, w: p.w, frame: p.frame, lob: p.lob, tx: p.tx, ty: p.ty, col: p.col
-      })),
-      pending: S.pending.map((p) => ({ x: p.x, y: p.y, r: p.r, col: p.col, t: p.t })),
-      marks: S.marks.map((m) => ({
-        x: m.x, y: m.y, x2: m.x2, y2: m.y2, r: m.r, life: m.life, col: m.col,
-        ring: m.ring, dust: m.dust, spark: m.spark, beam: m.beam
-      })),
-      texts: S.texts.map((t) => ({ x: t.x, y: t.y, t: t.t, life: t.life, col: t.col, big: t.big })),
-      swings: (S.swings || []).map((s) => ({
-        vis: s.vis, x: s.x, y: s.y, x2: s.x2, y2: s.y2, a: s.a, life: s.life, max: s.max, col: s.col, salt: s.salt
-      })),
-      zones: (S.zones || []).map((z) => ({ x: z.x, y: z.y, r: z.r, life: z.life, slow: z.slow }))
-    };
-  }
-  function noteTape() {
-    if (!wantTape() || S.tapeClosed) return;
-    S.tapeN = (S.tapeN || 0) + 1;
-    const finishing = !!S.over;
-    if (!finishing && (S.tapeN & 1)) return;
-    if (!S.tape) S.tape = [];
-    S.tape.push(copyTape());
-    const cap = TAPE_HZ * 3;
-    while (S.tape.length > cap) S.tape.shift();
-    if (finishing) S.tapeClosed = true;
-  }
-  function maybeArmReplay() {
-    if (S.replay || S.replayDone || !S.over) return;
-    const frames = S.tape || [];
-    const fin = S.finish;
-    if (!(S.winner != null && S.winner >= 0 && fin && frames.length >= 12)) {
-      S.replayDone = true;
-      return;
-    }
-    S.replay = {
-      frames: frames, t: 0, i: frames.length - 1, lead: 0.45,
-      move: fin.move || "the strike",
-      killer: fin.killer || "",
-      victim: fin.victim || "",
-      x: fin.x, y: fin.y
-    };
-    S.camSpot = { x: fin.x, y: fin.y, hold: 4.2 };
-  }
-  function applyTape(frame) {
-    const by = {};
-    all().forEach((e) => { by[e.uid] = e; });
-    const saved = [];
-    const seen = {};
-    frame.ents.forEach((s) => {
-      const e = by[s.uid];
-      if (!e) return;
-      seen[e.uid] = 1;
-      saved.push({
-        e: e, hide: false, x: e.x, y: e.y, face: e.face, walk: e.walk, dead: e.dead, dieT: e.dieT,
-        hp: e.hp, shd: e.shd, flash: e.flash, stun: e.stun, root: e.root, silence: e.silence,
-        tauntT: e.tauntT, shieldWallT: e.shieldWallT, animT: e.animT, animVis: e.animVis,
-        animMax: e.animMax, aimA: e.aimA
-      });
-      e.x = s.x; e.y = s.y; e.face = s.face; e.walk = s.walk; e.dead = s.dead; e.dieT = s.dieT;
-      e.hp = s.hp; e.shd = s.shd; e.flash = 0; e.stun = s.stun; e.root = s.root; e.silence = s.silence;
-      e.tauntT = s.tauntT; e.shieldWallT = s.shieldWallT; e.animT = s.animT; e.animVis = s.animVis;
-      e.animMax = s.animMax; e.aimA = s.aimA;
-    });
-    all().forEach((e) => {
-      if (seen[e.uid]) return;
-      saved.push({ e: e, hide: true, dead: e.dead, dieT: e.dieT });
-      e.dead = true; e.dieT = 9;
-    });
-    tapeHold = {
-      saved: saved,
-      projectiles: S.projectiles, pending: S.pending, marks: S.marks,
-      texts: S.texts, swings: S.swings, zones: S.zones, bubbles: S.bubbles
-    };
-    S.projectiles = frame.projectiles;
-    S.pending = frame.pending;
-    /* Sparks are a full-white burst. Played back frame by frame they strobe. */
-    S.marks = frame.marks.filter((m) => !m.spark);
-    S.texts = frame.texts;
-    S.swings = frame.swings.filter((s) => s.max > 0.05);
-    S.zones = frame.zones;
-    S.bubbles = [];
-  }
-  function restoreTape() {
-    const h = tapeHold;
-    if (!h) return;
-    tapeHold = null;
-    h.saved.forEach((s) => {
-      const e = s.e;
-      if (s.hide) { e.dead = s.dead; e.dieT = s.dieT; return; }
-      e.x = s.x; e.y = s.y; e.face = s.face; e.walk = s.walk; e.dead = s.dead; e.dieT = s.dieT;
-      e.hp = s.hp; e.shd = s.shd; e.flash = s.flash; e.stun = s.stun; e.root = s.root; e.silence = s.silence;
-      e.tauntT = s.tauntT; e.shieldWallT = s.shieldWallT; e.animT = s.animT; e.animVis = s.animVis;
-      e.animMax = s.animMax; e.aimA = s.aimA;
-    });
-    S.projectiles = h.projectiles;
-    S.pending = h.pending;
-    S.marks = h.marks;
-    S.texts = h.texts;
-    S.swings = h.swings;
-    S.zones = h.zones;
-    S.bubbles = h.bubbles;
   }
 
   /* ---------------------------------------------------------------- render --- */
@@ -2272,74 +2139,53 @@
     if (!S.lv) return;
     const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
     if (!S.cam) S.cam = { x: mapW / 2, y: mapH / 2, z: 1 };
+    const bodies = all().filter((e) => !e.dead);
     let tx = mapW / 2, ty = mapH / 2;
     let tz = S.phase === "count" ? 1 : 1.34;
+    if (bodies.length) {
+      let sx = 0, sy = 0;
+      bodies.forEach((e) => { sx += e.x; sy += e.y; });
+      tx = sx / bodies.length;
+      ty = sy / bodies.length;
+      let best = 1e9, ax = tx, ay = ty;
+      bodies.forEach((a) => bodies.forEach((b) => {
+        if (a.team === b.team) return;
+        const d = dist2(a.x, a.y, b.x, b.y);
+        if (d < best) { best = d; ax = (a.x + b.x) / 2; ay = (a.y + b.y) / 2; }
+      }));
+      if (best < 320) { tx = tx * 0.4 + ax * 0.6; ty = ty * 0.4 + ay * 0.6; }
+    }
     let victim = null;
-    const spot = S.camSpot;
-    if (S.replay) {
-      /* Follow the bodies in the tape, then sit on the blow for the last beat.
-         A camera glued to the kill spot films empty sand while they are still crossing. */
-      const r = S.replay;
-      const fr = r.frames[Math.max(0, r.i | 0)] || r.frames[0];
-      let sx = 0, sy = 0, n = 0;
-      (fr.ents || []).forEach((e) => {
-        if (e.dead && e.dieT > 0.4) return;
-        sx += e.x; sy += e.y; n++;
-      });
-      const lead = r.lead || 0;
-      const playT = Math.max(0, r.t - lead);
-      const span = Math.max(0.05, r.frames.length / TAPE_HZ);
-      const onto = playT / span < 0.72 ? 0 : Math.min(1, (playT / span - 0.72) / 0.28);
-      const bx = n ? sx / n : r.x;
-      const by = n ? sy / n : r.y;
-      tx = bx + (r.x - bx) * onto;
-      ty = by + (r.y - by) * onto;
-      tz = 1.92;
-    } else {
-      const bodies = all().filter((e) => !e.dead);
-      if (bodies.length) {
-        let sx = 0, sy = 0;
-        bodies.forEach((e) => { sx += e.x; sy += e.y; });
-        tx = sx / bodies.length;
-        ty = sy / bodies.length;
-        let best = 1e9, ax = tx, ay = ty;
-        bodies.forEach((a) => bodies.forEach((b) => {
-          if (a.team === b.team) return;
-          const d = dist2(a.x, a.y, b.x, b.y);
-          if (d < best) { best = d; ax = (a.x + b.x) / 2; ay = (a.y + b.y) / 2; }
-        }));
-        if (best < 320) { tx = tx * 0.4 + ax * 0.6; ty = ty * 0.4 + ay * 0.6; }
-      }
+    bodies.forEach((e) => {
+      const ratio = e.max > 0 ? e.hp / e.max : 1;
+      if (ratio < 0.24 && (!victim || ratio < victim.hp / victim.max)) victim = e;
+    });
+    (S.pending || []).forEach((p) => {
+      if (!p || p.t > 0.4) return;
       bodies.forEach((e) => {
+        if (p.src && e.team === p.src.team) return;
+        if (dist2(e.x, e.y, p.x, p.y) > (p.r || 24) + 10) return;
         const ratio = e.max > 0 ? e.hp / e.max : 1;
-        if (ratio < 0.24 && (!victim || ratio < victim.hp / victim.max)) victim = e;
+        if (ratio > 0.42 && e.hp > (p.dmg || 0) * 0.45) return;
+        if (!victim || ratio < victim.hp / Math.max(1, victim.max)) victim = e;
       });
-      (S.pending || []).forEach((p) => {
-        if (!p || p.t > 0.4) return;
-        bodies.forEach((e) => {
-          if (p.src && e.team === p.src.team) return;
-          if (dist2(e.x, e.y, p.x, p.y) > (p.r || 24) + 10) return;
-          const ratio = e.max > 0 ? e.hp / e.max : 1;
-          if (ratio > 0.42 && e.hp > (p.dmg || 0) * 0.45) return;
-          if (!victim || ratio < victim.hp / Math.max(1, victim.max)) victim = e;
-        });
-      });
-      if (victim) {
-        tx = victim.x;
-        ty = victim.y - 12;
-        tz = 1.92;
-        S.camSpot = { x: victim.x, y: victim.y - 12, hold: 0.35 };
-      } else if (spot && spot.hold > 0) {
-        spot.hold -= dt;
-        tx = spot.x;
-        ty = spot.y;
-        tz = S.over ? 1.72 : 1.88;
-      }
+    });
+    const spot = S.camSpot;
+    if (victim) {
+      tx = victim.x;
+      ty = victim.y - 12;
+      tz = 1.92;
+      S.camSpot = { x: victim.x, y: victim.y - 12, hold: 0.35 };
+    } else if (spot && spot.hold > 0) {
+      spot.hold -= dt;
+      tx = spot.x;
+      ty = spot.y;
+      tz = S.over ? 1.72 : 1.88;
     }
     const vw = mapW / tz, vh = mapH / tz;
     tx = clamp(tx, vw / 2, Math.max(vw / 2, mapW - vw / 2));
     ty = clamp(ty, vh / 2, Math.max(vh / 2, mapH - vh / 2));
-    const tight = !!(S.replay || victim || (spot && spot.hold > 0));
+    const tight = !!(victim || (spot && spot.hold > 0));
     const kL = 1 - Math.exp(-(tight ? 5.2 : 1.45) * dt);
     const kZ = 1 - Math.exp(-(tight ? 4.4 : 1.7) * dt);
     const cam = S.cam;
@@ -2351,50 +2197,14 @@
     cam.y = clamp(cam.y, viewH / 2, Math.max(viewH / 2, mapH - viewH / 2));
   }
 
-  function drawReplayPlate(ox, oy, scale) {
-    const r = S.replay;
-    if (!r || !S.lv) return;
-    const mapW = S.lv.W * TILE, mapH = S.lv.H * TILE;
-    const cx = ox + mapW * scale / 2;
-    const y = oy + mapH * scale - 58;
-    const move = String(r.move || "the strike").slice(0, 28);
-    const who = String(r.killer || "").slice(0, 22);
-    const line = who ? (who + "   " + move) : move;
-    ctx.save();
-    ctx.font = "700 15px 'IBM Plex Mono', monospace";
-    const tw = Math.max(168, ctx.measureText(line).width + 36);
-    const x = cx - tw / 2;
-    ctx.globalAlpha = 0.94;
-    ctx.fillStyle = "rgba(3,7,18,0.9)";
-    ctx.fillRect(x, y, tw, 46);
-    ctx.strokeStyle = "#fbbf24";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x, y, tw, 46);
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#fbbf24";
-    ctx.font = "700 10px 'IBM Plex Mono', monospace";
-    ctx.fillText("REPLAY", cx, y + 15);
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = "700 15px 'IBM Plex Mono', monospace";
-    ctx.fillText(line, cx, y + 34);
-    ctx.restore();
-  }
-
   function draw() {
     if (!ctx || !S.lv) return;
-    const replayFrame = S.replay && S.replay.frames[Math.max(0, S.replay.i | 0)];
-    if (replayFrame) applyTape(replayFrame);
-    try {
     const wpx = canvas.clientWidth, hpx = canvas.clientHeight;
     const dpr = Math.min(2, w.devicePixelRatio || 1);
     if (canvas.width !== (wpx * dpr | 0) || canvas.height !== (hpx * dpr | 0)) {
       canvas.width = wpx * dpr | 0; canvas.height = hpx * dpr | 0;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.shadowBlur = 0;
-    ctx.setLineDash([]);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, wpx, hpx);
@@ -2405,7 +2215,7 @@
     const botBand = Math.max(40, hpx * 0.105);
     const scale = (hpx - topBand - botBand) / mapH;
     const ox = (wpx - mapW * scale) / 2, oy = topBand;
-    const kick = (S.shake > 0 && !S.replay) ? S.shake * 10 : 0;
+    const kick = S.shake > 0 ? S.shake * 10 : 0;
     const sx = kick ? (Math.random() - 0.5) * kick : 0;
     const sy = kick ? (Math.random() - 0.5) * kick : 0;
     const cam = S.cam || { x: mapW / 2, y: mapH / 2, z: 1 };
@@ -2635,14 +2445,7 @@
       ctx.restore();
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    ctx.globalCompositeOperation = "source-over";
     drawHouse(wpx, hpx, ox, oy, scale);
-    drawReplayPlate(ox, oy, scale);
-    } finally {
-      if (replayFrame) restoreTape();
-    }
   }
 
   /* ----------------------------------------------------------------- API --- */
@@ -2666,22 +2469,8 @@
       if (acc > STEP * 24) acc = 0;
       runCues(INTRO_S + S.time);              // the cues after the bell ride the match clock
     }
-    if (S.replay) {
-      const r = S.replay;
-      r.t += dt;
-      const lead = r.lead || 0;
-      const play = Math.max(0.05, r.frames.length / TAPE_HZ);
-      /* Hold the blow long enough to read the plate, then roll the tape. */
-      if (r.t < lead) r.i = r.frames.length - 1;
-      else r.i = Math.min(r.frames.length - 1, Math.floor((r.t - lead) * TAPE_HZ));
-      r.holdLast = r.t >= lead + play;
-    }
     aimCamera(dt);
     draw();
-    if (S.replay && S.replay.holdLast) {
-      S.replay = null;
-      S.replayDone = true;
-    }
     if (w.ArenaUI) w.ArenaUI.tick();
   }
 
@@ -2762,7 +2551,6 @@
     S.projectiles = []; S.pending = []; S.texts = []; S.marks = []; S.swings = []; S.zones = [];
     S.bubbles = []; S.talk = [];
     S.time = 0; S.over = false; S.winner = null; S.sudden = false; S.suddenTier = 0; S.events = []; S.paused = false;
-    S.tape = []; S.tapeN = 0; S.tapeClosed = false; S.replay = null; S.replayDone = false; S.finish = null;
     /* What the blows actually did. A spectator cannot tell a miss from a missing number,
        and neither could this file: armour stops, ward swallows and shots that arrive at
        nothing are counted here so the question has an answer instead of an impression. */
@@ -2822,8 +2610,6 @@
   w.ArenaEngine = {
     isMender: isMender,
     init: init, newMatch: newMatch, draw: draw,
-    attach(cv) { canvas = cv || null; ctx = cv ? cv.getContext("2d") : null; },
-    watchTape(on) { tapeWatch = !!on; },
     aim(dt) { aimCamera(dt || 0.016); return S.cam; },
     setSpeed(n) { S.speed = n; },
     pause(on) { S.paused = !!on; },

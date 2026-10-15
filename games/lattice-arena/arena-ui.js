@@ -967,8 +967,7 @@
         (gauntlet ? " · Gauntlet streak " + streak : "");
     paintTvBug();
     }
-    /* The finish replay borrows the sand before the card. A draw has no replay. */
-    if (S.phase === "over" && !S.replay && overlayMode === "battle") setTimeout(showResults, 1400);
+    if (S.phase === "over" && overlayMode === "battle") setTimeout(showResults, 1400);
   }
   /* The programme is on the screen as well as in the ear: the roster cards come in as the
      caster names each side, so a spectator can see who is being introduced. And whatever is
