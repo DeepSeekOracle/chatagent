@@ -1,0 +1,20 @@
+# Keeps the booth process up. Starts OBS only when the process is gone.
+# It does not press Start Streaming.
+$ErrorActionPreference = "Continue"
+$root = "C:\LYGO_SERVER\arena-chat"
+$node = "C:\Program Files\nodejs\node.exe"
+$log = Join-Path $root "watch.log"
+function note($m) { Add-Content -Path $log -Value ((Get-Date).ToString("s") + " " + $m) }
+$up = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue
+if (-not $up) {
+  note "starting booth"
+  Start-Process -FilePath $node -ArgumentList (Join-Path $root "bot.js") -WorkingDirectory $root -WindowStyle Hidden
+}
+$obs = Get-Process obs64 -ErrorAction SilentlyContinue
+if (-not $obs) {
+  $exe = "C:\Program Files (x86)\Steam\steamapps\common\OBS Studio\bin\64bit\obs64.exe"
+  if (Test-Path $exe) {
+    note "starting OBS"
+    Start-Process -FilePath $exe -ArgumentList "--disable-updater","--minimize-to-tray","--disable-shutdown-check"
+  } else { note "OBS exe missing" }
+}

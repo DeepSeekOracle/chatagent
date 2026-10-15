@@ -332,6 +332,31 @@
   }
   function teamKey() { return persist.mode + "|" + your.join(","); }
   function teamNames() { return your.map((id) => (R.byId[id] ? R.byId[id].name : id)); }
+  /* The stream PC opts in with ?booth=1 once. Every other viewer stays quiet.
+     The post stays on that machine. A miss does not touch the fight. */
+  function boothOn() {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get("booth") === "1") localStorage.setItem("lygo_booth", "1");
+      if (q.get("booth") === "0") localStorage.removeItem("lygo_booth");
+      return localStorage.getItem("lygo_booth") === "1";
+    } catch (e) { return false; }
+  }
+  function tellBooth(kind, side) {
+    if (!boothOn()) return;
+    const right = foeIds.map((id) => (R.byId[id] ? R.byId[id].name : id));
+    const body = JSON.stringify({
+      kind: kind, side: side, left: teamNames(), right: right,
+      mode: MODE_LABEL[persist.mode] || "", tv: !!battleTv,
+      map: series ? series.played : 0
+    });
+    try {
+      fetch("http://127.0.0.1:8791/arena", {
+        method: "POST", mode: "cors",
+        headers: { "Content-Type": "application/json" }, body: body
+      }).catch(function () {});
+    } catch (e) {}
+  }
   function touchBook(won) {
     persist.books = persist.books || {};
     const key = teamKey();
@@ -1037,6 +1062,7 @@
     paintTvBug();
     lastMatch = { your: your.slice(), foe: foeIds.slice() };
     syncMenuSong();
+    tellBooth("card", null);
   }
 
   function newSeries() { return { played: 0, you: 0, foe: 0, last: -1, over: false, draws: 0, log: [] }; }
@@ -1079,6 +1105,7 @@
     if (overlayMode === "results") return;
     overlayMode = "results";
     const won = S.winner;                                  // 0 you, 1 them, -1 a draw
+    tellBooth("result", won);
     if (!series) series = newSeries();
     series.played++;
     if (won === 0 || won === 1) {
