@@ -456,6 +456,18 @@
     }
 
     /* — 2. BREAK CONTACT: outnumbered and nearly gone is not a fight, it is a gift. */
+    /* — THE QUIET ARENA. If no blow has landed on anybody for twelve seconds, the plan
+       being followed is wrong, whoever is following it. Measured: about one battle in
+       ninety ends at the sim cap with NO damage dealt by either side and nobody down --
+       two lines holding their bands, each waiting on the other, forever. Withdrawing,
+       leashing and holding are each a reasonable order, and the sum of them is a fight
+       that never happens. Every rule below this one loses to it. */
+    if ((S.time || 0) - (S.lastBloodAt || 0) > 12) {
+      task = "advance"; point = null;
+      band = Math.max(26, range * 0.5); gait = 1;
+      why = "the arena has gone quiet — in";
+      return set(e, { task, target, point, band, gait, why }, S);
+    }
     if (hurt && (localE >= 1 || hp < st.retreat * 0.5)) {
       const R = Q.rally || { x: Q.cx, y: Q.cy };
       /* the nearest cover on the way home, so it does not retreat across open sand */

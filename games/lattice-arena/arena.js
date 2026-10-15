@@ -640,6 +640,7 @@
     if (src && opts.name) src.lastBlow = opts.name;
     tgt.hp -= dmg;
     tgt.taken += dmg;
+    S.lastBloodAt = S.time;          // the arena knows how long it has been quiet
     /* about to die: one clean hit from the recap, and everybody says so */
     if (!tgt.dead && !tgt.edgeSaid && tgt.max > 0 && tgt.hp > 0 && tgt.hp / tgt.max < 0.25) {
       tgt.edgeSaid = true;
@@ -1224,7 +1225,16 @@
         if (!blinkReady) {
           if (!gun) {
             const dNow = dist2(e.x, e.y, t.x, t.y);
-            const reach = (b.moves[si].range || 7) * TILE + 16;
+            /* The step only has to land the body INSIDE its own swing, not on the
+               target's head. A stride is 224px and a fist reaches 48, so the band a
+               fist can commit from is 272px -- the hardcoded 16 measured the wrong
+               thing by exactly the margin that decides the fight. A rifle holds its
+               band at range * 0.9, and the longest guns hold at 247px: twenty-odd
+               pixels OUTSIDE the window this check allowed. The one move every kit
+               owns for crossing open ground could never be spent on the one enemy it
+               was written for, and the brute -- no blink, so this is its only way in --
+               ran three fights of two hundred seconds without ever landing a hit. */
+            const reach = (b.moves[si].range || 7) * TILE + (b.range || 40);
             /* A fist already in the fight walks the last step. Close is for a gun
                that is still outside the swing, not for undoing your own shove. */
             const chasingGun = (t.b.range || 40) > 110;
@@ -2372,6 +2382,7 @@
        and neither could this file: armour stops, ward swallows and shots that arrive at
        nothing are counted here so the question has an answer instead of an impression. */
     S.tele = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0 };
+    S.lastBloodAt = 0;
     S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";
     S.cam = null;

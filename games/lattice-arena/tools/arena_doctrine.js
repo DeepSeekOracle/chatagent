@@ -34,6 +34,8 @@ const BRAIN = (ARGV.find((a) => a.startsWith("--brain=")) || "").split("=")[1] |
    many seeds is how a structural question (does a gap-closer decide these duels?)
    gets an answer. */
 const ONLY = (ARGV.find((a) => a.startsWith("--only=")) || "").split("=")[1] || "";
+/* --arena=<path> A/Bs the ENGINE, which is where the approach rules live. */
+const ARENA = (ARGV.find((a) => a.startsWith("--arena=")) || "").split("=")[1] || "";
 const DUEL_SEEDS = num(0, 3);
 const FIELD_MATCHES = num(1, 24);
 const SAMPLE = 0.25;          // seconds per sample: fast enough to catch a 1s stuck window
@@ -72,7 +74,8 @@ const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"),
 ["roster.js", "banter.js", "director.js", "attacks.js"].forEach(load);
 if (BRAIN) vm.runInContext(fs.readFileSync(BRAIN, "utf8"), ctx, { filename: "brain.js" });
 else load("brain.js");
-load("arena.js");
+if (ARENA) vm.runInContext(fs.readFileSync(ARENA, "utf8"), ctx, { filename: "arena.js" });
+else load("arena.js");
 console.log("brain: " + (BRAIN || "working tree") + (process.env.LABEL ? "   [" + process.env.LABEL + "]" : ""));
 const R = win.LYGO_ARENA, E = win.ArenaEngine;
 
@@ -170,7 +173,11 @@ duelRows.forEach((r) => {
 const avgWalk = duelRows.reduce((s, r) => s + r.walk, 0) / duelRows.length;
 const avgLoaded = duelRows.reduce((s, r) => s + r.loaded, 0) / duelRows.length;
 console.log("    ---");
-console.log("    contact kits win " + ((mWins / mTotal) * 100).toFixed(1) + "% of these duels (" + mTotal + " fights)");
+/* A win rate without an interval is a coin toss wearing a number: at n=180 the standard
+   error on a 34% rate is 3.5 points, so anything under 7 points is not a result. */
+const pWin = mWins / mTotal, se = Math.sqrt((pWin * (1 - pWin)) / mTotal);
+console.log("    contact kits win " + (pWin * 100).toFixed(1) + "% of these duels (" + mTotal + " fights, 95% " +
+  ((pWin - 1.96 * se) * 100).toFixed(1) + "-" + ((pWin + 1.96 * se) * 100).toFixed(1) + "%)");
 console.log("    they spend " + (avgWalk * 100).toFixed(0) + "% of their health before they land a hit, and arrive at a LOADED gun " + (avgLoaded * 100).toFixed(0) + "% of the time");
 /* The loaded-at-arrival number is a weak instrument: the walk takes about 2.4s and the
    gun's cycle is about 1s, so a well-timed entry still lands on a loaded gun by chance.
