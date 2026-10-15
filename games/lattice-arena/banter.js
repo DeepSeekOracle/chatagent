@@ -78,7 +78,15 @@
       "I have had worse mornings.",
       "Swing. I will tell you if it mattered.",
       "You keep resetting. The sand does not.",
-      "Pretty footwork. Empty hands."
+      "Pretty footwork. Empty hands.",
+      "You fight like the crowd paid you to miss.",
+      "Cute kit. Shame about the hands.",
+      "Save the pose. The sand is not impressed.",
+      "You are loud for somebody losing.",
+      "The booth is already writing your loss.",
+      "That swing had a name. It was sorry.",
+      "Come closer, {foe}. I diss better up close.",
+      "I have fought furniture with more intent."
     ],
     kill: [
       "Stay down. I will not say it twice.",
@@ -110,7 +118,11 @@
       "Down, and I still have the next one.",
       "The sand keeps what I give it.",
       "You may get up. I would not.",
-      "One name less on that side."
+      "One name less on that side.",
+      "Sit down. The show moved on.",
+      "That is the highlight. You are the clip.",
+      "Tell the booth to cut to me.",
+      "Down, {foe}. The recap does not need you standing."
     ],
     die: [
       "Not like this. Not in the first—",
@@ -268,7 +280,10 @@
       "Feel that? That was the real hit.",
       "I was saving that.",
       "Now you are paying attention.",
-      "Mark it. That one goes in the book."
+      "Mark it. That one goes in the book.",
+      "Broadcast that one.",
+      "That is the shot they replay.",
+      "Smile, {foe}. The camera caught it."
     ],
     /* the first hold slides off */
     cleanse: [
@@ -293,198 +308,202 @@
     wolf: {
       open: ["The pack is already circling, {foe}."],
       kill: ["The pack is fast. You were slow.", "Run next time. It is more fun."],
-      taunt: ["Run. That is the good part.", "I can smell the fear from here."],
+      taunt: ["Run. That is the good part.", "I can smell the fear from here.", "You smell like a highlight reel. The losing kind."],
       die: ["The pack will tear you apart for this."]
     },
     shade: {
       open: ["You will not see the second one."],
       kill: ["You never saw the second one.", "I was behind you the whole time."],
-      taunt: ["I am already gone.", "Look left. Wrong."],
+      taunt: ["I am already gone.", "Look left. Wrong.", "Blink and the clip is already over."],
       die: ["How did you—"]
     },
     drain: {
       open: ["I will take the sentence you were about to say."],
       kill: ["Your name is unwritten.", "Struck out. Cleanly."],
-      taunt: ["Say your name. Watch it leave."],
+      taunt: ["Say your name. Watch it leave.", "Your line does not even scan."],
       die: ["I am... being edited."]
     },
     imp: {
       open: ["Little me! Big you! Watch this."],
       kill: ["Ha! Little me!", "Cheap trick. Works every time."],
-      taunt: ["Catch me, catch me!", "Too slow, too slow!"],
+      taunt: ["Catch me, catch me!", "Too slow, too slow!", "Big body, tiny ideas!"],
       die: ["Ow ow ow it was one job—"]
     },
     thief: {
       open: ["Nice coin. Mine now."],
       kill: ["Thanks for the coin.", "You will not need the other hand."],
-      taunt: ["I already have your better hand.", "Empty pockets, {foe}?"],
+      taunt: ["I already have your better hand.", "Empty pockets, {foe}?", "You brought a kit. I brought the punchline."],
       die: ["That was my coin—"]
     },
     wraith: {
       open: ["Come into the fog, {foe}. It is warm in here."],
       kill: ["Come then. The fog is patient.", "I do not stop. I drift."],
-      taunt: ["You cannot hit what is thin."],
+      taunt: ["You cannot hit what is thin.", "Swing at the fog. The crowd loves a miss."],
       die: ["Cold. It is so cold—"]
     },
     kairos: {
       open: ["I have seen this fight twice. You lose."],
       kill: ["I had this moment twice.", "Second time is a formality."],
-      taunt: ["You are a second behind. Always."],
+      taunt: ["You are a second behind. Always.", "I watched you lose this already."],
       die: ["Wrong time. Wrong time—"]
     },
     lock: {
       open: ["Count your ribs while you still can."],
       kill: ["Count the ribs.", "The first one was measured."],
-      taunt: ["The next one is the lung."],
+      taunt: ["The next one is the lung.", "Count slower. You are rushing the loss."],
       die: ["Not the fourth one. Not the—"]
     },
     srath: {
       open: ["Blade work. Not luck."],
       kill: ["That is craft, not luck.", "Sharp things solve arguments."],
-      taunt: ["Hold still. I am working."],
+      taunt: ["Hold still. I am working.", "Sloppy steel. I am embarrassed for you."],
       die: ["Bad angle. Bad, bad angle."]
     },
     gate: {
       open: ["I am the door. Try it again."],
       kill: ["You ran at the wall.", "Nothing gets through me."],
-      taunt: ["Come on then. Doors do not get tired."],
+      taunt: ["Come on then. Doors do not get tired.", "Knock louder. I am the whole wall."],
       die: ["The door... gave."]
     },
     vale: {
       open: ["Nothing gets past this shield."],
       kill: ["Nothing gets past me."],
-      taunt: ["Hit the shield. It is what it is for."],
+      taunt: ["Hit the shield. It is what it is for.", "Again. The plate is funnier than you."],
       die: ["Cover the line. Somebody cover—"]
     },
     sancora: {
       open: ["You should have brought a mender."],
       kill: ["You should have brought a mender.", "I put them back. That is the job."],
       saved: ["Mended. Now go be useful.", "Up you get. Wounds are my trade."],
+      taunt: ["You bleed like you skipped the lesson."],
       die: ["Who mends the mender..."]
     },
     heartboss: {
       open: ["Nothing leaves the crypt."],
       kill: ["Nothing leaves the crypt.", "Back to the dark with you."],
-      taunt: ["Beat. Beat. That is the sound of you leaving."],
+      taunt: ["Beat. Beat. That is the sound of you leaving.", "Your pulse is a countdown. I can hear it."],
       die: ["The heart... stops for a moment."]
     },
     lightfather: {
       open: ["Raise the standard. Hold the line."],
       kill: ["Raise the standard.", "The line holds. You do not."],
+      taunt: ["Stand in the light. It shows the cracks."],
       saved: ["Standard raised. Fight on.", "Nothing dies on my watch."],
       die: ["The standard... take the standard—"]
     },
     d9ra: {
       open: ["Rage is the whole trick."],
       kill: ["Rage. That is the whole trick."],
-      taunt: ["Louder! Make me angry!"],
+      taunt: ["Louder! Make me angry!", "That was a tap. I wanted a reason."],
       die: ["Rage out. Nothing left—"]
     },
     lion: {
       open: ["The lion remembers every name on this sand."],
       kill: ["The lion remembers.", "Your name joins the wall."],
+      taunt: ["Roar back. I like a loud meal."],
       die: ["The pride will avenge this."]
     },
     unnamer: {
       open: ["No name. No body. No matter."],
       kill: ["No name. No body. No matter."],
-      taunt: ["What were you called again?"],
+      taunt: ["What were you called again?", "A name that small is already gone."],
       die: ["I forget... my own—"]
     },
     justicae: {
       open: ["Sentence carried out. Yours is written."],
       kill: ["Sentence carried out.", "The verdict was never in doubt."],
+      taunt: ["The verdict is in. You will not like the reading."],
       die: ["Appeal... denied."]
     },
     tithe: {
       open: ["Your tithe is due."],
       kill: ["Your tithe is paid.", "Payment collected in full."],
-      taunt: ["Pay up. Then lie down."],
+      taunt: ["Pay up. Then lie down.", "You are short. The sand collects interest."],
       die: ["Nothing... left to take."]
     },
     nia: {
       open: ["You are already in my line, {foe}."],
       kill: ["Range is a strategy.", "Distance is a weapon."],
-      taunt: ["You are in my line. That is your mistake."],
+      taunt: ["You are in my line. That is your mistake.", "Keep running. The arrow is patient."],
       die: ["They closed the distance..."]
     },
     brute: {
       open: ["Small ones first, then you."],
       kill: ["Pound. Simple.", "Heavier wins. Always has."],
-      taunt: ["Stand still. Easier for both of us."],
+      taunt: ["Stand still. Easier for both of us.", "You are a dent waiting on a fist."],
       die: ["The floor came up at me."]
     },
     bear: {
       open: ["This is my ground, {foe}."],
       kill: ["Go back to sleep.", "Mauled. That is the word."],
-      taunt: ["Come into the reach. I dare you.", "Wide arms. Bad idea."],
+      taunt: ["Come into the reach. I dare you.", "Wide arms. Bad idea.", "Hibernate. It will hurt less."],
       die: ["Bears do not fall. They settle."]
     },
     kael: {
       open: ["The blade goes first, {foe}."],
       kill: ["Measured. Finished.", "The gallant cut. That was it."],
-      taunt: ["Stand still and be measured.", "Your guard is a suggestion."],
+      taunt: ["Stand still and be measured.", "Your guard is a suggestion.", "Gallant work. Yours is a sketch."],
       die: ["The blade... stays in the line."]
     },
     orin: {
       open: ["The first draught is the loud one."],
       kill: ["Unwritten. As promised.", "The sigil closes. So do you."],
-      taunt: ["Drink nothing I hand you.", "I have already changed the ending."],
+      taunt: ["Drink nothing I hand you.", "I have already changed the ending.", "Your name smudges. Mine does not."],
       die: ["The ink ran out before I did."]
     },
     lyra: {
       open: ["Hold the note, {foe}. I will take the rest."],
       kill: ["That was the chorus.", "The song ends on you."],
       saved: ["Stay in the harmony.", "I have the note. You have the feet."],
-      taunt: ["You are flat. I am not."],
+      taunt: ["You are flat. I am not.", "Sing along. You will not hit the note."],
       die: ["The last note... was yours."]
     },
     arkos: {
       open: ["The line is the weapon."],
       kill: ["Step where I stepped. Then fall.", "The lattice takes the angle."],
-      taunt: ["You are off the line.", "Lances do not miss twice."],
+      taunt: ["You are off the line.", "Lances do not miss twice.", "Geometry called. You failed it."],
       die: ["Hold the formation without me."]
     },
     seidon: {
       open: ["The water decides, {foe}. Not you."],
       kill: ["The current takes the rest.", "Under. Stay under."],
-      taunt: ["You are already downstream.", "Fight the tide. See how that goes."],
+      taunt: ["You are already downstream.", "Fight the tide. See how that goes.", "Wet feet, dry plan. Classic."],
       die: ["The tide... goes out."]
     },
     crown: {
       open: ["Kneel, or fall. Same ending."],
       kill: ["The crown does not miss.", "Down. The court is adjourned."],
-      taunt: ["You do not look up at me. You should."],
+      taunt: ["You do not look up at me. You should.", "Kneel is the polite version."],
       die: ["The crown... rolls."]
     },
     smith: {
       open: ["Hot metal. Hold still."],
       kill: ["Quenched.", "Struck on the anvil. Done."],
-      taunt: ["I only need one clean hit.", "Stand in the heat."],
+      taunt: ["I only need one clean hit.", "Stand in the heat.", "You are soft metal. I can tell."],
       die: ["The forge goes cold."]
     },
     hurler: {
       open: ["Catch. Or do not. I have more."],
       kill: ["Lobbed. Your problem, then not.", "Caught it with your face."],
-      taunt: ["Eyes up. Always eyes up.", "I do not need to be near you."],
+      taunt: ["Eyes up. Always eyes up.", "I do not need to be near you.", "Catch. No? The crowd caught it."],
       die: ["Dropped... the last one."]
     },
     levi: {
       open: ["The deep does not negotiate."],
       kill: ["Pulled under.", "The deep keeps what it takes."],
-      taunt: ["Come closer to the water.", "You are small from down here."],
+      taunt: ["Come closer to the water.", "You are small from down here.", "The deep does not do small talk."],
       die: ["Even the deep... has a floor."]
     },
     elephant: {
       open: ["The ground remembers my weight, {foe}."],
       kill: ["Trampled. That is the whole story.", "The tusk finds the end."],
-      taunt: ["Move, or be the road.", "I do not step aside."],
+      taunt: ["Move, or be the road.", "I do not step aside.", "You are in the way of the show."],
       die: ["The herd... will feel this."]
     },
     scorpion: {
       open: ["The tail is the argument."],
       kill: ["Venom. Then quiet.", "The barb lands. You do not."],
-      taunt: ["Watch the tail, not the claws.", "One prick. That is the plan."],
+      taunt: ["Watch the tail, not the claws.", "One prick. That is the plan.", "Pretty armor. It will not help."],
       die: ["The sting... turns inward."]
     },
     wraithlike: {}
@@ -557,7 +576,10 @@
       "That is {n} for {killer}! {victim} is the latest name!",
       "{victim} is out! {killer} did it with {move} and kept walking!",
       "Listen to that — {move}, and {victim} is a line in the recap!",
-      "{killer} is hunting! {n} down, and {victim} was not the hard part!"
+      "{killer} is hunting! {n} down, and {victim} was not the hard part!",
+      "OH! {killer} just ended {victim} and the house is on its feet!",
+      "Replay that! {move} from {killer}, and {victim} is a still frame!",
+      "The booth called it and {killer} delivered — {victim} is done!"
     ],
     edge: [
       "{victim} is on the edge! One clean hit and we are reading the recap!",

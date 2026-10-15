@@ -221,7 +221,7 @@
       x: e.x, y: e.y - 10,
       x2: x2 == null ? e.x : x2, y2: y2 == null ? e.y : y2,
       a: Math.atan2((y2 == null ? e.y : y2) - e.y, (x2 == null ? e.x : x2) - e.x),
-      life: 0.38, max: 0.38,
+      life: 0.46, max: 0.46,
       col: (e.b && e.b.color) || "#e8eef5",
       salt: saltOf(e.b && e.b.id) % 5
     });
@@ -246,31 +246,93 @@
      Drawn on the target, Gate's slam played on somebody else while he twitched. */
   const AT_TARGET = { blast: 1, heal: 1, bloom: 1, rain: 1, crown: 1, stone: 1, flask: 1, fire: 1, heart: 1 };
 
+  /* A soft halo under a hard core. The halo is what reads on a broadcast. */
+  function halo(ctx, draw) {
+    ctx.save();
+    ctx.globalAlpha *= 0.34;
+    ctx.lineWidth = (ctx.lineWidth || 3) + 7;
+    ctx.shadowColor = ctx.strokeStyle;
+    ctx.shadowBlur = 14;
+    draw();
+    ctx.restore();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = ctx.strokeStyle;
+    draw();
+    ctx.shadowBlur = 0;
+  }
   function arc(ctx, p, wide) {
-    const reach = 18 + p * 16;
+    const reach = 22 + p * 26;
+    const sweep = () => {
+      ctx.beginPath();
+      ctx.arc(0, 0, reach, -wide, wide);
+      ctx.stroke();
+    };
+    halo(ctx, sweep);
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha *= 0.85;
     ctx.beginPath();
-    ctx.arc(0, 0, reach, -wide, wide);
+    ctx.arc(0, 0, reach * 0.62, -wide * 0.7, wide * 0.7);
     ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const a = -wide + (i / 5) * wide * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * reach, Math.sin(a) * reach, 1.7, 0, 6.2832);
+      ctx.fill();
+    }
   }
   function rings(ctx, p, n) {
     for (let i = 0; i < n; i++) {
+      const rad = 8 + p * (20 + i * 16);
+      const ring = () => {
+        ctx.beginPath();
+        ctx.arc(0, 0, rad, 0, 6.2832);
+        ctx.stroke();
+      };
+      halo(ctx, ring);
+    }
+  }
+  function motes(ctx, p, n, spread) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 6.2832 + p * 2.4;
+      const r = spread * (0.25 + p);
       ctx.beginPath();
-      ctx.arc(0, 0, 8 + p * (18 + i * 14), 0, 6.2832);
-      ctx.stroke();
+      ctx.arc(Math.cos(a) * r, Math.sin(a) * r - p * 6, 1.5 + (1 - p) * 1.4, 0, 6.2832);
+      ctx.fill();
     }
   }
   function jaws(ctx, p) {
     const open = 0.5 + Math.sin(p * Math.PI) * 0.55;
+    const tooth = (sign) => {
+      ctx.beginPath();
+      ctx.moveTo(2, 0);
+      ctx.lineTo(24, sign * 11 * open);
+      ctx.lineTo(15, sign * 2);
+      ctx.closePath();
+    };
+    ctx.save();
+    ctx.globalAlpha *= 0.4;
+    ctx.lineWidth = 7;
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 14;
+    tooth(-1); ctx.stroke();
+    tooth(1); ctx.stroke();
+    ctx.restore();
+    tooth(-1); ctx.fill();
+    tooth(1); ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(4, 0); ctx.lineTo(22, -10 * open); ctx.lineTo(16, 0); ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(4, 0); ctx.lineTo(22, 10 * open); ctx.lineTo(16, 0); ctx.closePath(); ctx.fill();
+    ctx.arc(22, 0, 2.2, 0, 6.2832);
+    ctx.fill();
   }
   function tusks(ctx, p) {
     const reach = 16 + p * 20;
+    const horns = () => {
+      ctx.beginPath(); ctx.moveTo(2, -4); ctx.quadraticCurveTo(reach * 0.6, -16, reach, -2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, 4); ctx.quadraticCurveTo(reach * 0.6, 16, reach, 2); ctx.stroke();
+    };
     ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(2, -4); ctx.quadraticCurveTo(reach * 0.6, -16, reach, -2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(2, 4); ctx.quadraticCurveTo(reach * 0.6, 16, reach, 2); ctx.stroke();
+    halo(ctx, horns);
+    ctx.beginPath(); ctx.arc(reach, -2, 2.2, 0, 6.2832); ctx.fill();
+    ctx.beginPath(); ctx.arc(reach, 2, 2.2, 0, 6.2832); ctx.fill();
   }
   function cracks(ctx, p) {
     ctx.lineWidth = 2;
@@ -289,83 +351,193 @@
     ctx.save();
     if (AT_TARGET[v]) ctx.translate(s.x2, s.y2);
     else { ctx.translate(s.x, s.y); ctx.rotate(s.a || 0); }
-    ctx.globalAlpha = Math.max(0.05, (1 - p) * 0.95);
+    const ground = v === "trample" || v === "stomp" || v === "quake";
+    if (ground) {
+      ctx.restore();
+      ctx.save();
+      ctx.translate(s.x, s.y + 6);
+    }
+    ctx.globalAlpha = Math.max(0.08, (1 - p) * 0.98);
     ctx.strokeStyle = s.col;
     ctx.fillStyle = s.col;
     ctx.lineWidth = 3;
-    if (v === "bite" || v === "lunge") jaws(ctx, p);
+    if (ground) {
+      ctx.save();
+      ctx.globalAlpha *= 0.45;
+      ctx.scale(1, 0.42);
+      rings(ctx, p, v === "trample" ? 3 : 2);
+      ctx.restore();
+      cracks(ctx, p);
+      motes(ctx, p, 8, 28);
+    }
+    else if (v === "bite" || v === "lunge") jaws(ctx, p);
     else if (v === "tusk") tusks(ctx, p);
     else if (v === "clamp" || v === "barb") {
       const gap = 12 * (1 - Math.sin(p * Math.PI));
-      ctx.strokeRect(-4, -14 - gap, 16, 6);
-      ctx.strokeRect(-4, 8 + gap, 16, 6);
-      if (v === "barb") { ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(34, -3 + p * 6); ctx.stroke(); }
+      const claws = () => {
+        ctx.strokeRect(-4, -14 - gap, 18, 6);
+        ctx.strokeRect(-4, 8 + gap, 18, 6);
+      };
+      ctx.lineWidth = 3;
+      halo(ctx, claws);
+      if (v === "barb") {
+        const tail = () => { ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(36, -4 + p * 8); ctx.stroke(); };
+        halo(ctx, tail);
+      }
+      motes(ctx, p, 5, 20);
     }
-    else if (v === "trample") { rings(ctx, p, 3); cracks(ctx, p); }
-    else if (v === "stomp" || v === "quake") { rings(ctx, p, 2); cracks(ctx, p); }
-    else if (v === "cleave") arc(ctx, p, 1.35);
+    else if (v === "cleave") { arc(ctx, p, 1.35); motes(ctx, p, 5, 26); }
     else if (v === "slash" || v === "claw") {
       arc(ctx, p, v === "claw" ? 0.7 : 0.95);
       if (v === "claw") { ctx.beginPath(); ctx.moveTo(8, -6); ctx.lineTo(24, -12); ctx.moveTo(8, 0); ctx.lineTo(26, 0); ctx.moveTo(8, 6); ctx.lineTo(24, 12); ctx.stroke(); }
+      motes(ctx, p, 4, 20);
     }
     else if (v === "thrust" || v === "beam") {
-      ctx.lineWidth = v === "beam" ? 5 : 3;
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(28 + p * 36, 0); ctx.stroke();
+      const len = 34 + p * 48;
+      const shaft = () => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke(); };
+      ctx.lineWidth = v === "beam" ? 6 : 3;
+      halo(ctx, shaft);
+      ctx.beginPath(); ctx.arc(len, 0, v === "beam" ? 5 : 3, 0, 6.2832); ctx.fill();
     }
-    else if (v === "fist" || v === "rage") { rings(ctx, p, v === "rage" ? 2 : 1); }
-    else if (v === "ward" || v === "seal" || v === "howl" || v === "clock") rings(ctx, p, v === "howl" ? 3 : 2);
+    else if (v === "fist" || v === "rage") {
+      rings(ctx, p, v === "rage" ? 3 : 2);
+      motes(ctx, p, v === "rage" ? 8 : 5, 22);
+    }
+    else if (v === "ward" || v === "seal" || v === "howl" || v === "clock") {
+      rings(ctx, p, v === "howl" ? 3 : 2);
+      ctx.save();
+      ctx.rotate(p * 1.4);
+      ctx.strokeRect(-8, -8, 16, 16);
+      ctx.restore();
+      motes(ctx, p, 6, 24);
+    }
     else if (v === "heal" || v === "bloom" || v === "heart") {
       rings(ctx, p, 2);
-      ctx.globalAlpha *= 0.8;
-      ctx.beginPath(); ctx.arc(-6, -4 - p * 10, 3, 0, 6.2832); ctx.arc(7, -8 - p * 8, 2.4, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha *= 0.9;
+      for (let i = 0; i < 6; i++) {
+        const a = i * 1.05 + s.salt;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 10, -6 - p * (12 + i * 3), 2.2, 0, 6.2832);
+        ctx.fill();
+      }
     }
     else if (v === "rain" || v === "crown") {
-      for (let i = -2; i <= 2; i++) {
-        ctx.beginPath(); ctx.moveTo(i * 8, -18); ctx.lineTo(i * 8 + 2, 10 + p * 8); ctx.stroke();
+      for (let i = -3; i <= 3; i++) {
+        const x = i * 8;
+        const y0 = -30 + ((i + 3) % 2) * 6;
+        const y1 = -2 + p * 20;
+        ctx.save();
+        ctx.globalAlpha *= 0.9;
+        ctx.lineWidth = v === "crown" ? 2.5 : 1.6;
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x + (v === "rain" ? 2 : 0), y1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y1, 2, 0, 6.2832);
+        ctx.fill();
+        ctx.restore();
       }
+      if (v === "crown") {
+        ctx.beginPath();
+        ctx.arc(0, -16, 11, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.stroke();
+      }
+      motes(ctx, p, 5, 18);
     }
     else if (v === "stone") {
-      ctx.strokeRect(-7, -18 + p * 20, 14, 14);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-8, -22 + p * 24, 16, 16);
+      cracks(ctx, p);
     }
     else if (v === "flask" || v === "fire") {
-      for (let i = 0; i < 5; i++) {
-        const a = i * 1.25 + s.salt;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * (8 + p * 16), Math.sin(a) * (6 + p * 12) - p * 8, 3, 0, 6.2832); ctx.fill();
+      for (let i = 0; i < 8; i++) {
+        const a = i * 0.78 + s.salt;
+        const rise = p * (10 + (i % 3) * 6);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * (6 + p * 18), Math.sin(a) * (5 + p * 12) - rise, 2.4 + (i % 2), 0, 6.2832);
+        ctx.fill();
       }
+      rings(ctx, p, 1);
     }
     else if (v === "tide" || v === "deep") {
-      ctx.beginPath();
-      ctx.moveTo(-20, 4);
-      ctx.quadraticCurveTo(-8, -10 - p * 8, 0, 2);
-      ctx.quadraticCurveTo(10, 12 + p * 6, 22, 0);
-      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const wave = () => {
+          ctx.beginPath();
+          ctx.moveTo(-26, 6 + i * 5);
+          ctx.quadraticCurveTo(-8, -12 - p * 10 - i * 3, 4, 4);
+          ctx.quadraticCurveTo(14, 14 + p * 8, 28, 2);
+          ctx.stroke();
+        };
+        halo(ctx, wave);
+      }
     }
     else if (v === "drain" || v === "unname") {
-      ctx.beginPath(); ctx.arc(0, 0, 16 - p * 10, p * 4, p * 4 + 4); ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 18 - p * 12 - i * 4, p * 5 + i, p * 5 + i + 3.4);
+        ctx.stroke();
+      }
+      motes(ctx, p, 5, 14);
     }
     else if (v === "veil") {
-      ctx.globalAlpha *= 0.7;
-      ctx.beginPath(); ctx.arc(-10 * p, -6, 10, 0, 6.2832); ctx.stroke();
-      ctx.beginPath(); ctx.arc(8 * p, 2, 8, 0, 6.2832); ctx.stroke();
+      ctx.globalAlpha *= 0.75;
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc((i - 1) * 12 * p, -4 + i * 3, 12 - i * 2, 0, 6.2832);
+        ctx.stroke();
+      }
     }
-    else if (v === "summon") { rings(ctx, p, 2); }
+    else if (v === "summon") { rings(ctx, p, 3); motes(ctx, p, 8, 20); }
     else if (v === "note") {
-      ctx.beginPath(); ctx.ellipse(10, -4, 5, 4, -0.5, 0, 6.2832); ctx.fill();
-      ctx.fillRect(14, -18, 2, 14);
+      for (let i = 0; i < 3; i++) {
+        const y = -4 - i * 8 - p * 6;
+        ctx.beginPath(); ctx.ellipse(8 + i * 4, y, 5, 3.5, -0.5, 0, 6.2832); ctx.fill();
+        ctx.fillRect(12 + i * 4, y - 12, 2, 12);
+      }
     }
-    else if (v === "blast") rings(ctx, p, 2);
+    else if (v === "blast") { rings(ctx, p, 3); motes(ctx, p, 10, 30); cracks(ctx, p); }
     else if (v === "shard") {
+      ctx.save();
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.moveTo(4, 0); ctx.lineTo(20 + p * 12, -5); ctx.lineTo(14, 0); ctx.lineTo(20 + p * 12, 5); ctx.closePath();
+      ctx.moveTo(0, 0); ctx.lineTo(28 + p * 18, -8); ctx.lineTo(14, 0); ctx.lineTo(28 + p * 18, 8); ctx.closePath();
       ctx.fill();
+      ctx.globalAlpha *= 0.55;
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(20 + p * 12, -4); ctx.lineTo(10, 0); ctx.lineTo(20 + p * 12, 4); ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
     else if (v === "sigil") {
-      ctx.strokeRect(-7, -7, 14, 14);
-      ctx.beginPath(); ctx.moveTo(-7, 0); ctx.lineTo(7, 0); ctx.moveTo(0, -7); ctx.lineTo(0, 7); ctx.stroke();
+      ctx.save();
+      ctx.rotate(p * 0.8);
+      const mark = () => {
+        ctx.strokeRect(-10, -10, 20, 20);
+        ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+      };
+      halo(ctx, mark);
+      ctx.restore();
+      motes(ctx, p, 6, 18);
     }
     else if (v === "charge") {
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(16 + p * 30, 0); ctx.stroke();
+      const dash = () => {
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.lineTo(22 + p * 46, 0);
+        ctx.stroke();
+      };
+      ctx.lineWidth = 4;
+      halo(ctx, dash);
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-6 - i * 8, -5 + i);
+        ctx.lineTo(8 + p * 20 - i * 6, 0);
+        ctx.stroke();
+      }
     }
     /* A gun's basic already flies as a shot. The flourish at the hand was a sword arc. */
     else if (v === "arrow" || v === "needle" || v === "hour" || v === "wisp" || v === "forge" || v === "lock") {
@@ -388,10 +560,15 @@
     ctx.strokeStyle = p.col || "#fbbf24";
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.95;
+    ctx.shadowColor = p.col || "#fbbf24";
+    ctx.shadowBlur = 10;
     const v = p.vis || "shard";
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-4, 0); ctx.stroke();
+    ctx.globalAlpha = 0.95;
     if (v === "arrow" || v === "needle" || v === "rain") {
-      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-9, 0); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(3, 4); ctx.lineTo(3, -4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-11, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(4, 4); ctx.lineTo(4, -4); ctx.fill();
     } else if (v === "note") {
       ctx.beginPath(); ctx.ellipse(0, 0, 6, 4, -0.4, 0, 6.2832); ctx.fill();
       ctx.fillRect(5, -12, 2, 12);

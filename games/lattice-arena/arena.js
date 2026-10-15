@@ -435,7 +435,7 @@
     const text = BANTER.line(kind, who.b, foe && foe.b, picker(S.talkSeq * 31 + 7));
     if (!text) return;
     S.lastTalk = S.time;
-    S.bubbles.push({ who: who, text: text, life: 3.6, col: who.b.color || "#fbbf24" });
+    S.bubbles.push({ who: who, text: text, life: 4.4, col: who.b.color || "#fbbf24" });
     S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: false, who: who.b.id, whoName: who.b.name,
       foeName: (foe && foe.b && foe.b.name) || "", text: text, t: S.time, hot: !!hot,
       prio: PRIO_BODY[kind] != null ? PRIO_BODY[kind] : 3 });
@@ -719,12 +719,15 @@
     S.hitStop = 0.1;
     S.shake = Math.max(S.shake, 0.34);
     S.marks.push({ x: e.x, y: e.y, r: 0, life: 0.8, col: "#f87171" });
+    S.marks.push({ x: e.x, y: e.y + 4, r: 12, life: 0.55, col: "#fbbf24", ring: true });
+    S.marks.push({ x: e.x, y: e.y - 6, r: 0, life: 0.42, col: "#fff7ed", spark: true });
     S.texts.push({ x: e.x, y: e.y - 30, t: "DOWN", life: 1.2, col: "#f87171", big: true });
     checkOver();
     if (S.over) {
       S.hitStop = 0.42;
       S.shake = Math.max(S.shake, 0.72);
       S.texts.push({ x: e.x, y: e.y - 100, t: "FINISH", life: 1.7, col: "#fbbf24", big: true });
+      S.marks.push({ x: e.x, y: e.y, r: 18, life: 0.95, col: "#fbbf24", ring: true });
     }
     /* Draw-only. The death cam reads this. It does not change the hit. */
     S.camSpot = { x: e.x, y: e.y - 8, hold: S.over ? 1.7 : 1.15 };
@@ -1630,7 +1633,9 @@
         });
       }
       if (b.atk.burn) applySt(t, { burn: [b.atk.burn, 3] }, e);
-      S.marks.push({ x: t.x, y: t.y - 8, r: 0, life: 0.18, col: e.b.color, spark: true });
+      S.marks.push({ x: t.x, y: t.y - 8, r: 0, life: 0.28, col: e.b.color, spark: true });
+      S.marks.push({ x: t.x, y: t.y + 2, r: 8, life: 0.22, col: e.b.color, ring: true });
+      S.marks.push({ x: t.x, y: t.y + 6, r: 10, life: 0.28, col: e.b.color, dust: true });
     } else {
       const aim = shotAt(e, t, 420);
       faceTo(e, aim.x, aim.y);
@@ -1840,7 +1845,7 @@
         pushTalk("taunt", tk, en.length ? en.reduce((p, o) => (dist2(tk.x, tk.y, o.x, o.y) < dist2(tk.x, tk.y, p.x, p.y) ? o : p)) : null, false);
       }
     }
-    S.marks.forEach((m) => { m.life -= dt; if (m.ring) m.r += 90 * dt; });
+    S.marks.forEach((m) => { m.life -= dt; if (m.ring) m.r += 90 * dt; else if (m.dust) m.r += 46 * dt; });
     S.marks = S.marks.filter((m) => m.life > 0);
     S.swings.forEach((s) => { s.life -= dt; });
     S.swings = S.swings.filter((s) => s.life > 0);
@@ -2213,8 +2218,47 @@
       ctx.strokeStyle = m.col || "#5eead4";
       ctx.globalAlpha = Math.max(0, m.life * 2.2);
       ctx.lineWidth = m.beam ? 6 : 3;
-      if (m.beam) { ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x2, m.y2); ctx.stroke(); }
-      else if (m.ring) { ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.283); ctx.stroke(); }
+      ctx.shadowColor = m.col || "#5eead4";
+      ctx.shadowBlur = m.spark ? 12 : 8;
+      if (m.beam) {
+        ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x2, m.y2); ctx.stroke();
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      else if (m.ring) {
+        ctx.beginPath(); ctx.arc(m.x, m.y, Math.max(4, m.r), 0, 6.283); ctx.stroke();
+        ctx.globalAlpha *= 0.45;
+        ctx.beginPath(); ctx.arc(m.x, m.y, Math.max(2, m.r * 0.55), 0, 6.283); ctx.stroke();
+      }
+      else if (m.dust) {
+        ctx.fillStyle = m.col || "#e8eef5";
+        ctx.save();
+        ctx.translate(m.x, m.y);
+        ctx.scale(1, 0.36);
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(6, m.r), 0, 6.283); ctx.stroke();
+        ctx.restore();
+        ctx.globalAlpha *= 0.7;
+        for (let i = 0; i < 5; i++) {
+          const a = i * 1.256 + m.life * 3;
+          ctx.beginPath();
+          ctx.arc(m.x + Math.cos(a) * m.r * 0.7, m.y + Math.sin(a) * m.r * 0.22, 1.6, 0, 6.283);
+          ctx.fill();
+        }
+      }
+      else if (m.spark) {
+        ctx.fillStyle = m.col || "#fff";
+        ctx.strokeStyle = m.col || "#fff";
+        const n = 6;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * 6.283 + m.life;
+          const len = 7 + (1 - m.life) * 10;
+          ctx.beginPath();
+          ctx.moveTo(m.x, m.y);
+          ctx.lineTo(m.x + Math.cos(a) * len, m.y + Math.sin(a) * len);
+          ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(m.x, m.y, 3, 0, 6.283); ctx.fill();
+      }
       else {
         ctx.fillStyle = m.col || "#fff";
         ctx.beginPath(); ctx.arc(m.x, m.y, 6 + (1 - m.life) * 12, 0, 6.283); ctx.fill();
@@ -2299,16 +2343,17 @@
       if (!e) return;
       const x = e.x;
       let y = e.y - 34;
+      const name = (e.b && e.b.name) ? String(e.b.name).slice(0, 16) : "";
       const words = String(b.text).split(" ");
       const lines = [];
       let cur = "";
       words.forEach((wd) => {
-        if ((cur + " " + wd).trim().length > 30 && cur) { lines.push(cur); cur = wd; }
+        if ((cur + " " + wd).trim().length > 28 && cur) { lines.push(cur); cur = wd; }
         else cur = (cur ? cur + " " : "") + wd;
       });
       if (cur) lines.push(cur);
-      const long = lines.reduce((p, l) => Math.max(p, l.length), 0);
-      const w = long * 6.1 + 16, h = lines.length * 12 + 11;
+      const long = lines.reduce((p, l) => Math.max(p, l.length), name.length);
+      const w = long * 7.1 + 18, h = lines.length * 15 + 22;
       for (let tries = 0; tries < 8; tries++) {
         const bx = { l: x - w / 2, r: x + w / 2, t: y - h - 8, b: y };
         if (!up.some((o) => bx.l < o.r + 4 && bx.r > o.l - 4 && bx.t < o.b + 4 && bx.b > o.t - 4)) break;
@@ -2325,10 +2370,13 @@
       ctx.moveTo(x - 5, y - 8); ctx.lineTo(x + 5, y - 8); ctx.lineTo(x, y); ctx.lineTo(x - 5, y - 8);
       ctx.fillStyle = "rgba(3,7,18,0.88)";
       ctx.fill();
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "11px ui-monospace, monospace";
       ctx.textAlign = "center";
-      lines.forEach((l, i) => ctx.fillText(l, x, y - h + 3 + i * 12));
+      ctx.fillStyle = b.col || "#fbbf24";
+      ctx.font = "700 11px 'IBM Plex Mono', monospace";
+      ctx.fillText(name, x, y - h + 12);
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "13px ui-sans-serif, sans-serif";
+      lines.forEach((l, i) => ctx.fillText(l, x, y - h + 28 + i * 15));
       ctx.globalAlpha = 1;
     });
     /* the speech bubbles ride the heads that said them */
@@ -2339,16 +2387,16 @@
       ctx.save();
       ctx.globalAlpha = clamp(t.life * 1.6, 0, 1);
       const fin = t.t === "FINISH";
-      ctx.font = (fin ? "800 22px " : t.big ? "800 15px " : "700 12px ") + "'IBM Plex Mono', monospace";
+      ctx.font = (fin ? "800 26px " : t.big ? "800 18px " : "700 15px ") + "'IBM Plex Mono', monospace";
       /* A kill banner and the dying body's last words hang off the same body, so the two
          used to print on top of each other. The banner sits in its own lane above the
          bubble and gets a plate: either line on its own stays readable. */
       if (fin) {
         const bw = ctx.measureText(t.t).width + 20;
         ctx.fillStyle = "rgba(3,7,18,0.84)";
-        ctx.fillRect(t.x - bw / 2, t.y - 20, bw, 26);
+        ctx.fillRect(t.x - bw / 2, t.y - 24, bw, 32);
         ctx.strokeStyle = "rgba(251,191,36,0.6)"; ctx.lineWidth = 1;
-        ctx.strokeRect(t.x - bw / 2, t.y - 20, bw, 26);
+        ctx.strokeRect(t.x - bw / 2, t.y - 24, bw, 32);
       }
       ctx.fillStyle = "#000"; ctx.fillText(t.t, t.x + 1, t.y + 1);
       ctx.fillStyle = t.col; ctx.fillText(t.t, t.x, t.y);
