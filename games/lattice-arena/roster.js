@@ -101,6 +101,10 @@
     unmake:    { name: "Unmake",         text: "Silence a name mid-sentence and hold it there while it burns.", cd: 13, range: 2.2, aim: "weakest", shape: "melee", dmg: 1.55, fx: "hit_halo", st: { silence: 4, burn: [7, 5], root: 1.1, wound: [0.45, 5] } },
     gateslam:  { name: "Gate Slam",      text: "The gate answers. Nothing near it keeps its footing.",  cd: 11, range: 0, aim: "self", shape: "aura", dmg: 1.5, radius: 3.6, fx: "nova", st: { stun: 1.0, knock: 2.2 } },
     wardfield: { name: "Ward Field",     text: "The crypt closes its ward around the gate.",             cd: 16, range: 0, aim: "self", shape: "self", st: { aegis: 0.4, thorns: [0.4, 6] } },
+    /* The Heart is the biggest body in the roster, so the shared plate scaled into the
+       biggest shield in the game: 0.4 of 1320 is 528, and at 68% absorption that is still a
+       full fight worth of nullification every sixteen seconds. He gets his own, smaller. */
+    cryptward: { name: "Crypt Ward",     text: "The beat puts a ward on everything that shares its blood.", cd: 18, range: 0, aim: "self", shape: "self", st: { aegis: 0.22, thorns: [0.25, 5] } },
     gateward:  { name: "Gate Ward",      text: "The door sets a ward. It is a pause, not a second life.", cd: 18, range: 0, aim: "self", shape: "self", st: { aegis: 0.16, thorns: [0.2, 5] } },
     callwards: { name: "Call the Wards", text: "Two wardens step out of the dark.",                     cd: 22, range: 0, aim: "self", shape: "summon", n: 2, token: "ward" },
     regalvolley:{ name: "Regal Volley",  text: "A crown's three shells, lobbed wide.",                   cd: 10, range: 10, aim: "clump", shape: "multi", n: 3, dmg: 0.9, lob: true, radius: 1.4, w: "comet", fx: "nova" },
@@ -222,7 +226,7 @@
   add({ id: "seidon", name: "Seidon", tag: "Tide Seer", cls: "champ", spr: { sheet: "heroes", key: "hero_seidon" }, portrait: "p-seidon.jpg", color: "#22d3ee",
     bio: "Depth and current. Gates listen to him because the lattice learned to drink.",
     style: "controller", tune: { band: 0.98, strafe: 0.9, commit: 1.0, retreat: 0.18 }, temper: "Waits for them to stand together, then takes the whole group.",
-    hp: 690, dmg: 30, rate: 0.80, speed: 3.5, armor: 4, range: 8.0, mana: 120, manaRegen: 10, crit: 0.15, cdMul: 0.78,
+    hp: 725, dmg: 30, rate: 0.80, speed: 3.5, armor: 5, range: 8.0, mana: 120, manaRegen: 10, crit: 0.15, cdMul: 0.78,
     atk: { name: "Tide Bolt", type: "bolt", w: "halo", nova: 1.1 },
     moves: ["undertow", "current", "geodesic"], cards: ["standard", "manaflow", "warded"],
     counter: "Drags a team out of position. Wants a crowd, does badly alone." });
@@ -256,7 +260,7 @@
   add({ id: "brute", name: "Brute", tag: "Crypt Fodder", cls: "beast", spr: { sheet: "creatures", key: "foe_brute" }, color: "#94a3b8",
     bio: "Slow, wide and certain. It walks the shortest path to whatever it was told to want.",
     style: "bulwark", tune: { band: 0.9, leash: 55, commit: 2.4, strafe: 0.05 }, temper: "Picks a doorway and becomes one.",
-    hp: 760, dmg: 34, rate: 0.66, speed: 2.0, armor: 5, range: 1.5, mana: 40, manaRegen: 3, crit: 0.08, cdMul: 0.92,
+    hp: 805, dmg: 34, rate: 0.66, speed: 2.0, armor: 6, range: 1.5, mana: 40, manaRegen: 3, crit: 0.08, cdMul: 0.92,
     atk: { name: "Heavy Sweep", type: "melee", w: "shard", splash: 1.5 },
     moves: ["pound", "wardfield"], cards: ["iron", "giant", "thorns"],
     counter: "Soaks a lane. Outrun and outranged by nearly everyone." });
@@ -330,7 +334,7 @@
     style: "vanguard", tune: { band: 0.95, leash: 95, commit: 1.6, strafe: 0.2, retreat: 0.1 }, temper: "Mends its own in the middle of the brawl.",
     hp: 1320, dmg: 38, rate: 0.68, speed: 2.0, armor: 7, range: 1.8, mana: 90, manaRegen: 7, crit: 0.09, cdMul: 0.92, boss: true,
     atk: { name: "Heart Strike", type: "melee", w: "shard", splash: 1.6 },
-    moves: ["heartbeat", "wardfield"], cards: ["giant", "regen", "vampiric"],
+    moves: ["heartbeat", "cryptward"], cards: ["giant", "regen", "vampiric"],
     counter: "Heals its own team while it fights. Kill it first or not at all." });
 
   add({ id: "levi", name: "Leviathan", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_levi" }, color: "#22d3ee",

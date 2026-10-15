@@ -640,17 +640,27 @@
     }
     if (opts.strips && tgt.shd > 0) { dmg *= 2; tgt.shd = 0; }
     if (tgt.shd > 0) {
-      const absorbed = Math.min(tgt.shd, dmg);
+      /* A ward is a pause, not a second life -- and it has to READ like one. It used to
+         swallow blows whole: a 300 point plate on a tank ate six to fifteen basics and not
+         one point landed, which is the unkillable wall that got reported. A ward now takes
+         a SHARE of every blow and lets the rest through, so a fight against a warded body
+         is a fight and not a wall. The pool is spent at the same rate per point, so the
+         total protection is unchanged: only the number of blows it is spread across goes
+         up, and every one of those blows leaves a mark the spectator can see. */
+      const incoming = dmg;
+      const absorbed = Math.min(tgt.shd, incoming * WARD_SHARE);
       tgt.shd -= absorbed;
       dmg -= absorbed;
-      /* A ward that swallows the entire blow is a result, and a result nobody can read
-         is an attack that looks like it passed through the body. */
-      if (dmg < 0.5 && !opts.dot) {
+      if (S.tele) { S.tele.warded += absorbed; if (dmg > 0) S.tele.chipped += dmg; }
+      tgt.wardAbs = (tgt.wardAbs || 0) + absorbed;
+      /* The word goes up when the ward took most of a blow. A label on every chip of the
+         plate would be noise, and a label on none of them was the other complaint. */
+      if (absorbed >= incoming * 0.45 && !opts.dot) {
         S.texts.push({ x: tgt.x, y: tgt.y - 26, t: "ward", life: 0.5, col: "#7dd3fc" });
         if (src) colorLine("block", tgt, src);
         if (S.tele) S.tele.wards++;
-        return 0;
       }
+      if (dmg < 0.5 && !opts.dot) return 0;
     }
     dmg = Math.round(dmg);
     if (dmg <= 0) return 0;
@@ -2036,6 +2046,11 @@
     arch(2, "#22d3ee");
     arch(W - 72, "#f87171");
   }
+  /* How much of a blow a ward may swallow. At 1 the plate eats whole attacks and a warded
+     tank is a wall; below 1 every blow chips the body underneath it. 0.68 keeps the ward
+     worth casting (it still eats most of what arrives) while guaranteeing that nothing a
+     warded body stands in front of is ever fully free. */
+  const WARD_SHARE = 0.68;
   const CROWD = { watch: null, cheer: null, jump: null };
   function loadCrowd() {
     ["watch", "cheer", "jump"].forEach((k) => {
@@ -2555,7 +2570,7 @@
     /* What the blows actually did. A spectator cannot tell a miss from a missing number,
        and neither could this file: armour stops, ward swallows and shots that arrive at
        nothing are counted here so the question has an answer instead of an impression. */
-    S.tele = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0 };
+    S.tele = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0, warded: 0, chipped: 0 };
     S.lastBloodAt = 0;
     S.countdown = INTRO_S; S.shake = 0; S.hitStop = 0; S.tideIn = 12; S.bellAt = 0;
     S.phase = "count";

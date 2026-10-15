@@ -191,7 +191,7 @@ const MODES = [1, 2, 3, 5];
 const K = {};                 // kit id -> counters
 const bump = (id) => (K[id] = K[id] || { solo: 0, gun: 0, idle: 0, pinned: 0, eng: 0, shared: 0, isoD: 0, D: 0, wd: 0, wdSaved: 0, t: 0 });
 const fieldWhy = census();
-const T = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0 };
+const T = { melee: 0, shots: 0, blocks: 0, wards: 0, whiffs: 0, warded: 0, chipped: 0 };
 let TS = null;
 let deaths = 0, isoDeaths = 0, gunDeaths = 0, idleSec = 0, soloSec = 0, gunSec = 0, pinnedSec = 0, engS = 0, sharedS = 0;
 for (let m = 0; m < FIELD_MATCHES; m++) {
@@ -261,7 +261,7 @@ console.log("    deaths " + deaths + " · isolated (no ally within 165px) " + is
 if (TS.tele) Object.keys(T).forEach((k) => { T[k] += TS.tele[k] || 0; });
 showCensus(fieldWhy, "what the whole field was thinking (seconds, deaths):");
 console.log("    blows: " + T.melee + " melee swings, " + T.shots + " aimed shots fired | armour stopped " + T.blocks +
-  " | a ward ate " + T.wards + " | shots that arrived at nothing " + T.whiffs +
+  " | a ward ate " + T.wards + " blows for " + Math.round(T.warded || 0) + " damage and let " + Math.round(T.chipped || 0) + " through | shots that arrived at nothing " + T.whiffs +
   (T.shots ? " (" + ((T.whiffs / T.shots) * 100).toFixed(0) + "% of shots)" : ""));
 console.log("    field seconds: solo " + soloSec.toFixed(0) + " · gunwalk " + gunSec.toFixed(0) + " · idle " + idleSec.toFixed(0) +
   " · pinned " + pinnedSec.toFixed(0) + " · focus share " + ((sharedS / (engS || 1)) * 100).toFixed(0) + "%");
