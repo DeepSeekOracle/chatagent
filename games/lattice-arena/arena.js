@@ -1977,7 +1977,7 @@
       return;
     }
     S.replay = {
-      frames: frames, t: 0, i: 0,
+      frames: frames, t: 0, i: frames.length - 1, lead: 0.45,
       move: fin.move || "the strike",
       killer: fin.killer || "",
       victim: fin.victim || "",
@@ -2001,7 +2001,7 @@
         animMax: e.animMax, aimA: e.aimA
       });
       e.x = s.x; e.y = s.y; e.face = s.face; e.walk = s.walk; e.dead = s.dead; e.dieT = s.dieT;
-      e.hp = s.hp; e.shd = s.shd; e.flash = s.flash; e.stun = s.stun; e.root = s.root; e.silence = s.silence;
+      e.hp = s.hp; e.shd = s.shd; e.flash = 0; e.stun = s.stun; e.root = s.root; e.silence = s.silence;
       e.tauntT = s.tauntT; e.shieldWallT = s.shieldWallT; e.animT = s.animT; e.animVis = s.animVis;
       e.animMax = s.animMax; e.aimA = s.aimA;
     });
@@ -2017,9 +2017,10 @@
     };
     S.projectiles = frame.projectiles;
     S.pending = frame.pending;
-    S.marks = frame.marks;
+    /* Sparks are a full-white burst. Played back frame by frame they strobe. */
+    S.marks = frame.marks.filter((m) => !m.spark);
     S.texts = frame.texts;
-    S.swings = frame.swings;
+    S.swings = frame.swings.filter((s) => s.max > 0.05);
     S.zones = frame.zones;
     S.bubbles = [];
   }
@@ -2285,8 +2286,10 @@
         if (e.dead && e.dieT > 0.4) return;
         sx += e.x; sy += e.y; n++;
       });
+      const lead = r.lead || 0;
+      const playT = Math.max(0, r.t - lead);
       const span = Math.max(0.05, r.frames.length / TAPE_HZ);
-      const onto = r.t / span < 0.72 ? 0 : Math.min(1, (r.t / span - 0.72) / 0.28);
+      const onto = playT / span < 0.72 ? 0 : Math.min(1, (playT / span - 0.72) / 0.28);
       const bx = n ? sx / n : r.x;
       const by = n ? sy / n : r.y;
       tx = bx + (r.x - bx) * onto;
@@ -2388,6 +2391,10 @@
       canvas.width = wpx * dpr | 0; canvas.height = hpx * dpr | 0;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, wpx, hpx);
@@ -2398,7 +2405,7 @@
     const botBand = Math.max(40, hpx * 0.105);
     const scale = (hpx - topBand - botBand) / mapH;
     const ox = (wpx - mapW * scale) / 2, oy = topBand;
-    const kick = S.shake > 0 ? S.shake * 10 : 0;
+    const kick = (S.shake > 0 && !S.replay) ? S.shake * 10 : 0;
     const sx = kick ? (Math.random() - 0.5) * kick : 0;
     const sy = kick ? (Math.random() - 0.5) * kick : 0;
     const cam = S.cam || { x: mapW / 2, y: mapH / 2, z: 1 };
@@ -2628,6 +2635,9 @@
       ctx.restore();
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.globalCompositeOperation = "source-over";
     drawHouse(wpx, hpx, ox, oy, scale);
     drawReplayPlate(ox, oy, scale);
     } finally {
@@ -2659,9 +2669,12 @@
     if (S.replay) {
       const r = S.replay;
       r.t += dt;
-      const span = Math.max(0.05, r.frames.length / TAPE_HZ);
-      r.i = Math.min(r.frames.length - 1, Math.floor(r.t * TAPE_HZ));
-      r.holdLast = r.t >= span;
+      const lead = r.lead || 0;
+      const play = Math.max(0.05, r.frames.length / TAPE_HZ);
+      /* Hold the blow long enough to read the plate, then roll the tape. */
+      if (r.t < lead) r.i = r.frames.length - 1;
+      else r.i = Math.min(r.frames.length - 1, Math.floor((r.t - lead) * TAPE_HZ));
+      r.holdLast = r.t >= lead + play;
     }
     aimCamera(dt);
     draw();
