@@ -285,6 +285,11 @@ const bxtaskUse = {};    // task -> how often it was handed out
 const bxkinds = {};      // colosseum kind -> seats
 let bxhealOut = 0, bxhealBodies = 0, bxworstStuck = 0, bxRim = 0, bxPos = 0, bxDef = 0, bxMid = 0, bxOff = 0;
 const bxBM = 200;
+/* --noform runs this census with the pre-stage silenced, in memory only: it hands the
+   body back to its own brain for the opening too. That is how the effect of the layer on
+   how styles stand gets measured rather than assumed -- and how a defect in it would be
+   found instead of blamed on the kits. */
+if (process.argv.includes("--noform") && win.LYGO_FORMATION) win.LYGO_FORMATION.planFor = () => null;
 for (let m = 0; m < bxBM; m++) {
   const n = MODES[m % MODES.length];
   const you = R.draw(n).map((f) => f.id), foe = R.draw(n, you).map((f) => f.id);
@@ -292,11 +297,16 @@ for (let m = 0; m < bxBM; m++) {
   bxkinds[S.lv.kind] = (bxkinds[S.lv.kind] || 0) + 1;
   S.your.concat(S.foe).forEach((e) => {
     const s = e.smp || { n: 0, engage: 0, close: 0, far: 0, pick: 0, weak: 0, onFocus: 0 };
-    const A = bxSTY[e.b.style || "none"] = bxSTY[e.b.style || "none"] || { n: 0, engage: 0, close: 0, far: 0, bxpicks: 0, weak: 0, focus: 0, heal: 0, stuck: 0, temper: 0 };
+    const A = bxSTY[e.b.style || "none"] = bxSTY[e.b.style || "none"] || { n: 0, engage: 0, close: 0, far: 0, bxpicks: 0, weak: 0, focus: 0, heal: 0, stuck: 0, temper: 0,
+      reach: 0, want: 0, atBand: 0, offBand: 0 };
     A.n++;
     A.engage += s.n ? s.engage / s.n : 0;
     A.close += s.n ? s.close / s.n : 0;
     A.far += s.n ? s.far / s.n : 0;
+    A.reach += s.n ? (s.reach || 0) / s.n : 0;
+    A.want += s.n ? (s.want || 0) / s.n : 0;
+    A.atBand += s.n ? (s.atBand || 0) / s.n : 0;
+    A.offBand += s.n ? (s.offBand || 0) / s.n : 0;
     A.bxpicks += s.pick; A.weak += s.weak; A.focus += s.onFocus;
     A.heal += (e.healOut || 0);
     if (e.healOut > 0) { bxhealBodies++; bxhealOut += e.healOut; }
@@ -567,14 +577,29 @@ console.log("      the talk: " + FT.out.length + " lines in " + fightSecs.toFixe
   (100 * FT.out.length / Math.max(1, fightOffers.length)).toFixed(0) + "% of " + fightOffers.length + " offers), longest burst " + burst +
   ", one line every " + (fightSecs / Math.max(1, FT.out.length)).toFixed(1) + "s");
 console.log("");
-console.log("      style   n  stand-off  in-contact  backups  weak-bxpick  on-call  mended  worst-stall");
+/* stand-off in px cannot be compared between styles -- a kite keeping 180px and a
+   berserker at 60px are both standing exactly where their doctrine says, because the
+   doctrine is written in fractions of each kit's own reach. "want" is the mean distance
+   the doctrine asked for, "at-band" is how often the body was actually there, and
+   "drift" is how far past its own doctrine it stood (1.00 = exactly as written). */
+console.log("      style    n  reach   want   stood  at-band  drift  in-contact  backups  weak-bxpick  on-call  mended  worst-stall");
 Object.keys(bxSTY).sort().forEach((s) => {
   const A = bxSTY[s], f = (x) => (A.n ? x / A.n : 0);
-  console.log("      " + s.padEnd(10) + String(A.n).padStart(4) + "   " + f(A.engage).toFixed(0).padStart(6) + "px  " +
+  const stood = f(A.engage), want = f(A.want), reach = f(A.reach);
+  const drift = want > 1 ? stood / want : 0;
+  console.log("      " + s.padEnd(10) + String(A.n).padStart(4) + "  " + reach.toFixed(0).padStart(5) + "  " +
+    want.toFixed(0).padStart(5) + "  " + stood.toFixed(0).padStart(5) + "px  " +
+    (100 * f(A.atBand)).toFixed(0).padStart(6) + "%  " + drift.toFixed(2).padStart(5) + "  " +
     (100 * f(A.close)).toFixed(0).padStart(8) + "%  " + (100 * f(A.far)).toFixed(0).padStart(5) + "%  " +
     (100 * (A.weak / Math.max(1, A.bxpicks))).toFixed(0).padStart(7) + "%  " + (100 * (A.focus / Math.max(1, A.bxpicks))).toFixed(0).padStart(5) + "%  " +
     f(A.heal).toFixed(0).padStart(6) + "  " + A.stuck.toFixed(1).padStart(6) + "s");
 });
+/* and the whole field, so a style that fights its doctrine is visible as one number */
+{
+  const all = Object.keys(bxSTY).reduce((a, k) => { const A = bxSTY[k]; a.n += A.n; a.want += A.want; a.atBand += A.atBand; a.offBand += A.offBand; return a; }, { n: 0, want: 0, atBand: 0, offBand: 0 });
+  console.log("      the whole field stands at " + (100 * all.atBand / Math.max(1, all.n)).toFixed(0) + "% of the distance its doctrine asked for, off by " +
+    (all.offBand / Math.max(1, all.n)).toFixed(2) + " of a reach on average");
+}
 console.log("      bxtasks: " + Object.entries(bxtaskUse).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(", "));
 console.log("");
 
@@ -607,11 +632,12 @@ console.log("");
 const SHAPE = {}, TEMPER = {};
 const open = { n: 0, released: 0, shapes: 0, slots: 0, bodies: 0, claims: 0, enemies: 0,
   spread0: 0, spreadBell: 0, contact: [], frontAhead: 0, frontBehind: 0, switches: 0, formed: 0 };
-for (let m = 0; m < MATCHES; m++) {
+const PM = Math.max(30, Math.ceil(MATCHES / 2));   // structure holds on a smaller sample; the clock does not
+for (let m = 0; m < PM; m++) {
   const n = MODES[m % MODES.length];
   const you = [], foe = [];
   for (let i = 0; i < n; i++) { you.push(R.ROSTER[(m * 3 + i * 5) % R.ROSTER.length].id); foe.push(R.ROSTER[(m * 7 + i * 11 + 3) % R.ROSTER.length].id); }
-  const S = E.runHeadless({ you, foe }, n, 200, (m * 4441 + 17) % 9967);   // 200s: a real fight, not a setup
+  const S = E.runHeadless({ you, foe }, n, 140, (m * 4441 + 17) % 9967);   // a real fight, not a setup
   const F = S.form;
   if (!F || !F.teams || F.teams.length !== 2) continue;
   open.n++;
@@ -669,7 +695,7 @@ must("a staged team is tighter than the spawn it started in", open.spread0 > 0 &
   "spawn " + Math.round(open.spread0 / Math.max(1, open.n * 2)) + " -> contact " + Math.round(open.spreadBell / Math.max(1, open.n * 2)));
 if (open.contact.length) must("the first clash happens after the opening, not at the whistle",
   mean(open.contact) > 0.6, "mean first contact " + mean(open.contact).toFixed(2) + "s");
-console.log("  the pre-stage: " + open.n + " battles, " + open.formed + " team-openings measured");
+console.log("  the pre-stage: " + open.n + " of " + PM + " battles staged, " + open.formed + " team-openings measured");
 console.log("    shapes " + Object.keys(SHAPE).map((k) => k + " x" + SHAPE[k]).join(", "));
 console.log("    tempers " + Object.keys(TEMPER).map((k) => k + " x" + TEMPER[k]).join(", "));
 console.log("    mean first contact " + mean(open.contact).toFixed(2) + "s | team spread " +

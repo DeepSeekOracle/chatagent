@@ -739,6 +739,20 @@
       const dd = dist(e.x, e.y, tg.x, tg.y);
       sp.engage += dd;
       if (dd <= 62) sp.close++; else if (dd > 150) sp.far++;
+      /* WHAT THE DOCTRINE ASKED FOR, AGAINST WHAT HAPPENED. Every style is written in
+         fractions of its own reach -- a kite that wants 100% of 224px and a berserker
+         that wants 94% of 40px are asking for the same shape of fight at completely
+         different distances. The two counters above are absolute (62px, 150px), which
+         means they measure the kit's REACH and call it its style: a gun is scored as
+         "backing off" for standing where its doctrine told it to stand. These keep the
+         ratio instead, so the check tool can ask the only question that matters --
+         did this body stand where its doctrine said, and how far off was it. */
+      const reach = Math.max(40, (e.b && e.b.range) || 40);
+      const want = e.bandNow || Math.max(28, reach * 0.9);
+      sp.reach = (sp.reach || 0) + reach;
+      sp.want = (sp.want || 0) + want;
+      sp.offBand = (sp.offBand || 0) + Math.abs(dd - want) / reach;
+      if (Math.abs(dd - want) <= Math.max(30, want * 0.3)) sp.atBand = (sp.atBand || 0) + 1;
       sp.pick++;
       const en = live(e.team === 0 ? S.foe : S.your);
       if (en.length) {

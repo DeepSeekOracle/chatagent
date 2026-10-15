@@ -1378,6 +1378,10 @@
        it stands; both are executed with the same walker. */
     const d = dist2(e.x, e.y, t.x, t.y);
     const band = Math.max(plan.band || (b.range > 100 ? b.range * 0.9 : 42), b.range <= 100 ? 40 : 58);
+    /* the distance this body is actually trying to stand at, kept for the census: the
+       check tool compares a style's doctrine against the band the engine aimed at, and
+       a second opinion computed elsewhere would be measuring a different number. */
+    e.bandNow = band;
     let gx2 = plan.point ? plan.point.x : t.x;
     let gy2 = plan.point ? plan.point.y : t.y;
     /* hit-and-run: a body that just threw something steps back off its line */
