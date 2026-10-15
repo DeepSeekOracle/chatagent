@@ -206,9 +206,7 @@ async function openPrediction(card) {
   pools = { left: 0, right: 0, leftUsers: 0, rightUsers: 0, status: "ACTIVE" };
   saveState();
   log("prediction open " + left + " vs " + right);
-  state.cardsSinceGuide = (state.cardsSinceGuide || 0) + 1;
-  saveState();
-  if (guideDue()) await sayGuide("");
+  await say(left + " or " + right + ". Vote in chat.");
 }
 
 function outcomeBySide(pred, side) {
