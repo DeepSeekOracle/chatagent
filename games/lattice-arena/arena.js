@@ -2213,6 +2213,10 @@
     const zs = scale * cam.z;
     const holeCx = ox + mapW * scale / 2, holeCy = oy + mapH * scale / 2;
     ctx.setTransform(dpr * zs, 0, 0, dpr * zs, dpr * (holeCx - cam.x * zs + sx), dpr * (holeCy - cam.y * zs + sy));
+    /* Where the sand's top-left corner actually lands on the canvas, camera and shake
+       included. The crowd's hole is cut to exactly this rectangle, so every pixel is
+       either sand or stands and the base coat can never show between them. */
+    const sandX = holeCx - cam.x * zs + sx, sandY = holeCy - cam.y * zs + sy;
     if (floorCv) {
       const photo = S.lv && FLOOR_SKIN[S.lv.floor || S.lv.realm];
       if (photo && photo.width) {
@@ -2439,7 +2443,14 @@
     ctx.shadowBlur = 0;
     ctx.shadowColor = "rgba(0,0,0,0)";
     ctx.setLineDash([]);
-    drawHouse(wpx, hpx, ox, oy, scale);
+    /* The hole in the crowd has to be cut at the size the sand is ACTUALLY drawn:
+       through the camera zoom, and moved by the shake. It used to be cut at the plain
+       layout rect, which is 34% smaller than the sand once the camera looks in at
+       z=1.34 and does not move at all when the shake kicks the sand sideways. That is
+       the reported bug: the stands slide over the arena where the two disagree, and
+       where the hole is left uncovered the base coat shows through as black around the
+       arena -- flickering in and out, because the shake is set by a hit landing. */
+    drawHouse(wpx, hpx, sandX, sandY, zs);
   }
 
   /* ----------------------------------------------------------------- API --- */
