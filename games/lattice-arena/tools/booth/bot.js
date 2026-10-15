@@ -36,8 +36,14 @@ function clip(s, n) {
   return s.length <= n ? s : s.slice(0, n - 1).trim();
 }
 function sideTitle(names, fallback) {
-  const first = (names && names[0]) || fallback;
-  return clip(first + " side", 25);
+  const list = (names || []).filter(Boolean);
+  if (!list.length) return clip(fallback, 25);
+  const both = list.slice(0, 2).join(" ");
+  if (both.length <= 25) return both;
+  return clip(list[0], 25);
+}
+function showName(v) {
+  return Array.isArray(v) ? v.filter(Boolean).join(" ") : String(v || "");
 }
 
 function helix(method, urlPath, body) {
@@ -152,12 +158,14 @@ async function say(text) {
 }
 
 async function openPrediction(card) {
+  if (state.predictionId) await finishPrediction(-1);
   const left = sideTitle(card.left, "Cyan");
   const right = sideTitle(card.right, "Red");
   if (left.toLowerCase() === right.toLowerCase()) return;
+  const title = clip((card.mode ? card.mode + " " : "") + "who takes it?", 45);
   const res = await helix("POST", "/helix/predictions", {
     broadcaster_id: twitch.broadcasterId,
-    title: clip("Who takes this fight?", 45),
+    title: title,
     outcomes: [{ title: left }, { title: right }],
     prediction_window: 45
   });
@@ -202,14 +210,25 @@ async function finishPrediction(side) {
     });
   }
   log("prediction resolved side " + side + " " + res.status);
+  if (res.status !== 200) {
+    const cancel = await helix("PATCH", "/helix/predictions", {
+      broadcaster_id: twitch.broadcasterId, id: id, status: "CANCELED"
+    });
+    log("prediction could not pay, canceled " + cancel.status);
+  }
+  state.predictionId = "";
+  saveState();
   if (res.status === 200) {
-    state.predictionId = "";
-    saveState();
-    const name = side === 0 ? (state.lastCard && state.lastCard.left) : (state.lastCard && state.lastCard.right);
-    await say((name || "That side") + " takes it. Points go to the callers who had them.");
+    const name = side === 0 ? showName(state.lastCard && state.lastCard.left) : showName(state.lastCard && state.lastCard.right);
+    await say((name || "That side") + " takes it.");
   }
 }
 
+let chain = Promise.resolve();
+function queue(fn) {
+  chain = chain.then(fn, fn);
+  return chain;
+}
 async function onArena(msg) {
   if (!msg || (msg.kind !== "card" && msg.kind !== "result")) return;
   log("arena " + msg.kind + " " + JSON.stringify({ left: msg.left, right: msg.right, side: msg.side, mode: msg.mode }));
@@ -234,6 +253,11 @@ function cors(res) {
 const server = http.createServer((req, res) => {
   cors(res);
   if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+  if (req.method === "GET" && req.url === "/board") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(BOARD);
+    return;
+  }
   if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({
@@ -253,7 +277,7 @@ const server = http.createServer((req, res) => {
       try { msg = JSON.parse(raw); } catch (e) { msg = null; }
       res.writeHead(msg ? 204 : 400);
       res.end();
-      if (msg) onArena(msg).catch((e) => log("arena handler " + e.message));
+      if (msg) queue(() => onArena(msg)).catch((e) => log("arena handler " + e.message));
     });
     return;
   }
@@ -266,6 +290,35 @@ server.on("error", (e) => {
   log("server " + e.message);
   process.exit(1);
 });
+const BOARD = `<!doctype html><meta charset="utf-8"><style>
+html,body{margin:0;background:transparent;color:#f6e7c2;font:700 26px/1.15 "Segoe UI",sans-serif}
+#bar{display:none;padding:8px 16px;background:rgba(6,6,10,.78);border:1px solid #c8a15a}
+.k{font-size:12px;letter-spacing:.16em;color:#e7c27a}
+</style><div id="bar"><div class="k" id="k">TWITCH PREDICTION</div><div id="t"></div></div>
+<script>
+function names(v){return Array.isArray(v)?v.filter(Boolean).join(" "):(v||"")}
+async function tick(){
+  try{
+    const h=await fetch("/health").then(r=>r.json());
+    const bar=document.getElementById("bar");
+    if(h.prediction&&h.lastCard){
+      bar.style.display="block";
+      document.getElementById("t").textContent=names(h.lastCard.left)+"   or   "+names(h.lastCard.right);
+    }else bar.style.display="none";
+  }catch(e){}
+}
+setInterval(tick,1000);tick();
+</script>`;
+
+setInterval(() => {
+  const next = readJson(SECRET);
+  if (!next || !next.accessToken) return;
+  if (next.accessToken === twitch.accessToken && next.clientId === twitch.clientId) return;
+  twitch = next;
+  log("twitch.json changed");
+  readyTwitch().catch((e) => log("twitch " + e.message));
+}, 5000);
+
 server.listen(PORT, "127.0.0.1", () => {
   log("booth listening on 127.0.0.1:" + PORT);
   readyTwitch().catch((e) => log("twitch " + e.message));
