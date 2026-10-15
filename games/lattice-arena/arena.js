@@ -1105,8 +1105,11 @@
   /* Shoulder room. Two sprites are 46px. Centres closer than 40 draw as one body. */
   function bodyGap(e, speed) {
     let sx = 0, sy = 0;
+    const selfTok = !!(e.b && e.b.cls === "token");
     all().forEach((o) => {
       if (o === e || o.dead) return;
+      /* A ward standing on its summoner must not shove the fighter off a swing. */
+      if (!selfTok && o.b && o.b.cls === "token") return;
       const dd = dist2(e.x, e.y, o.x, o.y);
       if (dd < 40 && dd > 0.01) {
         const push = (40 - dd) / 40;
@@ -1138,19 +1141,52 @@
   function shoulders() {
     const bodies = all().filter((e) => !e.dead);
     const want = 40;
+    const tokPush = new Map();
     for (let i = 0; i < bodies.length; i++) {
       for (let j = i + 1; j < bodies.length; j++) {
         const a = bodies[i], b = bodies[j];
+        const aTok = !!(a.b && a.b.cls === "token");
+        const bTok = !!(b.b && b.b.cls === "token");
         const dx = b.x - a.x, dy = b.y - a.y;
         const dd = Math.hypot(dx, dy);
         if (dd >= want) continue;
-        let ux = 1, uy = 0, push = want * 0.5;
-        if (dd >= 0.01) { ux = dx / dd; uy = dy / dd; push = (want - dd) * 0.5; }
+        let ux = 1, uy = 0, gap = want;
+        if (dd >= 0.01) { ux = dx / dd; uy = dy / dd; gap = want - dd; }
         else if ((a.uid || 0) % 2) ux = -1;
-        nudgeBody(a, -ux * push, -uy * push);
-        nudgeBody(b, ux * push, uy * push);
+        if (aTok !== bTok) {
+          /* The ward yields the whole gap. Two fighters still split it, or a
+             pile of bodies never opens. A ward pinched on the line steps sideways. */
+          const tok = aTok ? a : b;
+          const acc = tokPush.get(tok) || { x: 0, y: 0, n: 0 };
+          acc.x += (aTok ? -ux : ux) * gap;
+          acc.y += (aTok ? -uy : uy) * gap;
+          acc.n++;
+          tokPush.set(tok, acc);
+        } else {
+          const push = gap * 0.5;
+          nudgeBody(a, -ux * push, -uy * push);
+          nudgeBody(b, ux * push, uy * push);
+        }
       }
     }
+    tokPush.forEach((acc, tok) => {
+      let x = acc.x, y = acc.y;
+      const mag = Math.hypot(x, y);
+      if (acc.n >= 2 && mag < want * 0.35) {
+        const side = ((tok.uid || 1) % 2) ? 1 : -1;
+        if (mag > 0.01) {
+          x = (-y / mag) * side * (want * 0.5);
+          y = (acc.x / mag) * side * (want * 0.5);
+        } else {
+          x = 0;
+          y = side * (want * 0.5);
+        }
+      }
+      const cap = 22;
+      const m2 = Math.hypot(x, y);
+      if (m2 > cap) { x *= cap / m2; y *= cap / m2; }
+      nudgeBody(tok, x, y);
+    });
   }
 
   function think(e, dt) {
@@ -1184,8 +1220,14 @@
       t = taunters.reduce((p, o) => (dist2(e.x, e.y, o.x, o.y) < dist2(e.x, e.y, p.x, p.y) ? o : p));
     } else if (e.target && !e.target.dead && e.target !== t && (e.tgtHold || 0) > 0) {
       /* the brain is rebuilt every 0.18s. A target that changes that often is a body
-         turning on the spot. A dead target releases the hold at once. */
-      t = e.target;
+         turning on the spot. A dead target releases the hold at once.
+         A ward is not that commit. Holding the summon walks the fighter off the
+         body the plan just named. A real body already in reach is not dropped for a ward. */
+      const heldTok = !!(e.target.b && e.target.b.cls === "token");
+      const nextTok = !!(t.b && t.b.cls === "token");
+      const releaseWard = heldTok && !nextTok;
+      const leaveFar = !heldTok && nextTok && dist2(e.x, e.y, e.target.x, e.target.y) >= 140;
+      if (!releaseWard && !leaveFar) t = e.target;
     } else if (e.target && e.target !== t) e.tgtHold = Math.max(0.45, Math.min(3.4, stl.commit || TGT_HOLD));
     e.target = t;
 
@@ -1430,13 +1472,31 @@
        the rest of the match. Clamp it into the ring and snap it out of stone, in one place, so
        no call site in the brain has to remember. */
     /* One tile of inset still stands a body on the first floor tile, shoulder
-       on the border. Keep a wider margin unless this step is the last reach
-       onto somebody already stuck in that rim — finishing them is allowed. */
+       on the border. A goal that is the body itself may enter that rim, or a
+       chaser spends the fight on a rail while the target stands in the gutter.
+       A kite or a retreat that falls outside the wider floor was riding that
+       same rail: bend it back into the ring instead of lapping the wall. */
     const ringW = S.lv.W * TILE, ringH = S.lv.H * TILE;
-    const finish = t && !t.dead && dist2(gx2, gy2, t.x, t.y) < 78 && dist2(e.x, e.y, t.x, t.y) < 120;
-    const edge = finish ? TILE * 1.15 : Math.max(TILE * 2.25, Math.min(ringW, ringH) * 0.09);
+    const hard = TILE * 1.15;
+    const wide = Math.max(TILE * 2.25, Math.min(ringW, ringH) * 0.09);
+    const onBody = t && !t.dead && dist2(gx2, gy2, t.x, t.y) < 56;
+    const edge = onBody ? hard : wide;
+    const rawX = gx2, rawY = gy2;
     gx2 = clamp(gx2, edge, ringW - edge);
     gy2 = clamp(gy2, edge, ringH - edge);
+    if (!onBody && (Math.abs(gx2 - rawX) > 0.5 || Math.abs(gy2 - rawY) > 0.5)) {
+      gx2 += (ringW * 0.5 - gx2) * 0.45;
+      gy2 += (ringH * 0.5 - gy2) * 0.45;
+    }
+    /* Already inside the floor, but the goal still runs along the inset. A gun
+       with the chaser straight behind her sits a pixel inside the line, so the
+       test has to cover that shoulder, and only the axis that is against the wall. */
+    if (!onBody) {
+      const pad = 36;
+      const mx = ringW * 0.5, my = ringH * 0.5;
+      if (e.x < wide + pad || e.x > ringW - wide - pad) gx2 += (mx - gx2) * 0.55;
+      if (e.y < wide + pad || e.y > ringH - wide - pad) gy2 += (my - gy2) * 0.55;
+    }
     if (solidAt(S.lv, gx2, gy2)) {
       const ot2 = openTile(Math.floor(gx2 / TILE), Math.floor(gy2 / TILE));
       gx2 = ot2.x * TILE + TILE / 2; gy2 = ot2.y * TILE + TILE / 2;

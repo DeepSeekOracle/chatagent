@@ -436,6 +436,15 @@
       if (packPrey && dist(e.x, e.y, packPrey.x, packPrey.y) < 340) target = packPrey;
       else if (lonely && (matesNear.length === 0 || edgeHere < 0)) target = lonely;
     }
+    /* A ward is a gun on a timer. It must not be the body a fist runs off to
+       follow while the team is still called onto a real fighter. The summon
+       stays the target only when it is already in the swing and the called
+       body is not. */
+    if (target && target.b && target.b.cls === "token" && focus && focus !== target && focus.b && focus.b.cls !== "token") {
+      const dTok = dist(e.x, e.y, target.x, target.y);
+      const dReal = dist(e.x, e.y, focus.x, focus.y);
+      if (!(dTok < (range || 40) + 24 && dReal > dTok + 80)) target = focus;
+    }
     const dTargetNow = dist(e.x, e.y, target.x, target.y);
 
     /* — 1. AID: somebody in this team is bleeding and I am the one who can mend.
