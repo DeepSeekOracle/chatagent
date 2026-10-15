@@ -1229,6 +1229,16 @@
       e.mvT = 0; e.mvX = e.x; e.mvY = e.y; e.goalNow = false; e.pathOn = false; e.pathT = 0;
       e.idleT = 0; e.braveT = 0; e.recoilT = 0;
     }
+    /* WHERE IT WAS AND HOW FAST IT IS GOING. A body that only knows where the enemy
+       STANDS can never cut it off, and the approach maths needs the enemy's own speed.
+       Measured from its own last two positions rather than reported by the movers, so
+       walking, strafing, knock-backs and dashes are all in it and no movement path has
+       to remember to say so. */
+    if (e.lx != null) {
+      const dti = Math.max(dt, 0.001);
+      e.vx = (e.x - e.lx) / dti; e.vy = (e.y - e.ly) / dti;
+    }
+    e.lx = e.x; e.ly = e.y;
     e.idleT += dt;
     e.braveT = Math.max(0, e.braveT - dt);
     e.recoilT = Math.max(0, e.recoilT - dt);
@@ -1384,6 +1394,26 @@
     e.bandNow = band;
     let gx2 = plan.point ? plan.point.x : t.x;
     let gy2 = plan.point ? plan.point.y : t.y;
+    /* INTERCEPT, DO NOT CHASE. Walking at where the enemy stands means every step is a
+       step behind it: a contact kit crossing eight tiles against a gun that can walk
+       backwards never arrives at all, and the duel report showed exactly that -- a
+       losing record made of seconds spent "closing on" somebody who is leaving. Aim
+       where the target WILL BE, its own speed carried forward by the time this body
+       needs to reach it. Two rules keep it honest: a body already inside its swing never
+       leads (or a knife fight turns into two bodies orbiting), and the lead is capped at
+       four tenths of a second of travel so a fast body cannot fling its aim past a
+       slow one. */
+    if (!plan.point && (t.vx || t.vy) && d > (st.range || 40) + 10) {
+      const spd = Math.max(20, st.speed || 90);
+      const lead = Math.min(0.4, d / spd);
+      let ox = (t.vx || 0) * lead, oy = (t.vy || 0) * lead;
+      /* A blink, a dash or a knock-back is one huge frame of "velocity". Walking at where
+         a body that just teleported appears to be heading sends the chaser off the map, so
+         the aim point can be moved along the target's line, never flung down it. */
+      const om = Math.hypot(ox, oy), cap = Math.max(40, (st.range || 40) * 1.6);
+      if (om > cap) { ox *= cap / om; oy *= cap / om; }
+      gx2 += ox; gy2 += oy;
+    }
     /* hit-and-run: a body that just threw something steps back off its line */
     if (stl.recoil && e.recoilT > 0.35) {
       gx2 = e.x + (e.x - t.x) * 0.8; gy2 = e.y + (e.y - t.y) * 0.8; e.recoilT = 0;

@@ -26,6 +26,7 @@ win.window = win;
 const ctx = vm.createContext(win);
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
 load("roster.js"); load("attacks.js"); load("formation.js"); load("brain.js"); load("arena.js");
+if (!win.LYGO_FORMATION) console.log("WARNING: formation.js is not loaded -- this report describes a build that is not what ships");
 /* the pre-stage has to be loaded or this tool measures the game without it, which is
    exactly the mistake it exists to catch */
 const R = win.LYGO_ARENA, E = win.ArenaEngine, STY = E.brain().styles();

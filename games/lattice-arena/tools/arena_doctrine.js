@@ -71,7 +71,8 @@ const win = {
 win.window = win;
 const ctx = vm.createContext(win);
 const load = (f) => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, { filename: f });
-["roster.js", "banter.js", "director.js", "attacks.js"].forEach(load);
+["roster.js", "banter.js", "director.js", "attacks.js", "formation.js"].forEach(load);
+if (!win.LYGO_FORMATION) console.log("WARNING: formation.js is not loaded -- this report describes a build that is not what ships");
 if (BRAIN) vm.runInContext(fs.readFileSync(BRAIN, "utf8"), ctx, { filename: "brain.js" });
 else load("brain.js");
 if (ARENA) vm.runInContext(fs.readFileSync(ARENA, "utf8"), ctx, { filename: "arena.js" });
