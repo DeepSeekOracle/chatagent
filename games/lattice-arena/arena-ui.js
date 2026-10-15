@@ -163,8 +163,8 @@
     if (!line.caster && line.who) {
       /* a bubble over a body lives as long as the voice does, whatever the fight is running at */
       (S.bubbles || []).forEach((b) => {
-        if (b.who && b.who.b && b.who.b.id === line.who) {
-          b.life = Math.max(b.life, (line.dur || durOf(line)) * (S.speed || 1) + 0.6);
+        if (b.text === line.text && b.who && b.who.b && b.who.b.id === line.who) {
+          b.life = Math.max(b.life, (line.dur || durOf(line)) * (S.speed || 1) + 0.5);
         }
       });
     }

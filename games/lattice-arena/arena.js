@@ -430,12 +430,24 @@
   function pushTalk(kind, who, foe, hot) {
     if (!BANTER || !who || !who.b) return;
     S.talk = S.talk || []; S.bubbles = S.bubbles || [];
-    if (!hot && S.time - (S.lastTalk == null ? -9 : S.lastTalk) < 1.1) return;
-    if (S.bubbles.length > 3) return;
+    /* A kill, a fall, and the close of the map may talk over the quiet. Everything else
+       waits, and a body never wears two bubbles: the new line replaces the old one. */
+    const big = kind === "kill" || kind === "die" || kind === "win" || kind === "lose" || kind === "ace" || kind === "rise";
+    S.mouthAt = S.mouthAt || {};
+    const lastMouth = S.mouthAt[who.uid] == null ? -99 : S.mouthAt[who.uid];
+    if (!big && S.time - lastMouth < 9) return;
+    if (!big && S.time - (S.lastTalk == null ? -99 : S.lastTalk) < 7) return;
     const text = BANTER.line(kind, who.b, foe && foe.b, picker(S.talkSeq * 31 + 7));
     if (!text) return;
     S.lastTalk = S.time;
-    S.bubbles.push({ who: who, text: text, life: 4.4, col: who.b.color || "#fbbf24" });
+    S.mouthAt[who.uid] = S.time;
+    const bubble = { who: who, text: text, life: 3.0, col: who.b.color || "#fbbf24" };
+    const mine = S.bubbles.findIndex((b) => b.who === who);
+    if (mine >= 0) S.bubbles[mine] = bubble;
+    else {
+      while (S.bubbles.length >= 2) S.bubbles.shift();
+      S.bubbles.push(bubble);
+    }
     S.talk.push({ seq: ++S.talkSeq, kind: kind, caster: false, who: who.b.id, whoName: who.b.name,
       foeName: (foe && foe.b && foe.b.name) || "", text: text, t: S.time, hot: !!hot,
       prio: PRIO_BODY[kind] != null ? PRIO_BODY[kind] : 3 });
@@ -453,7 +465,7 @@
   /* Misses, blocks and crits are colour, not the story. One of them every few seconds,
      and never loud enough to step on a kill. */
   function colorLine(kind, who, foe) {
-    if (S.time - (S.lastColor == null ? -9 : S.lastColor) < 8) return;
+    if (S.time - (S.lastColor == null ? -9 : S.lastColor) < 16) return;
     S.lastColor = S.time;
     pushTalk(kind, who, foe, false);
   }
@@ -646,7 +658,6 @@
       tgt.edgeSaid = true;
       if (src) pushCast("edge", { victim: tgt.b.name });
       if (src) pushTalk("taunt", src, tgt, true);
-      pushTalk("hurt", tgt, src, true);
     }
     if (!opts.dot) {
       tgt.flash = 0.16;
@@ -1837,7 +1848,7 @@
     if (S.talkT <= 0 && !S.over && S.time > 3) {
       /* the mouths never touch the sim's randomness: which body pipes up, and when, comes
          off the talk counter and the clock, so the fight itself plays out unchanged */
-      S.talkT = 7 + ((S.talkSeq * 37 + ((S.time * 10) | 0)) % 7);
+      S.talkT = 20 + ((S.talkSeq * 37 + ((S.time * 10) | 0)) % 13);
       const all = live();
       if (all.length > 1) {
         const tk = all[(S.talkSeq * 7 + ((S.time * 3) | 0)) % all.length];
@@ -2338,9 +2349,11 @@
        so neither line could be read. A bubble that would land on one already up this
        frame is lifted clear of it. */
     const up = [];
+    const said = {};
     (S.bubbles || []).forEach((b) => {
       const e = b.who;
-      if (!e) return;
+      if (!e || said[e.uid]) return;
+      said[e.uid] = 1;
       const x = e.x;
       let y = e.y - 34;
       const name = (e.b && e.b.name) ? String(e.b.name).slice(0, 16) : "";
@@ -2496,7 +2509,7 @@
     pushEvent("FIGHT.", "over");
     pushCast("bell", { n: S.your.length + S.foe.length });
     S.bellAt = S.talkSeq;
-    S.talkT = 9;
+    S.talkT = 20;
   }
 
   /* Summon sheets are match-local. A long show would otherwise keep every warden
@@ -2532,7 +2545,7 @@
     pushEvent(KIND_BLURB[S.lv.kind || "colosseum"], "law");
     pushEvent(lawById(S.lv.realm).line, "law");
     pushEvent("The arena opens. " + S.your.length + "v" + S.foe.length + ".", "over");
-    S.bubbles = []; S.talk = []; S.talkT = INTRO_S + 9; S.kills = 0; S.aceSaid = false;
+    S.bubbles = []; S.talk = []; S.mouthAt = {}; S.talkT = INTRO_S + 9; S.kills = 0; S.aceSaid = false;
     S.talkSeq = S.talkSeq || 0;
     S.lastTalk = -9; S.lastHold = -9; S.lastSave = -9; S.lastColor = -9;
     S.lawSaid = false; S.tideSaid = false;
