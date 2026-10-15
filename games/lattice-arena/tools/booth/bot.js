@@ -29,9 +29,10 @@ function writeJson(file, obj) {
 let twitch = readJson(SECRET) || {};
 let state = readJson(STATE) || { predictionId: "", outcomes: {}, lastCard: null, lastResult: null, note: "" };
 let pools = null;
-const GUIDE_EVERY = 6;
-const GUIDE_MS = 12 * 60 * 1000;
-const HOW = "How to vote: on this Twitch channel, click the prediction in chat, pick a side, and spend channel points. You have 45 seconds. The bar on the video is not a button. Points work on Twitch only.";
+const WINDOW_S = 30;
+const GUIDE_EVERY = 8;
+const GUIDE_MS = 15 * 60 * 1000;
+const HOW = "To vote: in this Twitch chat, click the prediction, pick a side, and spend channel points. You have 30 seconds. Points stay on Twitch.";
 
 function saveState() { writeJson(STATE, state); }
 
@@ -188,7 +189,7 @@ async function openPrediction(card) {
     broadcaster_id: twitch.broadcasterId,
     title: title,
     outcomes: [{ title: left }, { title: right }],
-    prediction_window: 45
+    prediction_window: WINDOW_S
   });
   const pred = res.json && res.json.data && res.json.data[0];
   if (!pred) {
@@ -199,17 +200,15 @@ async function openPrediction(card) {
   (pred.outcomes || []).forEach((o, i) => { outcomes[i] = o.id; });
   state.predictionId = pred.id;
   state.outcomes = outcomes;
-  state.until = Date.now() + 45000;
-  state.lastCard = { left: left, right: right, at: new Date().toISOString() };
+  state.until = Date.now() + WINDOW_S * 1000;
+  state.banner = null;
+  state.lastCard = { left: left, right: right, mode: card.mode || "", at: new Date().toISOString() };
   pools = { left: 0, right: 0, leftUsers: 0, rightUsers: 0, status: "ACTIVE" };
   saveState();
   log("prediction open " + left + " vs " + right);
   state.cardsSinceGuide = (state.cardsSinceGuide || 0) + 1;
-  if (guideDue()) await sayGuide("This card: " + left + " or " + right + ".");
-  else {
-    saveState();
-    await say("45 seconds. Click the prediction in Twitch chat. " + left + " or " + right + ".");
-  }
+  saveState();
+  if (guideDue()) await sayGuide("");
 }
 
 function outcomeBySide(pred, side) {
@@ -258,8 +257,13 @@ async function finishPrediction(side, why) {
     state.predictionId = "";
     state.until = 0;
     pools = null;
+    if (why === "draw" && res.status === 200) {
+      state.banner = { kind: "draw", name: "", until: Date.now() + 8000 };
+      saveState();
+      await say("Draw. Points refunded.");
+      return;
+    }
     saveState();
-    if (why === "draw" && res.status === 200) await say("Draw. Channel points are refunded.");
     return;
   }
   const win = state.outcomes[String(side)] || state.outcomes[side];
@@ -284,16 +288,17 @@ async function finishPrediction(side, why) {
     if (cancel.status === 200) await say("Could not pay that prediction. Channel points are refunded.");
   }
   const pot = pools ? (pools.left || 0) + (pools.right || 0) : 0;
+  const name = side === 0 ? showName(state.lastCard && state.lastCard.left) : showName(state.lastCard && state.lastCard.right);
   state.predictionId = "";
   state.until = 0;
   pools = null;
-  saveState();
   if (res.status === 200) {
-    const name = side === 0 ? showName(state.lastCard && state.lastCard.left) : showName(state.lastCard && state.lastCard.right);
-    let line = (name || "That side") + " takes it.";
-    if (pot > 0) line += " " + pot + " channel points in the pool.";
-    await say(line);
+    state.banner = { kind: "win", name: name || "That side", until: Date.now() + 8000 };
+    saveState();
+    await say((name || "That side") + " takes it." + (pot > 0 ? " " + pot + " pts in the pool." : ""));
+    return;
   }
+  saveState();
 }
 
 let chain = Promise.resolve();
@@ -337,8 +342,10 @@ const server = http.createServer((req, res) => {
       twitch: state.note || "",
       prediction: state.predictionId || "",
       until: state.until || 0,
+      voteSec: WINDOW_S,
       status: (pools && pools.status) || "",
       pools: pools,
+      banner: state.banner && state.banner.until > Date.now() ? state.banner : null,
       lastCard: state.lastCard || null,
       lastResult: state.lastResult || null
     }));
@@ -366,38 +373,58 @@ server.on("error", (e) => {
   process.exit(1);
 });
 const BOARD = `<!doctype html><meta charset="utf-8"><style>
-html,body{margin:0;background:transparent;color:#fff8e8;font:700 24px/1.15 "Segoe UI",sans-serif}
-#bar{display:block;padding:8px 16px;background:rgba(8,6,12,.94);border:2px solid #e7c27a}
-.k{font-size:13px;letter-spacing:.16em;color:#e7c27a}
-#t{font-size:26px}
-#h{font-size:16px;font-weight:600;color:#f3e2b4}
-</style><div id="bar"><div class="k" id="k">TWITCH PREDICTION</div><div id="t">Opens on the next card</div><div id="h">Vote in Twitch chat. Click the prediction and spend channel points.</div></div>
+html,body{margin:0;background:transparent;color:#fff8e8;font:700 22px/1.1 "Segoe UI",sans-serif}
+#bar{display:none;height:114px;box-sizing:border-box;background:rgba(6,5,10,.94);border:2px solid #e7c27a;overflow:hidden}
+#k{height:22px;text-align:center;font-size:12px;letter-spacing:.16em;color:#e7c27a;padding-top:5px}
+#row{display:flex;height:76px}
+.side{flex:1;min-width:0;padding:6px 14px 0}
+.left{background:rgba(70,196,214,.20)}
+.right{background:rgba(196,78,52,.20)}
+.n{font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m{margin-top:4px;font-size:15px;font-weight:600;color:#f6e7c2}
+#track{height:6px;margin:4px 8px 0;background:#2a2418}
+#fill{height:100%;width:0;background:#e7c27a}
+#win{display:none;text-align:center;font-size:28px;padding-top:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style><div id="bar"><div id="k"></div><div id="row"><div class="side left"><div class="n" id="ln"></div><div class="m" id="lm"></div></div><div class="side right"><div class="n" id="rn"></div><div class="m" id="rm"></div></div></div><div id="track"><div id="fill"></div></div><div id="win"></div></div>
 <script>
 function names(v){return Array.isArray(v)?v.filter(Boolean).join(" "):(v||"")}
-function side(name, pts){return name+(pts==null?"":"  "+pts+" pts")}
+function meta(pts, users){
+  var u=users||0;
+  return (pts||0)+" pts · "+u+" "+(u===1?"vote":"votes");
+}
 async function tick(){
   try{
     const h=await fetch("/health").then(r=>r.json());
     const bar=document.getElementById("bar");
-    bar.style.display="block";
+    const row=document.getElementById("row");
+    const track=document.getElementById("track");
+    const win=document.getElementById("win");
     if(!(h.prediction&&h.lastCard)){
-      document.getElementById("k").textContent="TWITCH PREDICTION";
-      document.getElementById("t").textContent="Opens on the next card";
-      document.getElementById("h").textContent="Vote in Twitch chat. Click the prediction and spend channel points.";
+      if(h.banner){
+        bar.style.display="block";
+        row.style.display="none";
+        track.style.display="none";
+        win.style.display="block";
+        document.getElementById("k").textContent=h.banner.kind==="draw"?"DRAW":"RESULT";
+        win.textContent=h.banner.kind==="draw"?"Points refunded":(h.banner.name+" takes it");
+      }else bar.style.display="none";
       return;
     }
-    const p=h.pools||{};
-    const hasPts=h.pools&&p.left!=null;
-    document.getElementById("k").textContent="TWITCH PREDICTION";
-    document.getElementById("t").textContent=side(names(h.lastCard.left), hasPts?p.left:null)+"    or    "+side(names(h.lastCard.right), hasPts?p.right:null);
+    bar.style.display="block";
+    row.style.display="flex";
+    track.style.display="block";
+    win.style.display="none";
+    const card=h.lastCard, p=h.pools||{};
+    document.getElementById("ln").textContent=names(card.left);
+    document.getElementById("rn").textContent=names(card.right);
+    document.getElementById("lm").textContent=meta(p.left, p.leftUsers);
+    document.getElementById("rm").textContent=meta(p.right, p.rightUsers);
     const leftMs=(h.until||0)-Date.now();
     const locked=h.status==="LOCKED"||(h.until&&leftMs<=0);
-    const hint=document.getElementById("h");
-    if(locked) hint.textContent="Bets locked. Points pay out when the map ends.";
-    else {
-      const s=h.until?Math.max(0,Math.ceil(leftMs/1000))+"s. ":"";
-      hint.textContent=s+"Twitch chat: click the prediction and spend channel points. This bar is not a button.";
-    }
+    const sec=Math.max(0, Math.ceil(leftMs/1000));
+    const span=(h.voteSec||30)*1000;
+    document.getElementById("k").textContent=locked?"LOCKED · PAYS WHEN THE MAP ENDS":((card.mode?card.mode+"   ":"")+"VOTE IN TWITCH CHAT   ·   "+sec+"s");
+    document.getElementById("fill").style.width=(locked?0:Math.max(0, Math.min(100, leftMs/span*100)))+"%";
   }catch(e){}
 }
 setInterval(tick,1000);tick();
@@ -418,12 +445,5 @@ setInterval(() => {
 
 server.listen(PORT, "127.0.0.1", () => {
   log("booth listening on 127.0.0.1:" + PORT);
-  queue(async () => {
-    const ok = await readyTwitch();
-    if (ok && guideDue()) {
-      const open = state.predictionId && state.lastCard;
-      const extra = open ? "This card: " + showName(state.lastCard.left) + " or " + showName(state.lastCard.right) + "." : "";
-      await sayGuide(extra);
-    }
-  }).catch((e) => log("twitch " + e.message));
+  queue(() => readyTwitch()).catch((e) => log("twitch " + e.message));
 });
