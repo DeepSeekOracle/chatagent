@@ -8,7 +8,10 @@ function note($m) { Add-Content -Path $log -Value ((Get-Date).ToString("s") + " 
 $up = Get-NetTCPConnection -LocalPort 8791 -State Listen -ErrorAction SilentlyContinue
 if (-not $up) {
   note "starting booth"
-  Start-Process -FilePath $node -ArgumentList (Join-Path $root "bot.js") -WorkingDirectory $root -WindowStyle Hidden
+  Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+    CommandLine = "`"$node`" `"$root\bot.js`""
+    CurrentDirectory = $root
+  } | Out-Null
 }
 $obs = Get-Process obs64 -ErrorAction SilentlyContinue
 if (-not $obs) {
