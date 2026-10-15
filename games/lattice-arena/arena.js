@@ -1120,6 +1120,39 @@
     return { x: (sx / n) * vel, y: (sy / n) * vel };
   }
 
+  /* Two fists walking at the same body beat the soft shoulder nudge and draw as
+     one sprite. This runs after the plans, and it only opens the overlap. It is
+     not a wall, so it must not feed the bail. */
+  function nudgeBody(e, dx, dy) {
+    if (e.b && e.b.ghost) {
+      e.x = clamp(e.x + dx, TILE * 1.15, (MAP_W - 1.15) * TILE);
+      e.y = clamp(e.y + dy, TILE * 1.15, (MAP_H - 1.15) * TILE);
+      return;
+    }
+    const before = overlapAt(e.x, e.y);
+    const nx = e.x + dx;
+    if (overlapAt(nx, e.y) <= before) e.x = nx;
+    const ny = e.y + dy;
+    if (overlapAt(e.x, ny) <= before) e.y = ny;
+  }
+  function shoulders() {
+    const bodies = all().filter((e) => !e.dead);
+    const want = 40;
+    for (let i = 0; i < bodies.length; i++) {
+      for (let j = i + 1; j < bodies.length; j++) {
+        const a = bodies[i], b = bodies[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dd = Math.hypot(dx, dy);
+        if (dd >= want) continue;
+        let ux = 1, uy = 0, push = want * 0.5;
+        if (dd >= 0.01) { ux = dx / dd; uy = dy / dd; push = (want - dd) * 0.5; }
+        else if ((a.uid || 0) % 2) ux = -1;
+        nudgeBody(a, -ux * push, -uy * push);
+        nudgeBody(b, ux * push, uy * push);
+      }
+    }
+  }
+
   function think(e, dt) {
     const b = e.b;
     const st = buffed(e);
@@ -1715,8 +1748,8 @@
       e.px = e.x; e.py = e.y;
       think(e, dt);
       attack(e);
-      /* contact damage for anything standing in something's face, so melee always matters */
     });
+    for (let pass = 0; pass < 4; pass++) shoulders();
     stepProjectiles(dt);
     for (let i = S.pending.length - 1; i >= 0; i--) {
       const p = S.pending[i];

@@ -407,8 +407,12 @@
        three is how a team fight is lost — this is the whole difference between
        diving and attacking. */
     const knife = range <= 110 && !st.wound;                     // the contact kits: rush, assassin, skirmish, hunter
-    const foesNear = en.filter((o) => dist(e.x, e.y, o.x, o.y) < 210);
-    const matesNear = al.filter((o) => o !== e && dist(e.x, e.y, o.x, o.y) < 210);
+    /* A summoned ward is a gun on a timer, not a second knife. Counting it made a
+       1v1 against Gate look like a crowd, and the fist spent the fight jogging
+       away from a line that was never coming. */
+    const realBody = (o) => o.b.cls !== "token";
+    const foesNear = en.filter((o) => realBody(o) && dist(e.x, e.y, o.x, o.y) < 210);
+    const matesNear = al.filter((o) => o !== e && realBody(o) && dist(e.x, e.y, o.x, o.y) < 210);
     const edgeHere = matesNear.length - foesNear.length;         // >0: we have the numbers here
     /* keep it next to the glass test below; both are read by the knife rules */
     const lonely = en.filter((o) => en.filter((q) => q !== o && dist(q.x, q.y, o.x, o.y) < 165).length === 0)
@@ -530,11 +534,16 @@
            alone is not pressure, it is a free kill with a cooldown on it. */
     if (knife && !hurt && dTargetNow < 420 &&
         ((matesNear.length === 0 && foesNear.length >= 2) || edgeHere <= -2 || (glass && edgeHere < 0))) {
-      const ccx = foesNear.reduce((s, o) => s + o.x, 0) / foesNear.length;
-      const ccy = foesNear.reduce((s, o) => s + o.y, 0) / foesNear.length;
-      const away = dist(e.x, e.y, ccx, ccy) || 1;
-      const ux = (e.x - ccx) / away, uy = (e.y - ccy) / away;
-      const rim = { x: ccx + ux * (band0 * 0.72 + 42), y: ccy + uy * (band0 * 0.72 + 42) };
+      /* The edge of reach is where the swing still lands. The old rim was a flat
+         42px past the band, which for a short fist sits outside the hit, so the
+         body stood there weaving and never swung. Anchor on the nearest body,
+         not the middle of the pack — a spread clump was sending the fist across
+         the ring to "wait". */
+      const nearFoe = foesNear.reduce((a, o) => (dist(e.x, e.y, o.x, o.y) < dist(e.x, e.y, a.x, a.y) ? o : a));
+      const away = dist(e.x, e.y, nearFoe.x, nearFoe.y) || 1;
+      const ux = (e.x - nearFoe.x) / away, uy = (e.y - nearFoe.y) / away;
+      const holdAt = (range || 40) + 8;
+      const rim = { x: nearFoe.x + ux * holdAt, y: nearFoe.y + uy * holdAt };
       task = "hold";
       point = stone(S, rim.x, rim.y) ? { x: Q.cx, y: Q.cy } : rim;
       band = band0;
