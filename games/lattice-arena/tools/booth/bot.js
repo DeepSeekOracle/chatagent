@@ -366,11 +366,12 @@ server.on("error", (e) => {
   process.exit(1);
 });
 const BOARD = `<!doctype html><meta charset="utf-8"><style>
-html,body{margin:0;background:transparent;color:#f6e7c2;font:700 22px/1.15 "Segoe UI",sans-serif}
-#bar{display:none;padding:6px 14px;background:rgba(6,6,10,.78);border:1px solid #c8a15a}
-.k{font-size:12px;letter-spacing:.14em;color:#e7c27a}
-#h{font-size:14px;font-weight:600;color:#f3e2b4}
-</style><div id="bar"><div class="k" id="k">TWITCH PREDICTION</div><div id="t"></div><div id="h"></div></div>
+html,body{margin:0;background:transparent;color:#fff8e8;font:700 24px/1.15 "Segoe UI",sans-serif}
+#bar{display:block;padding:8px 16px;background:rgba(8,6,12,.94);border:2px solid #e7c27a}
+.k{font-size:13px;letter-spacing:.16em;color:#e7c27a}
+#t{font-size:26px}
+#h{font-size:16px;font-weight:600;color:#f3e2b4}
+</style><div id="bar"><div class="k" id="k">TWITCH PREDICTION</div><div id="t">Opens on the next card</div><div id="h">Vote in Twitch chat. Click the prediction and spend channel points.</div></div>
 <script>
 function names(v){return Array.isArray(v)?v.filter(Boolean).join(" "):(v||"")}
 function side(name, pts){return name+(pts==null?"":"  "+pts+" pts")}
@@ -378,10 +379,16 @@ async function tick(){
   try{
     const h=await fetch("/health").then(r=>r.json());
     const bar=document.getElementById("bar");
-    if(!(h.prediction&&h.lastCard)){ bar.style.display="none"; return; }
     bar.style.display="block";
+    if(!(h.prediction&&h.lastCard)){
+      document.getElementById("k").textContent="TWITCH PREDICTION";
+      document.getElementById("t").textContent="Opens on the next card";
+      document.getElementById("h").textContent="Vote in Twitch chat. Click the prediction and spend channel points.";
+      return;
+    }
     const p=h.pools||{};
     const hasPts=h.pools&&p.left!=null;
+    document.getElementById("k").textContent="TWITCH PREDICTION";
     document.getElementById("t").textContent=side(names(h.lastCard.left), hasPts?p.left:null)+"    or    "+side(names(h.lastCard.right), hasPts?p.right:null);
     const leftMs=(h.until||0)-Date.now();
     const locked=h.status==="LOCKED"||(h.until&&leftMs<=0);
