@@ -507,7 +507,12 @@
     if (st.veil) { e.veilT = Math.max(e.veilT, st.veil[1]); e.veilV = Math.max(e.veilV, st.veil[0]); }
     if (st.wound) { e.woundT = Math.max(e.woundT || 0, st.wound[1]); e.woundV = Math.max(e.woundV || 0, st.wound[0]); }
     if (st.lifesteal) { e.lifestealT = Math.max(e.lifestealT, st.lifesteal[1]); e.lifestealV = Math.max(e.lifestealV, st.lifesteal[0]); }
-    if (st.aegis) e.shd += Math.round(e.max * st.aegis);
+    if (st.aegis) {
+      /* A second plate does not stack on one that is still up. Two doors
+         were casting ward on cooldown, the shield only grew, and the
+         ten-minute map ended with both of them still full. */
+      if (!(e.shd > 0)) e.shd += Math.round(e.max * st.aegis);
+    }
     /* Shield Wall: the body becomes the thing the other team has to hit. */
     if (st.taunt) {
       e.tauntT = Math.max(e.tauntT || 0, st.taunt);
