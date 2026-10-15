@@ -2186,6 +2186,11 @@
       canvas.width = wpx * dpr | 0; canvas.height = hpx * dpr | 0;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "rgba(0,0,0,0)";
+    ctx.setLineDash([]);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#05060a";
     ctx.fillRect(0, 0, wpx, hpx);
@@ -2229,8 +2234,6 @@
       ctx.strokeStyle = m.col || "#5eead4";
       ctx.globalAlpha = Math.max(0, m.life * 2.2);
       ctx.lineWidth = m.beam ? 6 : 3;
-      ctx.shadowColor = m.col || "#5eead4";
-      ctx.shadowBlur = m.spark ? 12 : 8;
       if (m.beam) {
         ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x2, m.y2); ctx.stroke();
         ctx.lineWidth = 2;
@@ -2426,6 +2429,11 @@
       ctx.restore();
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = "rgba(0,0,0,0)";
+    ctx.setLineDash([]);
     drawHouse(wpx, hpx, ox, oy, scale);
   }
 

@@ -251,14 +251,9 @@
     ctx.save();
     ctx.globalAlpha *= 0.34;
     ctx.lineWidth = (ctx.lineWidth || 3) + 7;
-    ctx.shadowColor = ctx.strokeStyle;
-    ctx.shadowBlur = 14;
     draw();
     ctx.restore();
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = ctx.strokeStyle;
     draw();
-    ctx.shadowBlur = 0;
   }
   function arc(ctx, p, wide) {
     const reach = 22 + p * 26;
@@ -312,8 +307,6 @@
     ctx.save();
     ctx.globalAlpha *= 0.4;
     ctx.lineWidth = 7;
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 14;
     tooth(-1); ctx.stroke();
     tooth(1); ctx.stroke();
     ctx.restore();
@@ -429,8 +422,6 @@
         ctx.save();
         ctx.globalAlpha *= 0.9;
         ctx.lineWidth = v === "crown" ? 2.5 : 1.6;
-        ctx.shadowColor = ctx.strokeStyle;
-        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.moveTo(x, y0);
         ctx.lineTo(x + (v === "rain" ? 2 : 0), y1);
@@ -501,8 +492,6 @@
     else if (v === "blast") { rings(ctx, p, 3); motes(ctx, p, 10, 30); cracks(ctx, p); }
     else if (v === "shard") {
       ctx.save();
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.moveTo(0, 0); ctx.lineTo(28 + p * 18, -8); ctx.lineTo(14, 0); ctx.lineTo(28 + p * 18, 8); ctx.closePath();
       ctx.fill();
@@ -560,8 +549,6 @@
     ctx.strokeStyle = p.col || "#fbbf24";
     ctx.lineWidth = 2;
     ctx.globalAlpha = 0.95;
-    ctx.shadowColor = p.col || "#fbbf24";
-    ctx.shadowBlur = 10;
     const v = p.vis || "shard";
     ctx.globalAlpha = 0.35;
     ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-4, 0); ctx.stroke();
