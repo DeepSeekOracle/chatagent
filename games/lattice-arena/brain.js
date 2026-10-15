@@ -372,35 +372,26 @@
     /* A mending kit is a mending kit: a commander with a standard and a smith with a
        temper are as responsible for the line as the medic is. The style only decides
        how eager the threshold is. */
+    /* The commander hands each hemisphere the same picture of the fight and takes all
+       three answers back. None of them is consulted about the others' business: GUN says
+       who, MED says who needs mending, and the feet are NAV's -- which is why a body can
+       shoot while it retreats, and mend an ally while it is being shot at. */
     const healer = isSupport(b) || !!st.aid;
-    const patient = healer ? al.filter((o) => o !== e && o.hp / o.max < (st.aid || 0.78))
-      .sort((a, c) => a.hp / a.max - c.hp / c.max)[0] : null;
-
-    /* The squad call is a doctrine, not a leash — but it is a doctrine. The anchors and
-       the chargers fight what the team called, the killers go for the body that will die
-       soonest, the guns hit whatever is bunched, the kiters deal with what is on them.
-       Nobody crosses the arena alone to do it: a target of your own choosing has to be
-       within reach of the line. */
-    const pref = preferTarget(S, e, st);
-    let target = focus;
-    if (st.prefer && st.prefer !== "attack" && pref && pref !== focus) {
-      const dPref = dist(e.x, e.y, pref.x, pref.y);
-      /* a knife that hunts the hurt goes further out of its way than the line does: that is
-         the whole job, and only the flanking styles can afford the walk. */
-      const reach = st.prefer === "weakest" ? Math.max(dFocus + 210, 420) : Math.max(dFocus + 130, 320);
-      if (dPref < reach) target = pref;
-    }
-    /* The plan is rebuilt every 0.18s, and a preference that sits on the edge of its reach makes
-       it alternate between the body the style wants and the squad's focus: the target changes
-       1.9 times a second and the body turns on the spot. The damper is one-sided. A target the
-       style asked for always lands -- that is doctrine, and the knives live on it. What is
-       refused is the *focus* taking a target back off a body that had a reason for its own:
-       it keeps what it holds unless the focus is a clear improvement. */
-    const prevT = e.plan && e.plan.target;
-    if (prevT && !prevT.dead && prevT !== target && target !== pref) {
-      const dPrev = dist(e.x, e.y, prevT.x, prevT.y), dNew = dist(e.x, e.y, target.x, target.y);
-      if (!(dNew < dPrev * 0.75 || dNew < dPrev - 60)) target = prevT;
-    }
+    const crew = { focus: focus, dFocus: dFocus, al: al, healer: healer };
+    const GUN = hemisphereGun(S, e, st, crew);
+    const MED = hemisphereMed(S, e, st, b, crew);
+    let target = GUN.target;
+    const patient = MED.patient;
+    /* the one piece of kit both GUN and NAV need to know about: the closer. A contact kit
+       with its dash or charge on cooldown cannot arrive at a gun, and the rhythm below is
+       built on that fact. */
+    const closerIdx = b.moves.findIndex((mv) => mv && (mv.shape === "stride" || mv.shape === "blink"));
+    const closerReady = closerIdx >= 0 && e.cds[closerIdx] <= 0;
+    const closerName = closerIdx >= 0 ? b.moves[closerIdx].name : "";
+    /* what the crew decided, for the thinking chip the spectator watches */
+    e.hem = { gun: (target ? target.b.name : "nobody") + (GUN.why ? " (" + GUN.why + ")" : ""),
+      med: MED.why || (healer ? "nobody bleeding" : "no mend"), nav: "", closer: closerName,
+      ready: closerReady, cd: closerIdx >= 0 ? Math.max(0, e.cds[closerIdx]) : 0 };
     let task = "press", point = null, band = band0, gait = 1, why = Q.why;
     const wound = st.wound && hp < 0.55;                  // the berserker closes as it bleeds
     /* A last body standing has no line to fall back into — breaking contact in a 1v1
@@ -617,6 +608,43 @@
       return set(e, { task, target, point, band, gait, why }, S);
     }
 
+    /* — 4b. THE CONTACT KIT'S RHYTHM — back out, then burst. A body with a fist cannot
+           trade with a body that reaches eight tiles: walking at it is how it dies with
+           its health still on it, and the duel report has said so in numbers for weeks
+           (contact kits win a third of these and spend the walk doing it). The rhythm is
+           the one every arena game uses: while the closer is DOWN, stand outside the
+           enemy's reach rather than inside your own, and let IT come to you -- and the
+           moment the closer is UP, burn in and use the whole kit at once. Walking is not
+           the approach; the cooldown is. */
+    if (knife && target && closerIdx >= 0 && hp > st.retreat) {
+      const out = (target.b.range || 40) > range + 60 && dTargetNow > range + 26;
+      /* The wait is the last few seconds before the closer comes up, NOT the whole
+         cooldown. Backing off the moment the dash goes on cooldown left a measured 1293
+         seconds of "waiting on..." against 22 seconds of bursting -- a body that resets
+         for fifteen seconds is not setting up a burst, it is watching. You only need to
+         be out of the firing line when the burst is about to happen. */
+      const closerIn = closerIdx >= 0 ? Math.max(0, e.cds[closerIdx]) : 0;
+      if (out && !closerReady && closerIn <= 2.5) {
+        const away = dTargetNow || 1;
+        const keep = (target.b.range || 40) + 34;
+        const step = Math.min(96, Math.max(26, keep - dTargetNow + 40));
+        const back = { x: e.x + ((e.x - target.x) / away) * step, y: e.y + ((e.y - target.y) / away) * step };
+        task = "withdraw";
+        point = stone(S, back.x, back.y) ? null : back;
+        band = 0; gait = 1;
+        why = "waiting on " + closerName;
+        return set(e, { task, target, point, band, gait, why }, S);
+      }
+      if (out && closerReady) {
+        task = "advance";
+        point = null;
+        band = range * 0.8;
+        gait = 1;
+        why = closerName + " up — burning in";
+        return set(e, { task, target, point, band, gait, why }, S);
+      }
+    }
+
     /* — 5. THE LINE: holding is a decision, and it is usually the right one for a
            body whose job is to be in the way. Front rank holds; the ones behind
            hold at band and shoot. Bounding: a pair takes turns. */
@@ -772,6 +800,62 @@
     }
     e.plan = plan;
     return plan;
+  }
+
+  /* =============== THE THREE HEMISPHERES ==========================================
+     A body used to be one brain working out where to go, who to hit and whether to
+     mend, all in a single chain of rules -- and every rule had to know about the other
+     two, which is why a wounded mender could walk into a gun it had already decided to
+     avoid. It is now a crew, the way a tank is a crew:
+
+       GUN   who am I attacking, and am I allowed to shoot yet (the cooldown)
+       MED   do I mend myself, run and mend, or stand a shield over somebody
+       NAV   where do I stand while the other two are doing that, and why
+
+     Each one answers its own question from the same picture of the fight, and none of
+     them waits on another. NAV is the one that gets the last word on FEET -- a body has
+     one pair of legs -- but GUN's target and MED's patient are decided before it runs,
+     and a mending body moves to its patient instead of to its target. That is the whole
+     difference between "one brain doing three jobs" and three bodies in one hull. */
+
+  /* ---- GUN: the target, and the reason it is that one ---- */
+  function hemisphereGun(S, e, st, ctx) {
+    const { focus, dFocus } = ctx;
+    const pref = preferTarget(S, e, st);
+    let target = focus;
+    let why = "the team's call";
+    /* this guard is load-bearing and was nearly lost in the move: an "attack" style does
+       not go looking for a private target, it fights the team's call. Dropping it let the
+       chargers pick their own, and the knives stopped standing out from them. */
+    if (st.prefer && st.prefer !== "attack" && pref && pref !== focus) {
+      const dPref = dist(e.x, e.y, pref.x, pref.y);
+      /* a knife that hunts the hurt goes further out of its way than the line does: that is
+         the whole job, and only the flanking styles can afford the walk. */
+      const reach = st.prefer === "weakest" ? Math.max(dFocus + 210, 420) : Math.max(dFocus + 130, 320);
+      if (dPref < reach) { target = pref; why = st.prefer; }
+    }
+    /* The plan is rebuilt every 0.18s, and a preference that sits on the edge of its reach makes
+       it alternate between the body the style wants and the squad's focus: the target changes
+       1.9 times a second and the body turns on the spot. The damper is one-sided. A target the
+       style asked for always lands -- that is doctrine, and the knives live on it. What is
+       refused is the *focus* taking a target back off a body that had a reason for its own:
+       it keeps what it holds unless the focus is a clear improvement. */
+    const prevT = e.plan && e.plan.target;
+    if (prevT && !prevT.dead && prevT !== target && target !== pref) {
+      const dPrev = dist(e.x, e.y, prevT.x, prevT.y), dNew = dist(e.x, e.y, target.x, target.y);
+      if (!(dNew < dPrev * 0.75 || dNew < dPrev - 60)) target = prevT;
+    }
+    return { target: target, why: why };
+  }
+
+  /* ---- MED: mend, run and mend, or shield ---- */
+  function hemisphereMed(S, e, st, b, ctx) {
+    const { al, healer } = ctx;
+    const aidIdx = b.moves.findIndex((mv) => mv && (mv.shape === "mend" || mv.heal));
+    const ready = aidIdx >= 0 && e.cds[aidIdx] <= 0;
+    const patient = healer ? al.filter((o) => o !== e && o.hp / o.max < (st.aid || 0.78))
+      .sort((a, c) => a.hp / a.max - c.hp / c.max)[0] : null;
+    return { patient: patient, ready: ready, aidIdx: aidIdx, why: patient ? "mending " + patient.b.name : "" };
   }
 
   /* how long the current task has been running (bodies call this every frame) */

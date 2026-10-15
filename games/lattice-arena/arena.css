@@ -449,3 +449,10 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
 .intro .iform { margin: 2px 0 6px; font: 700 11px/1.3 "Trebuchet MS", system-ui, sans-serif;
   letter-spacing: .07em; text-transform: uppercase; color: #fbbf24; opacity: .92; min-height: 14px; }
 .intro .isfoe .iform { color: #f87171; }
+
+/* the crew on the thinking chip: NAV / GUN / MED decided separately, shown separately */
+.st.hem { opacity: .78; }
+.st.hem.gun { color: #fca5a5; }
+.st.hem.med { color: #7ee0c0; }
+.st.hem.closer { color: #a5b4fc; }
+.st.hem.closer.up { color: #fde68a; opacity: 1; font-weight: 700; }

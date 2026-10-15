@@ -891,9 +891,21 @@
         r.hp.className = "hp" + (e.team === 0 ? "" : " foe") + (e.dead ? " dead" : "") + (frac < 0.3 ? " low" : "");
         r.shd.style.width = (e.shd > 0 ? Math.min(100, (e.shd / e.max) * 100) : 0) + "%";
         r.row.classList.toggle("down", !!e.dead);
-        /* the task is the reason to watch: a spectator can see SHADE flanks, LYRA mends,
-           BRUTE holds the gap, and the fight stops being a mystery. */
-        const chip = e.dead ? "" : "<i class='st task' title='" + esc(e.taskWhy || "") + "'>" + esc(e.task || "") + "</i>";
+        /* THE CREW, ON THE CHIP. One chip said what a body was doing; a crew of three says
+           why -- NAV picks the feet, GUN picks who it is hitting, MED picks who it is
+           mending -- and because they are decided separately, a spectator can watch one
+           body retreat, shoot and mend in the same second. Hover any chip for the reason. */
+        const H = e.hem || {};
+        /* before the bell the pre-stage is walking these bodies into their shape and the
+           crew has not been asked yet, so it shows the task alone rather than three
+           dashes pretending to be a decision */
+        const chip = e.dead ? "" : (!H.gun ? "<i class='st task' title='" + esc(e.taskWhy || e.task || "") + "'>" + esc(e.task || "-") + "</i>" :
+          "<i class='st task' title='" + esc("NAV: " + (e.taskWhy || e.task || "")) + "'>N:" + esc(e.task || "-") + "</i>" +
+          "<i class='st hem gun' title='" + esc("GUN: " + (H.gun || "-")) + "'>G:" + esc(String(H.gun || "-").split(" (")[0]) + "</i>" +
+          "<i class='st hem med' title='" + esc("MED: " + (H.med || "-")) + "'>M:" + esc(String(H.med || "-").split(" ")[0]) + "</i>" +
+          (H.closer ? "<i class='st hem closer" + (H.ready ? " up" : "") + "' title='" +
+            esc("CLOSER: " + H.closer + " — " + (H.ready ? "ready, burn in" : (H.cd || 0).toFixed(1) + "s, stay out of its reach")) +
+            "'>" + esc((H.ready ? "▲ " : "▽ ") + H.closer) + "</i>" : ""));
         const st = chip + E.statusList(e).slice(0, 4).map(([k]) => "<i class='st " + k + "'>" + k + "</i>").join("");
         if (r.st.dataset.k !== st) { r.st.innerHTML = st; r.st.dataset.k = st; }
         e.b.moves.forEach((m, i) => {
