@@ -2231,7 +2231,7 @@
       ctx.strokeStyle = p.col || "#fbbf24";
       ctx.globalAlpha = 0.5 + 0.3 * Math.sin(S.time * 30);
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r || 24, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(2, p.r || 24), 0, 6.283); ctx.stroke();
       ctx.restore();
     });
     S.marks.forEach((m) => {
@@ -2343,7 +2343,14 @@
       }
       });
     });
-    if (w.LYGO_ATTACKS) w.LYGO_ATTACKS.draw(ctx, S);
+    /* A visual that throws must cost its own effect and nothing else. It used to cost
+       everything drawn after it -- the bodies, the marks and the whole crowd ring, which
+       is how a negative arc radius turned into "the crowd disappears and the arena is
+       black around it". Whatever the effect, the rest of the frame still gets drawn. */
+    if (w.LYGO_ATTACKS) {
+      try { w.LYGO_ATTACKS.draw(ctx, S); }
+      catch (err) { if (!S.fxErr) { S.fxErr = 1; if (w.console) console.warn("attack visual skipped:", err && err.message); } }
+    }
     /* projectiles */
     S.projectiles.forEach((p) => {
       if (w.LYGO_ATTACKS && p.vis) { w.LYGO_ATTACKS.shot(ctx, p); return; }

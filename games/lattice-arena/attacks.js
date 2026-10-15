@@ -467,8 +467,17 @@
     }
     else if (v === "drain" || v === "unname") {
       for (let i = 0; i < 3; i++) {
+        /* A ring that has collapsed is SKIPPED, never handed to arc(). At i=2 with p near
+           1 this radius is 18 - 12 - 8: negative, and a negative radius makes the canvas
+           throw IndexSizeError. The throw kills the rest of the frame, and the crowd ring
+           is drawn at the very end of the frame, so on every late frame of a Drain Cloud
+           or an Unname the stands were never drawn and the dark base coat was left around
+           the arena. That is the whole bug report: the crowd flickering out when something
+           happens in the fight. */
+        const r = 18 - p * 12 - i * 4;
+        if (r <= 0.6) continue;
         ctx.beginPath();
-        ctx.arc(0, 0, 18 - p * 12 - i * 4, p * 5 + i, p * 5 + i + 3.4);
+        ctx.arc(0, 0, r, p * 5 + i, p * 5 + i + 3.4);
         ctx.stroke();
       }
       motes(ctx, p, 5, 14);
