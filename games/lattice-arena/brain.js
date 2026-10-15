@@ -251,28 +251,6 @@
   /* a body already on the rim walks back into the zone its task belongs in.
      Attackers leave their own back wall for the centre. Defenders fall in on
      the inner side of their third. Nobody is sent at a corner to "get clear". */
-  /* A retreat that is clamped onto the inset is a body walking into the wall.
-     Park it inside the floor and, if one axis hit the border, slide along it. */
-  function keepOffWall(S, e, point) {
-    if (!point || !S || !S.lv) return point;
-    const f = fieldOf(S);
-    const pad = 48;
-    const x0 = f.x0 + pad, y0 = f.y0 + pad, x1 = f.x1 - pad, y1 = f.y1 - pad;
-    let x = point.x, y = point.y;
-    const outX = x < x0 || x > x1;
-    const outY = y < y0 || y > y1;
-    if (!outX && !outY) return point;
-    x = Math.max(x0, Math.min(x1, x));
-    y = Math.max(y0, Math.min(y1, y));
-    if (outX && !outY) {
-      const dir = e.y < f.cy ? 1 : -1;
-      y = Math.max(y0, Math.min(y1, y + dir * 80));
-    } else if (outY && !outX) {
-      const dir = e.x < f.cx ? 1 : -1;
-      x = Math.max(x0, Math.min(x1, x + dir * 80));
-    }
-    return { x: x, y: y };
-  }
   function repairPoint(S, Q, e, role) {
     const f = fieldOf(S);
     const home = (Q && Q.home) || (e.team === 0 ? -1 : 1);
@@ -619,10 +597,10 @@
       const away = dTargetNow || 1;
       const step = Math.min(100, Math.max(52, band0 * 0.78 - dTargetNow + 28));
       task = "bait";
-      point = keepOffWall(S, e, {
+      point = {
         x: e.x + ((e.x - target.x) / away) * step,
         y: e.y + ((e.y - target.y) / away) * step
-      });
+      };
       gait = 1;
       band = band0;
       why = "keeping the shot";
@@ -655,7 +633,7 @@
       /* a kiter being closed on steps back — in bursts, not forever */
       if (st.panic && dFocus < st.panic && !e.braveT) {
         e.braveT = st.brave;
-        task = "bait"; point = keepOffWall(S, e, { x: e.x + (e.x - focus.x) * 0.6, y: e.y + (e.y - focus.y) * 0.6 });
+        task = "bait"; point = { x: e.x + (e.x - focus.x) * 0.6, y: e.y + (e.y - focus.y) * 0.6 };
         gait = 1; why = "giving ground";
       }
       return set(e, { task, target, point, band, gait, why }, S);
