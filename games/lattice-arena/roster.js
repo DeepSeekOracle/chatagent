@@ -65,7 +65,7 @@
     /* --- champions ------------------------------------------------------- */
     rend:      { name: "Rend",           text: "Tear the nearest foe and leave it bleeding.", cd: 7,  range: 2.1, aim: "enemy",  shape: "arc",  dmg: 1.35, fx: "hit_shard", st: { bleed: [10, 5] } },
     shieldwall:{ name: "Shield Wall",    text: "Raise the door: shield yourself and pull every eye onto you.", cd: 15, range: 0, aim: "self", shape: "self", st: { aegis: 0.35, taunt: 4 } },
-    charge:    { name: "Squire's Charge",text: "Close the gap in one stride and strike on arrival.",   cd: 9,  range: 9, aim: "enemy", shape: "blink", dmg: 1.1, fx: "hit_shard" },
+    charge:    { name: "Squire's Charge",text: "Close the gap in one stride and strike on arrival.",   cd: 7,  range: 9, aim: "enemy", shape: "blink", dmg: 1.1, fx: "hit_shard" },
     cover:     { name: "Cover",          text: "Throw a shield over the ally in the worst shape.",      cd: 11, range: 9, aim: "allylow", shape: "ally", st: { aegis: 0.34 } },
     bulwark:   { name: "Bulwark",        text: "Harden the whole line: nearby allies gain armor.",      cd: 17, range: 6, aim: "allies", shape: "allies", st: { armor: [3, 8] } },
     unwrite:   { name: "Unwrite",        text: "A blast that eats shields and hits them twice as hard.",cd: 8,  range: 8, aim: "enemy", shape: "blast", dmg: 1.5, radius: 2.0, fx: "hit_halo", strips: true },
@@ -119,9 +119,9 @@
     gatecannon:{ name: "Gate Cannon",    text: "A shell of cold light from the gate itself.",            cd: 12, range: 10, aim: "enemy", shape: "beam", dmg: 1.5, fx: "hit_cinder" },
 
     /* --- the pack -------------------------------------------------------- */
-    bite:      { name: "Pack Bite",      text: "Dash in and hamstring — the pack is faster than you.",  cd: 8,  range: 8, aim: "weakest", shape: "blink", dmg: 1.2, fx: "hit_needle", st: { root: 1.2, wound: [0.45, 4] } },
+    bite:      { name: "Pack Bite",      text: "Dash in and hamstring — the pack is faster than you.",  cd: 7,  range: 8, aim: "weakest", shape: "blink", dmg: 1.2, fx: "hit_needle", st: { root: 1.2, wound: [0.45, 4] } },
     roar:      { name: "Roar",           text: "A roar that shakes the line and throws it back off its feet.", cd: 12, range: 5.5, aim: "self", shape: "aura", dmg: 0.8, radius: 5.5, fx: "nova", st: { weak: [0.25, 5], knock: 1.8 } },
-    soljump:   { name: "Solstride",      text: "A long leap onto the one already hurt.", cd: 10, range: 10, aim: "weakest", shape: "blink", dmg: 1.25, fx: "hit_shard" },
+    soljump:   { name: "Solstride",      text: "A long leap onto the one already hurt.", cd: 8, range: 10, aim: "weakest", shape: "blink", dmg: 1.25, fx: "hit_shard" },
     maul:      { name: "Maul",           text: "Ironhide comes down on everything in reach.",            cd: 11, range: 0, aim: "self", shape: "aura", dmg: 1.2, radius: 2.8, fx: "nova", st: { knock: 1.4 } },
     stomp:     { name: "Stomp",          text: "The ground answers the tusk.",                           cd: 12, range: 0, aim: "self", shape: "aura", dmg: 1.1, radius: 3.2, fx: "nova", st: { stun: 0.8 } },
     clamp:     { name: "Glassbarb Clamp",text: "A clamp of glass barb and a tail you did not see.",      cd: 9,  range: 2.0, aim: "enemy", shape: "melee", dmg: 1.3, fx: "hit_needle", st: { burn: [5, 4] } },

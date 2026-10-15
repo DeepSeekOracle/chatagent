@@ -470,8 +470,34 @@
     pushTalk(kind, who, foe, false);
   }
   function isMender(b) { return !!(b && (b.moves || []).some((m) => m.st && m.st.heal)); }
+  /* ---- CONTROL THAT DEGRADES ITSELF WHEN IT IS SPAMMED ---------------------------
+     Every arena game with hard control carries this, and this roster is why it needs it:
+     eleven kits lay a stun, root, silence, pull or knock, and the group fight is exactly
+     where they stack -- three bodies holding one is how a dive dies, and it is also how a
+     melee buff turns the game into a prison. So hard control costs more each time it lands
+     on the SAME body inside the window: full, then 60%, then 35% for everything after, and
+     never below a floor (a hold of zero is a lie the player cannot see). Slows and
+     weaknesses are the "slight edge" tools and decay more gently. The window clears itself,
+     so control used properly is untouched and control used as a spam pays for it. */
+  const CC_WIN = 5, CC_HARD = [1, 0.6, 0.35], CC_SOFT = [1, 0.8, 0.6], CC_FLOOR = 0.25;
+  function dr(e, kind) {
+    const now = S.time || 0;
+    const key = kind === "hard" ? "ccHard" : "ccSoft";
+    /* the counters are separate on purpose: a slow must not make the next stun weaker */
+    if (!e[key] || now - e[key].t > CC_WIN || now < e[key].t) e[key] = { t: now, n: 0 };
+    e[key].n++; e[key].t = now;
+    const table = kind === "hard" ? CC_HARD : CC_SOFT;
+    return table[Math.min(e[key].n - 1, table.length - 1)];
+  }
   function applySt(e, st, from) {
     if (!st) return;
+    /* A max accumulator that outlives its timer lies about strength. slowV and weakV were
+       only ever raised with Math.max and never cleared, so once a body had been slowed hard
+       a fresh, weaker slow read as the old one -- which is precisely the case the control
+       degradation creates on purpose, so the soft half of it was silently a no-op. The
+       values are cleared with their clocks (and only then, so nothing else moves). */
+    if (!(e.slowT > 0)) e.slowV = 0;
+    if (!(e.weakT > 0)) e.weakV = 0;
     /* Unwrite Ink: the first stun, root or silence aimed at this body does not land. */
     if (from && from !== e && from.team !== e.team && !e.usedCleanse &&
         e.b.cards.some((c) => c.hook === "cleanse") && (st.stun || st.root || st.silence)) {
@@ -481,18 +507,26 @@
       pushEvent(e.b.name + " shrugs the first hold — Unwrite Ink.", "gift");
       pushTalk("cleanse", e, from, false);
     }
-    if (st.stun) e.stun = Math.max(e.stun, st.stun);
+    /* one scale per APPLICATION, not per field: a move carrying a stun and a root is one
+       press of the button, and counting it twice would punish a kit for its own design.
+       Hostile control only -- a body's own haste or rage is nobody's spam. */
+    const hostile = from && from !== e && from.team !== e.team;
+    const hardHit = !!(st.stun || st.root || st.silence || st.pull || st.knock);
+    const softHit = !!(st.slow || st.weak);
+    const hs = hostile && hardHit ? dr(e, "hard") : 1;
+    const ss = hostile && softHit ? dr(e, "soft") : 1;
+    if (st.stun) e.stun = Math.max(e.stun, Math.max(CC_FLOOR, st.stun * hs));
     if (from && from.team !== e.team && (st.stun || st.root)) {
       pushTalk("cc", from, e, false);
       if ((S.time - (S.lastHold == null ? -9 : S.lastHold)) > 4) { S.lastHold = S.time; pushCast("hold", { me: from.b.name }); }
     }
-    if (st.root) e.root = Math.max(e.root, st.root);
-    if (st.silence) e.silence = Math.max(e.silence, st.silence);
-    if (st.slow) { e.slowT = Math.max(e.slowT, st.slow[1]); e.slowV = Math.max(e.slowV, st.slow[0]); }
+    if (st.root) e.root = Math.max(e.root, Math.max(CC_FLOOR, st.root * hs));
+    if (st.silence) e.silence = Math.max(e.silence, Math.max(CC_FLOOR, st.silence * hs));
+    if (st.slow) { e.slowT = Math.max(e.slowT, st.slow[1]); e.slowV = Math.max(e.slowV, st.slow[0] * ss); }
     if (st.swift) { e.swiftT = Math.max(e.swiftT, st.swift[1]); e.swiftV = Math.max(e.swiftV, st.swift[0]); }
     if (st.haste) { e.hasteT = Math.max(e.hasteT, st.haste[1]); e.hasteV = Math.max(e.hasteV, st.haste[0]); }
     if (st.rage) { e.rageT = Math.max(e.rageT, st.rage[1]); e.rageV = Math.max(e.rageV, st.rage[0]); }
-    if (st.weak) { e.weakT = Math.max(e.weakT, st.weak[1]); e.weakV = Math.max(e.weakV, st.weak[0]); }
+    if (st.weak) { e.weakT = Math.max(e.weakT, st.weak[1]); e.weakV = Math.max(e.weakV, st.weak[0] * ss); }
     if (st.burn) {
       if (st.burn[0] >= (e.burnDps || 0)) { e.burnDps = st.burn[0]; e.burnFrom = from || null; }
       e.burnT = Math.max(e.burnT, st.burn[1]);
@@ -521,8 +555,8 @@
     if (st.armor) { e.armorBuff = Math.max(e.armorBuff, st.armor[0]); e.armorBuffT = Math.max(e.armorBuffT, st.armor[1]); }
     if (st.heal) { const amt = Math.round(e.max * st.heal); heal(e, amt, from); }
     if (st.cdReset) e.cds = e.cds.map(() => 0.15);
-    if (st.knock) shove(e, from, st.knock * TILE);
-    if (st.pull) pullTo(e, from, st.pull * TILE);
+    if (st.knock) shove(e, from, Math.max(0.5, st.knock * hs) * TILE);
+    if (st.pull) pullTo(e, from, Math.max(0.5, st.pull * hs) * TILE);
   }
   function heal(e, amt, from) {
     if (e.dead) return 0;
