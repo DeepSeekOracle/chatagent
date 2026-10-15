@@ -139,7 +139,7 @@
     heartboss: {
       atk: { vis: "heart", sfx: "heart_strike" },
       heartbeat: { vis: "heart", sfx: "heart_beat" },
-      wardfield: { vis: "ward", sfx: "heart_ward", name: "Crypt Ward", text: "The beat puts a ward on everything that shares its blood." }
+      cryptward: { vis: "ward", sfx: "heart_ward", name: "Crypt Ward", text: "The beat puts a ward on everything that shares its blood." }
     },
     levi: {
       atk: { vis: "deep", sfx: "levi_bolt" },

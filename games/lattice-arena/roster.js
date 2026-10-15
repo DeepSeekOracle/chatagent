@@ -107,7 +107,8 @@
     anvil:     { name: "Anvil",          text: "Bring the anvil down and let the coal do the rest.",     cd: 11, range: 2.4, aim: "enemy", shape: "blast", dmg: 1.4, radius: 2.0, fx: "hit_cinder", st: { burn: [8, 5] } },
     standard:  { name: "Standard Raised", text: "Plants the standard: the line mends and moves quicker.", cd: 16, range: 6, aim: "allies", shape: "allies", st: { heal: 0.15, haste: [0.2, 5] } },
     temperwork:{ name: "Temper Work",     text: "The smith re-tempers what the fight has bent.",        cd: 17, range: 6, aim: "allies", shape: "allies", st: { heal: 0.16, haste: [0.15, 4] } },
-    heartbeat: { name: "Heartbeat",      text: "The heart of the crypt beats: it mends its own.",        cd: 12, range: 6, aim: "allies", shape: "allies", st: { heal: 0.20 } },
+    heartbeat: { name: "Heartbeat",      text: "The heart of the crypt beats: it mends its own.",        cd: 18, range: 6, aim: "allies", shape: "allies", st: { heal: 0.11 } },
+    cryptward: { name: "Crypt Ward",     text: "A smaller ward. It is a pause, not a second life.",       cd: 22, range: 0, aim: "self", shape: "self", st: { aegis: 0.16, thorns: [0.16, 4] } },
     tidecrush: { name: "Tide Crush",     text: "The depth takes the room and drags it in.",              cd: 14, range: 6, aim: "clump", shape: "aura", atRange: true, radius: 3.4, dmg: 1.2, fx: "nova", st: { pull: 3.6, slow: [0.35, 4] } },
     tithe:     { name: "Tithe",          text: "The tithe-king is paid in what you were saving.",        cd: 12, range: 2.2, aim: "enemy", shape: "melee", dmg: 1.2, drain: 0.6, fx: "hit_needle", st: { weak: [0.22, 5], wound: [0.3, 5] } },
     nameless:  { name: "Nameless",       text: "Names go where it looks.",                               cd: 15, range: 8, aim: "clump", shape: "blast", dmg: 1.3, radius: 2.8, fx: "hit_halo", st: { silence: 5 } },
@@ -327,10 +328,10 @@
 
   add({ id: "heartboss", name: "Heart of the Crypt", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_heartboss" }, color: "#ef4444",
     bio: "Ten thousand feet of the crypt, and it beats.",
-    style: "vanguard", tune: { band: 0.95, leash: 95, commit: 1.6, strafe: 0.2, retreat: 0.1 }, temper: "Mends its own in the middle of the brawl.",
+    style: "vanguard", tune: { band: 0.95, leash: 95, commit: 1.6, strafe: 0.2, retreat: 0.32 }, temper: "Mends its own, then steps out when the ward is down.",
     hp: 1320, dmg: 38, rate: 0.68, speed: 2.0, armor: 7, range: 1.8, mana: 90, manaRegen: 7, crit: 0.09, cdMul: 0.92, boss: true,
     atk: { name: "Heart Strike", type: "melee", w: "shard", splash: 1.6 },
-    moves: ["heartbeat", "wardfield"], cards: ["giant", "regen", "vampiric"],
+    moves: ["heartbeat", "cryptward"], cards: ["giant", "regen", "vampiric"],
     counter: "Heals its own team while it fights. Kill it first or not at all." });
 
   add({ id: "levi", name: "Leviathan", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_levi" }, color: "#22d3ee",

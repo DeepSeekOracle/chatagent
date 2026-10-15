@@ -1413,6 +1413,13 @@
       }
       let mvx2 = Math.cos(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
       let mvy2 = Math.sin(sa) * st.speed * sAmt * 0.7 * dt * e.strafeDir;
+      if ((b.range || 40) > 130) {
+        const shove = st.speed * 0.9 * dt;
+        if (e.x < rim + 28) mvx2 += shove;
+        if (e.x > ringW - rim - 28) mvx2 -= shove;
+        if (e.y < rim + 28) mvy2 += shove;
+        if (e.y > ringH - rim - 28) mvy2 -= shove;
+      }
       const gap2 = bodyGap(e, st.speed);
       mvx2 += gap2.x * dt;
       mvy2 += gap2.y * dt;
@@ -1493,7 +1500,10 @@
     const ringW = S.lv.W * TILE, ringH = S.lv.H * TILE;
     const hard = TILE * 1.15;
     const wide = Math.max(TILE * 2.25, Math.min(ringW, ringH) * 0.09);
-    const onBody = t && !t.dead && dist2(gx2, gy2, t.x, t.y) < 56;
+    /* A fist may step into the gutter to reach a body standing there. A gun
+       does not: following that body onto the rail is how Kairos backs into
+       the wall. He can shoot from the inset. */
+    const onBody = fistHere && t && !t.dead && dist2(gx2, gy2, t.x, t.y) < 56;
     const edge = onBody ? hard : wide;
     const rawX = gx2, rawY = gy2;
     gx2 = clamp(gx2, edge, ringW - edge);
@@ -1525,6 +1535,15 @@
     const gap = bodyGap(e, st.speed);
     mvx += gap.x * dt;
     mvy += gap.y * dt;
+    /* A gun already on the shoulder walks back in. The shove from the fist
+       chasing him is what pins him to the stone. */
+    if (!fistHere) {
+      const shove = st.speed * 0.9 * dt;
+      if (e.x < wide + 28) mvx += shove;
+      if (e.x > ringW - wide - 28) mvx -= shove;
+      if (e.y < wide + 28) mvy += shove;
+      if (e.y > ringH - wide - 28) mvy -= shove;
+    }
     const wanted = Math.hypot(mvx, mvy);
     const walked = moveEntity(e, mvx, mvy);
     if (wanted > 0.06 && walked < wanted * 0.45) {
