@@ -69,6 +69,11 @@
   /* Photo skins. Sponsor type is already in the file, so the booth floor is a picture, not a tile.
      ONE ring, and only the ring a match is about to draw: eager-loading all seventeen was 51 MB
      before the menu was usable, and the fifteen-second walk-in is long enough to fetch one. */
+  /* The newer mats ship as JPEG: the same picture for about a tenth of the bytes. */
+  const FLOOR_JPG = {
+    basalt: 1, nightrun: 1, glacier: 1, gantry: 1, granite: 1,
+    rustbelt: 1, highland: 1, marble: 1, flagstone: 1, tideline: 1
+  };
   const FLOOR_TRIED = {};
   function wantFloor(k) {
     if (!k || FLOOR_SKIN[k] || FLOOR_TRIED[k]) return;
@@ -79,7 +84,7 @@
       if (S.lv && (S.lv.floor || S.lv.realm) === k) floorCv = paintFloor(S.lv);
     };
     img.onerror = () => { FLOOR_TRIED[k] = false; };   /* a failed mat may be retried */
-    img.src = "./assets/floors/" + k + ".png?v=3";
+    img.src = "./assets/floors/" + k + (FLOOR_JPG[k] ? ".jpg" : ".png") + "?v=3";
   }
   function atlasFor(sheet) { return AT[sheet]; }
   function cellOf(sheet, key, frame) {
@@ -118,12 +123,16 @@
      spectator needs to read a fight: two ways round, cover to break sight, open middle. */
   const REALMS = ["stone", "frost", "ember", "gold", "lattice", "void", "tide", "root"];
   /* The law stays on the realm. The mat is a separate draw, so the canvas
-     rotates through the set instead of locking to the ring. */
+     rotates through the set instead of locking to the ring. Ten more mats joined
+     the pool — CC0 Poly Haven grounds composed by tools/gen_arena_mats.py — so the
+     canvas to draw from is twenty-seven, and every mode lands on any of them. */
   const FLOORS = [
     "stone", "frost", "ember", "gold", "lattice", "void", "tide", "root",
     "ca-canvas", "ca-night", "ca-ember",
     "circle-gold", "circle-frost", "ring-tide",
-    "bare-sand", "bare-night", "bare-earth"
+    "bare-sand", "bare-night", "bare-earth",
+    "basalt", "nightrun", "glacier", "gantry", "granite",
+    "rustbelt", "highland", "marble", "flagstone", "tideline"
   ];
   function floorPick(seed) {
     const n = Math.abs(seed | 0);
