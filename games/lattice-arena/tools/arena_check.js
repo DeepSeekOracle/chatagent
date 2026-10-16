@@ -122,6 +122,25 @@ must("every fighter carries three real cards", badCards.length === 0, badCards.j
 const missingArt = R.ROSTER.filter((f) => f.cls === "champ" && !fs.existsSync(path.join(ASSETS, f.portrait)));
 must("every champion has its portrait file", missingArt.length === 0, missingArt.map((f) => f.id).join(", "));
 
+/* The mat pool, the loader and the disk must name the same file. A mat in FLOORS with no
+   picture is a silent fall back to the tile engine, and a JPEG mat missing from FLOOR_JPG
+   asks for the .png that was never written -- neither shows up in a browser, and both are
+   one typo away whenever the set grows. The pool is read off the source because FLOORS is
+   a closure inside the IIFE. */
+const ARENA_SRC = fs.readFileSync(path.join(ROOT, "arena.js"), "utf8");
+const poolSrc = (ARENA_SRC.match(/const FLOORS = \[([\s\S]*?)\];/) || [])[1] || "";
+const POOL = (poolSrc.match(/"[a-z0-9-]+"/g) || []).map((s) => s.slice(1, -1));
+const jpgSrc = (ARENA_SRC.match(/const FLOOR_JPG = \{([\s\S]*?)\};/) || [])[1] || "";
+const JPG = (jpgSrc.match(/([a-z0-9-]+)\s*:\s*1/g) || []).map((s) => s.split(":")[0].trim());
+const matFile = (k, ext) => path.join(ROOT, "assets", "floors", k + ext);
+must("no two mats share a name", new Set(POOL).size === POOL.length, POOL.length + " in the pool");
+const missingMats = POOL.filter((k) => !fs.existsSync(matFile(k, JPG.indexOf(k) >= 0 ? ".jpg" : ".png")));
+must("every mat in the pool has its picture on disk", missingMats.length === 0,
+  missingMats.length ? missingMats.join(", ") : POOL.length + " mats, " + JPG.length + " of them JPEG");
+const strayMat = POOL.filter((k) => fs.existsSync(matFile(k, JPG.indexOf(k) >= 0 ? ".png" : ".jpg")));
+must("the loader asks for the extension the mat was written in", strayMat.length === 0,
+  strayMat.length ? "FLOOR_JPG out of step for " + strayMat.join(", ") : "pool and FLOOR_JPG agree");
+
 /* no two fighters share a kit — the whole point of the roster */
 const sigs = {};
 const dupes = [];
