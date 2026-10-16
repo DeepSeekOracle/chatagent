@@ -129,7 +129,27 @@
     /* One committed step on a flat clock. build() renames it Close or Slip.
        cost is mana, not cd * 1.1 — a 30s button must stay pressable on a small pool.
        The engine ignores cdMul on this shape so the clock stays thirty seconds. */
-    stride:    { name: "Stride", text: "One committed step. Fists close the gap. Guns take the step back. Thirty seconds before it is yours again.", cd: 30, cost: 8, range: 7, aim: "enemy", shape: "stride", vis: "charge", sfx: "cast" }
+    stride:    { name: "Stride", text: "One committed step. Fists close the gap. Guns take the step back. Thirty seconds before it is yours again.", cd: 30, cost: 8, range: 7, aim: "enemy", shape: "stride", vis: "charge", sfx: "cast" },
+    /* --- closers for the ten that had none -------------------------------------
+       The audit that started this: the 18 contact kits reach 45-51px, the guns they
+       are sent against reach 256-275px, there is no cover left, and the kiter walks
+       faster than the fist -- so a contact kit with no way in is a body sent at rifles
+       with a walk. The heavy ones (bulwark, artillery; speed 1.6-2.0) cannot chase, so
+       they DRAG: a pull is the stronger closer of the two because it works on a body
+       already running away, so it sits on the longer clock. The fast ones (hunter,
+       vanguard, rush) run the prey down with a blink, and the landing sticks for a beat
+       -- the slight edge the style is built around. */
+    gate_haul:  { name: "Gate Haul",         text: "The gate does not come to you. The gate decides.", cd: 8, range: 6.0, aim: "enemy", shape: "blast", dmg: 0.6, fx: "nova", st: { pull: 3.1, slow: [0.35, 3] } },
+    decree:     { name: "Decree",            text: "The crown does not chase. It summons.", cd: 8, range: 6.5, aim: "enemy", shape: "blast", dmg: 0.6, fx: "nova", st: { pull: 3.1, slow: [0.35, 3] } },
+    maulgrip:   { name: "Maul Grip",         text: "It takes your feet out and holds you where it wants you.", cd: 8, range: 5.5, aim: "enemy", shape: "blast", dmg: 0.6, fx: "nova", st: { pull: 3.1, slow: [0.35, 3] } },
+    shieldhook: { name: "Shield Hook",       text: "The shield's edge catches and turns you into her reach.", cd: 8, range: 5.5, aim: "enemy", shape: "blast", dmg: 0.6, fx: "nova", st: { pull: 3.1, slow: [0.35, 3] } },
+    irongrip:   { name: "Iron Grip",         text: "It reaches. The reach ends the argument.", cd: 8, range: 5.5, aim: "enemy", shape: "blast", dmg: 0.6, fx: "nova", st: { pull: 3.1, slow: [0.35, 3] } },
+    gravstep:   { name: "Grave Step",        text: "It is behind you before the light changes.", cd: 7, range: 8.0, aim: "weakest", shape: "blink", dmg: 1.15, fx: "hit_shard", st: { slow: [0.3, 2.5] } },
+    collection: { name: "Collection",        text: "The tithe is taken where it stands.", cd: 7, range: 8.0, aim: "weakest", shape: "blink", dmg: 1.15, fx: "hit_shard", st: { slow: [0.3, 2.5] } },
+    tuskcharge: { name: "Tusk Charge",       text: "The whole weight arrives at once.", cd: 7, range: 9.0, aim: "enemy", shape: "blink", dmg: 1.15, fx: "hit_shard", st: { slow: [0.3, 2.5] } },
+    cryptsurge: { name: "Crypt Surge",       text: "The floor carries it forward.", cd: 7, range: 8.0, aim: "enemy", shape: "blink", dmg: 1.15, fx: "hit_shard", st: { slow: [0.3, 2.5] } },
+    writpursuit: { name: "Writ of Pursuit",   text: "The writ runs faster than the guilty.", cd: 7, range: 9.0, aim: "weakest", shape: "blink", dmg: 1.15, fx: "hit_shard", st: { slow: [0.3, 2.5] } },
+
   };
 
   /* tokens summoned into the arena (moves that call allies) */
@@ -156,7 +176,7 @@
     style: "bulwark", tune: { band: 0.95, leash: 85, commit: 2.2, strafe: 0.1 }, temper: "Picks the spot nobody else will hold, and holds it.",
     hp: 895, dmg: 26, rate: 0.72, speed: 3.3, armor: 8, range: 1.6, mana: 60, manaRegen: 4, crit: 0.15, cdMul: 0.82,
     atk: { name: "Cleave", type: "melee", w: "shard", splash: 1.4 },
-    moves: ["cover", "bulwark", "shieldwall"], cards: ["bulwark", "thorns", "iron"],
+    moves: ["cover", "bulwark", "shieldwall", "shieldhook"], cards: ["bulwark", "thorns", "iron"],
     counter: "The wall of the roster. Kills nothing fast — punishes anything that tries." });
 
   add({ id: "orin", name: "Orin", tag: "Black Sigil", cls: "champ", spr: { sheet: "heroes", key: "hero_orin" }, portrait: "p-orin.jpg", color: "#fbbf24",
@@ -220,7 +240,7 @@
     style: "hunter", tune: { band: 0.9, commit: 1.9, strafe: 0.5 }, temper: "Hunts whatever is already carrying a wound.",
     hp: 1049, dmg: 27, rate: 0.74, speed: 3.0, armor: 11, range: 1.7, mana: 90, manaRegen: 6, crit: 0.17, cdMul: 0.80,
     atk: { name: "Accord Blade", type: "melee", w: "shard" },
-    moves: ["fairplate", "verdict", "bulwark"], cards: ["executioner", "bulwark", "thorns"],
+    moves: ["fairplate", "verdict", "bulwark", "writpursuit"], cards: ["executioner", "bulwark", "thorns"],
     counter: "Reflects everything thrown at her and finishes what is already hurt." });
 
   add({ id: "seidon", name: "Seidon", tag: "Tide Seer", cls: "champ", spr: { sheet: "heroes", key: "hero_seidon" }, portrait: "p-seidon.jpg", color: "#22d3ee",
@@ -262,7 +282,7 @@
     style: "bulwark", tune: { band: 0.9, leash: 55, commit: 2.4, strafe: 0.05 }, temper: "Picks a doorway and becomes one.",
     hp: 805, dmg: 34, rate: 0.66, speed: 2.0, armor: 6, range: 1.5, mana: 40, manaRegen: 3, crit: 0.08, cdMul: 0.92,
     atk: { name: "Heavy Sweep", type: "melee", w: "shard", splash: 1.5 },
-    moves: ["pound", "wardfield"], cards: ["iron", "giant", "thorns"],
+    moves: ["pound", "wardfield", "irongrip"], cards: ["iron", "giant", "thorns"],
     counter: "Soaks a lane. Outrun and outranged by nearly everyone." });
 
   add({ id: "imp", name: "Imp", tag: "Crypt Fodder", cls: "beast", spr: { sheet: "creatures", key: "foe_imp" }, color: "#fb923c",
@@ -302,7 +322,7 @@
     style: "rush", tune: { band: 0.6, commit: 1.25, strafe: 0.35 }, temper: "Walks into your face because it eats the contact.",
     hp: 875, dmg: 37, rate: 0.78, speed: 2.9, armor: 7, range: 2.0, mana: 90, manaRegen: 8, crit: 0.12, cdMul: 0.88, ghost: true,
     atk: { name: "Drain Touch", type: "melee", w: "halo", drain: 0.35 },
-    moves: ["unmake", "draincloud"], cards: ["leech", "regen", "might"],
+    moves: ["unmake", "draincloud", "gravstep"], cards: ["leech", "regen", "might"],
     counter: "Heals off everything it touches and holds it in place while it does. Bring armor and burst." });
 
   add({ id: "gate", name: "Gate", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_gate" }, color: "#38bdf8",
@@ -310,7 +330,7 @@
     style: "bulwark", tune: { band: 0.95, leash: 120, commit: 2.6, strafe: 0.05 }, temper: "Everything it does happens slowly, on purpose.",
     hp: 1020, dmg: 40, rate: 0.60, speed: 1.6, armor: 7, range: 1.9, mana: 80, manaRegen: 5, crit: 0.08, cdMul: 0.94, boss: true,
     atk: { name: "Gate Slam", type: "melee", w: "shard", splash: 1.7 },
-    moves: ["gateslam", "gateward", "callwards"], cards: ["iron", "thorns", "giant"],
+    moves: ["gateslam", "gateward", "callwards", "gate_haul"], cards: ["iron", "thorns", "giant"],
     counter: "The anvil of the roster. Everything it does happens slowly." });
 
   add({ id: "crown", name: "Crown", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_crown" }, color: "#fbbf24",
@@ -318,7 +338,7 @@
     style: "artillery", tune: { band: 1.0, panic: 185, commit: 1.7, strafe: 0.3 }, temper: "Bombards the ring, and answers with a closed fist when you cross it.",
     hp: 1125, dmg: 36, rate: 0.62, speed: 1.9, armor: 6, range: 1.8, mana: 110, manaRegen: 9, crit: 0.10, cdMul: 0.9, boss: true,
     atk: { name: "Regal Fist", type: "melee", w: "shard" },
-    moves: ["regalvolley", "lobstone"], cards: ["might", "bulwark", "heart"],
+    moves: ["regalvolley", "lobstone", "decree"], cards: ["might", "bulwark", "heart"],
     counter: "Bombards a whole team from behind cover. Needs its own cover gone." });
 
   add({ id: "smith", name: "Smith", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_smith" }, color: "#f97316",
@@ -334,7 +354,7 @@
     style: "vanguard", tune: { band: 0.95, leash: 95, commit: 1.6, strafe: 0.2, retreat: 0.1 }, temper: "Mends its own in the middle of the brawl.",
     hp: 1320, dmg: 38, rate: 0.68, speed: 2.0, armor: 7, range: 1.8, mana: 90, manaRegen: 7, crit: 0.09, cdMul: 0.92, boss: true,
     atk: { name: "Heart Strike", type: "melee", w: "shard", splash: 1.6 },
-    moves: ["heartbeat", "cryptward"], cards: ["giant", "regen", "vampiric"],
+    moves: ["heartbeat", "cryptward", "cryptsurge"], cards: ["giant", "regen", "vampiric"],
     counter: "Heals its own team while it fights. Kill it first or not at all." });
 
   add({ id: "levi", name: "Leviathan", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_levi" }, color: "#22d3ee",
@@ -350,7 +370,7 @@
     style: "hunter", tune: { band: 0.85, commit: 1.5, strafe: 0.4 }, temper: "Collects from whoever is closest to the floor.",
     hp: 1150, dmg: 39, rate: 0.98, speed: 2.3, armor: 5, range: 2.0, mana: 90, manaRegen: 8, crit: 0.15, cdMul: 0.86, boss: true,
     atk: { name: "Toll Claw", type: "melee", w: "needle" },
-    moves: ["tithe", "snatch"], cards: ["vampiric", "executioner", "swift"],
+    moves: ["tithe", "snatch", "collection"], cards: ["vampiric", "executioner", "swift"],
     counter: "Turns your own health into its health. Burst it or bleed." });
 
   add({ id: "unnamer", name: "Name-Eater", tag: "Nexus Guardian", cls: "beast", spr: { sheet: "creatures", key: "foe_unnamer" }, color: "#a855f7",
@@ -391,7 +411,7 @@
     style: "bulwark", tune: { band: 0.9, leash: 70, commit: 1.9, strafe: 0.1 }, temper: "The pack's door — nothing walks past him.",
     hp: 790, dmg: 36.96, rate: 0.74, speed: 2.3, armor: 9, range: 1.7, mana: 40, manaRegen: 4, crit: 0.14, cdMul: 0.88,
     atk: { name: "Swipe", type: "melee", w: "shard" },
-    moves: ["maul", "wardfield"], cards: ["iron", "giant", "thorns"],
+    moves: ["maul", "wardfield", "maulgrip"], cards: ["iron", "giant", "thorns"],
     counter: "A second wall for the price of a beast. No reach and no tricks." });
 
   add({ id: "elephant", name: "Tuskward", tag: "Elephant", cls: "pet", spr: { sheet: "pets", key: "pet_elephant" }, color: "#67e8f9",
@@ -399,7 +419,7 @@
     style: "vanguard", tune: { band: 0.95, leash: 60, commit: 2.0, strafe: 0.12 }, temper: "Moves with the herd and lands where the herd lands.",
     hp: 886, dmg: 35, rate: 0.68, speed: 2.5, armor: 8, range: 1.9, mana: 40, manaRegen: 4, crit: 0.12, cdMul: 0.9,
     atk: { name: "Tusk", type: "melee", w: "shard", splash: 1.6 },
-    moves: ["stomp", "pound"], cards: ["iron", "bulwark", "heart"],
+    moves: ["stomp", "pound", "tuskcharge"], cards: ["iron", "bulwark", "heart"],
     counter: "The heaviest thing on legs. Everything outruns it." });
 
   add({ id: "scorpion", name: "Glassbarb", tag: "Scorpion", cls: "pet", spr: { sheet: "pets", key: "pet_scorpion" }, color: "#c4b5fd",

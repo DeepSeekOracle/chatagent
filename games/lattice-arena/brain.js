@@ -385,7 +385,12 @@
     /* the one piece of kit both GUN and NAV need to know about: the closer. A contact kit
        with its dash or charge on cooldown cannot arrive at a gun, and the rhythm below is
        built on that fact. */
-    const closerIdx = b.moves.findIndex((mv) => mv && (mv.shape === "stride" || mv.shape === "blink"));
+    /* A closer is not only a teleport. A heavy body that cannot chase reaches instead: a pull
+       carrying the target in is the same idea from the other end, and it is the stronger of the
+       two because it works on a body that is already running away. Both kinds join the same
+       doctrine -- wait while it is down, spend the whole kit when it is up -- and that is
+       decided here, once, for GUN and NAV alike. */
+    const closerIdx = b.moves.findIndex((mv) => mv && (mv.shape === "stride" || mv.shape === "blink" || (mv.st && mv.st.pull)));
     const closerReady = closerIdx >= 0 && e.cds[closerIdx] <= 0;
     const closerName = closerIdx >= 0 ? b.moves[closerIdx].name : "";
     /* what the crew decided, for the thinking chip the spectator watches */

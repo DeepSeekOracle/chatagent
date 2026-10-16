@@ -12,6 +12,7 @@
       charge: { vis: "charge", sfx: "kael_charge", name: "Gallant Charge", text: "He crosses the ring and the strike lands with the last stride." }
     },
     vale: {
+      shieldhook: { vis: "ward", sfx: "vale_cleave", name: "Shield Hook", text: "The shield's edge catches and turns you into her reach." },
       atk: { vis: "cleave", sfx: "vale_cleave" },
       cover: { vis: "ward", sfx: "vale_cover", name: "Aegis Cover", text: "Her shield leaves her arm and sits on the ally who needs it." },
       bulwark: { vis: "ward", sfx: "vale_line", name: "Line Bulwark", text: "The second circle hardens everyone standing in her shadow." },
@@ -60,6 +61,7 @@
       seal9: { vis: "seal", sfx: "kairos_seal", name: "Hour Seal", text: "He spends a second as a door and shuts the room." }
     },
     justicae: {
+      writpursuit: { vis: "charge", sfx: "just_blade", name: "Writ of Pursuit", text: "The writ runs faster than the guilty." },
       atk: { vis: "slash", sfx: "just_blade" },
       fairplate: { vis: "ward", sfx: "just_plate" },
       verdict: { vis: "slash", sfx: "just_verdict" },
@@ -90,6 +92,7 @@
       draincloud: { vis: "drain", sfx: "wraith_cloud", name: "Wraith Cloud", text: "A scrap of unwriting, thrown because it has no hands." }
     },
     brute: {
+      irongrip: { vis: "quake", sfx: "brute_sweep", name: "Iron Grip", text: "It reaches. The reach ends the argument." },
       atk: { vis: "cleave", sfx: "brute_sweep" },
       pound: { vis: "quake", sfx: "brute_pound", name: "Brute Pound", text: "Both fists. The floor answers in a straight line." },
       wardfield: { vis: "ward", sfx: "brute_ward", name: "Brute Ward", text: "It hunches, and the crypt's ward sits on its shoulders." }
@@ -115,17 +118,20 @@
       flicker: { vis: "veil", sfx: "thief_flick", name: "Coin Flicker", text: "Gone before the roll finishes." }
     },
     drain: {
+      gravstep: { vis: "charge", sfx: "drain_touch", name: "Grave Step", text: "It is behind you before the light changes." },
       atk: { vis: "drain", sfx: "drain_touch" },
       unmake: { vis: "drain", sfx: "drain_unmake" },
       draincloud: { vis: "drain", sfx: "drain_cloud", name: "Unwriting", text: "The sentence you were in comes apart in the air." }
     },
     gate: {
+      gate_haul: { vis: "quake", sfx: "gate_slam", name: "Gate Haul", text: "The gate does not come to you. The gate decides." },
       atk: { vis: "stomp", sfx: "gate_slam" },
       gateslam: { vis: "quake", sfx: "gate_quake" },
       gateward: { vis: "ward", sfx: "gate_ward", name: "Gate Ward", text: "The door closes its own ward around itself." },
       callwards: { vis: "summon", sfx: "gate_call" }
     },
     crown: {
+      decree: { vis: "quake", sfx: "crown_fist", name: "Decree", text: "The crown does not chase. It summons." },
       atk: { vis: "fist", sfx: "crown_fist" },
       regalvolley: { vis: "crown", sfx: "crown_volley" },
       lobstone: { vis: "stone", sfx: "crown_stone", name: "Crown Stone", text: "A flagstone off its own shoulders, lobbed on an arc." }
@@ -137,6 +143,7 @@
       gatecannon: { vis: "beam", sfx: "smith_cannon", name: "Forge Cannon", text: "The workbench speaks in a straight white-hot line." }
     },
     heartboss: {
+      cryptsurge: { vis: "charge", sfx: "heart_strike", name: "Crypt Surge", text: "The floor carries it forward." },
       atk: { vis: "heart", sfx: "heart_strike" },
       heartbeat: { vis: "heart", sfx: "heart_beat" },
       cryptward: { vis: "ward", sfx: "heart_ward" }
@@ -147,6 +154,7 @@
       undertow: { vis: "tide", sfx: "levi_tow", name: "Deep Undertow", text: "The depth reaches up and keeps the ankles." }
     },
     tithe: {
+      collection: { vis: "charge", sfx: "tithe_claw", name: "Collection", text: "The tithe is taken where it stands." },
       atk: { vis: "claw", sfx: "tithe_claw" },
       tithe: { vis: "drain", sfx: "tithe_tax" },
       snatch: { vis: "drain", sfx: "tithe_snatch", name: "King's Snatch", text: "The toll, taken by hand." }
@@ -172,11 +180,13 @@
       roar: { vis: "howl", sfx: "lion_roar", name: "Sun Roar", text: "It picks the wounded one out loud, then leaves the ground." }
     },
     bear: {
+      maulgrip: { vis: "quake", sfx: "bear_swipe", name: "Maul Grip", text: "It takes your feet out and holds you where it wants you." },
       atk: { vis: "cleave", sfx: "bear_swipe", name: "Iron Swipe" },
-      maul: { vis: "quake", sfx: "bear_maul" },
+      maul: { vis: "quake", sfx: "bear_swipe" },
       wardfield: { vis: "ward", sfx: "bear_ward", name: "Iron Ward", text: "Ironhide sets its shoulders and becomes the door." }
     },
     elephant: {
+      tuskcharge: { vis: "charge", sfx: "elephant_tusk", name: "Tusk Charge", text: "The whole weight arrives at once." },
       atk: { vis: "tusk", sfx: "elephant_tusk" },
       stomp: { vis: "trample", sfx: "elephant_trample", name: "Trample", text: "Tusks first, then the whole weight. The floor does not get a vote." },
       pound: { vis: "quake", sfx: "elephant_quake", name: "Tusk Quake", text: "Both tusks hit the stone and the ring jumps." }

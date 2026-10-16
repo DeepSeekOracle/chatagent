@@ -719,6 +719,30 @@ console.log("    mean first contact " + mean(open.contact).toFixed(2) + "s | tea
   Math.round(open.spread0 / Math.max(1, open.n * 2)) + "px at spawn -> " +
   Math.round(open.spreadBell / Math.max(1, open.n * 2)) + "px at contact | hard switches " + open.switches);
 
+/* --- 8b. the gap law: a contact kit must be able to cross the gap ---------------
+   This is the audit that started it, turned into a gate so it cannot come back. The 18
+   contact kits reach 45-51px, the guns they are sent against reach 256-275px, there is no
+   cover left in the arena, and the kiter walks faster than the fist -- so a contact kit
+   with no way in is a body sent at rifles with a walk. A blink closes the gap and a pull
+   brings the target in; either counts, neither is optional. */
+{
+  const mvList = (f) => (f.moves || []).map((m) => {
+    if (typeof m !== "string") return m;
+    return (R.MOVES && R.MOVES[m]) || (win.LYGO_MOVES && win.LYGO_MOVES[m]) || null;
+  }).filter(Boolean);
+  const contact = R.ROSTER.filter((f) => f.range <= 2.2);
+  /* a blink closes the gap, a pull brings the target in, and a burst of speed is the third
+     honest way in (arkos's +35% for three seconds closes about 3.4 tiles) -- what is NOT a
+     way in is a walk, which is the case this law exists to catch. */
+  const closes = (mv) => mv.shape === "blink" || mv.shape === "stride" || (mv.st && mv.st.pull) || (mv.st && mv.st.swift);
+  const armed = contact.filter((f) => mvList(f).some((mv) => closes(mv)));
+  const bare = contact.filter((f) => !mvList(f).some((mv) => closes(mv))).map((f) => f.id);
+  must("every contact kit can cross the gap: a blink, a pull or a burst of speed", bare.length === 0 && armed.length === contact.length,
+    bare.length ? "no way in: " + bare.join(", ") + " (of " + contact.length + " contact kits)" : armed.length + " of " + contact.length + " contact kits equipped");
+  const pulls = R.ROSTER.filter((f) => mvList(f).some((mv) => mv.st && mv.st.pull)).length;
+  must("the heavy bodies drag and the fast ones blink", pulls >= 5, pulls + " kits carry a pull");
+}
+
 /* --- 9. control degrades when it is spammed ----------------------------------
    The roster lays a hold across a group fight in eleven different ways, and three bodies
    holding one is how a dive dies -- but it is also how a melee buff turns into a prison.
