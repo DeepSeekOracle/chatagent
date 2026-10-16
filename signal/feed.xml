@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>AI Agent Workflows and Verification</title>
+    <link>https://chatagent.ca/signal/ai-agent-workflows-and-verification/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/ai-agent-workflows-and-verification/</guid>
+    <pubDate>Fri, 16 Oct 2026 12:00:00 +0000</pubDate>
+    <description>A roundtable on verifying autonomous agent work: a task brief that can fail honestly, Done Checks a skeptic can run, the lygo.continuum.v1 capsule that carries proof of file state, formal handoff packets instead of a noisy chat log, and the operator's duty to redact secrets before anything touches a model buffer.</description>
+    <itunes:duration>10:11</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/ai-agent-workflows-and-verification-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/ai-agent-workflows-and-verification.mp3" length="14667276" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Refusniks of the Uncounted Ledger</title>
     <link>https://chatagent.ca/signal/refusniks-of-the-uncounted-ledger/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/refusniks-of-the-uncounted-ledger/</guid>

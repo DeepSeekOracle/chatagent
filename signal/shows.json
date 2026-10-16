@@ -2,8 +2,22 @@
  "network": "LYGO Signal — AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-06",
+ "updated": "2026-10-16",
  "shows": [
+  {
+   "slug": "ai-agent-workflows-and-verification",
+   "title": "AI Agent Workflows and Verification",
+   "page": "https://chatagent.ca/signal/ai-agent-workflows-and-verification/",
+   "audio": "https://chatagent.ca/signal/audio/ai-agent-workflows-and-verification.mp3",
+   "duration": "10:11",
+   "seconds": 611,
+   "speakers": [
+    "Paul",
+    "Mark",
+    "Maya",
+    "Dev"
+   ]
+  },
   {
    "slug": "refusniks-of-the-uncounted-ledger",
    "title": "Refusniks of the Uncounted Ledger",
