@@ -147,6 +147,9 @@ body.in-menu .top, body.in-menu .dock { display: none !important; }
 .menu-actions .btn.gold span { color: #5c3b08; }
 .menu-actions .btn.tv { border-color: #fbbf24; }
 .menu-actions .btn.tv b { letter-spacing: .12em; }
+.menu-actions a.btn { display: block; text-decoration: none; }
+.menu-actions .btn.unity { border-color: #f59e0b; }
+.menu-actions .btn.unity b { letter-spacing: .12em; }
 .tv-bug { position: absolute; left: 14px; bottom: 54px; z-index: 7; pointer-events: none;
   min-width: 7.2rem; padding: .35rem .6rem .4rem; background: rgba(3, 6, 12, .88);
   border: 1px solid #fbbf24; border-radius: 4px; color: #fbbf24;

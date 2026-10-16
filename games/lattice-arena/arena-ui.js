@@ -586,6 +586,7 @@
         "<div class='menu-actions'>" +
           "<button type='button' class='btn gold' id='btnFight' data-ready='" + (ready ? "1" : "0") + "'><b>Fight</b><span>" + (hold ? esc(hold) : MODE_LABEL[persist.mode] + " · " + esc(names)) + "</span></button>" +
           "<button type='button' class='btn tv' id='btnBattleTv'><b>BATTLE TV</b><span>One click. Endless card. The winner stays. Best reign " + ((persist.tvBest && persist.tvBest.wins) || 0) + ".</span></button>" +
+          "<a class='btn unity' href='https://deepseekoracle.github.io/battle-tv-unity/'><b>BATTLE TV UNITY</b><span>Opens the side-view intro. Vale and Brute, both on their own.</span></a>" +
           "<button type='button' class='btn' id='btnGauntlet'><b>Gauntlet</b><span>Same team. A new ring after every win. Best streak " + (persist.bestStreak || 0) + ".</span></button>" +
           "<button type='button' class='btn' data-tab='team'><b>Team select</b><span>" + your.length + "/" + persist.mode + " picked · read a kit before you field it</span></button>" +
           "<button type='button' class='btn' data-tab='options'><b>Options</b><span>Announcer, fight sounds, and the radio</span></button>" +
