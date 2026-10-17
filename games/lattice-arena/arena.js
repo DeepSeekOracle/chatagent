@@ -348,7 +348,10 @@
   /* ------------------------------------------------------------- entity --- */
   function mkEntity(built, team, x, y, isToken) {
     return {
-      uid: ++seq, team: team, b: built, x: x * TILE, y: y * TILE,
+      /* Team is normalised here and nowhere else: every helper downstream tests
+         `=== 0`, so a pet spawned with "0", undefined or 1-as-string used to read as
+         the enemy side and attack its own team. One coercion kills that class. */
+      uid: ++seq, team: (Number(team) === 1 ? 1 : 0), b: built, x: x * TILE, y: y * TILE,
       hp: built.max, max: built.max, mana: built.manaMax, shd: Math.round(built.max * (built.mods.startShield || 0)),
       armorBuff: 0, armorBuffT: 0,
       stun: 0, root: 0, silence: 0, slowT: 0, slowV: 0, swiftT: 0, swiftV: 0, hasteT: 0, hasteV: 0,
