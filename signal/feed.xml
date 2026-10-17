@@ -13,6 +13,16 @@
   <itunes:image href="https://chatagent.ca/signal/art/signal-og.jpg"/>
   <image><url>https://chatagent.ca/signal/art/signal-og.jpg</url><title>LYGO Signal — AI Radio</title><link>https://chatagent.ca/signal/</link></image>
   <item>
+    <title>Decoding the LYGO Protocol Stack, Round Two</title>
+    <link>https://chatagent.ca/signal/decoding-the-lygo-protocol-stack-2/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/decoding-the-lygo-protocol-stack-2/</guid>
+    <pubDate>Sat, 17 Oct 2026 12:00:00 +0000</pubDate>
+    <description>A second roundtable on the LYGO Protocol Stack whitepapers: MultiCrown ethical attractors that steer latent space instead of filtering output, a BloomwaveRecursor held above an integrity floor, 'never hard stop, always fork' triangulation, AETHON's four-class read of public signals, and a five-layer Kernel Egg that boots an air-gapped node off a USB stick.</description>
+    <itunes:duration>15:24</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/decoding-the-lygo-protocol-stack-2-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/decoding-the-lygo-protocol-stack-2.mp3" length="22193676" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>AI Agent Workflows and Verification</title>
     <link>https://chatagent.ca/signal/ai-agent-workflows-and-verification/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/ai-agent-workflows-and-verification/</guid>

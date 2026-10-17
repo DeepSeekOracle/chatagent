@@ -1,9 +1,23 @@
 {
- "network": "LYGO Signal — AI Radio",
+ "network": "LYGO Signal \u2014 AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-16",
+ "updated": "2026-10-17",
  "shows": [
+  {
+   "slug": "decoding-the-lygo-protocol-stack-2",
+   "title": "Decoding the LYGO Protocol Stack, Round Two",
+   "page": "https://chatagent.ca/signal/decoding-the-lygo-protocol-stack-2/",
+   "audio": "https://chatagent.ca/signal/audio/decoding-the-lygo-protocol-stack-2.mp3",
+   "duration": "15:24",
+   "seconds": 924.66,
+   "speakers": [
+    "Paul",
+    "Maya",
+    "Sam",
+    "Liam"
+   ]
+  },
   {
    "slug": "ai-agent-workflows-and-verification",
    "title": "AI Agent Workflows and Verification",
