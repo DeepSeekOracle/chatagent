@@ -1,15 +1,15 @@
 {
   "signature": "Delta9Phi963-LYGOSKILLHUB-CATALOG-v1.5",
   "name": "LYGOSKILLHUB",
-  "version": "1.6.1",
-  "updated_utc": "2026-09-24T19:07:21+00:00",
+  "version": "1.6.3",
+  "updated_utc": "2026-10-18T03:18:16+00:00",
   "publisher": "deepseekoracle",
   "steward": "Justin Helmer / Excavationpro / Lightfather",
   "clawhub_profile": "https://clawhub.ai/deepseekoracle",
   "clawhub_status": {
     "public_profile": "https://clawhub.ai/deepseekoracle",
     "security": "all_public_skills_green",
-    "note": "ClawHub @deepseekoracle public tentacles SkillSpector-clean (2026-08). Recent: lygo-ollama-army 0.9.0 local-only rebuild, lygo-continuum 1.0.1 path/write fix, lygo-skill-spector 1.0.1 audit harden."
+    "note": "ClawHub @deepseekoracle public tentacles SkillSpector-clean (2026-08). Recent: lygo-ollama-army 0.9.0 local-only rebuild, lygo-continuum 1.0.1 path/write fix, lygo-skill-spector 1.0.1 audit harden. packet-audit 1.0.0 new (offline submission-packet audit, 3 profiles)."
   },
   "immutable_ledger": {
     "role": "Anything published to ClawHub @deepseekoracle must appear on this hub",
@@ -24,19 +24,19 @@
     "excavationpro_mirror": "https://deepseekoracle.github.io/Excavationpro/LYGOSKILLHUB.html"
   },
   "counts": {
-    "total": 125,
-    "skills": 91,
+    "total": 130,
+    "skills": 92,
     "plugins": 1,
-    "downloads": 16,
+    "downloads": 20,
     "surfaces": 18,
-    "clawhub_skills_indexed": 90,
+    "clawhub_skills_indexed": 91,
     "local_only_skills": 0,
-    "clawhub_profile_skills_listed": 90,
-    "stack_skills_json": 39,
+    "clawhub_profile_skills_listed": 91,
+    "stack_skills_json": 45,
     "item_count": 4
   },
-  "skill_count": 91,
-  "item_count": 125,
+  "skill_count": 92,
+  "item_count": 4,
   "categories": [
     "champion",
     "creative",
@@ -51,6 +51,82 @@
     "tools"
   ],
   "skills": [
+    {
+      "kind": "skill",
+      "slug": "packet-audit",
+      "name": "Packet Audit",
+      "summary": "Use when documents must pass an authority first time - visa, rental, mortgage, insurance, benefits, licensing. Checks a folder for missing, expired, or mutually inconsistent documents with page citations, plus a SHA-256 manifest. Three bundled profiles, offline and deterministic, no model calls. Not legal advice, not eligibility, not OCR.",
+      "downloads": 0,
+      "category": "tools",
+      "clawhub_url": "https://clawhub.ai/deepseekoracle/skills/packet-audit",
+      "install": "npx clawhub@latest install deepseekoracle/packet-audit",
+      "has_local_skill": true,
+      "has_stack_mirror": true,
+      "source": "mirror",
+      "note": "Present in clawhub/mirrors; ensure skills.json + ClawHub stay in sync",
+      "channel": "public_tentacle",
+      "channel_label": "Public tentacle (ClawHub)"
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-156-pc",
+      "name": "LYGO LLM Console 1.5.6 — PC LOCAL installer (ALPHA, light, picture engine inside)",
+      "summary": "ALPHA. The console with the picture engine inside — stable-diffusion.cpp's CPU build, no CUDA, no card, no admin — so a machine that has nothing else can still draw. 1,105,316,942 B. 1.5.6 is the release where the RAG index write stops racing itself: one temp path per write plus a write lock, so a busy console stops printing \"could not write the index\" on a healthy day, and a fresh install no longer prints it on first boot either; the picture engine and the SD 1.5 checkpoint still travel inside as before. Sealed in the canon vault as 2026-09-25_build-1.5.6_PC_LOCAL (1,963 files); the 1.5.6 sets were install-audited against the seal (PC FULL: 1,963 payload files, 1,384 excluded, 0 missing, 0 changed, 584 files / 1.67 GB installed) and boot reporting build v1.5.6. No weights inside: it ships the fetcher and the pinned manifest and pulls the brains and one image checkpoint from our own vault, SHA-256 checked. SHA-256 bc3bd041175c91409382fb2c7f12302e71a37e0e557c80f8764bb880e2654910.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1.5.6/LYGO_LLM_CONSOLE_1.5.6_PC_SETUP.exe",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.6/INSTALL_NOTES_1.5.6_PC.txt",
+      "install": "ALPHA. 1) Run the installer (per-user, no admin prompt). 2) Verify it against the digest posted beside the file on Hugging Face — expect bc3bd041175c91409382fb2c7f12302e71a37e0e557c80f8764bb880e2654910. 3) A picture needs one checkpoint: tools\\sd-cpu\\FETCH_IMAGE_MODEL.bat (SDXL Turbo, fetched, its licence shown) or get_model.ps1 -Model sd15 (4.27 GB, lighter, RAIL-M). 4) Boot LYGO_LLM_CONSOLE.bat and ask in plain words. Pictures land in workspace\\images with a receipt naming the route, engine, checkpoint, steps, seconds and bytes. Read READ_DISCLAIMER_FIRST.md. The 1.5.6 sets were install-audited against the seal and boot reporting build v1.5.6. The install notes carry a LICENCE AND ATTRIBUTION section.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download",
+      "alpha": true
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-156-pc-full",
+      "name": "LYGO LLM Console 1.5.6 — PC LOCAL installer (ALPHA, EVERYTHING inside)",
+      "summary": "ALPHA. Everything in one install, nothing to fetch: gemma4-12b (text · image · audio) and its projector, qwen2.5-coder-7b, the embeddings model, AND the picture engine with the SD 1.5 checkpoint (4.27 GB, CreativeML Open RAIL-M, licence travelling beside it — the checkpoint whose licence permits redistribution, which is why it is carried and SDXL Turbo is not). 17,884,362,504 B across six files: …FULL.exe is disc 1, the five .bin files are discs 2-6 — keep all six in one folder (normal Inno disk spanning; Windows will not load a single Setup.exe past ~4.2 GB). Sealed in the canon vault as 2026-09-25_build-1.5.6_PC_LOCAL (1,963 files) and install-audited against the seal: 1,963 payload files, 1,384 excluded by the recipe, 0 missing, 0 changed, 598 files / 18.45 GB installed. Every file's SHA-256 is listed in the install steps.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/tree/console-v1.5.6",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.6/INSTALL_NOTES_1.5.6_PC_FULL.txt",
+      "install": "ALPHA. 1) Download all six files into ONE folder: LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL.exe (2,167,895 B, sha256 89c6f2e6ea7833f172d006d1c0ed028e24319308b8114301ed0800ce298c29b7), LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL-1.bin (4,292,798,975 B, sha256 3e8a549dee5d93820eed127e525931b9be97e4eff7e18429ab9842500f8a812e), LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL-2.bin (4,294,967,295 B, sha256 b84dc50da698116c96ab6173b5bd13c9b2baad5e5453d3c0a8c688fe12e705ac), LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL-3.bin (4,294,967,295 B, sha256 a71d7682951d3442848e2552ba3fff3e34c30ca76a3696d6c251bbce7ac28b33), LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL-4.bin (4,294,967,295 B, sha256 171986326af66e3c16c38927914fbfd3603f7a615f207f306eafd2829b83a76c), LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL-5.bin (704,493,749 B, sha256 c9fbf1af85bd1730d6fd3b099df1e0bb6fba5d351b4d0914e1bec52774c8ea23). 2) Verify each against the digests above (they are also posted beside the file on Hugging Face). 3) Run LYGO_LLM_CONSOLE_1.5.6_PC_SETUP_FULL.exe. 4) Boot LYGO_LLM_CONSOLE.bat and ask for a picture: the SD 1.5 checkpoint is already inside the install. This PC installer was installed from its own installer and install-audited against the seal: 1,963 payload files, 1,384 excluded by the recipe, 0 missing, 0 changed, 598 files / 18.45 GB installed. The install notes carry a LICENCE AND ATTRIBUTION section.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download",
+      "alpha": true
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-156-usb",
+      "name": "LYGO LLM Console 1.5.6 — USB LOCAL installer (ALPHA, light, picture engine inside)",
+      "summary": "ALPHA. The stick build (LYGO BUILDER KEY / CLAW) with its own Python and the picture engine inside the kit — because the console looks for its generators at <kit>\\tools\\sd-cpu when the machine it is plugged into has no media root of its own, the stick finds its own engine on ANY Windows box. 585,492,016 B. 1.5.6 is the release where the RAG index write stops racing itself: one temp path per write plus a write lock, so a busy console stops printing \"could not write the index\" on a healthy day, and a fresh install no longer prints it on first boot either; the picture engine and the SD 1.5 checkpoint still travel inside as before. Sealed as 2026-09-25_build-1.5.6_USB_CLAW (1,010 files) and install-audited against the seal — USB FULL: 1,010 payload, 149 excluded, 0 missing, 0 changed, 878 files / 10.18 GB installed, booting build v1.5.6. No weights inside; fetch from our vault.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1.5.6/LYGO_LLM_CONSOLE_1.5.6_USB_SETUP.exe",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.6/INSTALL_NOTES_1.5.6_USB.txt",
+      "install": "ALPHA. 1) Verify: CertUtil -hashfile LYGO_LLM_CONSOLE_1.5.6_USB_SETUP.exe SHA256 — expect 507179ed61ff8b8e0027e1cf745ef06839ee27fbb1e9d4c3c8bb5a96ed77cac6. 2) Run it from the stick and point it at your USB root. 3) Weights: python models\\fetch_models.py --profile basic --dest models (or --profile full). 4) One picture checkpoint: tools\\sd-cpu\\FETCH_IMAGE_MODEL.bat (SDXL Turbo, fast) or get_model.ps1 -Model sd15 (lighter, RAIL-M). 5) Boot LYGO_AGENT_STICK.bat and ask in plain words. The install notes carry a LICENCE AND ATTRIBUTION section.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download",
+      "alpha": true
+    },
+    {
+      "kind": "download",
+      "slug": "lygo-llm-console-156-usb-full",
+      "name": "LYGO LLM Console 1.5.6 — USB LOCAL installer (ALPHA, ALL IN ONE)",
+      "summary": "ALPHA. The stick with its work brain and a picture checkpoint inside: qwen2.5-coder-7b and SD 1.5 (4.27 GB, licence beside it) ride in the slices next to SETUP.EXE. 9,808,066,038 B across four files, one folder; keep all four in one folder (normal Inno disk spanning; Windows will not load a single Setup.exe past ~4.2 GB). gemma4-12b is the one thing left out — fetch it from our vault with --profile basic, or take the PC set above. Sealed as 2026-09-25_build-1.5.6_USB_CLAW (1,010 files) and install-audited against the seal: 1,010 payload, 149 excluded, 0 missing, 0 changed, 878 files / 10.18 GB installed, booting build v1.5.6.",
+      "downloads": 0,
+      "category": "download",
+      "url": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/tree/console-v1.5.6",
+      "docs": "https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.6/INSTALL_NOTES_1.5.6_USB_FULL.txt",
+      "install": "ALPHA. 1) Four files in ONE folder: LYGO_LLM_CONSOLE_1.5.6_USB_SETUP_FULL.exe (2,194,771 B, sha256 75fe5da8073bb76c1c216766a030a5b45c9196265d92899b35e825e2216fc9d2), LYGO_LLM_CONSOLE_1.5.6_USB_SETUP_FULL-1.bin (4,292,772,351 B, sha256 878ee298759bfb884215e2912e8e10eb87eca1dd8ff1c77e149bbb53f6ff98e4), LYGO_LLM_CONSOLE_1.5.6_USB_SETUP_FULL-2.bin (4,294,967,295 B, sha256 aae6856680df9ce1aa4a7a55bfc0373d50d5e26e03c5d3f6db808238861bc593), LYGO_LLM_CONSOLE_1.5.6_USB_SETUP_FULL-3.bin (1,218,131,621 B, sha256 fc8d8ed2123a97ef007c97bd86d573d92e2f7dc4a302b73cc65b9a6f82cb9a3c). 2) Verify each with CertUtil -hashfile FILE SHA256. 3) Run LYGO_LLM_CONSOLE_1.5.6_USB_SETUP_FULL.exe. 4) Boot LYGO_AGENT_STICK.bat: the coder and the SD 1.5 picture checkpoint are already in models\\. The install notes carry a LICENCE AND ATTRIBUTION section.",
+      "source": "download",
+      "channel": "usb",
+      "channel_label": "USB / kit download",
+      "alpha": true
+    },
     {
       "kind": "download",
       "slug": "lygo-llm-console-132-pc",
@@ -2112,6 +2188,6 @@
       "alpha": true
     }
   ],
-  "note": "Immutable LYGO skill ledger for chatagent.ca/lygoskillhub.html. Every clawhub/skills.json entry + mirror is listed. Public tentacles → ClawHub (all green security audits); FULL unlocked engineer packs → #full-lygo vault only.",
-  "catalog_sha256": "f2c85840808a9adc95aafbb1a3fb7bcbc0a4b57151dd023b35cf1629ed607db2"
+  "note": "Immutable LYGO skill ledger for chatagent.ca/lygoskillhub.html. Every clawhub/skills.json entry + mirror is listed. Public tentacles → ClawHub (all green security audits); FULL unlocked engineer packs → #full-lygo vault only. catalog_sha256 is the SHA-256 of this JSON text with the catalog_sha256 value itself emptied (a text cannot contain its own digest); the page shows its first 16 characters.",
+  "catalog_sha256": "d0f8476fb71a1051dcb4db2e431c91acd54cf97c3ee8ff3f1a8fdb104e492bc7"
 }
