@@ -230,6 +230,7 @@ h2 {
   gap: 0.45rem;
   overflow-x: auto;
   flex: 1;
+  min-width: 0;
   padding-bottom: 0.15rem;
 }
 .wcity {
@@ -562,4 +563,34 @@ html.sup-modal, html.sup-modal body { overflow: hidden; }
   .intro-terms li { margin-bottom: .18rem; }
   .intro-cta { padding: .55rem 1rem; font-size: .88rem; }
   .intro-foot { margin-top: .55rem; font-size: .66rem; }
+}
+
+/* ---- AdSense slots + consent (right rail, non-blocking) ---- */
+.ad-slot {
+  flex: none; margin: 0.55rem 0; padding: 0.45rem;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2); text-align: center; min-height: 90px;
+}
+.ad-slot:has(ins.adsbygoogle[data-ad-status="unfilled"]),
+.ad-slot:has(ins.adsbygoogle[data-ad-status="unfill-optimized"]),
+.ad-slot.ads-ready:has(ins.adsbygoogle:not([data-ad-status="filled"])) { display: none !important; }
+.ad-label {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.3rem;
+}
+.ad-consent {
+  flex: none; margin: 0.35rem 0 0.5rem; padding: 0.55rem 0.6rem;
+  border: 1px solid rgba(224, 179, 106, 0.45); border-radius: 9px;
+  background: rgba(16, 13, 10, 0.92); color: var(--muted);
+  font-size: 0.7rem; line-height: 1.4;
+}
+.ad-consent[hidden] { display: none !important; }
+.ad-consent p { margin: 0 0 0.4rem; }
+.ad-consent a { color: var(--gold); }
+.ad-consent > div { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ad-consent button { min-height: 2rem; padding: 0.3rem 0.5rem; font-size: 0.66rem; }
+@media (max-width: 960px) {
+  .ad-slot { min-height: 100px; }
+  .ad-consent { max-width: 34rem; }
 }

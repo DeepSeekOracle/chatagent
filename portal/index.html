@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" data-cookie-key="chatagent_cookies">
 <head>
+<script src="/portal/consent.js"></script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599"
      crossorigin="anonymous"></script>
 <meta charset="utf-8">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.adtrafficquality.google;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.adtrafficquality.google;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal: bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
@@ -296,6 +298,14 @@ steward: Justin Helmer / Excavationpro / Lightfather
     </div>
   </section>
   <aside>
+    <section class="ad-consent" id="adConsent" hidden aria-label="Advertising consent">
+      <p><strong>Ads &amp; cookies.</strong> Google AdSense may use cookies after you accept. <a href="/privacy.html">Privacy</a>.</p>
+      <div><button type="button" class="btn" id="adAccept">Accept ads</button><button type="button" class="btn ghost" id="adDecline">Essential only</button></div>
+    </section>
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    </div>
     <h2>Trace</h2>
     <pre id="limb-out" class="limb-out">public · no server shell</pre>
     <section class="notepad" id="notepad">
@@ -308,6 +318,10 @@ steward: Justin Helmer / Excavationpro / Lightfather
         <span id="np-status" class="hint">localStorage</span>
       </div>
     </section>
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    </div>
   </aside>
 </main>
 <footer class="media-dock" aria-label="Radio and TV">
@@ -474,5 +488,6 @@ steward: Justin Helmer / Excavationpro / Lightfather
 <script src="radio.js"></script>
 <script src="supporter.js?v=20260924b"></script>
 <script src="donate.js?v=20260924b"></script>
+<script src="/portal/ads.js" defer></script>
 </body>
 </html>
