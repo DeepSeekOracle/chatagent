@@ -22,6 +22,11 @@
     if (window.__lygoTvAdsLoaded) return;
     window.__lygoTvAdsLoaded = true;
     slots.forEach(function (el) { el.classList.add('ads-visible'); });
+    if (document.querySelector('script[src*="adsbygoogle.js"]')) {
+      pushUnits();
+      markReady();
+      return;
+    }
     var s = document.createElement('script');
     s.async = true;
     s.src = SRC;
