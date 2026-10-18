@@ -270,6 +270,22 @@
       "links": []
     },
     {
+      "id": "lattice-arcade",
+      "slug": "lattice-arcade",
+      "title": "Lattice Arcade",
+      "tagline": "Photo to 8-bit arena",
+      "blurb": "Turn two photos into pixel fighters, then run a neon retro maze. Local sprite generation, local AI, no account.",
+      "status": "live",
+      "featured": false,
+      "order": 14,
+      "href": "/games/lattice-arcade/",
+      "cover": "/games/lattice-arcade/og.jpg",
+      "coverAlt": "Lattice Arcade neon maze with two pixel fighters",
+      "genre": ["arcade", "generator"],
+      "players": "1 vs local AI",
+      "links": []
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",
