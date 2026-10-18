@@ -541,6 +541,44 @@ input[type="search"]:focus, input[type="url"]:focus {
 .gate-card h2 { font-family: var(--display); color: #fda4af; margin: 0 0 .5rem; font-size: 1.35rem; }
 .gate-card p { font-size: .88rem; color: var(--muted); line-height: 1.45; margin: 0 0 .55rem; }
 .gate-links { font-size: .82rem; }
+/* --- LYGO TV mobile flow + ad slots --- */
+.ad-slot {
+  display: none; margin: 12px 0; padding: 8px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(0, 0, 0, .18); text-align: center; min-height: 90px;
+}
+.ad-slot.ads-visible { display: block; }
+.ad-slot:has(ins.adsbygoogle[data-ad-status="unfilled"]),
+.ad-slot:has(ins.adsbygoogle[data-ad-status="unfill-optimized"]),
+.ad-slot.ads-ready:has(ins.adsbygoogle:not([data-ad-status="filled"])) { display: none !important; }
+.ad-label {
+  font-family: var(--mono); font-size: .58rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.ad-consent {
+  position: static; margin: 0 0 12px; padding: 10px 11px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: #0b1220; border: 1px solid rgba(212, 160, 23, .45);
+  border-radius: 10px; color: var(--ink); font-size: .74rem; line-height: 1.45;
+}
+.ad-consent[hidden] { display: none !important; }
+.ad-consent p { margin: 0; }
+.ad-consent a { color: var(--gold); }
+.ad-consent > div { display: flex; gap: 6px; flex: none; }
+.ad-consent .btn { min-height: 2.2rem; padding: .35rem .65rem; font-size: .72rem; }
+@media (max-width: 900px) {
+  html, body { height: auto !important; max-height: none !important; overflow-y: auto !important; overflow-x: hidden !important; }
+  body { display: block !important; min-height: 100dvh; }
+  .stage { display: block !important; overflow: visible !important; }
+  .screen { height: auto !important; }
+  .side { overflow: visible !important; height: auto !important; max-height: none !important; min-height: 0 !important; }
+  .catalog { overflow: visible !important; height: auto !important; flex: none !important; }
+  .list { max-height: none !important; height: auto !important; min-height: 0 !important; }
+  .tabs { position: sticky !important; top: 0 !important; z-index: 30; background: #080d18 !important; max-height: none !important; padding-top: .4rem !important; }
+  .foot { max-height: none !important; }
+  .ad-consent { flex-direction: column; align-items: flex-start; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .spin, .live-dot { animation: none; }
   button, .btn, .tab, .chip, .aud, select, input { transition: none; }

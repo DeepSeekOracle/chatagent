@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com https://player.twitch.tv https://player.kick.com; connect-src 'self' https: wss:; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self' https://cdn.jsdelivr.net https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://rumble.com https://player.twitch.tv https://player.kick.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.adtrafficquality.google; connect-src 'self' https: wss:; upgrade-insecure-requests">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
 <title>LYGO TV: free online TV player | chatagent.ca</title>
 <meta name="description" content="Watch Excavationpro on Kick, Rumble, Twitch, and YouTube, plus free public TV lists. No account. LYGO player by Justin Helmer / Excavationpro.">
 <meta name="author" content="Justin Helmer / Excavationpro">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <meta name="keywords" content="LYGO TV, Excavationpro, Kick, Rumble, Twitch, YouTube Justin Helmer, free IPTV, public M3U, FAST, chatagent.ca">
 <link rel="canonical" href="https://chatagent.ca/sources/">
@@ -21,7 +22,7 @@
 <link rel="apple-touch-icon" href="/sources/apple-touch.png?v=20260907">
 <link rel="icon" href="/sources/emblem.svg?v=20260907" type="image/svg+xml">
 <link rel="image_src" href="https://chatagent.ca/sources/og-tv.jpg?v=20260907">
-<link rel="stylesheet" href="/sources/app.css?v=1.18.9">
+<link rel="stylesheet" href="/sources/app.css?v=1.19.0">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="chatagent.ca">
@@ -100,6 +101,11 @@
   <aside class="side">
     <h1><img class="emblem" src="/sources/emblem.svg?v=20260907" width="36" height="36" alt="LYGO TV"> LYGO TV</h1>
     <p class="note"><strong>Portal only.</strong> Channel tab = Excavationpro rooms (always open). FAST and world lists need a Terms tick each session. Unlabeled = <strong>All ages</strong>. <a href="/terms.html">Terms</a> · <a href="/sources/disclaimer.html">Disclaimer</a>.</p>
+    
+<div class="ad-consent" id="adConsent" hidden role="dialog" aria-label="Advertising consent">
+  <p><strong>Cookies &amp; ads.</strong> Google AdSense may use cookies after you accept. <a href="/privacy.html">Privacy</a>.</p>
+  <div><button type="button" class="btn" id="adAccept">Accept ads</button><button type="button" class="btn ghost" id="adDecline">Essential only</button></div>
+</div>
     <div class="tabs" id="tabs"></div>
     <div class="catalog" id="catalog">
       <div class="chips" id="chips"></div>
@@ -138,6 +144,10 @@
         <p class="nudge-note">Agreement is stored for this browser session only. A new session asks again. Channel rooms stay open either way.</p>
       </div>
     </div>
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
+    </div>
     <div class="donate">
       <a class="btn" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">PayPal.me/ExcavationPro</a>
       <a class="btn ghost" href="https://ffm.to/eovnvo9" target="_blank" rel="noopener noreferrer">Stream Excavationpro</a>
@@ -145,6 +155,10 @@
       <a class="btn ghost" href="https://kick.com/excavationpro" target="_blank" rel="noopener noreferrer">Kick</a>
       <a class="btn ghost" href="https://www.twitch.tv/excavationpro" target="_blank" rel="noopener noreferrer">Twitch</a>
       <a class="btn ghost" href="https://rumble.com/register/Excavationpro/" target="_blank" rel="noopener noreferrer sponsored">Join Rumble</a>
+    </div>
+    <div class="ad-slot" aria-label="Advertisement">
+      <div class="ad-label">Advertisement</div>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
     </div>
     <p class="rooms">Also on chatagent.ca: <a href="/signal/">LYGO Signal. AI Radio</a> ·
       <a href="/signal/radio/">LYGO Radio</a> · <a href="/games/">Games</a></p>
@@ -187,7 +201,9 @@
     </div>
   </div>
 </div>
+
+<script src="/sources/ads.js" defer></script>
 <script src="/sources/guard.js"></script>
-<script src="/sources/app.js?v=1.18.9"></script>
+<script src="/sources/app.js?v=1.19.0"></script>
 </body>
 </html>
