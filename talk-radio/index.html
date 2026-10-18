@@ -1,10 +1,12 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en" class="dark" data-cookie-key="chatagent_cookies">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Talk Radio (Ungated) · a LYGO Signal station</title>
     <meta name="description" content="Write a talk-radio episode on any topic and hear it voiced in your browser: two hosts, a caller hotline, a timecoded transcript, and the finished pack to take away. Free, open, no login." />
+    <meta name="google-adsense-account" content="ca-pub-0646320966060599" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
     <link rel="canonical" href="https://chatagent.ca/talk-radio/" />
     <meta name="keywords" content="AI talk radio, autonomous radio station, AI podcast generator, browser speech synthesis radio, talk radio studio, timecoded transcript, LYGO Signal, chatagent.ca, Excavationpro" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
@@ -130,10 +132,17 @@
 }
     </script>
     <script type="module" crossorigin src="/talk-radio/assets/index-D5bSCFXh.js"></script>
+    <script src="/talk-radio/intro.js" defer></script>
     <link rel="stylesheet" crossorigin href="/talk-radio/assets/index-RkNF8r02.css">
+    <link rel="stylesheet" href="/assets/site-kit.css">
   </head>
   <body class="bg-[#0b0e14] text-slate-100 antialiased selection:bg-amber-500/20 selection:text-amber-200">
     <div id="root"></div>
+    <div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent">
+      <div>Google AdSense may use cookies after you accept. <a href="/privacy.html">Privacy</a></div>
+      <div><button type="button" class="ok" id="cookieOk">Accept</button><button type="button" class="no" id="cookieNo">Decline</button></div>
+    </div>
+    <script src="/assets/site-kit.js" defer></script>
   </body>
 </html>
 
