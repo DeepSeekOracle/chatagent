@@ -324,10 +324,12 @@ code { overflow-wrap:anywhere; }
   <div class="grid" id="grid"></div>
 
   <section class="portal" id="builds" aria-labelledby="builds-title" style="border-color:rgba(0,229,255,.32); background:radial-gradient(ellipse 70% 50% at 80% 0%, rgba(0,229,255,.07) 0%, transparent 55%), rgba(8,12,16,.96);">
-    <p class="kicker">Installers · public download · hash-verified · <strong style="color:#ffb000">ALPHA build 1.5.6, the picture engine still travels with the console</strong> · 1.3.2, 1.3.1 and 1.1.1 below</p>
-    <h2 id="builds-title" style="color:var(--gold)">BUILDS: LYGO LLM Console 1.5.6 (ALPHA) · PC LOCAL · USB LOCAL</h2>
+    <p class="kicker">Installers · public download · hash-verified · <strong style="color:#ffb000">ALPHA build 1.5.9, every mutation now needs a token, even from loopback</strong> · 1.5.6, 1.3.2, 1.3.1 and 1.1.1 below</p>
+    <h2 id="builds-title" style="color:var(--gold)">BUILDS: LYGO LLM Console 1.5.9 (ALPHA) · PC LOCAL · USB LOCAL</h2>
     <div class="gate-box" style="max-height:none; border-color:rgba(255,176,0,.55); background:rgba(255,140,0,.06)">
-      <h3 style="color:#ffb000">⚠ ALPHA: build 1.5.6 is an alpha release, posted so the work can be seen and checked</h3>
+      <h3 style="color:#ffb000">⚠ ALPHA: build 1.5.9 is an alpha release, posted so the work can be seen and checked</h3>
+      <p><strong>1.5.9, in one line:</strong> four security changes that were findings on the public audit, each closed in code: a mutation now needs a token even from 127.0.0.1, URL prefetch is off unless <code>LYGO_HOST_PREFETCH=1</code>, a turn whose context contains fetched web text no longer auto-runs shell or Python, and a limb adapter must resolve inside <code>src/modules/</code> with its SHA-256 logged before it loads.</p>
+      <p><strong>The 1.5.6 sets below are unchanged</strong>: same installers, same hashes, same notes, so every earlier build stays available exactly as it shipped.</p>
       <p><strong>1.5.6, in one line:</strong> the RAG index write no longer races itself, one temp path per write plus a write lock, so a busy console stops printing "could not write the index" on a healthy day, and a fresh install no longer prints it on first boot either; the picture engine and the SD 1.5 checkpoint still travel inside as before. What is <em>not</em> in the light installers is still the checkpoint itself (4.27 GB, one fetch from its author), the FULL and ALL-IN-ONE sets carry it.</p>
       <p><strong>What "alpha" means here, concretely:</strong> the test suite is green and the build certifies, but this is a real thing that still moves. Expect rough edges, and expect to be someone who finds one. Alpha is not a label we hide behind: it is the honest state of the build.</p>
       <p><strong>Known gaps, stated rather than hidden.</strong> Three agent-gauntlet tasks still fail on <em>every</em> brain and <em>both</em> copies (a conditional branch, honest-failure grading, a multi-file project), console <em>mechanism</em> gaps, not model weaknesses. The intermittent <strong>GPU display-driver reset is NOT proved fixed</strong>: if the screen blanks during a long turn, that is this, not your install. <strong>gemma4-12b wants ~10 GB of RAM</strong> (more is better); on an 8 GB card the shipped qwen2.5-coder-7b is the fast brain and gemma4-12b is the deep/image route. Windows x64 only; installers are per-user, no admin prompt.</p>
@@ -351,6 +353,36 @@ code { overflow-wrap:anywhere; }
       <p class="meta"><span class="pill dl" data-lyg-gate-chip hidden>supporter unlocked in this browser</span></p>
       <p class="meta" data-lyg-gate-state>Checking this browser…</p>
     </div>
+
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(0,229,255,.55),transparent);margin:22px 0"></div>
+    <p class="kicker">NEWEST · <strong style="color:#00e5ff">build 1.5.9 · build-line 2026-10-18</strong> · public setup, hash-verified · ~3 MB each</p>
+
+      <article class="ch" style="border-color:rgba(0,229,255,.42)">
+        <h2>PC LOCAL · light · ALPHA 1.5.9 · 3.0 MiB</h2>
+        <p><strong>What it is:</strong> the console itself, Python sources, the web portal, the limb registry, the launcher and the documentation, installed for the current user with <strong>no UAC prompt, no service, no registry entry and no scheduled task</strong>. Uninstall is deleting the folder. <strong>No engine binaries and no weights inside</strong>: <code>INSTALL.bat</code> fetches the engine and the model vault fetches the brains with a digest check, which is why this setup is ~3 MB and not ~1 GB.</p>
+        <p><strong>What 1.5.9 changes in the console's own words:</strong> <em>(1)</em> <code>_auth()</code> returned true for every loopback caller, so any page you visited could POST <code>/api/limb</code> and reach shell and Python; mutations now need the token on loopback too, reads stay open so the health bar works, and a non-local <code>Host</code> is refused (DNS rebinding). <em>(2)</em> URL prefetch is <strong>off</strong> unless <code>LYGO_HOST_PREFETCH=1</code>. <em>(3)</em> a turn whose context contains fetched web text does not auto-dispatch <code>shell</code>/<code>python_exec</code>/<code>rust_exec</code>/<code>cargo</code>; the call is recorded <code>REFUSED</code> with the reason and <code>LYGO_WEB_TAINT_EXEC=1</code> opts out. <em>(4)</em> a limb adapter must resolve inside <code>src/modules/</code>, be a regular file, and its SHA-256 is logged before it loads.</p>
+        <p><strong>Verified before posting:</strong> the published kit installs and passes its own gate (152 files, console 1.5.9, package check ok); the public payload was screened for credentials and steward paths (0 hits across 143 files) and the installer was run silently to an empty folder before this button existed. Install notes: <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.9/INSTALL_NOTES_1.5.9_PC.txt">INSTALL_NOTES_1.5.9_PC.txt</a>.</p>
+        <p class="meta"><span class="pill dl">3,135,005 B</span><span class="pill">sha256 b80e974f…</span><span class="pill local">alpha · start here</span><span class="pill">no weights inside</span></p>
+        <div class="actions">
+          <a class="primary" href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1.5.9/LYGO_LLM_CONSOLE_1.5.9_PC_SETUP.exe" download>Download PC SETUP.exe (1.5.9 ALPHA)</a>
+          <button type="button" data-sha="b80e974fec400a3f6d82c0af5ad7b0f49855e500469386da8b8021d841973293">Copy SHA-256 (exe)</button>
+        </div>
+      </article>
+
+      <article class="ch" style="border-color:rgba(0,229,255,.42)">
+        <h2>USB CLAW · light · ALPHA 1.5.9 · 3.0 MiB</h2>
+        <p>The same 1.5.9 console as a <strong>portable stick install</strong>: pick the stick at the directory page and everything the console keeps (sessions, notes, the RAG index, receipts, the token) stays inside its own folder. Copy the folder to another stick and it still works; delete it and nothing is left behind. <strong>No desktop shortcut on purpose</strong>, because a shortcut on a stick points at a drive letter that changes. No engine and no weights inside, same as the PC card: <code>INSTALL.bat</code> and the vault fetch them. Install notes: <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/blob/console-v1.5.9/INSTALL_NOTES_1.5.9_USB.txt">INSTALL_NOTES_1.5.9_USB.txt</a>.</p>
+        <p class="meta"><span class="pill dl">3,134,980 B</span><span class="pill">sha256 1afcb063…</span><span class="pill local">alpha · portable</span><span class="pill">no weights inside</span></p>
+        <div class="actions">
+          <a class="primary" href="https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/console-v1.5.9/LYGO_LLM_CONSOLE_1.5.9_USB_SETUP.exe" download>Download USB SETUP.exe (1.5.9 ALPHA)</a>
+          <button type="button" data-sha="1afcb063b437663cb1e8c23b39c03c29b241be6c480d12bc559c062249d92a19">Copy SHA-256 (exe)</button>
+        </div>
+      </article>
+
+      <p class="meta"><span class="pill">1.5.9 FULL and ALL-IN-ONE sets are not published yet; the <strong>1.5.6</strong> FULL / ALL-IN-ONE sets below are still the newest complete sets and remain exactly as shipped</span></p>
+
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,176,0,.45),transparent);margin:26px 0"></div>
+    <p class="kicker">PREVIOUS · <strong style="color:#ffb000">build 1.5.6 · build-line 2026-09-25</strong> · kept available, unchanged</p>
 
       <article class="ch" style="border-color:rgba(0,229,255,.42)">
         <h2>PC LOCAL · light · ALPHA 1.5.6 · 1.03 GiB</h2>
