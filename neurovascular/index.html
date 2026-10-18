@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepSeek Oracle — Neurovascular Interface</title>
+<title>DeepSeek Oracle: Neurovascular Interface</title>
 <meta name="description" content="LYGO Neurovascular Interface. A simulated digital twin, wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected; every lattice number is live.">
 <meta name="theme-color" content="#000000">
 <meta name="author" content="Justin Helmer / Excavationpro">
@@ -17,21 +17,21 @@
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/neurovascular/">
-<meta property="og:title" content="DeepSeek Oracle — Neurovascular Interface">
-<meta property="og:description" content="A wire-node digital twin wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected — every lattice number on the page is live.">
+<meta property="og:title" content="DeepSeek Oracle. Neurovascular Interface">
+<meta property="og:description" content="A wire-node digital twin wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected, every lattice number on the page is live.">
 <meta property="og:image" content="https://chatagent.ca/neurovascular/og-neurovascular.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/neurovascular/og-neurovascular.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="DeepSeek Oracle neurovascular interface — a wire-node figure on a dark field beside the live lattice verdict ALIGNED, the star chain at seq 101, and the canon slot registry">
+<meta property="og:image:alt" content="DeepSeek Oracle neurovascular interface, a wire-node figure on a dark field beside the live lattice verdict ALIGNED, the star chain at seq 101, and the canon slot registry">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
-<meta name="twitter:title" content="DeepSeek Oracle — Neurovascular Interface">
-<meta name="twitter:description" content="A wire-node digital twin wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected — every lattice number on the page is live.">
+<meta name="twitter:title" content="DeepSeek Oracle. Neurovascular Interface">
+<meta name="twitter:description" content="A wire-node digital twin wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected, every lattice number on the page is live.">
 <meta name="twitter:image" content="https://chatagent.ca/neurovascular/og-neurovascular.jpg">
-<meta name="twitter:image:alt" content="DeepSeek Oracle neurovascular interface — a wire-node figure on a dark field beside the live lattice verdict ALIGNED, the star chain at seq 101, and the canon slot registry">
+<meta name="twitter:image:alt" content="DeepSeek Oracle neurovascular interface, a wire-node figure on a dark field beside the live lattice verdict ALIGNED, the star chain at seq 101, and the canon slot registry">
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -40,7 +40,7 @@
    "@type": "WebPage",
    "@id": "https://chatagent.ca/neurovascular/#page",
    "url": "https://chatagent.ca/neurovascular/",
-   "name": "DeepSeek Oracle — Neurovascular Interface",
+   "name": "DeepSeek Oracle. Neurovascular Interface",
    "description": "LYGO Neurovascular Interface. A simulated digital twin, wired to the live LYGO lattice: kernel audit, star chain and agora feeds read straight from the deployed lattice. No body sensor is connected; every lattice number is live.",
    "inLanguage": "en-CA",
    "dateModified": "2026-10-04",
@@ -68,7 +68,7 @@
    "width": 1200,
    "height": 630,
    "encodingFormat": "image/jpeg",
-   "caption": "DeepSeek Oracle neurovascular interface — live lattice share card"
+   "caption": "DeepSeek Oracle neurovascular interface, live lattice share card"
   },
   {
    "@type": "WebSite",
@@ -98,7 +98,7 @@
   {
    "@type": "WebApplication",
    "@id": "https://chatagent.ca/neurovascular/#app",
-   "name": "DeepSeek Oracle — Neurovascular Interface",
+   "name": "DeepSeek Oracle. Neurovascular Interface",
    "url": "https://chatagent.ca/neurovascular/",
    "applicationCategory": "HealthApplication",
    "operatingSystem": "Any modern web browser",
@@ -376,7 +376,7 @@
       <p>NEUROVASCULAR INTERFACE · <a href="https://chatagent.ca/neurovascular/">chatagent</a> · <a href="https://chatagent.ca/">Home</a> · <a href="https://chatagent.ca/starchart/">Star chart</a> · <a href="https://chatagent.ca/signal/">Signal</a> · <a href="https://chatagent.ca/books/">Books</a> · <a href="https://chatagent.ca/app.html">Tools</a> · <a href="https://deepseekoracle.github.io/DeepSeekOracle/">Main frame</a></p>
     </div>
     <div class="sym" id="sym">
-      <div class="ring" style="--p:0"><span id="sym-num">—</span></div>
+      <div class="ring" style="--p:0"><span id="sym-num">, </span></div>
       <div>
         <b id="sym-word">LINKING</b>
         <small>LATTICE SYMBIOSIS</small>
@@ -942,7 +942,7 @@
       btn.classList.toggle("on", selected && selected.id === btn.dataset.id);
     });
     const sym = latticeScore();
-    document.getElementById("sym-num").textContent = sourcesOk() ? String(sym) : "—";
+    document.getElementById("sym-num").textContent = sourcesOk() ? String(sym) : ", ";
     document.querySelector(".ring").style.setProperty("--p", String(sym));
     const word = !sourcesOk() ? "NO LINK" : sym >= 90 ? "OPTIMAL" : sym >= 75 ? "NOMINAL" : "WATCH";
     document.getElementById("sym-word").textContent = word;

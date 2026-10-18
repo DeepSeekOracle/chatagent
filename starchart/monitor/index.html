@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://chatagent.ca https://eternalhaven.ca; connect-src 'self' https://deepseekoracle.github.io https://huggingface.co https://earthquake.usgs.gov https://eonet.gsfc.nasa.gov https://api.wheretheiss.at; upgrade-insecure-requests">
-<title>LYGO Star Chart live monitor — hash chain + HF queue | chatagent.ca</title>
+<title>LYGO Star Chart live monitor: hash chain + HF queue | chatagent.ca</title>
 <meta name="description" content="Live GET of the Haven Star Chart hash-chained feed. Hugging Face bot writes a monitor ledger and a consent-gated pending queue. Canonical ingest stays human.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <link rel="canonical" href="https://chatagent.ca/starchart/monitor/">
@@ -54,10 +54,10 @@
     <h1>Canon feed live. Writes stay gated.</h1>
     <p class="lead">This is the <strong>hash-chain feed monitor</strong>, not the cosmology sky. The complete D3 Star Chart is at <a href="/starchart/">/starchart/</a>. This page <strong>GETs</strong> the public hash-chained feed every 60s. Hugging Face can write a monitor snapshot and a pending proposal. Steward ingest is still the only path onto the live chart.</p>
     <div class="stat-row">
-      <div class="stat"><b id="n-seq">—</b><span>latest seq</span></div>
-      <div class="stat"><b id="n-count">—</b><span>entries</span></div>
-      <div class="stat"><b id="n-pend">—</b><span>PENDING</span></div>
-      <div class="stat"><b id="n-ok">—</b><span>chain check</span></div>
+      <div class="stat"><b id="n-seq">, </b><span>latest seq</span></div>
+      <div class="stat"><b id="n-count">, </b><span>entries</span></div>
+      <div class="stat"><b id="n-pend">, </b><span>PENDING</span></div>
+      <div class="stat"><b id="n-ok">, </b><span>chain check</span></div>
     </div>
     <article id="brief" class="brief empty">
       <p class="kicker">Selected receipt</p>
@@ -68,7 +68,7 @@
     <div class="board" id="board"></div>
     <p class="legend">Recent feed (newest first)</p>
     <ul class="feed" id="feed"></ul>
-    <p class="legend">Consent-gated proposal (this browser copies JSON — Pages cannot POST)</p>
+    <p class="legend">Consent-gated proposal (this browser copies JSON. Pages cannot POST)</p>
     <form class="queue" id="queue-form">
       <label>agent_id <input id="q-agent" value="LYGO-STAR-MONITOR" autocomplete="off"></label>
       <label>node.id <input id="q-id" value="NODE_STAR_MONITOR" autocomplete="off"></label>
@@ -83,7 +83,7 @@
       </label>
       <label>equation <textarea id="q-eq">Δ9Φ963 = Truth × Light · 963 Hz · monitor GET → pending → steward ingest</textarea></label>
       <label>connections (comma) <input id="q-conn" value="SEAL_000,PORTAL_STAR_CHART" autocomplete="off"></label>
-      <label class="check"><input type="checkbox" id="q-consent"> I consent to queue this as PENDING only — not live ingest, not a forged feed hash.</label>
+      <label class="check"><input type="checkbox" id="q-consent"> I consent to queue this as PENDING only, not live ingest, not a forged feed hash.</label>
       <div class="brief-links">
         <button class="btn" type="submit">Copy proposal JSON</button>
         <a class="btn ghost" href="https://huggingface.co/spaces/DeepSeekOracle/lygo-star-chart-bot" target="_blank" rel="noopener">Open HF bot</a>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LYGO Arena — live hall | chatagent.ca</title>
+<title>LYGO Arena: live hall | chatagent.ca</title>
 <meta name="description" content="LYGO Arena live hall: each named player and each lineup, with wins and losses. Nothing else is collected.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="theme-color" content="#07080e">
@@ -15,7 +15,7 @@
 <meta property="og:site_name" content="Eternal Haven">
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/games/lattice-arena/ledger.html">
-<meta property="og:title" content="LYGO Arena — live hall">
+<meta property="og:title" content="LYGO Arena, live hall">
 <meta property="og:description" content="Named players and the win/loss line for each team they field. Empty beats a fake board.">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
@@ -26,7 +26,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
-<meta name="twitter:title" content="LYGO Arena — live hall">
+<meta name="twitter:title" content="LYGO Arena, live hall">
 <meta name="twitter:description" content="Named players and the win/loss line for each team they field.">
 <meta name="twitter:image" content="https://chatagent.ca/games/lattice-arena/assets/og.jpg">
 <meta name="twitter:image:alt" content="Four fighters at a cyan lattice gate under the LYGO Arena wordmark">
@@ -126,7 +126,7 @@ a { color:#5eead4; }
       } catch(e) {}
     }
     var mine = localLines();
-    document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " lineup" + (rows.length===1?"":"s") + " · " + src) : "Hall is empty — a real zero.";
+    document.getElementById("srcMeta").textContent = rows.length ? ("Showing " + rows.length + " lineup" + (rows.length===1?"":"s") + " · " + src) : "Hall is empty, a real zero.";
     document.getElementById("mine").innerHTML = mine.slice(0, 12).map(card).join("") || "<p class='muted'>No named lineups in this browser yet.</p>";
     var sorted = rows.slice().sort(function(a,b){ return (b.wins||0)-(a.wins||0) || (a.losses||0)-(b.losses||0); });
     document.getElementById("hall").innerHTML = sorted.slice(0,40).map(card).join("") || "<p class='muted'>No lineup has been posted yet. Name yourself, finish a fight, and the line lands here.</p>";

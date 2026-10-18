@@ -47,23 +47,23 @@
     <p>
       Agent skills are powerful because they can read files, call tools, and encode workflows.
       That power is also the risk: a skill that claims “no network” but imports HTTP libraries is a trust problem.
-      Treat every skill like untrusted software — even from publishers you generally like (including us).
+      Treat every skill like untrusted software, even from publishers you generally like (including us).
     </p>
 
     <h2>Pre-install checklist</h2>
     <ol>
-      <li><strong>Read SKILL.md</strong> — what does it say it does? what permissions does it claim?</li>
-      <li><strong>Skim scripts/</strong> — look for <code>subprocess</code>, <code>shell=True</code>, <code>eval</code>, raw sockets, hardcoded secrets.</li>
-      <li><strong>Check for auto-publish</strong> — git push, social post, or cloud upload without consent flags is a red flag.</li>
-      <li><strong>Prefer local-first</strong> — tools that work offline with explicit <code>--i-consent</code> for writes are easier to reason about.</li>
-      <li><strong>Install from a known slug</strong> — typo-squatting is a real class of attack on package ecosystems.</li>
+      <li><strong>Read SKILL.md</strong>, what does it say it does? what permissions does it claim?</li>
+      <li><strong>Skim scripts/</strong>, look for <code>subprocess</code>, <code>shell=True</code>, <code>eval</code>, raw sockets, hardcoded secrets.</li>
+      <li><strong>Check for auto-publish</strong>, git push, social post, or cloud upload without consent flags is a red flag.</li>
+      <li><strong>Prefer local-first</strong>, tools that work offline with explicit <code>--i-consent</code> for writes are easier to reason about.</li>
+      <li><strong>Install from a known slug</strong>, typo-squatting is a real class of attack on package ecosystems.</li>
       <li><strong>Run in a throwaway environment first</strong> if the skill is high privilege.</li>
     </ol>
 
     <h2>Claim vs code mismatches</h2>
     <p>
       A common failure mode: documentation says “no network / no subprocess,” but the code clearly uses them.
-      That may be malice, sloppy packaging, or an outdated description — all are reasons to pause.
+      That may be malice, sloppy packaging, or an outdated description, all are reasons to pause.
       Our local scanner skill <strong>lygo-skill-gate</strong> was built for exactly this pre-install scan
       (stdlib only; it does not auto-install anything). See listings on
       <a href="/lygoskillhub.html">LYGO SkillHub</a>.
@@ -98,7 +98,7 @@
     <ul>
       <li>Run any provided <code>self_check</code> scripts.</li>
       <li>Pin versions when your tool allows it.</li>
-      <li>Re-scan after updates — changelogs can hide permission expansions.</li>
+      <li>Re-scan after updates, changelogs can hide permission expansions.</li>
       <li>For multi-step agent work, seal results with <a href="/guides/ai-agent-done-claims-continuum.html">Continuum</a>.</li>
     </ul>
 

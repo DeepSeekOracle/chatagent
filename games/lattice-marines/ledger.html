@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lattice Marines — Eternal Ledger</title>
+<title>Lattice Marines: Eternal Ledger</title>
 <meta name="description" content="Eternal vs-AI win ledger for Lattice Marines. Commander names, scores, seeds, and match metadata inscribed automatically when you take the island from the adaptive AI.">
 <meta name="theme-color" content="#070b12">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-marines/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Lattice Marines — Eternal Ledger">
+<meta property="og:title" content="Lattice Marines. Eternal Ledger">
 <meta property="og:description" content="Public hall of records. Only victories against the adaptive AI are inscribed.">
 <meta property="og:image" content="https://chatagent.ca/games/lattice-marines/assets/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -129,7 +129,7 @@ footer { margin-top: 1.5rem; color: var(--mute); font-size: .8rem; }
       </table>
     </div>
   </section>
-  <footer>Lattice Marines · chatagent.ca · eternalhaven.ca · Hugging Face dataset DeepSeekOracle/lattice-marines-wins. Names and match metadata only — no accounts.</footer>
+  <footer>Lattice Marines · chatagent.ca · eternalhaven.ca · Hugging Face dataset DeepSeekOracle/lattice-marines-wins. Names and match metadata only, no accounts.</footer>
 </main>
 <script>
 const GETS = [
@@ -157,7 +157,7 @@ async function pull() {
       }
     } catch (_) {}
   }
-  document.getElementById("srcMeta").textContent = "Ledger unreachable — try again in a minute (the HF Space may be waking).";
+  document.getElementById("srcMeta").textContent = "Ledger unreachable, try again in a minute (the HF Space may be waking).";
   document.getElementById("rows").innerHTML = '<tr><td colspan="10" class="empty">No rows yet. Win an AI match to cut the first line.</td></tr>';
 }
 function paint() {
@@ -181,7 +181,7 @@ function paint() {
         <td>${esc(w.turns)}</td>
         <td>${esc(w.profile)}</td>
         <td>${esc(w.seed)}</td>
-        <td>${esc(w.mapNote || "—")}</td>
+        <td>${esc(w.mapNote || ", ")}</td>
         <td>${esc(w.date || "")}</td>
       </tr>`).join("")
     : '<tr><td colspan="10" class="empty">No inscribed AI wins match this filter.</td></tr>';

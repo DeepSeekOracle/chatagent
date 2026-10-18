@@ -7,7 +7,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://chatagent.ca https://eternalhaven.ca; connect-src 'self' https:; upgrade-insecure-requests">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
-<title>LYGO Bench — site card, hash, redact | chatagent.ca</title>
+<title>LYGO Bench: site card, hash, redact | chatagent.ca</title>
 <meta name="description" content="Free browser workbench: HTTPS site card, local SHA-256, secret redact. No account. No upload. No live Star Chart write.">
 <meta name="author" content="Justin Helmer / Excavationpro">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -15,7 +15,7 @@
 <link rel="icon" href="/witness/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/bench/app.css?v=1.0.1">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<meta property="og:title" content="LYGO Bench — site card, hash, redact">
+<meta property="og:title" content="LYGO Bench, site card, hash, redact">
 <meta property="og:description" content="GET a public page into a card. Hash files locally. Redact keys before you paste.">
 <meta property="og:url" content="https://chatagent.ca/bench/">
 <meta property="og:image" content="https://chatagent.ca/witness/og.jpg">
@@ -67,10 +67,10 @@
     </div>
     <p class="note">Foreign pages without CORS stay named SHADOW. Same-origin and GitHub Pages JSON usually work. Loopback and private IPs are blocked.</p>
     <div class="stats">
-      <div class="stat" id="c-yield-box"><b id="c-yield">—</b><span>yield</span></div>
-      <div class="stat"><b id="c-status">—</b><span>HTTP</span></div>
-      <div class="stat"><b id="c-bytes">—</b><span>bytes</span></div>
-      <div class="stat"><b id="c-sha">—</b><span>sha256</span></div>
+      <div class="stat" id="c-yield-box"><b id="c-yield">, </b><span>yield</span></div>
+      <div class="stat"><b id="c-status">, </b><span>HTTP</span></div>
+      <div class="stat"><b id="c-bytes">, </b><span>bytes</span></div>
+      <div class="stat"><b id="c-sha">, </b><span>sha256</span></div>
     </div>
     <pre id="card-out">Awaiting GET…</pre>
   </section>
@@ -86,9 +86,9 @@
       <button class="btn ghost" type="button" id="copy-compare">Copy JSON</button>
     </div>
     <div class="stats">
-      <div class="stat" id="a-yield-box"><b id="a-yield">—</b><span>A yield</span></div>
-      <div class="stat" id="b-yield-box"><b id="b-yield">—</b><span>B yield</span></div>
-      <div class="stat"><b id="ab-same">—</b><span>same yield</span></div>
+      <div class="stat" id="a-yield-box"><b id="a-yield">, </b><span>A yield</span></div>
+      <div class="stat" id="b-yield-box"><b id="b-yield">, </b><span>B yield</span></div>
+      <div class="stat"><b id="ab-same">, </b><span>same yield</span></div>
     </div>
     <pre id="compare-out">Awaiting compare…</pre>
   </section>
@@ -96,8 +96,8 @@
   <section class="panel" id="panel-hash">
     <p class="note">SHA-256 in this browser. Cap 8 MB. Nothing is uploaded.</p>
     <div class="stats">
-      <div class="stat"><b id="h-sha">—</b><span>sha256</span></div>
-      <div class="stat"><b id="h-bytes">—</b><span>bytes</span></div>
+      <div class="stat"><b id="h-sha">, </b><span>sha256</span></div>
+      <div class="stat"><b id="h-bytes">, </b><span>bytes</span></div>
     </div>
     <label for="hash-in">Text</label>
     <textarea id="hash-in" placeholder="Paste text to hash"></textarea>

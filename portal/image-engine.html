@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Image generation — LYGO API Portal</title>
+<title>Image generation: LYGO API Portal</title>
 <meta name="description" content="How to generate images with the LYGO portal: use a key route with no install, or install the same stable-diffusion.cpp engine the PC console uses and draw on your own machine.">
 <link rel="canonical" href="https://chatagent.ca/portal/image-engine.html">
 <link rel="stylesheet" href="/portal/style.css?v=20260924b">
@@ -32,9 +32,9 @@
 <body>
 <main>
   <p class="kicker">Δ9Φ963 · chatagent.ca · resource</p>
-  <h1>Image generation — two honest paths</h1>
+  <h1>Image generation: two honest paths</h1>
   <p>One module. Two ways to feed it. This page says exactly what each one needs, what it costs, and
-  what it will not do — because the fastest way to lose someone's trust is to promise a picture the
+  what it will not do, because the fastest way to lose someone's trust is to promise a picture the
   engine never made.</p>
 
   <p><a href="/portal/#image-suite">← the picture module</a> · <a href="/lygoskillhub.html">SkillHub</a> ·
@@ -42,7 +42,7 @@
 
   <table>
     <tr><th></th><th>who it is for</th><th>install</th><th>cost</th><th>speed</th></tr>
-    <tr><td><b>A · web portal + a key</b></td><td>anyone, no GPU</td><td>none — the page does it</td>
+    <tr><td><b>A · web portal + a key</b></td><td>anyone, no GPU</td><td>none, the page does it</td>
         <td>your own provider key (a free Gemini key works)</td><td>the provider's</td></tr>
     <tr><td><b>B · your own engine</b></td><td>a Windows PC</td><td>console + a 12 MB add-on</td>
         <td>nothing, unlimited, offline</td><td>55 s at 512², ~5 min at 1024² (CPU)</td></tr>
@@ -51,26 +51,26 @@
   <h2>A · No install: the portal with a key</h2>
   <p>Scroll to the <a href="/portal/#image-suite">Image generation</a> module, pick a route, paste a key,
   press Generate. The picture appears in the module with its route, model, pixels, seconds and size.</p>
-  <p>Which routes a <em>browser</em> can actually call — probed by the page itself, from this origin
+  <p>Which routes a <em>browser</em> can actually call, probed by the page itself, from this origin
   (measured 2026-09-24):</p>
   <p><span class="ok">callable</span> Google Gemini (free tier) · OpenRouter · SiliconFlow · Fireworks<br>
-     <span class="no">blocked</span> xAI, OpenAI images, DeepInfra, Hyperbolic, Together — they send no
+     <span class="no">blocked</span> xAI, OpenAI images, DeepInfra, Hyperbolic, Together, they send no
      CORS header, so a web page cannot call them at all. Anthropic, Groq, Mistral, Cerebras, Cohere,
      Perplexity, DeepSeek and LLM7 have no image API.</p>
   <p class="note">Free key: <a href="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a>.
-  Your key stays in your tab — chatagent.ca never sees it, and this page holds no key of its own.</p>
+  Your key stays in your tab, chatagent.ca never sees it, and this page holds no key of its own.</p>
   <p><b>Ask an agent instead of clicking.</b> In the chat, "draw me a lime green sports car in a
   futuristic neon city" is enough: the model has an <code>image_generate</code> limb, and the module and
   the agent call the <em>same</em> function, so an agent cannot claim a picture the page did not make.
-  The agent gets back route · model · pixels · seconds · bytes — never the image bytes themselves.</p>
+  The agent gets back route · model · pixels · seconds · bytes, never the image bytes themselves.</p>
 
   <h2>B · Your own engine: the console + the image engine add-on</h2>
-  <p>This is the same engine the PC console uses — <b>stable-diffusion.cpp</b> running SDXL Turbo or
+  <p>This is the same engine the PC console uses, <b>stable-diffusion.cpp</b> running SDXL Turbo or
   SD 1.5. Free forever, no key, nothing sent anywhere, no per-picture limits. Two downloads and one
   file to fetch.</p>
 
   <h3>1. The console</h3>
-  <p><a href="/lygo-llm-console.html">LYGO LLM Console 1.3.2</a> — the PC installer, or the <b>FULL set</b>
+  <p><a href="/lygo-llm-console.html">LYGO LLM Console 1.3.2</a>, the PC installer, or the <b>FULL set</b>
   that carries the chat weights, the picture engine <em>and</em> the SD 1.5 checkpoint inside, so pictures
   work the moment it finishes installing (nothing to fetch; the one download is optional and faster).
   The stick build (USB CLAW) carries the picture engine too, and its ALL-IN-ONE variant the checkpoint as
@@ -85,7 +85,7 @@ https://huggingface.co/DeepSeekOracle/lygo-console-builds/resolve/image-engine-v
 
 CertUtil -hashfile LYGO_IMAGE_ENGINE_SETUP.exe SHA256</pre>
   <p>Install it per-user; it lands in <code>%LOCALAPPDATA%\LYGO\image-engine</code>. Verify the hash
-  first — it is the one line that separates a download from an install.</p>
+  first, it is the one line that separates a download from an install.</p>
 
   <h3>3. One checkpoint (the only step that needs the network)</h3>
   <pre>powershell -ExecutionPolicy Bypass -File get_model.ps1 -List
@@ -100,7 +100,7 @@ powershell -ExecutionPolicy Bypass -File get_model.ps1 -Model sd15 # SD 1.5, 4.2
   <h3>4. Point the console at it, and start the gateway</h3>
   <pre>LYGO_IMAGE_ENGINE.bat</pre>
   <p>It finds the console, merges <code>media_root</code>, <code>sd_exe</code> and <code>sd_model</code>
-  into <code>&lt;console&gt;\config\local.json</code> (merging — never overwriting what is there), says
+  into <code>&lt;console&gt;\config\local.json</code> (merging, never overwriting what is there), says
   out loud whether it found the engine and a checkpoint, then starts the console's
   <code>PUBLIC_GATEWAY.bat</code>.</p>
   <p>Then open:</p>
@@ -108,13 +108,13 @@ powershell -ExecutionPolicy Bypass -File get_model.ps1 -Model sd15 # SD 1.5, 4.2
   <p>The console row in the picture module turns <b>ready</b> and every picture is drawn on your own
   machine. 9642 is the gateway's own default port.</p>
 
-  <h2>What it costs, measured — not estimated</h2>
+  <h2>What it costs, measured: not estimated</h2>
   <table>
     <tr><th>engine</th><th>512×512</th><th>1024×1024</th><th>notes</th></tr>
     <tr><td>CPU build, distilled checkpoint (SDXL Turbo, 4 steps)</td><td>~55 s</td><td>272–300 s</td>
         <td>this box, while the chat model held the 8 GB card</td></tr>
     <tr><td>CPU build, SD 1.5 (20 steps)</td><td>~174 s</td><td>minutes</td>
-        <td>MEASURED 173.9 s at 512² — the checkpoint we may redistribute, so the one the all-in-one
+        <td>MEASURED 173.9 s at 512², the checkpoint we may redistribute, so the one the all-in-one
             installers carry; 20 steps is 5× Turbo's, and the clock follows the steps</td></tr>
     <tr><td>CUDA build (1.1 GB, optional)</td><td>~4 s</td><td>~12.5 s</td>
         <td>card free; not required for the engine to work</td></tr>
@@ -123,18 +123,18 @@ powershell -ExecutionPolicy Bypass -File get_model.ps1 -Model sd15 # SD 1.5, 4.2
   </table>
   <p>Distilled checkpoints (turbo, schnell, lightning, lcm, dmd, hyper) are detected by name and run at
   4 steps, cfg 1.0. A normal SDXL wants about 20 steps at cfg 7. Running turbo at 20 steps is slow
-  <em>and</em> worse — that is a fact about the checkpoint, not a preference.</p>
+  <em>and</em> worse, that is a fact about the checkpoint, not a preference.</p>
 
   <h2>Why the engine is an add-on and not part of the page</h2>
   <p>A browser cannot run a 7 GB diffusion model, and a GPU that draws for strangers is somebody's
   bill. So the page offers both honestly: <b>key routes</b> for anyone with a key and no hardware, and
-  <b>a real engine</b> for a machine that has one. What the page never does is pretend — if no engine
+  <b>a real engine</b> for a machine that has one. What the page never does is pretend, if no engine
   answers, the module says so, with the engine's own words in it.</p>
 
   <h2>For agents: the skill</h2>
   <p>Everything above, as a skill an agent can install and follow:
   <a href="https://github.com/DeepSeekOracle/chatagent/blob/main/portal/image-engine/SKILL.md">lygo-image-engine · SKILL.md</a>
-  — the two paths, the limb contract, the measured numbers, and the pitfalls (UTF-16 engine strings,
+ , the two paths, the limb contract, the measured numbers, and the pitfalls (UTF-16 engine strings,
   a BOM in <code>local.json</code>, a five-minute request dying in a proxy, and never narrating a
   picture no engine produced). Catalogs and downloads:
   <a href="/lygoskillhub.html">chatagent.ca/lygoskillhub.html</a>.</p>

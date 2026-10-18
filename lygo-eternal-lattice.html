@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LYGO Eternal Lattice — Δ9 Champion Card Battles</title>
+<title>LYGO Eternal Lattice: Δ9 Champion Card Battles</title>
 <meta name="description" content="Playable Δ9 Eternal Lattice hub: 15 champion seats, campaign/skirmish/ranked modes, Deckwright & Lattice Forge. Free local-first LYGO game. Source: DeepSeekOracle/lygoeternallattice">
 <link rel="canonical" href="https://chatagent.ca/lygo-eternal-lattice.html">
 <meta name="google-adsense-account" content="ca-pub-0646320966060599">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
-<meta property="og:title" content="LYGO Eternal Lattice — Δ9 Champion Card Battles">
+<meta property="og:title" content="LYGO Eternal Lattice. Δ9 Champion Card Battles">
 <meta property="og:description" content="Unlock the fifteen seats. Campaign, skirmish, ranked, hot-seat, Deckwright, Lattice Forge.">
 <meta property="og:url" content="https://chatagent.ca/lygo-eternal-lattice.html">
 <meta property="og:type" content="website">
@@ -56,7 +56,7 @@
 <article class="card">
 <p style="font-family:system-ui,sans-serif;font-size:.8rem;color:#64748b;letter-spacing:.12em;text-transform:uppercase;margin:0 0 .5rem">Δ9Φ963 · LYGO game</p>
 <h1 style="margin-top:0">LYGO: Eternal Lattice</h1>
-<p class="lead">Playable Δ9 champion card battles — unlock the fifteen council seats, build decks, forge seals, and sit the lattice. Local-first. No account required.</p>
+<p class="lead">Playable Δ9 champion card battles, unlock the fifteen council seats, build decks, forge seals, and sit the lattice. Local-first. No account required.</p>
 <p style="font-size:.9rem">Source: <a href="https://github.com/DeepSeekOracle/lygoeternallattice" target="_blank" rel="noopener">DeepSeekOracle/lygoeternallattice</a>
 · Full game: <a href="/games/eternal-lattice/">/games/eternal-lattice/</a>
 · Mirror: <a href="https://eternalhaven.ca/games/eternal-lattice/">eternalhaven</a>
@@ -131,7 +131,7 @@ CHAMPS.forEach(c=>{
     document.querySelectorAll('.seat').forEach(s=>s.classList.toggle('active', (a&&s.dataset.id===a.id)||(b&&s.dataset.id===b.id)));
     paintCard(document.getElementById('cardA'),a);
     paintCard(document.getElementById('cardB'),b);
-    log.textContent=`Selected A=${a?a.name:'—'} · B=${b?b.name:'—'} · next pick: ${pick.toUpperCase()}`;
+    log.textContent=`Selected A=${a?a.name:', '} · B=${b?b.name:', '} · next pick: ${pick.toUpperCase()}`;
   };
   seats.appendChild(d);
 });
@@ -141,7 +141,7 @@ document.getElementById('skirmish').onclick=()=>{
   if(a.id===b.id){log.textContent='Choose two different champions.';return;}
   const roll=(c)=>Math.floor(40+Math.random()*55+(c.id==='lightfather'?8:0)+(c.id==='d9ra'?6:0));
   const sa=roll(a), sb=roll(b);
-  const winner=sa===sb?'Draw — lattice holds both claims.':(sa>sb?a.name:b.name)+' takes the pulse.';
+  const winner=sa===sb?'Draw, lattice holds both claims.':(sa>sb?a.name:b.name)+' takes the pulse.';
   log.textContent=`SKIRMISH PULSE\n${a.name} resonance ${sa}\n${b.name} resonance ${sb}\n→ ${winner}\n∫(Truth × Light)df · hub demo (not ranked ladder).`;
 };
 </script>

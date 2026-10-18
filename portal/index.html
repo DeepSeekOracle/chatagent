@@ -7,8 +7,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
-<title>LYGO API Portal — bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
-<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. ⇄ Compare bench sends one prompt to several models and shows the answers side by side — then one click synthesizes them into a single refined answer, or you keep the strongest segments of each and assemble them yourself. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
+<title>LYGO API Portal: bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
+<meta name="description" content="LYGO API Portal: connect Groq, OpenAI, Claude, Grok, DeepSeek or any OpenAI-compatible key. ⇄ Compare bench sends one prompt to several models and shows the answers side by side, then one click synthesizes them into a single refined answer, or you keep the strongest segments of each and assemble them yourself. Browser agent tools (wiki, fetch, weather, Δ9 champions). Full local GGUF console is a separate SkillHub download. No GPU on this page.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="creator" content="Justin Helmer">
 <meta name="publisher" content="chatagent.ca">
@@ -44,23 +44,23 @@
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://chatagent.ca/portal/">
-<meta property="og:title" content="LYGO API Portal — free agent studio">
-<meta property="og:description" content="Paste a Groq, OpenAI, Claude, Grok, or any OpenAI-compatible key. Send one prompt to several models side by side, then synthesize their answers into one refined answer in a click. No GPU on this page — the FULL local console is a SkillHub download.">
+<meta property="og:title" content="LYGO API Portal, free agent studio">
+<meta property="og:description" content="Paste a Groq, OpenAI, Claude, Grok, or any OpenAI-compatible key. Send one prompt to several models side by side, then synthesize their answers into one refined answer in a click. No GPU on this page, the FULL local console is a SkillHub download.">
 <meta property="og:image" content="https://chatagent.ca/portal/x-card.jpg">
 <meta property="og:image:url" content="https://chatagent.ca/portal/x-card.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/portal/x-card.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="LYGO API Portal — gold Δ9 phi seal, bring a free key on chatagent.ca/portal">
+<meta property="og:image:alt" content="LYGO API Portal, gold Δ9 phi seal, bring a free key on chatagent.ca/portal">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
-<meta name="twitter:title" content="LYGO API Portal — free agent studio">
+<meta name="twitter:title" content="LYGO API Portal, free agent studio">
 <meta name="twitter:description" content="Paste a Groq, OpenAI, Claude, or Grok key. Run one prompt through several models side by side, then synthesize one refined answer. chatagent.ca/portal">
 <meta name="twitter:image" content="https://chatagent.ca/portal/x-card.jpg">
 <meta name="twitter:image:src" content="https://chatagent.ca/portal/x-card.jpg">
-<meta name="twitter:image:alt" content="LYGO API Portal — Δ9Φ963 gold and cyan seal">
+<meta name="twitter:image:alt" content="LYGO API Portal. Δ9Φ963 gold and cyan seal">
 <meta name="twitter:url" content="https://chatagent.ca/portal/">
 <script type="application/ld+json">
 {
@@ -97,7 +97,7 @@
 }
 </script>
 <style>
-  /* V1 bench stamp — same token family as style.css, kept inline so the page
+  /* V1 bench stamp, same token family as style.css, kept inline so the page
      revision is legible even before a fresh style.css is cached. */
   .bench-stamp { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:0.68rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted, #a99a86); margin:0.25rem 0 0.45rem; border-left:2px solid rgba(224,179,106,0.5); padding-left:0.5rem; }
   .bench-stamp strong { color:var(--gold, #e0b36a); font-weight:600; }
@@ -121,23 +121,23 @@
   <div class="intro-card">
     <p class="intro-kicker">Δ9Φ963 · chatagent.ca · PUBLIC RESOURCE</p>
     <h2 id="introTitle" class="intro-title">LYGO API PORTAL</h2>
-    <p class="intro-sub">The public gate to the lattice — a ninja console with no GPU, and no model of its own.</p>
+    <p class="intro-sub">The public gate to the lattice, a ninja console with no GPU, and no model of its own.</p>
     <pre id="introTerm" class="intro-term" aria-live="polite"></pre>
     <ul class="intro-terms">
-      <li><strong>You bring the key.</strong> Groq, Gemini, OpenRouter, OpenAI, Claude, Grok, DeepSeek — any OpenAI-compatible key. This page hosts no model.</li>
+      <li><strong>You bring the key.</strong> Groq, Gemini, OpenRouter, OpenAI, Claude, Grok, DeepSeek, any OpenAI-compatible key. This page hosts no model.</li>
       <li><strong>The key stays in this tab.</strong> chatagent.ca never receives it, and no answer is stored anywhere but your own browser.</li>
-      <li><strong>The answer is the vendor's model talking</strong> — not LYGO, not verified truth. Check the important things before you build on them (that is the P0 gate).</li>
+      <li><strong>The answer is the vendor's model talking</strong>, not LYGO, not verified truth. Check the important things before you build on them (that is the P0 gate).</li>
       <li><strong>Free the whole way.</strong> Nothing on this page is locked away. A donation reminder appears every 15 minutes unless you are a supporter.</li>
     </ul>
     <div class="intro-actions">
       <button type="button" id="introEnter" class="intro-cta" disabled>Entering…</button>
-      <button type="button" id="introCode" class="intro-link">I am a supporter — enter my code</button>
+      <button type="button" id="introCode" class="intro-link">I am a supporter, enter my code</button>
       <a class="intro-link" id="introPatron" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Get this month's code (Patreon)</a>
       <a class="intro-link" id="introGuide" href="#start">How to start</a>
     </div>
     <p class="intro-supporter" id="introSupporter" hidden></p>
     <p class="intro-foot">Reminders are the only interruption, and a supporter code switches them off in the browser
-      where you enter it — the monthly code lives on the <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Patreon post</a>.
+      where you enter it, the monthly code lives on the <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Patreon post</a>.
       <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> ·
       <a href="https://chatagent.ca/about.html">Steward: Justin Helmer</a>.</p>
   </div>
@@ -152,8 +152,8 @@
       <p class="kicker">Δ9Φ963 · chatagent.ca · RESOURCE</p>
       <h1>LYGO API Portal</h1>
       <p class="bench-stamp">WEB PORTAL (API ONLY) · V1 bench · console line 1.3.2 · assets 2026-09-24 · ⇄ compare bench · ✦ one-click synthesis <span id="supporterChip" class="sup-chip" hidden>⚿ SUPPORTER</span></p>
-      <p class="sub syslabel">One console, three systems — <strong>WEB PORTAL (API ONLY, online — you are here)</strong> · <strong>PC LOCAL</strong> (full admin console on your PC, GPU when present) · <strong>USB LOCAL</strong> (stand-alone stick agent, plug and play, mobile). Same limbs, same P0 gate, same labels; only the brain differs.</p>
-      <p class="sub">A <strong>ninja console with no GPU</strong>: bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab — chatagent.ca never sees them. Browser tools + 15 champions are already installed on the page. Want it all offline on your own machine? <a href="https://chatagent.ca/lygo-llm-console.html">Local GGUF console</a> — same V1 bench, no API key at all. Legal: <a href="https://chatagent.ca/portal/legal.html">legal &amp; disclaimers</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
+      <p class="sub syslabel">One console, three systems, <strong>WEB PORTAL (API ONLY, online, you are here)</strong> · <strong>PC LOCAL</strong> (full admin console on your PC, GPU when present) · <strong>USB LOCAL</strong> (stand-alone stick agent, plug and play, mobile). Same limbs, same P0 gate, same labels; only the brain differs.</p>
+      <p class="sub">A <strong>ninja console with no GPU</strong>: bring a key from <em>any</em> vendor (Groq, Gemini, OpenRouter, OpenAI, Grok, DeepSeek, …). Pick the provider → paste the key → <strong>Connect</strong> → chat. Keys stay in this tab, chatagent.ca never sees them. Browser tools + 15 champions are already installed on the page. Want it all offline on your own machine? <a href="https://chatagent.ca/lygo-llm-console.html">Local GGUF console</a>, same V1 bench, no API key at all. Legal: <a href="https://chatagent.ca/portal/legal.html">legal &amp; disclaimers</a>. Steward: <a href="https://chatagent.ca/about.html">Justin Helmer</a>.</p>
       <nav class="site-nav" aria-label="Site">
         <a href="https://chatagent.ca/">Home</a>
         <a href="https://chatagent.ca/portal/" aria-current="page">Portal</a>
@@ -165,7 +165,7 @@
         <a href="https://asiancoastline.com/listen.html" rel="noopener">Listen</a>
         <a href="https://chatagent.ca/champions.html">Champions</a>
         <a href="https://www.paypal.com/paypalme/ExcavationPro" rel="noopener">Donate</a>
-        <button type="button" id="supporterOpen" class="nav-btn" title="Enter this month's supporter code — it turns the donation reminders off in this browser">⚿ Supporter</button>
+        <button type="button" id="supporterOpen" class="nav-btn" title="Enter this month's supporter code, it turns the donation reminders off in this browser">⚿ Supporter</button>
       </nav>
     </div>
   </div>
@@ -182,16 +182,16 @@
     <button type="button" id="connect">Connect</button>
     <label class="chk hide-public" id="full-wrap"><input type="checkbox" id="full"> Full LYGO limbs</label>
   </div>
-  <p class="models-bar"><span id="models-status" class="models-status">models — the list is read from your key, not a hard-coded table</span><button type="button" id="models-refresh" title="Re-read the model list from this provider">↻ models</button><input id="model-filter" type="search" placeholder="filter models…" autocomplete="off" aria-label="Filter models" hidden></p>
+  <p class="models-bar"><span id="models-status" class="models-status">models, the list is read from your key, not a hard-coded table</span><button type="button" id="models-refresh" title="Re-read the model list from this provider">↻ models</button><input id="model-filter" type="search" placeholder="filter models…" autocomplete="off" aria-label="Filter models" hidden></p>
   <p class="mode-pill" id="mode-help">Pick a provider → paste its key → Connect. Model is filled for you. <a href="#start">Start here</a> · <a href="#free-keys">Free keys</a> · <a href="#image-suite">Image suite</a> · <a href="/guides/how-to-lygo-llm-portal.html">Guide</a></p>
 </header>
-<section class="lygo-tv-wrap tv-med" aria-label="LYGO TV — live channels">
+<section class="lygo-tv-wrap tv-med" aria-label="LYGO TV, live channels">
   <div data-lygo-tv></div>
 </section>
 <section id="world" class="world" aria-label="World time">
   <div class="world-now">
-    <div id="world-local" class="world-local">local —</div>
-    <div id="world-utc" class="world-utc">UTC —</div>
+    <div id="world-local" class="world-local">local , </div>
+    <div id="world-utc" class="world-utc">UTC , </div>
   </div>
   <div id="world-cities" class="world-cities"></div>
 </section>
@@ -208,15 +208,15 @@
     <div id="pane-mem" class="cont-pane" hidden><textarea id="mem-edit" spellcheck="false" aria-label="MEMORY.md"></textarea></div>
     <p class="hint">Shipped with this portal. Edits stay in your browser. <button type="button" id="id-reset">Reset defaults</button></p>
     <h2>Skills</h2>
-    <p class="hint">Already on this page. Toggle on/off — no download. 15 champions + LYGO modules.</p>
+    <p class="hint">Already on this page. Toggle on/off, no download. 15 champions + LYGO modules.</p>
     <div id="skills-list" class="skills-list"></div>
     <p class="hint" id="skill-pack">Loading pack…</p>
     <h2>Agent limbs</h2>
     <p class="hint">All browser-safe tools are installed on this page. Disk/shell stay on the local console.</p>
     <p class="sub">No engine attached? The <strong>Image generation</strong> suite at the bottom of this page has two routes:
-    a key you already hold (nothing installed), or <strong>your own console</strong> — running the engine on your machine,
+    a key you already hold (nothing installed), or <strong>your own console</strong>, running the engine on your machine,
     free and unlimited. Attach it with <code>?console=http://127.0.0.1:9642</code> from its public gateway, and allow local
-    network access when Chrome asks. Engine inside the kit since 1.3.2 (PC and stick); the checkpoint is fetched once —
+    network access when Chrome asks. Engine inside the kit since 1.3.2 (PC and stick); the checkpoint is fetched once , 
     <a href="/portal/image-engine.html">both routes, in detail</a>.</p>
     <div class="limbs">
       <button type="button" data-limb="wiki">wiki</button>
@@ -236,11 +236,11 @@
     <p class="hint" id="modules-status">Looking for an attached console…</p>
     <div class="skills-list" id="modules-list"></div>
     <p class="hint">This page has no kernel of its own, so modules come from a console you attach: run <strong>PC LOCAL</strong> or <strong>USB CLAW</strong>, then start its public gateway (<code>PUBLIC_GATEWAY.bat</code>) and open this page with
-    <code>?console=http://127.0.0.1:9642</code> — the gateway is the address this page can talk to (the admin UI on
+    <code>?console=http://127.0.0.1:9642</code>, the gateway is the address this page can talk to (the admin UI on
     <code>:9641</code> / <code>:9651</code> is for you, not for a web page), and Chrome will ask to <em>allow access to your
-    local network</em>: say yes, or the console route fails as if nothing were running. Each row says what that module can do <em>here</em> — anything marked <em>needs your machine</em> is running in your local console, not in this tab.</p>
+    local network</em>: say yes, or the console route fails as if nothing were running. Each row says what that module can do <em>here</em>, anything marked <em>needs your machine</em> is running in your local console, not in this tab.</p>
     <h2>Full local console</h2>
-    <p class="hint">GGUF scan, folders, SkillHub FULL, USB CLAW — not this webpage.</p>
+    <p class="hint">GGUF scan, folders, SkillHub FULL, USB CLAW, not this webpage.</p>
     <p class="hint">
       <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">Download from SkillHub</a><br>
       <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a><br>
@@ -248,7 +248,7 @@
     </p>
     <pre class="ai-card" id="ai-card">name: LYGO API Portal
 url: https://chatagent.ca/portal/
-channel: PUBLIC RESOURCE — API keys in the visitor browser
+channel: PUBLIC RESOURCE. API keys in the visitor browser
 not: hosted GPU; admin disks; vaults
 providers: groq, openrouter, openai, xai, deepseek, mistral, together, fireworks, gemini, anthropic, huggingface, custom OpenAI-compat
 browser_limbs: 50+ HTTPS + tab tools (wiki, fetch, weather, github, lattice_handshake, champions, …); no disk/shell
@@ -264,7 +264,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
       <li>Choose a <strong>provider</strong> in the dropdown (Groq is free; Gemini, OpenRouter, OpenAI, Grok, DeepSeek, and others work too).</li>
       <li>Open that vendor’s key page from <a href="#free-keys">Free and near-free API keys</a>. Copy the key.</li>
       <li>Paste it in the key box. Click <strong>Connect</strong>. The model is chosen for you.</li>
-      <li>Then chat. Skills and champions are already on this page — toggle them in the left rail.</li>
+      <li>Then chat. Skills and champions are already on this page, toggle them in the left rail.</li>
       <li>Optional: press <strong>⇄ Compare</strong> to put one prompt to two or more models at once and read the answers side by side. Then press the <strong>+</strong> on the strongest segments of each answer and <strong>Assemble</strong> them into one, or leave nothing picked and press <strong>⇄ Synthesize</strong> for one refined answer.</li>
     </ol>
     <div id="log" class="log" aria-live="polite"></div>
@@ -277,14 +277,14 @@ steward: Justin Helmer / Excavationpro / Lightfather
     <div class="bench" id="bench" hidden aria-label="Compare bench and one-click synthesis">
       <div class="bench-head">
         <strong>⇄ Compare bench</strong>
-        <span class="hint" id="bench-status">two lanes, one prompt, side by side — then one refined answer</span>
+        <span class="hint" id="bench-status">two lanes, one prompt, side by side, then one refined answer</span>
         <span class="bench-tools">
           <button type="button" id="bench-add" title="Add a lane (up to four)">+ lane</button>
           <button type="button" id="bench-run" title="Send what is in the box above to every ready lane now">Run on all lanes</button>
         </span>
       </div>
       <div class="bench-lanes" id="bench-lanes"></div>
-      <p class="hint">Put the same prompt to two or more models at once, then read them side by side. From there, <strong>one click</strong> turns the comparison into something you can use: <strong>press the + on the strongest segments</strong> of each answer and <strong>Assemble</strong> them — your own picks, in order, verbatim, tagged to the answer each came from and written without spending a call — or leave nothing picked and press <strong>⇄ Synthesize</strong> to send every answer to one chosen lane and get a single refined answer back, with the line saying what it leaned on. If you have picked segments, Synthesize sends <em>only those</em>, so the fuse is sharp and costs less. One answer per run joins the conversation, so the log stays a conversation. <strong>Keys pasted in a lane stay in this tab’s memory</strong> — never in browser storage; nothing here is uploaded and no answer is stored anywhere but your own browser. A lane set to the same provider as the top box shares the key you already pasted there. A custom lane can point at any OpenAI-compatible URL (two self-hosted servers, two labs), and <code>127.0.0.1</code>/<code>localhost</code> is allowed by this page’s own policy. Each run spends one call per ready lane on your keys (the synthesis spends one more), and the seconds and tokens of each answer are shown with it.</p>
+      <p class="hint">Put the same prompt to two or more models at once, then read them side by side. From there, <strong>one click</strong> turns the comparison into something you can use: <strong>press the + on the strongest segments</strong> of each answer and <strong>Assemble</strong> them, your own picks, in order, verbatim, tagged to the answer each came from and written without spending a call, or leave nothing picked and press <strong>⇄ Synthesize</strong> to send every answer to one chosen lane and get a single refined answer back, with the line saying what it leaned on. If you have picked segments, Synthesize sends <em>only those</em>, so the fuse is sharp and costs less. One answer per run joins the conversation, so the log stays a conversation. <strong>Keys pasted in a lane stay in this tab’s memory</strong>, never in browser storage; nothing here is uploaded and no answer is stored anywhere but your own browser. A lane set to the same provider as the top box shares the key you already pasted there. A custom lane can point at any OpenAI-compatible URL (two self-hosted servers, two labs), and <code>127.0.0.1</code>/<code>localhost</code> is allowed by this page’s own policy. Each run spends one call per ready lane on your keys (the synthesis spends one more), and the seconds and tokens of each answer are shown with it.</p>
       <div class="bench-out" id="bench-out" hidden></div>
     </div>
     <div class="np-foot" style="margin:0.4rem 0.2rem">
@@ -328,7 +328,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <h2 id="img-h">Image generation</h2>
   <p class="hint">Type a prompt, choose where the picture is made, and it appears right here in the module. Nothing is
     uploaded to chatagent.ca: a picture is either made on a LYGO console you attach (the same SDXL engine the PC LOCAL
-    console uses) or by the key you pasted above — that key stays in this tab.</p>
+    console uses) or by the key you pasted above, that key stays in this tab.</p>
   <div class="img-grid">
     <div class="img-controls">
       <label class="img-lbl" for="img-prompt">What should the picture show?</label>
@@ -370,7 +370,7 @@ steward: Justin Helmer / Excavationpro / Lightfather
 <section class="sup-suite" id="supporter-suite" aria-labelledby="supTitle">
   <h2 id="supTitle">⚿ Supporter access <span class="sup-tag">PRO thank-you</span></h2>
   <p class="hint">Supporters get a <strong>new code every month</strong> from the steward's Patreon post. Paste it and the
-    donation reminders stop in this browser — that is the whole perk. Nothing else on this console is locked: every
+    donation reminders stop in this browser, that is the whole perk. Nothing else on this console is locked: every
     provider, every model, the compare bench and the image suite work exactly the same without a code. The code is
     checked inside your browser, never sent anywhere, and never stored.</p>
   <div class="sup-grid">
@@ -385,17 +385,17 @@ steward: Justin Helmer / Excavationpro / Lightfather
     </div>
     <div class="sup-side">
       <p class="sup-state" id="supState">Checking…</p>
-      <a class="sup-get" id="supGet" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Get this month's code — Patreon post →</a>
+      <a class="sup-get" id="supGet" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Get this month's code. Patreon post →</a>
       <p class="hint">Codes rotate monthly, and that post always holds the current one: if your code has lapsed, the new
-        month's code switches the reminders off again. Straight about the limits — the check runs in your browser, so
+        month's code switches the reminders off again. Straight about the limits, the check runs in your browser, so
         this is a thank-you gate rather than a licence, and it turns the reminders off in <em>one</em> browser.</p>
     </div>
   </div>
 </section>
 <section class="legal how" id="disclaimer">
-  <h2>Two products — do not mix them</h2>
+  <h2>Two products: do not mix them</h2>
   <ol>
-    <li><strong>This page (API portal).</strong> Pick a provider, paste <em>that</em> vendor’s key, Connect, then chat. Groq is one free start — not the only one. Keys stay in your browser. chatagent.ca never sees the key.</li>
+    <li><strong>This page (API portal).</strong> Pick a provider, paste <em>that</em> vendor’s key, Connect, then chat. Groq is one free start, not the only one. Keys stay in your browser. chatagent.ca never sees the key.</li>
     <li><strong>FULL local LYGO LLM Console.</strong> Your own GGUF models, folders, SkillHub FULL, USB CLAW. Download: <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">SkillHub FULL kernel</a> · docs <a href="https://chatagent.ca/lygo-llm-console.html">lygo-llm-console.html</a> · ClawHub <a href="https://clawhub.ai/deepseekoracle/skills/lygo-llm-console">lygo-llm-console</a>.</li>
   </ol>
   <p>Step-by-step: <a href="/guides/how-to-lygo-llm-portal.html">How to use the LYGO API portal</a>.</p>
@@ -428,15 +428,15 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <p>Unknown vendor? Choose <strong>Any OpenAI-compatible URL</strong>, paste their <code>base</code> (we append <code>/v1/chat/completions</code> if needed), key, and model id. Directories: <a href="https://freellm.net" rel="noopener">freellm.net</a> · <a href="https://github.com/open-free-llm-api/awesome-freellm-apis" rel="noopener">awesome-freellm-apis</a>.</p>
   <h2>Disclaimers</h2>
   <ul>
-    <li>RESOURCE, not CANON. Dual ledgers / Haven Star Chart remain canon — nothing here writes to them.</li>
+    <li>RESOURCE, not CANON. Dual ledgers / Haven Star Chart remain canon, nothing here writes to them.</li>
     <li>No account. <strong>Your API key stays in this browser</strong> and goes only to the vendor you chose; chatagent.ca servers never see it.</li>
-    <li><strong>Not medical, legal, or financial advice.</strong> Models can be confidently wrong — check anything that matters. You remain the publisher of what you send and what you do with the answer.</li>
+    <li><strong>Not medical, legal, or financial advice.</strong> Models can be confidently wrong, check anything that matters. You remain the publisher of what you send and what you do with the answer.</li>
     <li><strong>Your key, your vendor, their terms:</strong> pricing, quotas, retention and acceptable use are between you and that vendor. Vendor names are their owners' marks; no affiliation or endorsement is claimed. Key can spend real money.</li>
-    <li><strong>No warranty.</strong> Provided “as is”, no uptime promise. This domain does <strong>not</strong> host a public GPU — CORS failures are the vendor blocking browsers; try Groq/OpenRouter or the local kit.</li>
-    <li>Models keep their authors' licences (Gemma and Qwen are Apache-2.0; llama.cpp is MIT). The console code is <strong>LYGO Sovereign License v3.0</strong> — source-available, not MIT: use it, build on it, do not sell, rebrand or strip attribution.</li>
+    <li><strong>No warranty.</strong> Provided “as is”, no uptime promise. This domain does <strong>not</strong> host a public GPU. CORS failures are the vendor blocking browsers; try Groq/OpenRouter or the local kit.</li>
+    <li>Models keep their authors' licences (Gemma and Qwen are Apache-2.0; llama.cpp is MIT). The console code is <strong>LYGO Sovereign License v3.0</strong>, source-available, not MIT: use it, build on it, do not sell, rebrand or strip attribution.</li>
     <li>Donate is optional: <a href="https://www.paypal.com/paypalme/ExcavationPro">PayPal.me/ExcavationPro</a>.</li>
   </ul>
-  <p><strong><a href="https://chatagent.ca/portal/legal.html">Read the full legal &amp; disclaimers page →</a></strong> — licence, model attribution, warranty, AI caveats, acceptable use and privacy in plain language. Terms: <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/privacy.html">Privacy</a>.</p>
+  <p><strong><a href="https://chatagent.ca/portal/legal.html">Read the full legal &amp; disclaimers page →</a></strong>, licence, model attribution, warranty, AI caveats, acceptable use and privacy in plain language. Terms: <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/privacy.html">Privacy</a>.</p>
 </section>
 <footer class="legal">
   <p>© <span class="y">2026</span> Justin Helmer · LYGO™ · Dual ledgers / Star Chart remain CANON. This page is RESOURCE · <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a> · <a href="https://chatagent.ca/privacy.html">Privacy</a> · <a href="https://chatagent.ca/terms.html">Terms</a> · <a href="https://chatagent.ca/security.txt">security.txt</a> · <a href="/guides/how-to-lygo-llm-portal.html">How to</a></p>
@@ -449,19 +449,19 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <div class="donate-card intro-card">
     <p class="intro-kicker">Δ9Φ963 · chatagent.ca · PUBLIC RESOURCE</p>
     <h2 id="donateTitle" class="intro-title">KEEP THE LATTICE LIT</h2>
-    <p class="intro-sub">This portal is free and stays free — there is nothing behind this card to buy.</p>
+    <p class="intro-sub">This portal is free and stays free, there is nothing behind this card to buy.</p>
     <ul class="intro-terms">
-      <li><strong>You do not have to donate.</strong> Opening PayPal or the Patreon post unlocks Continue — even if you give $0.</li>
+      <li><strong>You do not have to donate.</strong> Opening PayPal or the Patreon post unlocks Continue, even if you give $0.</li>
       <li><strong>Supporters get this month's code</strong> from the <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">Patreon post</a>. Paste it in the supporter module below and these reminders stop in this browser.</li>
-      <li><strong>Everything works without it</strong> — every provider, every model, the compare bench and the image suite.</li>
+      <li><strong>Everything works without it</strong>, every provider, every model, the compare bench and the image suite.</li>
     </ul>
     <div class="donate-actions">
       <a class="btn-gold" id="donatePaypal" href="https://www.paypal.com/paypalme/ExcavationPro">Open PayPal.me/ExcavationPro</a>
-      <a class="btn-gold" id="donatePatreon" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961">Patreon post — donate or get this month's code</a>
+      <a class="btn-gold" id="donatePatreon" href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961">Patreon post, donate or get this month's code</a>
     </div>
     <div class="donate-actions">
       <button type="button" id="donateClose" disabled>Open a donate page to continue</button>
-      <button type="button" id="donateUnlock" class="donate-alt">I am a supporter — enter this month's code</button>
+      <button type="button" id="donateUnlock" class="donate-alt">I am a supporter, enter this month's code</button>
     </div>
     <p class="intro-foot">Code and support: <a href="https://www.patreon.com/Excavationpro/posts/chatagent-ca-api-170485961" rel="noopener">chatagent-ca-api · Patreon</a> · <a href="https://chatagent.ca/portal/legal.html">Legal &amp; disclaimers</a></p>
   </div>

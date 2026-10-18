@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Stock Market Masters — TOP Cashout</title>
+<title>Stock Market Masters: TOP Cashout</title>
 <meta name="description" content="Live TOP Cashout hall for Stock Market Masters. Names and net worth only when a desk cashes out.">
 <meta name="theme-color" content="#070b10">
 <link rel="canonical" href="https://chatagent.ca/games/stock-market-masters/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Stock Market Masters — TOP Cashout">
+<meta property="og:title" content="Stock Market Masters. TOP Cashout">
 <meta property="og:description" content="Public hall of cashouts. Net worth at the bell.">
 <meta property="og:image" content="https://chatagent.ca/games/stock-market-masters/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -85,7 +85,7 @@ const FEEDS = [
 ];
 function dollars(c) {
   const n = Number(c);
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return ", ";
   return (n / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 function rowsFrom(data) {
@@ -121,7 +121,7 @@ async function load() {
   if (!rows.length) { empty.hidden = false; tb.innerHTML = ""; return; }
   empty.hidden = true;
   tb.innerHTML = rows.slice(0, 200).map((x, i) =>
-    `<tr><td>${i + 1}</td><td>${(x.name || "Desk").replace(/[<>]/g, "")}</td><td class="score">${dollars(x.worth)}</td><td>${x.rounds ?? "—"}</td><td>${x.jackpots ?? 0}</td><td>${x.date || ""}</td></tr>`
+    `<tr><td>${i + 1}</td><td>${(x.name || "Desk").replace(/[<>]/g, "")}</td><td class="score">${dollars(x.worth)}</td><td>${x.rounds ?? ", "}</td><td>${x.jackpots ?? 0}</td><td>${x.date || ""}</td></tr>`
   ).join("");
 }
 load();

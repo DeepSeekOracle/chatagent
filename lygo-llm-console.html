@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LYGO LLM Console — sovereign local models, not Ollama</title>
+<title>LYGO LLM Console: sovereign local models, not Ollama</title>
 <meta name="description" content="LYGO LLM Console is a Windows-first local LLM runtime and agent portal. Scan GGUF on disk, chat with tools and images, run the LYGO P0 gate. Does not require Ollama. Public kit separate from the steward admin tree. By Justin Helmer (Excavationpro / Lightfather) and LYGO AI agents.">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -19,7 +19,7 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://chatagent.ca/lygo-llm-console.html">
-<meta property="og:title" content="LYGO LLM Console — sovereign local models">
+<meta property="og:title" content="LYGO LLM Console, sovereign local models">
 <meta property="og:description" content="Scan GGUF, chat locally, LYGO P0 on every turn. Not Ollama. Public kit vs admin tree.">
 <meta property="og:image" content="https://chatagent.ca/assets/og-lygo-llm-console.jpg">
 <meta property="og:image:width" content="1376">
@@ -91,7 +91,7 @@ body.home .hero-llm {
   <div class="hero-inner">
     <p class="kicker">LYGO<span class="tm">™</span> project family · public kit</p>
     <h1>LYGO LLM Console</h1>
-    <p class="lead">A sovereign local runtime for large language models. Scan GGUF files on your disk, chat in a browser, call allowlisted tools, attach images when a projector is present — without installing or calling Ollama.</p>
+    <p class="lead">A sovereign local runtime for large language models. Scan GGUF files on your disk, chat in a browser, call allowlisted tools, attach images when a projector is present, without installing or calling Ollama.</p>
     <p class="mark-row">Justin Helmer · Excavationpro · Lightfather · LYGO AI agents</p>
     <div class="cta-row">
       <a class="btn primary" href="/portal/">Open free LLM portal</a>
@@ -107,12 +107,12 @@ body.home .hero-llm {
 <main class="sheet">
 <article>
   <h2>What this is</h2>
-  <p><strong>LYGO LLM Console</strong> is a Windows-first program in the LYGO project family. It is an <em>orchestrator</em>: it finds model files, starts a local llama.cpp server, and puts a full agent portal in front of them. The heavy math is ggml-org <code>llama.cpp</code>. The law of the house is the LYGO protocol stack — especially the P0 Φ-gate on every generation.</p>
+  <p><strong>LYGO LLM Console</strong> is a Windows-first program in the LYGO project family. It is an <em>orchestrator</em>: it finds model files, starts a local llama.cpp server, and puts a full agent portal in front of them. The heavy math is ggml-org <code>llama.cpp</code>. The law of the house is the LYGO protocol stack, especially the P0 Φ-gate on every generation.</p>
   <p>It is <strong>not</strong> Ollama, not a cloud API, and not a fork of anyone else’s daemon. You may optionally <em>read</em> models you already stored as Ollama blobs. The console never launches <code>ollama.exe</code>.</p>
   <p>Authored and stewarded by <a href="/about.html">Justin Helmer</a> (Excavationpro), Lightfather seat. Assembled with <strong>LYGO AI agents</strong>. Dual ledgers and the Haven Star Chart remain <strong>CANON</strong>. This page and the public zip are <strong>RESOURCE</strong>.</p>
 </article>
 <div class="dl-box" id="download">
-  <h2 style="margin-top:0">Download — public kit</h2>
+  <h2 style="margin-top:0">Download: public kit</h2>
   <p>FULL kernel zip (SkillHub vault): <a href="https://chatagent.ca/lygoskillhub.html#lygo-llm-kernel">lygoskillhub.html#lygo-llm-kernel</a> · <code>lygo-llm-console-kernel-full.zip</code></p>
   <p>KERNEL (SkillHub FULL): <a href="lygoskillhub.html#lygo-llm-kernel">lygoskillhub.html#lygo-llm-kernel</a> · <a href="data/lygo-full-skills/dist/lygo-llm-console-kernel-full.zip"><code>lygo-llm-console-kernel-full.zip</code></a></p>
   <p>File: <a href="data/lygo-full-skills/dist/lygo-llm-console-public.zip"><code>lygo-llm-console-public.zip</code></a></p>
@@ -137,7 +137,7 @@ LYGO_LLM_CONSOLE.bat</pre>
     <li>Double-click <code>LYGO_LLM_CONSOLE.bat</code>. A local page opens at <code>http://127.0.0.1:9641/</code>.</li>
     <li>Click <strong>Scan drives</strong>. The console registers <code>*.gguf</code> files and, if present, a read-only Ollama model tree under <code>%USERPROFILE%\.ollama\models</code>.</li>
     <li>Load a chat model (the public default preference is a small instruct GGUF such as Qwen 2.5 3B if you have it).</li>
-    <li>Chat. Optional tools stay inside the kit folder. Optional images need a matching multimodal projector. Other local apps can use <code>/v1/chat/completions</code> — the console still gates prompts; it does not run its tool loop for those clients.</li>
+    <li>Chat. Optional tools stay inside the kit folder. Optional images need a matching multimodal projector. Other local apps can use <code>/v1/chat/completions</code>, the console still gates prompts; it does not run its tool loop for those clients.</li>
   </ol>
 </article>
 <article>

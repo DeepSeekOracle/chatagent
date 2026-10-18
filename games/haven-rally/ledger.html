@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Haven Rally — Live hall | chatagent.ca</title>
+<title>Haven Rally: Live hall | chatagent.ca</title>
 <meta name="description" content="Live Haven Rally hall. Circuit times and endless scores from every player. Names and match metadata only.">
 <link rel="canonical" href="https://chatagent.ca/games/haven-rally/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -46,7 +46,7 @@ a { color:#5eead4; }
 <script>
 (function(){
   function fmt(ms){
-    if (ms==null || !isFinite(ms) || ms < 1) return "—";
+    if (ms==null || !isFinite(ms) || ms < 1) return ", ";
     var s=ms/1000, m=Math.floor(s/60), r=s-m*60;
     return m+":"+r.toFixed(3).padStart(6,"0");
   }

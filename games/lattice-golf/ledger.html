@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lattice Golf — Live hall | chatagent.ca</title>
+<title>Lattice Golf: Live hall | chatagent.ca</title>
 <meta name="description" content="Live Lattice Golf hall. Public rounds: names, totals, vs par. Empty beats a fake board.">
 <link rel="canonical" href="https://chatagent.ca/games/lattice-golf/ledger.html">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -32,7 +32,7 @@ a { color:#5eead4; }
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · live hall</p>
   <h1>Lattice Golf ledger</h1>
-  <p class="muted">Public rounds. Set a name on the title screen. Totals only on the wire — hole cards stay in this browser.</p>
+  <p class="muted">Public rounds. Set a name on the title screen. Totals only on the wire, hole cards stay in this browser.</p>
   <div class="row">
     <a class="btn" href="./">Play</a>
     <a class="btn" href="/games/">Hub</a>
@@ -91,7 +91,7 @@ a { color:#5eead4; }
       return "<div class='round'><div class='rtop'><b>"+esc(r.course||r.mode)+"</b><span>"+esc(r.date||"")+"</span></div>"+
         "<div class='rmeta'>"+esc(r.name||"Operator")+" · "+(r.holes||"?")+" holes"+
         (r.par ? " · par "+r.par : "")+
-        " · <b>"+(r.total||"—")+" · "+vs(r.vsPar)+"</b></div></div>";
+        " · <b>"+(r.total||", ")+" · "+vs(r.vsPar)+"</b></div></div>";
     }).join("");
   }
   pull();

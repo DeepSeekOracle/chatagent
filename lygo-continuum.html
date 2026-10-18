@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LYGO Continuum — Falsifiable Work Capsules</title>
+  <title>LYGO Continuum: Falsifiable Work Capsules</title>
   <meta name="description" content="LYGO Continuum: seal agent 'done' as falsifiable claims. Re-verify in the browser. Detect drift. Handoff across sessions. Files never leave your machine." />
   <meta name="theme-color" content="#0b0f14" />
   <link rel="canonical" href="https://chatagent.ca/lygo-continuum.html" />
@@ -229,7 +229,7 @@
       <div class="infinity" title="Continuum">∞</div>
       <div>
         <h1>LYGO Continuum</h1>
-        <p class="tagline">The work still holds — falsifiable capsules for agents &amp; humans.</p>
+        <p class="tagline">The work still holds, falsifiable capsules for agents &amp; humans.</p>
         <div class="sig">Delta9Phi963-CONTINUUM-v1.0.0 · files never leave your machine</div>
       </div>
     </div>
@@ -251,7 +251,7 @@
       <div class="panel">
         <h2>Why Continuum exists</h2>
         <p>AI agents report <em>done</em>. Sessions end. Another human or model picks up the thread and has no way to know what still holds on disk.</p>
-        <p><strong style="color:var(--text)">Continuum</strong> seals work as structured, falsifiable claims (SHA-256, contains, JSON paths…). Re-verify anytime. Drift becomes visible. Handoffs become portable packs — not vibes.</p>
+        <p><strong style="color:var(--text)">Continuum</strong> seals work as structured, falsifiable claims (SHA-256, contains, JSON paths…). Re-verify anytime. Drift becomes visible. Handoffs become portable packs, not vibes.</p>
         <div class="pill-row">
           <span class="pill">file_sha256</span>
           <span class="pill">file_contains</span>
@@ -267,7 +267,7 @@
         <ol class="steps">
           <li><strong>Finish</strong> work on disk</li>
           <li><strong>Seal</strong> claims with the skill CLI</li>
-          <li><strong>Exit 10?</strong> Not done — fix files or claims</li>
+          <li><strong>Exit 10?</strong> Not done, fix files or claims</li>
           <li><strong>Handoff</strong> markdown pack → next agent</li>
           <li><strong>Later:</strong> re-verify or detect drift here</li>
         </ol>
@@ -310,7 +310,7 @@
 
     <section class="panel" id="build">
       <h2>Build a portable claim (text_sha256)</h2>
-      <p>For claims that travel without disk — hash inline text in the browser, then paste into a capsule.</p>
+      <p>For claims that travel without disk, hash inline text in the browser, then paste into a capsule.</p>
       <label for="textIn">Text to seal</label>
       <textarea id="textIn" style="min-height:100px" placeholder="Paste the exact statement or snippet..."></textarea>
       <div class="row">
@@ -621,7 +621,7 @@ python scripts/continuum.py handoff --capsule capsule.json --verify</pre>
       setBand(integrity || !stored ? "idle" : "broken", integrity ? "PARSED" : (stored ? "INTEGRITY?" : "PARSED"));
       // Note: root hash may differ slightly if Python/JS canonicalization differs; show soft warning
       if (stored && !integrity) {
-        $("stats").innerHTML += " <span style='color:var(--warn)'>* root_hash recompute may differ browser vs Python — claim checks still run</span>";
+        $("stats").innerHTML += " <span style='color:var(--warn)'>* root_hash recompute may differ browser vs Python, claim checks still run</span>";
       }
       renderResults(claims.map(c => ({
         id: c.id || "?",
@@ -666,7 +666,7 @@ python scripts/continuum.py handoff --capsule capsule.json --verify</pre>
 
     function loadDemo() {
       const demoText = "portable witness";
-      // Precomputed sha256 of "portable witness" — will recompute claim expect for demo
+      // Precomputed sha256 of "portable witness", will recompute claim expect for demo
       const cap = {
         schema: "lygo.continuum.v1",
         version: "1.0.0",
@@ -674,7 +674,7 @@ python scripts/continuum.py handoff --capsule capsule.json --verify</pre>
         id: "CONT-DEMO000001",
         created_utc: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
         agent: "portal-demo",
-        task_summary: "Demo capsule — verify text claim + drop a file named demo.txt containing Continuum",
+        task_summary: "Demo capsule, verify text claim + drop a file named demo.txt containing Continuum",
         decisions: ["browser-only hash", "no upload"],
         next_actions: ["install lygo-continuum for full disk verify"],
         claims: [
@@ -721,7 +721,7 @@ python scripts/continuum.py handoff --capsule capsule.json --verify</pre>
         renderFiles();
         capsule = cap;
         await verifyAll();
-        toast("Demo loaded — text + demo.txt staged");
+        toast("Demo loaded, text + demo.txt staged");
       });
     }
 
@@ -754,7 +754,7 @@ python scripts/continuum.py handoff --capsule capsule.json --verify</pre>
         await navigator.clipboard.writeText(text);
         toast("Witness summary copied");
       } catch {
-        toast("Copy failed — select manually");
+        toast("Copy failed, select manually");
       }
     };
 

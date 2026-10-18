@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fish Tank — Life hall | chatagent.ca</title>
+<title>Fish Tank: Life hall | chatagent.ca</title>
 <meta name="description" content="Fish Tank life hall. Longest lives first, in hours. Keeper, species, generation and DNA. Names only. No account.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://chatagent.ca/games/fish-tank/ledger.html">
 <link rel="alternate" type="application/json" href="https://deepseekoracle-lattice-marines-ledger.hf.space/fish/ledger.json" title="Fish Tank life book (Space)">
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-<meta property="og:title" content="Fish Tank — Life hall">
+<meta property="og:title" content="Fish Tank. Life hall">
 <meta property="og:description" content="Longest aquarium lives, in hours. Keeper, species, generation and DNA. Names only.">
 <meta property="og:image" content="https://chatagent.ca/games/fish-tank/assets/og.jpg?v=2">
 <meta name="twitter:card" content="summary_large_image">
@@ -49,7 +49,7 @@ a { color:#5eead4; }
 <div class="wrap">
   <p class="kicker">Δ9Φ963 · life hall</p>
   <h1>Fish Tank Life Hall</h1>
-  <p class="muted">Longest lives first, in hours lived: keeper, species, generation, DNA and the date the life was inscribed. Names only, no accounts. Empty beats a fake board — this is the cemetery hall grown up.</p>
+  <p class="muted">Longest lives first, in hours lived: keeper, species, generation, DNA and the date the life was inscribed. Names only, no accounts. Empty beats a fake board, this is the cemetery hall grown up.</p>
   <div class="row">
     <a class="btn" href="./">Tank</a>
     <a class="btn" href="/games/">Hub</a>
@@ -97,7 +97,7 @@ a { color:#5eead4; }
       score: score,
       tankHours: tankHours,
       // The ranking number is the book's score: hours lived. A whole-tank row that has posted
-      // no life score yet falls back to its own age, labelled "h tank" — never "h lived" — so
+      // no life score yet falls back to its own age, labelled "h tank", never "h lived", so
       // no number here claims to be a fish's life when it is not. A life row with no score
       // shows no number at all rather than borrowing the tank's age.
       hours: score > 0 ? score : (event === "tank" && tankHours > 0 ? tankHours : 0),
@@ -205,7 +205,7 @@ a { color:#5eead4; }
   function unreachableHtml(src) {
     return '<div class="empty">' +
       "<h2>The book did not answer</h2>" +
-      '<p class="muted">The public life book could not be reached from this browser (' + esc(src) + '). Nothing is hidden — there is simply no data on screen. It retries every 40 seconds.</p>' +
+      '<p class="muted">The public life book could not be reached from this browser (' + esc(src) + '). Nothing is hidden, there is simply no data on screen. It retries every 40 seconds.</p>' +
       '<p class="muted">Read it directly: <a href="https://deepseekoracle-lattice-marines-ledger.hf.space/fish/ledger.json">Space /fish/ledger.json</a></p>' +
     "</div>";
   }
@@ -213,13 +213,13 @@ a { color:#5eead4; }
   function emptyHtml(src) {
     return '<div class="empty">' +
       "<h2>No lives inscribed yet</h2>" +
-      '<p class="muted">The first keeper to inscribe a long life owns the hall. Every tank that is opened and every life that ends is posted to the public book — until the first one lands, this list is honestly empty.</p>' +
+      '<p class="muted">The first keeper to inscribe a long life owns the hall. Every tank that is opened and every life that ends is posted to the public book, until the first one lands, this list is honestly empty.</p>' +
       '<p class="muted">Ranking is hours lived, longest first: fish, keeper, species, generation, DNA, date. Keep one alive long enough and rank #1 is yours. Read straight from ' + esc(src) + '.</p>' +
     "</div>";
   }
 
   function liveHtml(t) {
-    return '<p class="hcaption">Your tank — this browser only, not in the book yet</p>' +
+    return '<p class="hcaption">Your tank, this browser only, not in the book yet</p>' +
       '<div class="round live"><div class="rtop">' +
         '<span class="rank live">live</span>' +
         '<span class="who"><b>' + esc(t.fish) + "</b>" +

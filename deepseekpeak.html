@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DeepSeek Peak Alarm — live peak / off-peak API windows | chatagent.ca</title>
+<title>DeepSeek Peak Alarm: live peak / off-peak API windows | chatagent.ca</title>
 <meta name="description" content="Live DeepSeek API peak and off-peak windows with countdown, alarm, and every time zone. Free LYGO tool by Justin Helmer (Excavationpro / Lightfather). Use with the LYGO API Portal.">
 <meta name="keywords" content="DeepSeek peak pricing, DeepSeek off-peak, surge pricing tracker, DeepSeek API cost, peak hours UTC, off-peak discount, LYGO, chatagent.ca, Excavationpro">
 <meta name="author" content="Justin Helmer / Excavationpro / Lightfather">
@@ -24,23 +24,23 @@
 <meta property="og:site_name" content="chatagent.ca">
 <meta property="og:locale" content="en_CA">
 <meta property="og:url" content="https://chatagent.ca/deepseekpeak.html">
-<meta property="og:title" content="DeepSeek Peak Alarm — live peak / off-peak API windows">
+<meta property="og:title" content="DeepSeek Peak Alarm, live peak / off-peak API windows">
 <meta property="og:description" content="Know when DeepSeek surge pricing is live. Countdown, alarm, every time zone. Free LYGO tool. Steward: Justin Helmer / Excavationpro.">
 <meta property="og:image" content="https://chatagent.ca/deepseekpeak-og.jpg">
 <meta property="og:image:secure_url" content="https://chatagent.ca/deepseekpeak-og.jpg">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="DeepSeek Peak Alarm — LYGO gold Δ9 seal, chatagent.ca/deepseekpeak.html">
+<meta property="og:image:alt" content="DeepSeek Peak Alarm. LYGO gold Δ9 seal, chatagent.ca/deepseekpeak.html">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@Excavationpro">
 <meta name="twitter:creator" content="@Excavationpro">
 <meta name="twitter:url" content="https://chatagent.ca/deepseekpeak.html">
-<meta name="twitter:title" content="DeepSeek Peak Alarm — live API windows">
+<meta name="twitter:title" content="DeepSeek Peak Alarm, live API windows">
 <meta name="twitter:description" content="PEAK / NOT PEAK for DeepSeek API pricing. Countdown + alarm. Free on chatagent.ca.">
 <meta name="twitter:image" content="https://chatagent.ca/deepseekpeak-og.jpg">
 <meta name="twitter:image:src" content="https://chatagent.ca/deepseekpeak-og.jpg">
-<meta name="twitter:image:alt" content="DeepSeek Peak Alarm — LYGO branded peak tracker">
+<meta name="twitter:image:alt" content="DeepSeek Peak Alarm. LYGO branded peak tracker">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -74,7 +74,7 @@
 }
 </script>
 <!-- ═══════════════════════════════════════════════════════════
-     STYLES (all inline — zero external dependencies)
+     STYLES (all inline, zero external dependencies)
      ═══════════════════════════════════════════════════════════ -->
 <style>
   :root{
@@ -427,11 +427,11 @@
     <div class="cd-wrap">
       <div class="cd-top">
         <span id="cdLabel">Next change in</span>
-        <span id="cdAt" class="cd-at">—</span>
+        <span id="cdAt" class="cd-at">, </span>
       </div>
       <div id="cdTimer" class="cd">--:--:--</div>
       <div class="bar-track"><div id="progress" class="bar-fill"></div></div>
-      <div class="bar-labels"><span id="progLeft">—</span><span id="progRight">—</span></div>
+      <div class="bar-labels"><span id="progLeft">, </span><span id="progRight">, </span></div>
     </div>
   </section>
 
@@ -440,7 +440,7 @@
     <div class="stat">
       <div class="stat-lbl">Local time</div>
       <div id="statLocal" class="stat-val">--:--:--</div>
-      <div id="statLocalDate" class="stat-sub">—</div>
+      <div id="statLocalDate" class="stat-sub">, </div>
     </div>
     <div class="stat">
       <div class="stat-lbl">UTC reference</div>
@@ -450,12 +450,12 @@
     <div class="stat peak">
       <div class="stat-lbl">Next peak</div>
       <div id="statPeak" class="stat-val">--</div>
-      <div id="statPeakRel" class="stat-sub">—</div>
+      <div id="statPeakRel" class="stat-sub">, </div>
     </div>
     <div class="stat off">
       <div class="stat-lbl">Next off-peak</div>
       <div id="statOff" class="stat-val">--</div>
-      <div id="statOffRel" class="stat-sub">—</div>
+      <div id="statOffRel" class="stat-sub">, </div>
     </div>
   </section>
 
@@ -487,7 +487,7 @@
     </div>
   </section>
 
-  <!-- ═══════════ FOOTER — LINKS & CREDITS ═══════════ -->
+  <!-- ═══════════ FOOTER. LINKS & CREDITS ═══════════ -->
   <section class="lattice-links" aria-label="LYGO links">
     <a href="/portal/">LYGO API Portal</a>
     <a href="/lygo-llm-console.html">Local LLM Console</a>
@@ -521,14 +521,14 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
-     JAVASCRIPT — Peak Engine (self-contained, no dependencies)
+     JAVASCRIPT. Peak Engine (self-contained, no dependencies)
      ═══════════════════════════════════════════════════════════ -->
 <script>
 (function () {
   "use strict";
 
   /* ============================================================
-     CONFIG — peak windows in UTC minutes-from-midnight
+     CONFIG, peak windows in UTC minutes-from-midnight
      ============================================================ */
   var PEAK_WINDOWS = [
     [ 60, 240],   // 01:00 – 04:00 UTC
@@ -674,7 +674,7 @@
   }
 
   function relText(ms) {
-    if (ms == null || !isFinite(ms)) return "—";
+    if (ms == null || !isFinite(ms)) return ", ";
     var s = Math.max(0, Math.floor(ms / 1000));
     var d = Math.floor(s / 86400);
     var h = Math.floor((s % 86400) / 3600);
@@ -805,7 +805,7 @@
     if (show === bannerShown) return;
     bannerShown = show;
     var b = $id("banner");
-    $id("bannerText").textContent = isPeak ? "PEAK WINDOW ACTIVE — surge pricing" : "OFF-PEAK — discount live";
+    $id("bannerText").textContent = isPeak ? "PEAK WINDOW ACTIVE, surge pricing" : "OFF-PEAK, discount live";
     b.style.background = isPeak
       ? "linear-gradient(90deg,#be123c,#e11d48,#be123c)"
       : "linear-gradient(90deg,#047857,#10b981,#047857)";
@@ -893,7 +893,7 @@
     $id("badge").textContent = peak ? "● Surge window active" : "● Standard window";
     $id("bigText").textContent = peak ? "PEAK" : "NOT PEAK";
     $id("subText").textContent = peak
-      ? "Surge pricing is live. Token costs are at the higher rate — defer non-urgent jobs if you can."
+      ? "Surge pricing is live. Token costs are at the higher rate, defer non-urgent jobs if you can."
       : "Off-peak discount is live. Good moment to run heavy or batch jobs at the reduced rate.";
 
     $id("cdLabel").textContent = peak ? "Off-peak returns in" : "Next peak starts in";
@@ -910,14 +910,14 @@
       $id("progress").style.background = peak
         ? "linear-gradient(90deg,#fb7185,#e11d48)"
         : "linear-gradient(90deg,#34d399,#059669)";
-      $id("progLeft").textContent  = prevPhaseStart != null ? fmtTime(prevPhaseStart) : "—";
+      $id("progLeft").textContent  = prevPhaseStart != null ? fmtTime(prevPhaseStart) : ", ";
       $id("progRight").textContent = fmtTime(nextChange);
     } else {
       $id("cdTimer").textContent = "--:--:--";
       $id("cdAt").textContent    = "no transition found";
       $id("progress").style.width = "0%";
-      $id("progLeft").textContent = "—";
-      $id("progRight").textContent = "—";
+      $id("progLeft").textContent = ", ";
+      $id("progRight").textContent = ", ";
     }
   }
 
@@ -1014,14 +1014,14 @@
       $id("statPeak").textContent    = fmtTime(np);
       $id("statPeakRel").textContent = relText(np - nowMs);
     } else {
-      $id("statPeak").textContent    = "—";
+      $id("statPeak").textContent    = ", ";
       $id("statPeakRel").textContent = "none found";
     }
     if (no != null) {
       $id("statOff").textContent    = fmtTime(no);
       $id("statOffRel").textContent = relText(no - nowMs);
     } else {
-      $id("statOff").textContent    = "—";
+      $id("statOff").textContent    = ", ";
       $id("statOffRel").textContent = "none found";
     }
   }
