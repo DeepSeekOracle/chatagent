@@ -704,6 +704,17 @@
       named.addEventListener("input", () => {
         persist.name = named.value.replace(/\s+/g, " ").trim().slice(0, 18);
         save();
+        const fightBtn = $("btnFight");
+        if (fightBtn) {
+          const ready = your.length === persist.mode && !!persist.name;
+          fightBtn.dataset.ready = ready ? "1" : "0";
+          const label = fightBtn.querySelector("span");
+          if (label) label.textContent = ready
+            ? MODE_LABEL[persist.mode] + " · " + (lineupNames() || "no one fielded")
+            : (your.length === persist.mode
+              ? "put your name in to start"
+              : MODE_LABEL[persist.mode] + " needs " + persist.mode + " kits — you have " + your.length);
+        }
       });
     }
     const col = root.querySelector(".roster-col");

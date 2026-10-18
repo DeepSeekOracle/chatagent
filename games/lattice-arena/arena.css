@@ -459,3 +459,15 @@ h2 .need { font-style: normal; font-size: 12px; letter-spacing: .04em; text-tran
 .st.hem.med { color: #7ee0c0; }
 .st.hem.closer { color: #a5b4fc; }
 .st.hem.closer.up { color: #fde68a; opacity: 1; font-weight: 700; }
+
+/* Mobile battle: the arena gets the height; the two team strips are compact and scroll. */
+@media (max-width: 980px) {
+  .stage { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .viewport { order: -1; }
+  .team { max-height: 18vh; }
+  .caster { display: none; }
+}
+@media (max-width: 620px) {
+  .team { max-height: 16vh; }
+  .feed.docked { max-height: 45%; }
+}
