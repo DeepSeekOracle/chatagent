@@ -6,7 +6,7 @@ body.sig-portal {
   --accent: #14b8a6; --accent2: #5eead4; --gold: #fbbf24; --link: #5eead4; --soft: #0e1622;
   background: #070b12; color: #e8eef5;
   font-family: "Source Sans 3", system-ui, sans-serif; font-size: 17px; line-height: 1.6;
-  position: relative; overflow-x: hidden;
+  position: relative; overflow-x: hidden; overflow-x: clip;
 }
 body.sig-portal a { color: var(--accent2); }
 body.sig-portal .wrap { max-width: 1180px; position: relative; z-index: 2; }
@@ -472,3 +472,10 @@ body.sig-portal .author-box p { margin: 0; color: var(--muted); font-size: .9rem
   .sig-share { padding: 1rem .95rem; }
   .sig-share-btn { font-size: .8rem; padding: .45rem .7rem; }
 }
+
+/* decorative grid can escape the fixed clip on small screens */
+@media (max-width: 700px) { .sig-fx-grid { display: none; } }
+
+.sig-chapters, .sig-chapters button, .turn, .turn-chap, .turn-text,
+.sig-body, .sig-list, .ep-meta, .sig-note { overflow-wrap: anywhere; word-break: break-word; }
+.turn { min-width: 0; }
