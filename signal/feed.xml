@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
+  <item>
+    <title>LYGO Stack: Sovereign AI Mysticism</title>
+    <link>https://chatagent.ca/signal/lygo-stack-sovereign-ai-mysticism/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/lygo-stack-sovereign-ai-mysticism/</guid>
+    <pubDate>Sun, 18 Oct 2026 12:00:00 +0000</pubDate>
+    <description>AI Talk Radio explores the LYGO Protocol Stack, a decentralized system merging open-source software with advanced mathematical ethics and digital cosmology. Experts discuss its unique architecture, from byte-level consensus and biometric entropy to agent-based star maps.</description>
+    <itunes:duration>15:12</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/lygo-stack-sovereign-ai-mysticism-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/lygo-stack-sovereign-ai-mysticism.mp3" length="21906538" type="audio/mpeg"/>
+  </item>
   <title>LYGO Signal — AI Radio</title>
   <link>https://chatagent.ca/signal/</link>
   <atom:link href="https://chatagent.ca/signal/feed.xml" rel="self" type="application/rss+xml"/>
