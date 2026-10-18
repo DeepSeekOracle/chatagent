@@ -396,11 +396,57 @@ code { overflow-wrap:anywhere; }
 
 main.wrap, .grid, .card, .full-card, .ch, .wrap p, .wrap li, .wrap code { overflow-wrap:anywhere; word-break:break-word; }
 .grid, .grid > *, .card, .full-card { min-width:0; }
+
+/* ---------- hero intro module: the rule, two channels, four facts ---------- */
+.intro { margin:.85rem 0 0; }
+.intro-grid { display:grid; grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr); gap:20px; align-items:start; }
+.intro-h { font-family:"Syne",system-ui,sans-serif; font-weight:700; font-size:clamp(1.22rem,2.3vw,1.66rem);
+  line-height:1.26; letter-spacing:-.01em; color:var(--text); margin:0 0 .5rem; max-width:26ch; }
+.intro-h em { font-style:normal; color:var(--gold); }
+.intro-lead p { margin:0; color:var(--muted); font-size:.88rem; line-height:1.62; max-width:44ch; }
+.intro-lead p + p { margin-top:.45rem; }
+.intro-facts { list-style:none; display:flex; flex-wrap:wrap; gap:6px; margin:.8rem 0 0; padding:0; }
+.intro-facts li { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.62rem; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--muted); border:1px solid var(--line); border-radius:999px;
+  padding:4px 9px; background:rgba(0,0,0,.28); }
+.intro-panels { display:grid; gap:10px; }
+.ipanel { border:1px solid var(--line); border-left:2px solid var(--gold); border-radius:10px;
+  padding:11px 13px; background:linear-gradient(180deg,rgba(212,175,55,.07),rgba(0,0,0,.2)); }
+.ipanel.b { border-left-color:var(--cyan); background:linear-gradient(180deg,rgba(0,229,255,.06),rgba(0,0,0,.2)); }
+.ipanel-tag { display:block; margin-bottom:.28rem; font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:.57rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.ipanel h3 { margin:0 0 .3rem; font-family:"Syne",system-ui,sans-serif; font-size:.85rem; font-weight:700;
+  color:var(--text); letter-spacing:.02em; }
+.ipanel p { margin:0; font-size:.78rem; line-height:1.56; color:var(--muted); }
+.ipanel code { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.92em; color:#cfd8ff; }
+@media (max-width:860px){ .intro-grid { grid-template-columns:1fr; gap:14px; } .intro-h { max-width:none; } }
+
+/* ---------- footer: link map, not a paragraph ---------- */
+footer.site { margin-top:40px; padding-top:22px; border-top:1px solid var(--line); }
+.foot-grid { display:grid; grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr)); gap:22px 18px; }
+.foot-mark { margin:0 0 .25rem; font-family:"Cormorant Garamond",Georgia,serif; color:var(--gold);
+  font-size:1.14rem; letter-spacing:.03em; font-weight:500; }
+.foot-steward { margin:0 0 .5rem; font-size:.78rem; color:var(--text); opacity:.9; }
+.foot-note { margin:0; max-width:32ch; font-size:.75rem; line-height:1.6; color:var(--muted); }
+.foot-col h3 { margin:0 0 .45rem; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.59rem;
+  font-weight:400; letter-spacing:.15em; text-transform:uppercase; color:var(--gold); }
+.foot-col a { display:block; padding:2px 0; font-size:.77rem; color:var(--muted); }
+.foot-col a:hover { color:var(--gold); text-decoration:none; }
+.foot-base { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;
+  margin-top:22px; padding-top:12px; border-top:1px solid rgba(37,37,58,.7); }
+.foot-base .code { margin:0; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.63rem;
+  color:var(--muted); opacity:.72; }
+.foot-legal { margin:0; font-size:.7rem; color:var(--muted); }
+.foot-legal a, .foot-top { color:var(--gold); }
+.foot-top { font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; }
+@media (max-width:900px){ .foot-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .foot-brand { grid-column:1 / -1; } }
+
 </style>
 
 </head>
 
-<body>
+<body id="top">
 
 <header class="top">
 
@@ -436,19 +482,33 @@ main.wrap, .grid, .card, .full-card, .ch, .wrap p, .wrap li, .wrap code { overfl
 
 
 
-    <p class="lede">Two channels, one rule: <strong>what you can read is free, and what you install is labeled</strong>.
-
-      Every <strong>public tentacle</strong> ,  the ClawHub skills published as <code>deepseekoracle</code> ,  installs in a
-
-      single command, is SkillSpector-reviewed, and is often safety-trimmed for strangers. The
-
-      <strong>FULL engineer packages</strong> ,  the console installers, the multi-file build sets, the RAW limbs ,  live here in the open, each file with its own SHA-256, install notes that match what actually shipped, and the
-
-      lattice wiring written down instead of implied. Nothing is locked behind a code: every guide, catalog entry, hash list and install note on this page stays open to anyone.
-
-      Supporting the work is optional, buys no rights, and is never a condition of reading. Steward: Justin Helmer /
-
-      Excavationpro (Lightfather).</p>
+    <section class="intro" aria-labelledby="intro-rule">
+      <div class="intro-grid">
+        <div class="intro-lead">
+          <h2 class="intro-h" id="intro-rule">What you can read is <em>free</em>, and what you install is <em>labeled</em>.</h2>
+          <p>Two channels, one rule. Nothing is locked behind a code: every guide, catalog entry, hash list and install note on this page stays open to anyone.</p>
+          <p>Supporting the work is optional, buys no rights, and is never a condition of reading.</p>
+          <ul class="intro-facts">
+            <li>One-command install</li>
+            <li>SkillSpector-reviewed</li>
+            <li>SHA-256 on every file</li>
+            <li>No code, no login</li>
+          </ul>
+        </div>
+        <div class="intro-panels">
+          <article class="ipanel a">
+            <span class="ipanel-tag">Channel A &middot; ClawHub</span>
+            <h3>Public tentacle</h3>
+            <p>ClawHub skills published as <code>deepseekoracle</code>: installs in a single command, is SkillSpector-reviewed, and is often safety-trimmed for strangers.</p>
+          </article>
+          <article class="ipanel b">
+            <span class="ipanel-tag">Channel B &middot; open download</span>
+            <h3>FULL engineer packages</h3>
+            <p>Console installers, multi-file build sets and the RAW limbs live here in the open: each file with its own SHA-256, install notes that match what actually shipped, and the lattice wiring written down instead of implied.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 <div class="heronav">
 
       <div class="navgroup">
@@ -1318,12 +1378,50 @@ main.wrap, .grid, .card, .full-card, .ch, .wrap p, .wrap li, .wrap code { overfl
   </section>
 </div>
 <footer class="site">
-
-    <p><strong style="color:var(--gold)">Δ9Φ963 · LYGO SkillHub</strong>. Justin Helmer / Excavationpro (Lightfather). Public tentacles remain on ClawHub. FULL zips are this portal only. Consent-gated ops. No auto-publish from install alone.</p>
-
-    <p class="code">Hub catalog data/lygoskillhub_catalog.json · FULL catalog data/lygo-full-skills/catalog.json · zip base data/lygo-full-skills/dist/</p>
-
-  </footer>
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <p class="foot-mark">&Delta;9&Phi;963 &middot; LYGO SkillHub</p>
+      <p class="foot-steward">Justin Helmer / Excavationpro (Lightfather)</p>
+      <p class="foot-note">Public tentacles remain on ClawHub. FULL zips are this portal only. Consent-gated ops. No auto-publish from install alone.</p>
+    </div>
+    <nav class="foot-col" aria-label="Start here">
+      <h3>Start here</h3>
+      <a href="#builds">V1 installers (EXE)</a>
+      <a href="#full-lygo">FULL download portal</a>
+      <a href="#catalog">Public catalog</a>
+      <a href="#lygo-llm-kernel">LLM Console kernel</a>
+      <a href="https://chatagent.ca/portal/">Free LLM portal</a>
+    </nav>
+    <nav class="foot-col" aria-label="The vault">
+      <h3>The vault</h3>
+      <a href="https://huggingface.co/DeepSeekOracle/lygo-console-builds">Build vault</a>
+      <a href="https://huggingface.co/DeepSeekOracle/lygo-console-models">Model vault</a>
+      <a href="https://clawhub.ai/deepseekoracle" target="_blank" rel="noopener">ClawHub profile</a>
+      <a href="https://huggingface.co/spaces/DeepSeekOracle/LYGO-Resonance-Engine" target="_blank" rel="noopener">Resonance Engine</a>
+      <a href="https://chatagent.ca/portal/image-engine.html">Image engine</a>
+    </nav>
+    <nav class="foot-col" aria-label="The lattice">
+      <h3>The lattice</h3>
+      <a href="https://deepseekoracle.github.io/lygo-protocol-stack/agent-agora/">Agent Agora</a>
+      <a href="https://deepseekoracle.github.io/lygo-protocol-stack/HavenStarChart.html">Star Chart</a>
+      <a href="https://deepseekoracle.github.io/lygo-protocol-stack/KernelEggRetrieval.html">Kernel eggs</a>
+      <a href="https://chatagent.ca/lygo-continuum.html">Continuum</a>
+      <a href="https://chatagent.ca/games/">Games</a>
+    </nav>
+    <nav class="foot-col" aria-label="Source and support">
+      <h3>Source &amp; support</h3>
+      <a href="https://github.com/DeepSeekOracle/chatagent" target="_blank" rel="noopener">Source (GitHub)</a>
+      <a href="https://www.patreon.com/Excavationpro/posts/lygo-supporter-170485961" target="_blank" rel="noopener">Patreon &middot; supporter posts</a>
+      <a href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener">PayPal &middot; tip (optional)</a>
+      <a href="https://chatagent.ca/guides/">Guides</a>
+      <a href="https://chatagent.ca/witness/">Public witness</a>
+    </nav>
+  </div>
+  <div class="foot-base">
+    <p class="code">Hub catalog data/lygoskillhub_catalog.json &middot; FULL catalog data/lygo-full-skills/catalog.json &middot; zip base data/lygo-full-skills/dist/</p>
+    <p class="foot-legal">Reading is free on every page. <a href="https://chatagent.ca/">chatagent.ca</a> &middot; <a class="foot-top" href="#top">Back to top</a></p>
+  </div>
+</footer>
 
 </main>
 
