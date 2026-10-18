@@ -162,7 +162,8 @@
       el().muted = st.muted;
       paint();
     };
-    $("radioView").onclick = () => {
+    const viewEl = $("radioView");
+    if (viewEl) viewEl.onclick = () => {
       st.view = !st.view;
       paint();
     };

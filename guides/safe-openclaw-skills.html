@@ -22,6 +22,17 @@
   "publisher": { "@type": "Organization", "name": "chatagent.ca" }
 }
 </script>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="Safe Habits Before Installing OpenClaw / ClawHub Skills | chatagent.ca">
+<meta name="twitter:description" content="Practical safety checklist before installing AI agent skills from ClawHub or OpenClaw: permissions, subprocess, network, secrets, and claim mismatches.">
+<meta name="twitter:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
+<style>
+.cookie-banner{position:fixed;left:0;right:0;bottom:0;z-index:90;display:none;justify-content:space-between;gap:1rem;align-items:center;padding:.8rem 1rem;background:#1a140c;color:#f3ece3;border-top:1px solid rgba(224,179,106,.45);font:500 .88rem/1.4 system-ui,sans-serif}
+.cookie-banner.show{display:flex}.cookie-banner a{color:#e0b36a}.cookie-banner button{border:0;border-radius:8px;padding:.45rem .8rem;font-weight:700;cursor:pointer}.cookie-banner .ok{background:#e0b36a;color:#1a140c}.cookie-banner .no{background:transparent;color:#f3ece3;border:1px solid rgba(255,255,255,.25)}
+@media(max-width:600px){.cookie-banner{flex-direction:column;align-items:flex-start}}
+</style>
 </head>
 <body>
 <header class="site">
@@ -76,11 +87,7 @@
       Live Star Chart writes still need explicit human consent.
     </p>
 
-    <div class="ad-slot" aria-label="Advertisement">
-      <div class="ad-label">Advertisement</div>
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
+    
 
     <h2>Permissions table (mental model)</h2>
     <table class="simple">
@@ -122,7 +129,19 @@
 <li>Report to the publisher if appropriate; warn your team.</li>
 </ol>
 <p>Write a short incident note: what you installed, from where, what you observed. Future you will thank present you.</p>
-</article>
+<section style="max-width:820px;margin:2rem auto;padding:0 1.15rem;line-height:1.75">
+<h2>Before install</h2>
+<p>Read the skill’s instructions, not just its description. Look for shell commands, network calls, file writes, and anything that asks for a secret. A skill that needs more permission than its job requires is a red flag, even when the code is short.</p>
+<h2>Red flags</h2>
+<p>Obfuscated code, a curl pipe to a shell, an unexplained download, a request for a private key, or a “disable the scanner” step. A skill can be useful and still be unsafe; those are separate questions.</p>
+<h2>A small gate</h2>
+<p>Install into a scratch folder, run the smallest example, and watch the files and network calls. If the test needs a real secret, use a disposable one. Keep the skill only if you can explain what it did and how to remove it.</p>
+</section><section style="max-width:820px;margin:2rem auto;padding:0 1.15rem;line-height:1.75">
+<h2>Permissions</h2>
+<p>Ask what the skill needs: read a file, write a file, call a URL, run a command. A skill that needs all four for a text task is over-scoped. Prefer the skill that asks for less.</p>
+<h2>Removal</h2>
+<p>Know how to uninstall before you install. A skill that leaves files in three places is harder to trust. Keep a note of what it created.</p>
+</section><section style="max-width:820px;margin:2rem auto;padding:0 1.15rem;line-height:1.75"><h2>A final rule</h2><p>If you cannot explain what the skill did, do not keep it installed. Understanding is part of the permission.</p></section><section style="max-width:820px;margin:2rem auto;padding:0 1.15rem;line-height:1.75"><h2>Trust is a test</h2><p>The first run is the test, not the install. Keep the scratch folder until you have read what the skill wrote.</p></section></article>
 
 </div>
 <footer class="site">
@@ -132,5 +151,20 @@
   </div>
 </footer>
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent">
+  <div>Ads may use cookies after you accept. <a href="/privacy.html">Privacy</a></div>
+  <div><button type="button" class="ok" id="cookieOk">Accept</button><button type="button" class="no" id="cookieNo">Decline</button></div>
+</div>
+<script src="/assets/site-kit.js" defer></script>
+<div style="max-width:820px;margin:2rem auto;padding:0 1.15rem;font-size:.84rem;line-height:1.7;opacity:.85">
+<p><strong>More from the workshop:</strong>
+<a href="https://excavationpro.ca/">Excavationpro</a> &middot;
+<a href="https://asiancoastline.com/">Asian Coastline</a> &middot;
+<a href="https://bpmfinder.ca/">BPMfinder</a> &middot;
+<a href="https://justinhelmer.ca/">Justin Helmer</a> &middot;
+<a href="https://deepseekoracle.com/">DeepSeek Oracle</a> &middot;
+<a href="https://eternalhaven.ca/">Eternal Haven</a> &middot;
+<a href="https://bpmfinder.ca/tools.html">All tools</a></p>
+</div>
 </body>
 </html>

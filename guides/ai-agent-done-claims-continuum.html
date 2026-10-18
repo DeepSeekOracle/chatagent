@@ -23,6 +23,17 @@
   "mainEntityOfPage": "https://chatagent.ca/guides/ai-agent-done-claims-continuum.html"
 }
 </script>
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="When Your AI Agent Says “Done”. Continuum Capsules | chatagent.ca">
+<meta name="twitter:description" content="Why agent">
+<meta name="twitter:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
+<style>
+.cookie-banner{position:fixed;left:0;right:0;bottom:0;z-index:90;display:none;justify-content:space-between;gap:1rem;align-items:center;padding:.8rem 1rem;background:#1a140c;color:#f3ece3;border-top:1px solid rgba(224,179,106,.45);font:500 .88rem/1.4 system-ui,sans-serif}
+.cookie-banner.show{display:flex}.cookie-banner a{color:#e0b36a}.cookie-banner button{border:0;border-radius:8px;padding:.45rem .8rem;font-weight:700;cursor:pointer}.cookie-banner .ok{background:#e0b36a;color:#1a140c}.cookie-banner .no{background:transparent;color:#f3ece3;border:1px solid rgba(255,255,255,.25)}
+@media(max-width:600px){.cookie-banner{flex-direction:column;align-items:flex-start}}
+</style>
 </head>
 <body>
 <header class="site">
@@ -94,11 +105,7 @@
       Re-verify fails if someone edits <code>login.py</code> after the seal, that is drift, and it is useful.
     </p>
 
-    <div class="ad-slot" aria-label="Advertisement">
-      <div class="ad-label">Advertisement</div>
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-0646320966060599" data-ad-format="auto" data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-    </div>
+    
 
     <h2>Human portal workflow</h2>
     <p>
@@ -157,7 +164,13 @@
 <li>Claims on generated folders that change every run without meaning</li>
 <li>Only <code>file_exists</code> with no content checks for critical files</li>
 </ul>
-</article>
+<section style="max-width:820px;margin:2rem auto;padding:0 1.15rem;line-height:1.75">
+<h2>What a done claim actually is</h2>
+<p>A done claim is a sentence that can be checked after the agent stops talking. “The page is fixed” is not a claim; “the page returns 200, the form submits, and the screenshot matches” is. The Continuum pattern exists to force that second version before the work is called finished.</p>
+<p>A seal should name the file, the hash, the command, or the URL that proves the claim. If the proof cannot be repeated by another person, it is a status update, not a receipt. The difference matters most when the work is handed to someone else.</p>
+<h2>Re-check, don't trust</h2>
+<p>The final step is a re-check from a clean state: reopen the page, rerun the command, compare the hash. A claim that only works in the session that made it is a memory, not a result. The habit is boring and it is the whole point.</p>
+</section></article>
 
 </div>
 <footer class="site">
@@ -167,5 +180,20 @@
   </div>
 </footer>
 <script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent">
+  <div>Ads may use cookies after you accept. <a href="/privacy.html">Privacy</a></div>
+  <div><button type="button" class="ok" id="cookieOk">Accept</button><button type="button" class="no" id="cookieNo">Decline</button></div>
+</div>
+<script src="/assets/site-kit.js" defer></script>
+<div style="max-width:820px;margin:2rem auto;padding:0 1.15rem;font-size:.84rem;line-height:1.7;opacity:.85">
+<p><strong>More from the workshop:</strong>
+<a href="https://excavationpro.ca/">Excavationpro</a> &middot;
+<a href="https://asiancoastline.com/">Asian Coastline</a> &middot;
+<a href="https://bpmfinder.ca/">BPMfinder</a> &middot;
+<a href="https://justinhelmer.ca/">Justin Helmer</a> &middot;
+<a href="https://deepseekoracle.com/">DeepSeek Oracle</a> &middot;
+<a href="https://eternalhaven.ca/">Eternal Haven</a> &middot;
+<a href="https://bpmfinder.ca/tools.html">All tools</a></p>
+</div>
 </body>
 </html>
