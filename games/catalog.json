@@ -286,6 +286,22 @@
       "links": []
     },
     {
+      "id": "lattice-city",
+      "slug": "lattice-city",
+      "title": "Lattice City",
+      "tagline": "Isometric city, endless districts",
+      "blurb": "Build a living 16x16 pixel city, then expand into a 48x48 LYGO Endless district. 256 tiles, snapshot export, local legend score.",
+      "status": "live",
+      "featured": false,
+      "order": 15,
+      "href": "/games/lattice-city/",
+      "cover": "/games/lattice-city/og.jpg",
+      "coverAlt": "Lattice City isometric pixel city with roads and a canal",
+      "genre": ["builder", "endless"],
+      "players": "1",
+      "links": []
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",
