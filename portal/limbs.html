@@ -51,7 +51,7 @@
       <li><b>Pick one card below.</b> Image, sound or video. One limb is a complete product — you are not buying the suite, and nothing else on the portal changes.</li>
       <li><b>Copy the agent brief.</b> It names the engine, the exact weights, the folder each file goes in, the command, and what it must prove before it reports success. Paste it into Claude Code, Codex, Grok, or any agent with a shell on your PC.</li>
       <li><b>Your agent installs it.</b> ComfyUI, the weights, the workflow, then the bridge on <code>127.0.0.1:8191</code> (image), <code>:8192</code> (sound) or <code>:8193</code> (video). It reports what it measured, not what it hopes.</li>
-      <li><b>The portal lights up.</b> This page and the portal's LOCAL LIMBS module probe that port. When it answers, the module generates on your machine and the file renders right there in the page.</li>
+      <li><b>The portal lights up.</b> This page and the portal's LOCAL LIMBS module probe that port and, when it answers, generate on your machine with the file rendered in the page. Chrome will ask once for <b>local network access</b> — that is the page reaching your own PC, and it is the one permission this needs. Refuse it and the bridge still works in <b>its own window</b> (<code>127.0.0.1:8191</code>), which needs no permission at all.</li>
     </ol>
   </section>
 
@@ -78,6 +78,10 @@
         download. <code>/health</code> always says which backend answered — if it says <code>stub</code>, no model ran.</li>
       <li><b>Your machine stays yours.</b> The bridge binds <code>127.0.0.1</code> only. Nothing is uploaded, no
         account exists, and the portal cannot reach the limb unless the limb is running.</li>
+      <li><b>The browser is a gate, not a bug.</b> A public HTTPS page calling a program on your own PC is a
+        Local Network Access request: Chrome asks, and if it is refused the page shows <i>blocked by this
+        browser</i> rather than pretending the limb is missing. Every card links to the bridge's own window as
+        the fallback, so a strict browser costs you the portal's paint job, never the engine.</li>
       <li><b>Hardware numbers are tiers, not promises.</b> 12 GB of VRAM is comfortable for image and video at 720p;
         8 GB works with quantized files and one job at a time; no NVIDIA card means use the API route, not this page.</li>
     </ul>

@@ -614,6 +614,7 @@ html.sup-modal, html.sup-modal body { overflow: hidden; }
 .limb-pill.is-on { color: var(--ok); border-color: rgba(125,206,160,.45); }
 .limb-pill.is-stub { color: var(--warn); border-color: rgba(224,179,106,.5); }
 .limb-pill.is-off { color: var(--muted); }
+.limb-pill.is-blocked { color: var(--bad); border-color: rgba(217,137,122,.5); }
 .limb-gen { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .55rem; }
 .limb-gen input { flex: 1 1 260px; min-width: 180px; background: #0f0c09; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); padding: .45rem .6rem; font-family: inherit; font-size: .85rem; }
 .limb-gen input:focus { outline: 1px solid var(--gold); }

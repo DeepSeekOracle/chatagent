@@ -66,11 +66,52 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
   function base(l) { return "http://127.0.0.1:" + l.port; }
 
+  /* Reaching a local engine from an HTTPS page is a Local Network Access request in Chrome 138+. Without
+     the option the fetch is refused as "Failed to fetch", which looks exactly like a limb that is not
+     running — MEASURED 2026-10-18: https://chatagent.ca -> http://127.0.0.1:8191 answered 200 to curl and
+     "denied" to navigator.permissions.query({name:'local-network-access'}). The console route in app.js
+     learned the same lesson; this is the same fix. */
+  var ACCESS = { state: "unknown" };     // granted | prompt | denied | unsupported
+
+  function refreshAccess() {
+    if (!navigator.permissions || !navigator.permissions.query) { ACCESS.state = "unsupported"; return Promise.resolve(); }
+    return navigator.permissions.query({ name: "local-network-access" }).then(function (st) {
+      ACCESS.state = st.state;
+      try {
+        st.onchange = function () { ACCESS.state = st.state; refreshPills(); refreshModule(); };
+      } catch (_) {}
+    }).catch(function () { ACCESS.state = "unsupported"; });
+  }
+
+  // Only a PUBLIC page needs the LNA opt-in. A page already served from loopback (a local test copy, or
+  // the bridge's own window) asking for targetAddressSpace:"local" raises a permission the fetch does not
+  // wait for, and the probe dies as "Failed to fetch" — MEASURED 2026-10-18: the option broke the local
+  // page while a bare fetch to the same URL answered 200. So: tag the request only when we are remote.
+  function isLocalPage() {
+    var h = location.hostname;
+    return h === "127.0.0.1" || h === "localhost" || h === "::1" || h === "[::1]";
+  }
+
+  function localFetch(url, opts) {
+    var o = Object.assign({ cache: "no-store" }, opts || {});
+    if (!isLocalPage()) o.targetAddressSpace = "local";   // ignored by browsers that do not know it
+    return fetch(url, o);
+  }
+
+  function blockedNote() {
+    if (ACCESS.state === "denied")
+      return "your browser is blocking this page from reaching 127.0.0.1 — in Chrome: site settings → " +
+             "Local network access → Allow, then reload. The limb's own window always works.";
+    if (ACCESS.state === "prompt")
+      return "your browser will ask about local network access on the first generate — say yes";
+    return "";
+  }
+
   /* ---------------------------------------------------------------- probing */
   function probe(l) {
     var ctl = new AbortController();
     var t = setTimeout(function () { ctl.abort(); }, 2500);
-    return fetch(base(l) + "/health", { signal: ctl.signal, cache: "no-store" })
+    return localFetch(base(l) + "/health", { signal: ctl.signal })
       .then(function (r) { return r.ok ? r.json() : null; })
       .catch(function () { return null; })
       .then(function (j) { clearTimeout(t); return j; });
@@ -85,7 +126,10 @@
   }
 
   function describe(l, j) {
-    if (!j || !j.ok) return { on: false, text: "not running · ready to build" };
+    if (!j || !j.ok) {
+      if (ACCESS.state === "denied") return { on: false, blocked: true, text: "blocked by this browser" };
+      return { on: false, text: "not running · ready to build" };
+    }
     var t = (j.model || l.model) + " · " + (j.backend === "stub" ? "STUB (wiring only)" : j.backend) +
       (j.last_seconds ? " · last " + j.last_seconds + "s" : "");
     return { on: true, stub: j.backend === "stub", text: t };
@@ -140,7 +184,9 @@
         '<div class="limb-block"><h4>4 · the bridge (this is what the portal talks to)</h4>' +
           '<pre class="limb-cmd">' + esc(l.command) + '</pre>' +
           '<p class="hint">Health: <code>' + base(l) + '/health</code> · generate: <code>POST ' + base(l) + '/generate</code>. ' +
-          'It binds 127.0.0.1 only — the portal can reach it, the internet cannot.</p></div>';
+          'It binds 127.0.0.1 only — the portal can reach it, the internet cannot.</p>' +
+          '<p class="hint">It also serves its own window at <a href="' + base(l) + '/" target="_blank" rel="noopener">' +
+          base(l) + '/</a>: same engine, no permission needed, for when a browser refuses to let this page reach 127.0.0.1.</p></div>';
       host.appendChild(card);
       var btn = card.querySelector("[data-brief]");
       btn.addEventListener("click", function () { copyBrief(l, btn); });
@@ -157,16 +203,18 @@
         var d = describe(l, map[l.id]);
         var pill = document.querySelector('[data-pill="' + l.id + '"]');
         if (pill) {
-          pill.textContent = d.on ? "● running" : "○ " + d.text;
-          pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : "is-off");
-          pill.title = d.on ? d.text : "start the bridge on port " + l.port;
+          pill.textContent = d.on ? "● running" : (d.blocked ? "◼ blocked by browser" : "○ " + d.text);
+          pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : (d.blocked ? "is-blocked" : "is-off"));
+          pill.title = d.on ? d.text : (d.blocked ? blockedNote() : "start the bridge on port " + l.port);
         }
       });
       var sum = el("limb-summary");
       if (sum) {
         var on = LIMBS.filter(function (l) { return map[l.id] && map[l.id].ok; });
         sum.textContent = on.length + " of " + LIMBS.length + " limbs answering on this machine" +
-          (on.length ? " · " + on.map(function (l) { return l.name.toLowerCase(); }).join(", ") : " — pick one card below and let your agent build it");
+          (on.length ? " · " + on.map(function (l) { return l.name.toLowerCase(); }).join(", ")
+                     : (ACCESS.state === "denied" ? " — but this browser is blocking local access: " + blockedNote()
+                                                  : " — pick one card below and let your agent build it"));
       }
     });
   }
@@ -182,7 +230,8 @@
       row.innerHTML =
         '<div class="limb-row-h"><b>' + esc(l.name) + '</b><span class="limb-model">' + esc(l.model) + '</span>' +
           '<span class="limb-pill" data-mod-pill="' + l.id + '">checking…</span>' +
-          '<a class="limb-build" href="limbs.html#limb-' + l.id + '">build this one →</a></div>' +
+          '<a class="limb-build" href="limbs.html#limb-' + l.id + '">build this one →</a>' +
+          '<a class="limb-build" href="' + base(l) + '/" target="_blank" rel="noopener">own window ↗</a></div>' +
         '<div class="limb-gen">' +
           '<input type="text" data-prompt="' + l.id + '" placeholder="' +
             (l.id === "image" ? "a lantern in a dark forest, 1024px" : l.id === "sound" ? "warm jazz loop, brushed drums, upright bass" : "slow waves at dusk, 5 seconds") + '">' +
@@ -206,13 +255,13 @@
         var pill = document.querySelector('[data-mod-pill="' + l.id + '"]');
         var go = document.querySelector('[data-go="' + l.id + '"]');
         if (pill) {
-          pill.textContent = d.on ? (d.stub ? "● stub running" : "● running") : "○ not running";
-          pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : "is-off");
-          pill.title = d.on ? d.text : "nothing on 127.0.0.1:" + l.port;
+          pill.textContent = d.on ? (d.stub ? "● stub running" : "● running") : (d.blocked ? "◼ blocked by browser" : "○ not running");
+          pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : (d.blocked ? "is-blocked" : "is-off"));
+          pill.title = d.on ? d.text : (d.blocked ? blockedNote() : "nothing on 127.0.0.1:" + l.port);
         }
         if (go) {
           go.disabled = !d.on;
-          go.title = d.on ? "" : "start the " + l.name.toLowerCase() + " limb on port " + l.port + " (limbs.html)";
+          go.title = d.on ? "" : (d.blocked ? blockedNote() : "start the " + l.name.toLowerCase() + " limb on port " + l.port + " (limbs.html)");
         }
       });
     });
@@ -231,7 +280,7 @@
     var clock = setInterval(function () {
       state.textContent = "the engine is working… " + Math.round((Date.now() - started) / 1000) + "s";
     }, 1000);
-    fetch(base(l) + "/generate", {
+    localFetch(base(l) + "/generate", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt: prompt })
     }).then(function (r) {
@@ -259,16 +308,18 @@
       state.textContent = "failed: " + e.message;
     }).then(function () {
       clearInterval(clock);
-      fetch(base(l) + "/health").then(function (r) { return r.json(); })
+      localFetch(base(l) + "/health").then(function (r) { return r.json(); })
         .then(function () { go.disabled = false; }).catch(function () { go.disabled = true; });
     });
   }
 
   /* ------------------------------------------------------------- bootstrap */
   function boot() {
-    var cards = el("limb-cards");
-    if (cards) renderCards(cards);
-    renderModule();
+    refreshAccess().then(function () {
+      var cards = el("limb-cards");
+      if (cards) renderCards(cards);
+      renderModule();
+    });
   }
 
   window.LYGO_LIMBS = { list: function () { return LIMBS.slice(); }, probe: probe, manifestUrl: MANIFEST_URL };

@@ -228,6 +228,70 @@ class DiffusersImage:
         buf = io.BytesIO(); img.save(buf, format="PNG"); return buf.getvalue()
 
 
+
+# ------------------------------------------------------------------ own UI ------
+# The portal is HTTPS and the bridge is HTTP on loopback: Chrome 138+ treats that as a Local Network
+# Access request and will refuse it outright unless the visitor allows local access for chatagent.ca.
+# When that happens the limb must not be dead — so the bridge answers "/" with its own small page on
+# its own origin, where the fetch is same-origin and no permission exists to refuse.
+LIMB_UI = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__LIMB__ limb · __MODEL__</title>
+<style>
+ :root{--bg:#0c0a08;--ink:#f4ece3;--gold:#e0b36a;--line:rgba(224,179,106,.25);--muted:#9a8b78;--ok:#7dcea0}
+ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+ main{max-width:46rem;margin:0 auto;padding:2rem 1.2rem}
+ h1{font-family:Georgia,serif;font-weight:500;color:var(--gold);margin:0 0 .2rem;font-size:1.6rem}
+ .sub{color:var(--muted);font-size:.85rem;margin:0 0 1.2rem}
+ textarea{width:100%;min-height:4.5rem;background:#0f0c09;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.6rem;font:inherit}
+ button{margin-top:.6rem;background:linear-gradient(180deg,#f0d59a,#d3a75f);color:#1a130a;border:0;border-radius:8px;padding:.55rem 1rem;font-weight:700;cursor:pointer}
+ button:disabled{background:#2a2218;color:var(--muted)}
+ #state{color:var(--muted);font-size:.85rem;margin:.7rem 0}
+ #out img,#out video{max-width:100%;border-radius:8px;border:1px solid var(--line);display:block}
+ #out audio{width:100%}
+ .note{border-top:1px solid var(--line);margin-top:1.6rem;padding-top:.9rem;color:var(--muted);font-size:.8rem}
+ code{color:var(--gold)}
+</style></head><body><main>
+<h1>__MODEL__</h1>
+<p class="sub">This is the __LIMB__ limb's own window, served from 127.0.0.1 by limb_server.py. It needs no
+permission and no portal: what you make here never leaves the machine.</p>
+<textarea id="prompt" placeholder="describe what you want"></textarea>
+<button id="go">Generate</button>
+<p id="state">ready</p>
+<div id="out"></div>
+<p class="note">The portal at chatagent.ca can drive this same engine through
+<code>POST /generate</code>. If the portal says the browser blocked local access, this window is the
+fallback — same model, same output. Model: <code>__MODEL__</code> · health: <code>/health</code></p>
+</main><script>
+(function(){
+  var limb = "__LIMB__", go = document.getElementById("go"), st = document.getElementById("state"),
+      out = document.getElementById("out"), box = document.getElementById("prompt"), t0 = 0, tick = 0;
+  go.addEventListener("click", function(){
+    var p = (box.value || "").trim();
+    if (!p) { st.textContent = "write a prompt first"; return; }
+    go.disabled = true; out.innerHTML = ""; t0 = Date.now();
+    st.textContent = "working… 0s";
+    tick = setInterval(function(){ st.textContent = "working… " + Math.round((Date.now()-t0)/1000) + "s"; }, 1000);
+    fetch("/generate", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({prompt:p})})
+      .then(function(r){ if(!r.ok) return r.json().then(function(j){ throw new Error(j.why || r.status); }); return r.blob(); })
+      .then(function(b){
+        var u = URL.createObjectURL(b), el;
+        if (limb === "image") { el = new Image(); el.src = u; }
+        else if (limb === "sound") { el = document.createElement("audio"); el.controls = true; el.src = u; }
+        else { el = document.createElement("video"); el.controls = true; el.src = u; }
+        out.appendChild(el);
+        st.textContent = "done in " + Math.round((Date.now()-t0)/1000) + "s";
+      })
+      .catch(function(e){ st.textContent = "failed: " + e.message; })
+      .then(function(){ clearInterval(tick); go.disabled = false; });
+  });
+})();
+</script></body></html>"""
+
+
+def _ui_page(limb: str, model: str) -> bytes:
+    return (LIMB_UI.replace("__LIMB__", limb).replace("__MODEL__", model)).encode("utf-8")
+
 # ------------------------------------------------------------------ HTTP --------
 class Handler(BaseHTTPRequestHandler):
     server_version = "LYGO-Limb/" + VERSION
@@ -260,7 +324,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def _html(self, code: int, body: bytes):
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
+        if self.path in ("/", "/index.html", "/ui"):
+            d = LIMB_DEFAULTS[STATE["limb"]]
+            self._html(200, _ui_page(STATE["limb"], STATE["model"] or d["model"]))
+            return
         if self.path.startswith("/health"):
             defaults = LIMB_DEFAULTS[STATE["limb"]]
             self._json(200, {
@@ -276,7 +352,7 @@ class Handler(BaseHTTPRequestHandler):
                              "elapsed": round(time.time() - STATE["started"], 1) if STATE["busy"] else 0,
                              "error": STATE["error"]})
             return
-        self._json(404, {"ok": False, "why": "GET /health, /progress"})
+        self._json(404, {"ok": False, "why": "GET / (own window), /health, /progress"})
 
     def do_POST(self):
         if not self.path.startswith("/generate"):
