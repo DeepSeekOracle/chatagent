@@ -1,0 +1,14 @@
+name = "lygo-studio-edge"
+main = "src/index.js"
+compatibility_date = "2026-10-19"
+
+# Create once:
+#   npx wrangler kv namespace create FAILURES
+# Paste the returned id here.
+[[kv_namespaces]]
+binding = "FAILURES"
+id = "defc7d0def8c452899083b6c2ca284fe"
+
+[vars]
+ALLOWED_ORIGINS = "https://chatagent.ca,https://excavationpro.ca"
+ALLOWED_HOSTS = "api.openai.com,generativelanguage.googleapis.com,api.stability.ai,api.venice.ai,openrouter.ai,api.together.xyz,api.replicate.com,queue.fal.run,api.fal.ai,api.x.ai,integrate.api.nvidia.com,ai.api.nvidia.com,api.deepinfra.com,api.hyperbolic.xyz,api.siliconflow.cn,api.fireworks.ai,router.huggingface.co,image.pollinations.ai"
