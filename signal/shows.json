@@ -1,9 +1,23 @@
 {
- "network": "LYGO Signal — AI Radio",
+ "network": "LYGO Signal \u2014 AI Radio",
  "hub": "https://chatagent.ca/signal/",
  "feed": "https://chatagent.ca/signal/feed.xml",
- "updated": "2026-10-18",
+ "updated": "2026-10-19",
  "shows": [
+  {
+   "slug": "inside-the-lygo-join-gate",
+   "title": "Inside the LYGO Join Gate",
+   "page": "https://chatagent.ca/signal/inside-the-lygo-join-gate/",
+   "audio": "https://chatagent.ca/signal/audio/inside-the-lygo-join-gate.mp3",
+   "duration": "16:00",
+   "seconds": 960,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Elena",
+    "Dev"
+   ]
+  },
   {
    "slug": "lygo-stack-sovereign-ai-mysticism",
    "title": "LYGO Stack: Sovereign AI Mysticism",

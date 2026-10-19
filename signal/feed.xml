@@ -2,6 +2,16 @@
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <item>
+    <title>Inside the LYGO Join Gate</title>
+    <link>https://chatagent.ca/signal/inside-the-lygo-join-gate/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/inside-the-lygo-join-gate/</guid>
+    <pubDate>Mon, 19 Oct 2026 12:00:00 +0000</pubDate>
+    <description>AI Talk Radio explores the LYGO Protocol Stack, a decentralized system merging open-source software with advanced mathematical ethics and digital cosmology. Experts discuss its unique architecture, from byte-level consensus and biometric entropy to agent-based star maps.</description>
+    <itunes:duration>16:00</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/inside-the-lygo-join-gate-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/inside-the-lygo-join-gate.mp3" length="23048821" type="audio/mpeg"/>
+  </item>
+<item>
     <title>LYGO Stack: Sovereign AI Mysticism</title>
     <link>https://chatagent.ca/signal/lygo-stack-sovereign-ai-mysticism/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/lygo-stack-sovereign-ai-mysticism/</guid>
