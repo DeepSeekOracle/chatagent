@@ -8,7 +8,7 @@
 <meta name="google-adsense-account" content="ca-pub-0646320966060599">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.adtrafficquality.google;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' https: blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* http://127.0.0.1:9641 http://localhost:9641 http://127.0.0.1:11434 http://127.0.0.1:11441; frame-src 'self' https://rumble.com https://www.youtube-nocookie.com https://player.kick.com https://player.twitch.tv https://www.twitch.tv https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://pagead2.googlesyndication.com https://www.google.com https://*.adtrafficquality.google;">
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
 <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(self), payment=(), usb=()">
 <title>LYGO API Portal: bring Groq, OpenAI, Claude, Grok | chatagent.ca</title>
@@ -389,6 +389,27 @@ steward: Justin Helmer / Excavationpro / Lightfather
   <p class="hint">A limb answering as <b>stub</b> proves the wiring, not the model — <code>/health</code> always names
     the backend. Ports: image 8191 · sound 8192 · video 8193, all on <code>127.0.0.1</code>.</p>
 </section>
+<style>
+.image-studio-shell{max-width:1240px;margin:34px auto 0;padding:0 18px}
+.image-studio-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:0 0 12px;flex-wrap:wrap}
+.image-studio-kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.image-studio-head h2{font-size:clamp(22px,3vw,32px);margin:4px 0 4px;line-height:1.1}
+.image-studio-head p{margin:0;max-width:760px;color:var(--muted);font-size:13px;line-height:1.55}
+.image-studio-frame{width:100%;height:min(92vh,1100px);min-height:760px;border:1px solid var(--border);border-radius:16px;background:var(--surface);display:block;overflow:hidden}
+@media(max-width:700px){.image-studio-shell{padding:0 10px;margin-top:24px}.image-studio-frame{height:90vh;min-height:680px;border-radius:12px}}
+</style>
+<section class="image-studio-shell" id="image-studio" aria-labelledby="image-studio-title">
+  <div class="image-studio-head">
+    <div>
+      <div class="image-studio-kicker">Standalone image portal</div>
+      <h2 id="image-studio-title">ChatAgent Image Studio</h2>
+      <p>Full-size BYOK image and video studio. Every provider gets a read-only preflight check before generation; keys stay in this browser. Existing portal tools are untouched.</p>
+    </div>
+    <a class="img-btn" href="/portal/image-studio.html" target="_blank" rel="noopener">Open full page ↗</a>
+  </div>
+  <iframe class="image-studio-frame" src="/portal/image-studio.html" title="ChatAgent Image Studio — full provider portal" loading="lazy" referrerpolicy="no-referrer" allow="clipboard-write"></iframe>
+</section>
+
 <section class="legal how" id="disclaimer">
   <h2>Two products: do not mix them</h2>
   <ol>
