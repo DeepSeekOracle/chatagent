@@ -16,6 +16,7 @@ LYGO LLM Console (local kit): https://chatagent.ca/lygo-llm-console.html
 SkillHub: https://chatagent.ca/lygoskillhub.html
 LYGO TV: https://chatagent.ca/sources/
 Listen: https://asiancoastline.com/listen.html
+Arcade Deck (every live game in one console): https://chatagent.ca/games/deck/
 Join / verify: https://chatagent.ca/join/
 Donate: https://www.paypal.com/paypalme/ExcavationPro
 
