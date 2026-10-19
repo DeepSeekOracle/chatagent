@@ -103,7 +103,7 @@
      running. This asks properly: one fetch per limb from a click, then re-read the permission. */
   function requestAccess() {
     return Promise.all(LIMBS.map(function (l) {
-      return localFetch(base(l) + "/health").then(function (r) { return r.json(); }).catch(function () { return null; });
+      return withTimeout(localFetch(base(l) + "/health").then(function (r) { return r.json(); }), 3000);
     })).then(refreshAccess).then(function () {
       refreshPills();
       if (window.__limbRefreshModule) window.__limbRefreshModule();
@@ -120,13 +120,23 @@
   }
 
   /* ---------------------------------------------------------------- probing */
+  /* A permission-gated request does not fail, it waits: Chrome queues it until the visitor answers, and
+     AbortController does not rescue a page from that. MEASURED 2026-10-18 on the live page — three pills
+     sat at "checking…" forever. So every probe is raced against a clock and resolves to null if the
+     browser never answers; the UI can then say something true instead of spinning. */
+  function withTimeout(promise, ms) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var t = setTimeout(function () { if (!done) { done = true; resolve(null); } }, ms);
+      promise.then(function (v) { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+                   function () { if (!done) { done = true; clearTimeout(t); resolve(null); } });
+    });
+  }
+
   function probe(l) {
-    var ctl = new AbortController();
-    var t = setTimeout(function () { ctl.abort(); }, 2500);
-    return localFetch(base(l) + "/health", { signal: ctl.signal })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; })
-      .then(function (j) { clearTimeout(t); return j; });
+    return withTimeout(localFetch(base(l) + "/health").then(function (r) {
+      return r.ok ? r.json() : null;
+    }), 2500);
   }
 
   function probeAll(cb) {
@@ -142,6 +152,8 @@
       // a loopback page needs no permission, so neither state may be used to explain its failures
       if (ACCESS.state === "denied" && !isLocalPage()) return { on: false, blocked: true, text: "blocked by this browser" };
       if (ACCESS.state === "prompt" && !isLocalPage()) return { on: false, ask: true, text: "allow local access to check" };
+      if (ACCESS.state === "unsupported" && !isLocalPage())
+        return { on: false, text: "not answering — or this browser blocks local requests" };
       return { on: false, text: "not running · ready to build" };
     }
     var t = (j.model || l.model) + " · " + (j.backend === "stub" ? "STUB (wiring only)" : j.backend) +
@@ -212,6 +224,20 @@
   }
 
   function refreshPills() {
+    if (!isLocalPage() && (ACCESS.state === "prompt" || ACCESS.state === "denied")) {   // nothing can be learned yet; say so at once
+      LIMBS.forEach(function (l) {
+        var d = describe(l, null);
+        var pill = document.querySelector('[data-pill="' + l.id + '"]');
+        if (!pill) return;
+        pill.textContent = d.blocked ? "◼ blocked by browser" : "◐ " + d.text;
+        pill.className = "limb-pill " + (d.blocked ? "is-blocked" : "is-off");
+        pill.title = d.blocked ? blockedNote() : "press “Allow local access” and accept the browser prompt";
+      });
+      var s2 = el("limb-summary");
+      if (s2) s2.textContent = ACCESS.state === "denied" ? "this browser is blocking local access — " + blockedNote()
+                                                       : "this page needs your permission once: press “Allow local access”";
+      return;
+    }
     probeAll(function (map) {
       LIMBS.forEach(function (l) {
         var d = describe(l, map[l.id]);
@@ -267,6 +293,19 @@
   }
 
   function refreshModule() {
+    if (!isLocalPage() && (ACCESS.state === "prompt" || ACCESS.state === "denied")) {
+      LIMBS.forEach(function (l) {
+        var pill = document.querySelector('[data-mod-pill="' + l.id + '"]');
+        var go = document.querySelector('[data-go="' + l.id + '"]');
+        if (pill) {
+          pill.textContent = ACCESS.state === "denied" ? "◼ blocked by browser" : "◐ allow local access";
+          pill.className = "limb-pill " + (ACCESS.state === "denied" ? "is-blocked" : "is-off");
+          pill.title = ACCESS.state === "denied" ? blockedNote() : "press “Allow local access”, then Generate";
+        }
+        if (go) { go.disabled = true; go.title = ACCESS.state === "denied" ? blockedNote() : "allow local access first"; }
+      });
+      return;
+    }
     probeAll(function (map) {
       LIMBS.forEach(function (l) {
         var d = describe(l, map[l.id]);
