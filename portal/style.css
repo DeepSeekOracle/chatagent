@@ -603,6 +603,8 @@ html.sup-modal, html.sup-modal body { overflow: hidden; }
 
 .limb-suite { border-top: 1px solid var(--line); margin-top: 1.4rem; padding: 1.2rem 1.25rem 1.6rem; }
 .limb-suite h2 { font-family: Syne, "Segoe UI", sans-serif; font-size: 1.05rem; letter-spacing: .04em; margin: 0 0 .5rem; color: var(--gold); }
+.limb-btn-sm { margin-left: .6rem; background: transparent; color: var(--gold); border: 1px solid var(--line); border-radius: 6px; padding: .1rem .5rem; font-size: .68rem; font-family: "IBM Plex Mono", monospace; cursor: pointer; vertical-align: middle; }
+.limb-btn-sm:hover { border-color: var(--gold); }
 .limb-body { display: grid; gap: .7rem; margin: .9rem 0; }
 .limb-row { border: 1px solid var(--line); border-radius: 10px; padding: .7rem .8rem; background: linear-gradient(180deg, rgba(26,21,16,.75), rgba(12,10,8,.5)); }
 .limb-row-h { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }

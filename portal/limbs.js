@@ -98,6 +98,18 @@
     return fetch(url, o);
   }
 
+  /* Chrome only grants Local Network Access on a user gesture, and until it is granted every probe is
+     refused — so a page that just polls in the background reports "not running" about a limb that is
+     running. This asks properly: one fetch per limb from a click, then re-read the permission. */
+  function requestAccess() {
+    return Promise.all(LIMBS.map(function (l) {
+      return localFetch(base(l) + "/health").then(function (r) { return r.json(); }).catch(function () { return null; });
+    })).then(refreshAccess).then(function () {
+      refreshPills();
+      if (window.__limbRefreshModule) window.__limbRefreshModule();
+    });
+  }
+
   function blockedNote() {
     if (ACCESS.state === "denied")
       return "your browser is blocking this page from reaching 127.0.0.1 — in Chrome: site settings → " +
@@ -127,7 +139,9 @@
 
   function describe(l, j) {
     if (!j || !j.ok) {
-      if (ACCESS.state === "denied") return { on: false, blocked: true, text: "blocked by this browser" };
+      // a loopback page needs no permission, so neither state may be used to explain its failures
+      if (ACCESS.state === "denied" && !isLocalPage()) return { on: false, blocked: true, text: "blocked by this browser" };
+      if (ACCESS.state === "prompt" && !isLocalPage()) return { on: false, ask: true, text: "allow local access to check" };
       return { on: false, text: "not running · ready to build" };
     }
     var t = (j.model || l.model) + " · " + (j.backend === "stub" ? "STUB (wiring only)" : j.backend) +
@@ -193,7 +207,7 @@
     });
 
     var check = el("limb-recheck");
-    if (check) check.addEventListener("click", function () { refreshPills(); });
+    if (check) check.addEventListener("click", function () { requestAccess(); });
     refreshPills();
   }
 
@@ -203,9 +217,9 @@
         var d = describe(l, map[l.id]);
         var pill = document.querySelector('[data-pill="' + l.id + '"]');
         if (pill) {
-          pill.textContent = d.on ? "● running" : (d.blocked ? "◼ blocked by browser" : "○ " + d.text);
+          pill.textContent = d.on ? "● running" : (d.blocked ? "◼ blocked by browser" : (d.ask ? "◐ " + d.text : "○ " + d.text));
           pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : (d.blocked ? "is-blocked" : "is-off"));
-          pill.title = d.on ? d.text : (d.blocked ? blockedNote() : "start the bridge on port " + l.port);
+          pill.title = d.on ? d.text : (d.blocked ? blockedNote() : (d.ask ? "press “Allow local access” and accept the browser prompt" : "start the bridge on port " + l.port));
         }
       });
       var sum = el("limb-summary");
@@ -214,6 +228,7 @@
         sum.textContent = on.length + " of " + LIMBS.length + " limbs answering on this machine" +
           (on.length ? " · " + on.map(function (l) { return l.name.toLowerCase(); }).join(", ")
                      : (ACCESS.state === "denied" ? " — but this browser is blocking local access: " + blockedNote()
+                        : ACCESS.state === "prompt" ? " — press “Allow local access” so this page is allowed to ask your PC"
                                                   : " — pick one card below and let your agent build it"));
       }
     });
@@ -244,6 +259,9 @@
         generate(l, row);
       });
     });
+    var allow = el("limbs-allow");
+    if (allow) allow.addEventListener("click", function () { requestAccess(); });
+    window.__limbRefreshModule = refreshModule;
     refreshModule();
     setInterval(refreshModule, 20000);
   }
@@ -255,7 +273,8 @@
         var pill = document.querySelector('[data-mod-pill="' + l.id + '"]');
         var go = document.querySelector('[data-go="' + l.id + '"]');
         if (pill) {
-          pill.textContent = d.on ? (d.stub ? "● stub running" : "● running") : (d.blocked ? "◼ blocked by browser" : "○ not running");
+          pill.textContent = d.on ? (d.stub ? "● stub running" : "● running")
+                                  : (d.blocked ? "◼ blocked by browser" : (d.ask ? "◐ allow local access" : "○ not running"));
           pill.className = "limb-pill " + (d.on ? (d.stub ? "is-stub" : "is-on") : (d.blocked ? "is-blocked" : "is-off"));
           pill.title = d.on ? d.text : (d.blocked ? blockedNote() : "nothing on 127.0.0.1:" + l.port);
         }
@@ -322,7 +341,8 @@
     });
   }
 
-  window.LYGO_LIMBS = { list: function () { return LIMBS.slice(); }, probe: probe, manifestUrl: MANIFEST_URL };
+  window.LYGO_LIMBS = { list: function () { return LIMBS.slice(); }, probe: probe,
+                       access: function () { return ACCESS.state; }, requestAccess: requestAccess, manifestUrl: MANIFEST_URL };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
