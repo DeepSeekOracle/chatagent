@@ -480,3 +480,87 @@ body.arcade-portal .hub-rail a:hover { color: #e8eef5; }
 @media (prefers-reduced-motion: reduce) {
   .portal-grid, .portal-scan { animation: none; }
 }
+
+/* ---------- two views: catalog (this page) vs the Arcade Deck console ---------- */
+.view-switch-bar {
+  position: relative;
+  z-index: 2;
+  border-bottom: 1px solid #14212d;
+  background: linear-gradient(180deg, rgba(11, 18, 28, 0.94), rgba(7, 11, 18, 0.7));
+}
+.view-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  padding: 0.9rem 0;
+}
+.view-switch-label {
+  margin: 0 auto 0 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.view-switch-label b { color: #fbbf24; font-weight: 600; }
+.view-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.view-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 200px;
+  padding: 0.55rem 0.9rem 0.6rem;
+  border: 1px solid #1e3a4a;
+  border-radius: 10px;
+  background: #0b121c;
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.view-option b {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: Syne, sans-serif;
+  font-size: 0.95rem;
+  color: #e8eef5;
+}
+.view-option span {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.71rem;
+  letter-spacing: 0.02em;
+  color: #64748b;
+}
+.view-option:hover { border-color: #fbbf24; transform: translateY(-1px); box-shadow: 0 10px 24px -16px rgba(251, 191, 36, 0.9); }
+.view-option:focus-visible { outline: 2px solid #fbbf24; outline-offset: 2px; }
+.view-option.is-active {
+  border-color: rgba(14, 165, 233, 0.75);
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.16), rgba(11, 18, 28, 0.9));
+}
+.view-option.is-active b::after {
+  content: "this page";
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 999px;
+  padding: 0.12rem 0.42rem;
+}
+.view-option.is-deck {
+  border-color: #fbbf24;
+  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+  box-shadow: 0 12px 28px -18px rgba(251, 191, 36, 0.95);
+}
+.view-option.is-deck b { color: #0b121c; }
+.view-option.is-deck span { color: rgba(11, 18, 28, 0.74); }
+.view-option.is-deck:hover { border-color: #fde68a; box-shadow: 0 16px 32px -16px rgba(251, 191, 36, 1); }
+@media (max-width: 760px) {
+  /* the hub's .wrap drops its side padding at this width, so the bar carries its own */
+  .view-switch { justify-content: stretch; padding: 0.85rem 1.1rem; }
+  .view-switch-label { width: 100%; font-size: 0.66rem; }
+  .view-options { width: 100%; flex-direction: column; }
+  .view-option { min-width: 0; width: 100%; }
+}

@@ -37,7 +37,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/games/hub.css?v=9">
+<link rel="stylesheet" href="/games/hub.css?v=10">
 <link rel="stylesheet" href="/assets/lygo-tv-ninja.css?v=8">
 <script type="application/ld+json" id="games-jsonld">
 {
@@ -134,6 +134,16 @@
     </nav>
   </div>
 </header>
+
+<div class="view-switch-bar">
+  <div class="wrap view-switch">
+    <p class="view-switch-label"><b>Two views, one arcade</b> · pick how you browse</p>
+    <div class="view-options" role="group" aria-label="Games hub views">
+      <a class="view-option is-active" href="/games/" aria-current="page"><b>Catalog</b><span>All eighteen titles on one page</span></a>
+      <a class="view-option is-deck" href="/games/deck/"><b>Arcade Deck &rarr;</b><span>Console view: preview, then launch</span></a>
+    </div>
+  </div>
+</div>
 
 <div class="wrap prose">
 
@@ -515,7 +525,8 @@
 
 <footer class="site">
   <div class="wrap">
-    <p><a href="/">Home</a> · <a href="/games/">Games</a> · <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a></p>
+    <p><a href="/">Home</a> · <a href="/games/">Games</a> · <a href="/games/deck/">Arcade Deck</a> · <a href="/about.html">About</a> · <a href="/privacy.html">Privacy</a></p>
+    <p class="family-links">Elsewhere: <a href="https://excavationpro.ca/" rel="me">Excavationpro.ca</a> · <a href="https://justinhelmer.ca/" rel="me">JustinHelmer.ca</a></p>
     <p>© <span class="y"></span> Justin Helmer. chatagent.ca.</p>
   </div>
 </footer>
