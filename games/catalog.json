@@ -302,6 +302,22 @@
       "links": []
     },
     {
+      "id": "lattice-tennis",
+      "slug": "lattice-tennis",
+      "title": "Lattice Tennis",
+      "tagline": "3D arcade tennis, no camera",
+      "blurb": "3D arcade tennis with racket kinematics, expressive pilots, keyboard/mouse and controller play, and optional webcam motion. No camera required.",
+      "status": "live",
+      "featured": false,
+      "order": 16,
+      "href": "/games/lattice-tennis/",
+      "cover": "/games/lattice-tennis/og.jpg",
+      "coverAlt": "Lattice Tennis court with two pilots at the net",
+      "genre": ["sports", "tennis"],
+      "players": "1 vs local AI or 1v1",
+      "links": []
+    },
+    {
       "id": "slot-next",
       "slug": "",
       "title": "More games coming",

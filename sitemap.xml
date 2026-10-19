@@ -59,6 +59,7 @@
   <url><loc>https://chatagent.ca/games/arcade.json</loc><changefreq>hourly</changefreq><priority>0.5</priority></url>
   <url><loc>https://chatagent.ca/games/board.html</loc><lastmod>2026-09-06</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>
   <url><loc>https://chatagent.ca/games/lattice-arcade/</loc><lastmod>2026-10-18</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://chatagent.ca/games/lattice-tennis/</loc><lastmod>2026-10-18</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
   <url><loc>https://chatagent.ca/games/lattice-city/</loc><lastmod>2026-10-18</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
   <url><loc>https://chatagent.ca/games/lattice-chess/</loc><lastmod>2026-10-18</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
   <url><loc>https://chatagent.ca/games/lattice-arena/</loc><lastmod>2026-10-13</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
