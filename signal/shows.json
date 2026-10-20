@@ -640,6 +640,34 @@
     "Theo",
     "Priya"
    ]
+  },
+  {
+   "slug": "the-stubborn-world-of-excavationpro",
+   "title": "The Stubborn World of Excavationpro",
+   "page": "https://chatagent.ca/signal/the-stubborn-world-of-excavationpro/",
+   "audio": "https://chatagent.ca/signal/audio/the-stubborn-world-of-excavationpro.mp3",
+   "duration": "10:32",
+   "seconds": 632,
+   "speakers": [
+    "Paul",
+    "Sarah",
+    "Marcus",
+    "Elena"
+   ]
+  },
+  {
+   "slug": "independent-music-excavationpro-explored",
+   "title": "Independent Music: Excavationpro Explored",
+   "page": "https://chatagent.ca/signal/independent-music-excavationpro-explored/",
+   "audio": "https://chatagent.ca/signal/audio/independent-music-excavationpro-explored.mp3",
+   "duration": "2:45",
+   "seconds": 165,
+   "speakers": [
+    "Paul",
+    "Marcus",
+    "Elena",
+    "Liam"
+   ]
   }
  ]
 }
