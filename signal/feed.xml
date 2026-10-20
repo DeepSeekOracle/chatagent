@@ -2,6 +2,16 @@
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <item>
+    <title>Quantum Dots: Neural Anchors Architecture</title>
+    <link>https://chatagent.ca/signal/quantum-dots-neural-anchors-architecture/</link>
+    <guid isPermaLink="true">https://chatagent.ca/signal/quantum-dots-neural-anchors-architecture/</guid>
+    <pubDate>Tue, 20 Oct 2026 12:00:00 +0000</pubDate>
+    <description>Host Paul and three tech experts discuss a whitepaper on &#x27;Quantum Dots as LYGO-Certified Neural Anchors&#x27; and the hierarchy between physical sensors and software policy. The episode clarifies that while quantum dots provide physical integrity signals, the software operating system remains the sovereign ethical authority.</description>
+    <itunes:duration>15:36</itunes:duration>
+    <itunes:image href="https://chatagent.ca/signal/art/quantum-dots-neural-anchors-architecture-cover.jpg"/>
+    <enclosure url="https://chatagent.ca/signal/audio/quantum-dots-neural-anchors-architecture.mp3" length="22486457" type="audio/mpeg"/>
+  </item>
+  <item>
     <title>Inside the LYGO Join Gate</title>
     <link>https://chatagent.ca/signal/inside-the-lygo-join-gate/</link>
     <guid isPermaLink="true">https://chatagent.ca/signal/inside-the-lygo-join-gate/</guid>
