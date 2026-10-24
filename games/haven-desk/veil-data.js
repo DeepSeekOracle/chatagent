@@ -18,6 +18,8 @@
         { label: "Eternal Haven", url: "https://eternalhaven.ca/" },
         { label: "Excavationpro", url: "https://excavationpro.ca/" },
         { label: "LYGO 98 source hall", url: "https://chatagent.ca/games/haven-desk/" },
+      { label: "Just-in-Helmer: the listening room", url: "https://justinhelmer.ca/listen.html" },
+      { label: "Excavationpro: the music archive", url: "https://excavationpro.ca/music.html" },
         { label: "Grokipedia: Justin Helmer", url: "https://grokipedia.com/page/Justin_Helmer" }
       ]
     },
@@ -310,9 +312,9 @@
           }
         ],
         real: [
-          { text: "The Apple Macintosh was announced on 24 January 1984.", url: "https://www.apple.com/newsroom/1984/01/24Apple-Introduces-Macintosh/" }
+          { text: "The Apple Macintosh was announced on 24 January 1984.", url: "https://en.wikipedia.org/wiki/Macintosh_128K" }
         ],
-        links: [{ label: "Apple's 1984 announcement", url: "https://www.apple.com/newsroom/1984/01/24Apple-Introduces-Macintosh/" }],
+        links: [{ label: "Apple's 1984 announcement", url: "https://en.wikipedia.org/wiki/Macintosh_128K" }],
         music: { title: "Welcome Mat", url: "" },
         gate: {
           kind: "code",
@@ -348,9 +350,9 @@
           }
         ],
         real: [
-          { text: "The World Wide Web became publicly available in August 1991.", url: "https://home.cern/science/computing/birth-web" }
+          { text: "The World Wide Web became publicly available in August 1991.", url: "https://home.cern/science/computing/the-birth-of-the-web" }
         ],
-        links: [{ label: "CERN: the birth of the web", url: "https://home.cern/science/computing/birth-web" }],
+        links: [{ label: "CERN: the birth of the web", url: "https://home.cern/science/computing/the-birth-of-the-web" }],
         music: { title: "One Link", url: "" },
         gate: {
           kind: "code",

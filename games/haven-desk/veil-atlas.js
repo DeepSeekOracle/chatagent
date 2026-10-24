@@ -112,7 +112,7 @@
         "A note says: 'The revolution was a document pointing at another document.'"
       ],
       docs: [{ title: "PROPOSAL FRAGMENT", kind: "paper", text: "Information should be able to point.\nA pointer should survive a change of machine.\nA person should be able to follow it without asking permission." }],
-      real: [{ text: "Tim Berners-Lee circulated a proposal for the World Wide Web in November 1990.", url: "https://home.cern/science/computing/birth-web" }],
+      real: [{ text: "Tim Berners-Lee circulated a proposal for the World Wide Web in November 1990.", url: "https://home.cern/science/computing/the-birth-of-the-web" }],
       gate: { kind: "code", label: "LINK GATE", question: "The kind of text that contains links.", answer: "HYPERTEXT", hint: "The proposal's key word.", success: "The page links onward." }
     },
     {

@@ -305,6 +305,12 @@
       setUserChip(V.onboarding.user);
       return;
     }
+    // First run belongs to the story now: the note on the monitor is the setup.
+    // The wizard is still here, offered from the note's second side.
+    if (window.VEIL_START && window.VEIL_START.begin) {
+      window.VEIL_START.begin(function () { openSetup(); });
+      return;
+    }
     openSetup();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
