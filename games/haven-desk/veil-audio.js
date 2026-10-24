@@ -1,5 +1,5 @@
 /* HAVEN DESK — VOICE ARCHIVE + ROOM AUDIO.
-   All clips are generated locally with Piper and stdlib WAV synthesis. */
+   Recovered voices and room tones. */
 (function () {
   "use strict";
   var H = window.HavenDesk;
@@ -118,7 +118,7 @@
     }
     function list() {
       app.innerHTML = "";
-      head("LOCAL TTS + ROOM TONES · " + VOICE.length + " VOICES / " + SFX.length + " SFX");
+      head("RECOVERED VOICES + ROOM TONES · " + VOICE.length + " VOICES / " + SFX.length + " SFX");
       var bar = el("div", "veil-actions");
       bar.appendChild(btn("VOICES", state.tab === "voice" ? "veil-primary" : "raised", function () { state.tab = "voice"; list(); }));
       bar.appendChild(btn("SOUNDS", state.tab === "sfx" ? "veil-primary" : "raised", function () { state.tab = "sfx"; list(); }));
@@ -131,7 +131,7 @@
       range.oninput = function () { V.audioVolume = Number(range.value) / 100; H.save(); vol.querySelector("label").textContent = "VOLUME " + range.value + "%"; };
       vol.appendChild(range);
       app.appendChild(vol);
-      app.appendChild(el("p", "veil-hint", state.current ? "PLAYING · " + state.current : "Select a clip. Nothing plays automatically."));
+      app.appendChild(el("p", "veil-hint", state.current ? "PLAYING · " + state.current : "Select a clip."));
       var grid = el("div", "veil-voice-grid");
       (state.tab === "voice" ? VOICE : SFX).forEach(function (clip) {
         var card = btn("", "veil-voice-card" + (state.current === clip.title ? " is-playing" : ""), function () {
@@ -146,7 +146,7 @@
       });
       app.appendChild(grid);
       if (state.tab === "voice") {
-        app.appendChild(el("p", "veil-hint", "These are local Piper performances. The room does not auto-play them."));
+        
       }
     }
     list();

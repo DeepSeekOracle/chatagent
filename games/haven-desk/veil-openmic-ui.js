@@ -1,5 +1,5 @@
 /* HAVEN DESK — OPEN MIC UI.
-   Ten recovered tapes, transcript + audio. No autoplay. */
+   Ten recovered tapes, transcript + audio. */
 (function () {
   "use strict";
   var H = window.HavenDesk;
@@ -59,7 +59,7 @@
         grid.appendChild(card);
       });
       app.appendChild(grid);
-      app.appendChild(el("p", "veil-hint", "No autoplay. Headphones recommended. The room bed is part of the recording."));
+      app.appendChild(el("p", "veil-hint", "Headphones recommended. The room bed is part of the recording."));
     }
     function detail() {
       stopAll();

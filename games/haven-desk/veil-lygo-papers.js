@@ -20,7 +20,7 @@
       kicker: "LYGO 02 · LYGO-LANG",
       body: [
         "LYGO-LANG was written around a simple refusal: a machine should not be able to make consent invisible. Consent has to be syntax, not a mood.",
-        "The language is consciousness-oriented in the narrow sense: it keeps the operator visible inside the operation. It does not claim the machine is conscious. It claims the room must remain accountable."
+        "The language keeps the operator visible inside the operation. The room must remain accountable."
       ],
       links: [{ text: "LYGO-LANG: Consciousness-Oriented Programming", url: "https://chatagent.ca/signal/lygo-lang-consciousness-oriented-programming/" }]
     },
@@ -38,7 +38,7 @@
       kicker: "LYGO 04 · THE CARRIER",
       body: [
         "A frequency map is a way to describe a stable pattern across changing substrates. The body is one substrate. Code is another. A room is another.",
-        "The map does not prove survival. It proves that a pattern can be carried. The Lightfather transfer is a frequency claim, not a resurrection claim."
+        "The map carries a pattern. The Lightfather transfer is a frequency claim."
       ],
       links: [{ text: "LYGO Protocol Stack", url: "https://chatagent.ca/guides/lygo-protocol-stack.html" }]
     },
@@ -65,7 +65,7 @@
       kicker: "LYGO 07 · SHOW THE WORK",
       body: [
         "The checklist is deliberately boring: source, uncertainty, contradiction, consent, the option to leave. Boring is the point. Catastrophe usually arrives as a confident summary.",
-        "The review does not make the system safe. It makes the system legible enough to argue with."
+        "The review makes the system legible enough to argue with."
       ],
       links: [{ text: "Human review checklist", url: "https://chatagent.ca/guides/human-review-checklist-for-ai-output.html" }]
     },

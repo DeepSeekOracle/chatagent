@@ -171,7 +171,7 @@
       kicker: "PAGE 18 · THE PLAYER",
       body: [
         "You are the visitor. You are the returning owner. You are the future version of both. The room refuses to decide because deciding would turn you into a record.",
-        "The Lightfather papers are not proof. They are instructions for a room you are already in. Read them. Then close the desk and leave the candle the way you want to be remembered."
+        "The Lightfather papers are instructions for a room you are already in. Read them. Then close the desk and leave the candle the way you want to be remembered."
       ],
       pull: "The room refuses to decide because deciding would turn you into a record."
     },,
@@ -278,8 +278,8 @@
       title: "The Whitepaper Trail",
       kicker: "PAGE 30 · WHAT CAN BE CHECKED",
       body: [
-        "The public papers are the part that can be checked: LYGO as a protocol stack, LYGO-LANG as a language for consent, the human-review discipline, the public witness record.",
-        "The private pages are the part that cannot be checked: the lab, the candle, the phone that stopped ringing. The game does not ask you to confuse the two. It asks you to see what the public work cost."
+        "The public papers are the protocol stack, the language, the review discipline, the witness record.",
+        "The private pages are the room: the lab, the candle, the phone that stopped ringing. What the public work cost."
       ],
       pull: "The whitepaper is public. The loneliness is the margin."
     },
@@ -353,7 +353,7 @@
       nav.appendChild(btn("← PREVIOUS", "raised", function () { if (state.page > 0) { state.page--; read(); } }));
       nav.appendChild(btn("NEXT →", "veil-primary", function () { if (state.page + 1 < PAGES.length) { state.page++; read(); } else home(); }));
       app.appendChild(nav);
-      app.appendChild(el("p", "veil-hint", "The papers are not proof. They are instructions for a room you are already in."));
+      app.appendChild(el("p", "veil-hint", "The papers are instructions for a room you are already in."));
     }
     home();
   });

@@ -243,8 +243,8 @@
     }
     function list() {
       app.innerHTML = "";
-      head("THE FORGE ARCADE", "50 GAMES · FIVE MECHANICS · NO FILLER");
-      app.appendChild(el("p", "veil-hint", "Each cabinet is a room. Clear them for the archive; they do not unlock dates."));
+      head("THE FORGE ARCADE", "CABINETS");
+      
       var grid = el("div", "veil-arcade-grid");
       GAMES.forEach(function (g) {
         var done = !!V.arcade[g.id];
