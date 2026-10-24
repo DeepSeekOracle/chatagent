@@ -60,6 +60,28 @@
         links: d.links || []
       };
     });
+    // Authored strata: when the echo file has them, the twenty lenses for this
+    // date are cut from the date's own written scene instead of the shared pool.
+    var authored = (window.VEIL_ECHO_AUTHORED && window.VEIL_ECHO_AUTHORED[date]) || null;
+    if (authored && authored.length === base.length) {
+      base = authored.map(function (a, i) {
+        return {
+          id: a.id,
+          anchor: date,
+          anchorTitle: d.title,
+          index: i + 1,
+          title: a.title,
+          epigraph: d.epigraph || "A recovered stratum.",
+          body: a.body,
+          doc: a.doc,
+          question: a.question,
+          answer: a.answer,
+          clue: a.clue,
+          real: d.real || [],
+          links: d.links || []
+        };
+      });
+    }
     // 29 Forge Arcade strata per anchor: 20 + 29 = 49. The remaining slot
     // (up to the 3,000 cap) is filled by validated worker-generated rooms.
     var minis = ARCADE.slice(0, 29).map(function (g, j) {
