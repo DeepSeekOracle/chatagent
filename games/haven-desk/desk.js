@@ -8,24 +8,29 @@
 
   var STORE_KEY = "haven-desk-v1";
   var README = [
-    "LYGO 98",
+    "LYGO 98 · READ ME FIRST",
     "",
-    "This desk was left running.",
-    "Teal field. Gray windows. A Desk button.",
+    "The desk was left on. It has been on for a while.",
     "",
-    "Double-click a picture to open it.",
-    "Drag a window by its blue bar.",
-    "The Desk button lists every program.",
+    "1. There is a note taped to the monitor.",
+    "   It asks for one word. That word is the first gate.",
     "",
-    "Lattice Corridor and Vale Tactics open in a window.",
-    "They are the same games as on the games hub.",
+    "2. The calendar is a list of rooms, not days.",
+    "   Sixty dates. One of them is private and is not in the index.",
     "",
-    "Notes and guest leaves stay on the desk.",
-    "Type help in Hearth Prompt.",
+    "3. Follow the line at the bottom of the screen.",
+    "   It always names the next room, and it is the only hint",
+    "   this desk gives twice.",
     "",
-    "This copy of the desk was left on by Rook Pell,",
-    "a night archivist who invented the notes.",
-    "The scraps are the desk. Poke around."
+    "4. A room gives you one object and takes one certainty.",
+    "   Read the documents. The answers are in the prose.",
+    "",
+    "5. The cat's name was Kooter.",
+    "   He is on the bench in the last room. He does not explain himself.",
+    "",
+    "Do not trust the first date. Trust the first foundation.",
+    "",
+    "                   — J.H., 14 March 1998"
   ].join("\n");
 
   var FILES = [

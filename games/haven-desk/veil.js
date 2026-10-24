@@ -223,11 +223,18 @@
       svg.appendChild(line);
     });
     map.appendChild(svg);
+    // The room the player should open next: the earliest unlocked, unsolved date.
+    var nextId = null;
+    Object.keys(D.days).sort().forEach(function (id) {
+      if (nextId) return;
+      if (unlocked(id) && !solved(id)) nextId = id;
+    });
     Object.keys(D.days).forEach(function (id) {
       var d = D.days[id];
       if (d.hidden && !unlocked(id)) return;
       var p = POS[id];
       var b = button("", "veil-node" + (unlocked(id) ? "" : " is-locked") + (solved(id) ? " is-solved" : ""), function () { openDay(id); });
+      if (id === nextId) b.classList.add("is-next");
       b.style.left = p.x + "px";
       b.style.top = p.y + "px";
       b.dataset.day = id;
@@ -864,11 +871,17 @@
     app.classList.add("veil-app-hero");
     topBar(D.meta.title, "A LYGO temporal mystery");
     var box = el("div", "veil-intro short");
-    box.appendChild(el("p", "veil-kicker", "THE DESK WAS LEFT ON"));
+    box.appendChild(el("p", "veil-kicker", "THE DESK IS STILL ON"));
     box.appendChild(el("h1", "", "It was already warm when you found it."));
-    box.appendChild(el("p", "", "The calendar says 14 March 1998. There is no password prompt. The owner is gone, and the machine is still running."));
+    box.appendChild(el("p", "", "Sixty rooms, one private date, and a line at the bottom of the screen that always names the next one. The owner is gone. The machine is still counting."));
+    var solvedCount = Object.keys(D.days).filter(function (id) { return solved(id); }).length;
+    box.appendChild(el("p", "veil-hint", "ROOMS UNSEALED · " + solvedCount + " OF " + Object.keys(D.days).length));
     var row = el("div", "veil-actions");
-    row.appendChild(button("OPEN THE CALENDAR", "veil-primary", function () { V.seen = true; save(); H.open("calendar"); }));
+    row.appendChild(button("NEXT ROOM →", "veil-primary", function () {
+      if (window.VEIL_START && window.VEIL_START.objective) { window.VEIL_START.objective().act(); }
+      else { V.seen = true; save(); H.open("calendar"); }
+    }));
+    row.appendChild(button("OPEN THE CALENDAR", "raised", function () { V.seen = true; save(); H.open("calendar"); }));
     if (archiveUnlocked("echoes")) row.appendChild(button("ECHO VAULT", "raised", function () { H.open("echoes"); }));
     if (archiveUnlocked("voice")) row.appendChild(button("VOICE ARCHIVE", "raised", function () { H.open("voice"); }));
     if (archiveUnlocked("arcade")) row.appendChild(button("FORGE ARCADE", "raised", function () { H.open("arcade"); }));
@@ -962,6 +975,18 @@
   H.register("calendar", calendarApp);
   H.register("veil-media", mediaApp);
   H.setSaverWord("HARMONY");
+
+  // Small read-only handle so the first-run loop and the tests can route the
+  // calendar without duplicating the gate logic.
+  window.VEIL_API = {
+    openDay: openDay,
+    render: render,
+    unseal: unseal,
+    state: V,
+    save: save,
+    solved: solved,
+    unlocked: unlocked
+  };
 
   // A first-visit nudge in the taskbar/saver is not intrusive; the desk itself
   // remains the existing LYGO 98 room.
