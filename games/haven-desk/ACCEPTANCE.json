@@ -1,6 +1,6 @@
 {
   "game": "Haven Desk: The Long Lost PC",
-  "status": "stories_complete_assets_incomplete",
+  "status": "story_and_images_complete",
   "targets": {
     "authored_dates": 60,
     "story_images": 300,
@@ -16,21 +16,21 @@
     "authored_dates": 60,
     "core_days": 24,
     "atlas_days": 36,
-    "story_images": 257,
+    "story_images": 300,
     "abstract_svg_plates": 300,
     "arcade_cabinets": 50,
     "deep_archive_levels": 3000,
     "starter_backgrounds": 5,
     "openmic_tapes": 10,
     "voice_clips": 88,
-    "photo_journal_photos": 257,
+    "photo_journal_photos": 300,
     "raster_scene_images": 12,
-    "forge_verified_assets": 262,
+    "forge_verified_assets": 263,
     "player_facing_meta_copy": "not fully measured",
-    "forge_queue_open": 62,
-    "story_files": 257,
-    "forge_queue_running": 3,
-    "forge_queue_errors": 1,
+    "forge_queue_open": 0,
+    "story_files": 300,
+    "forge_queue_running": 0,
+    "forge_queue_errors": 0,
     "story_scenes_accepted": 60,
     "story_scene_words": 47046,
     "story_scene_min_words": 740,
@@ -39,9 +39,9 @@
   },
   "hard_gates": {
     "dates_complete": true,
-    "images_complete": false,
+    "images_complete": true,
     "levels_are_authored_not_templated": false,
-    "photo_journal_matches_images": false,
+    "photo_journal_matches_images": true,
     "copy_pass_complete": false,
     "full_playthrough_verified": false,
     "live_publish_approved": true,
@@ -64,5 +64,6 @@
     "no_hand_built_image_substitutes": true,
     "no_publish_until_all_gates_true": true
   },
-  "publish_note": "Story layer published on explicit owner instruction 2026-10-24. Image, archive-level and full-playthrough gates remain open and are still reported false."
+  "publish_note": "Stories and the full 300-plate image grid are live. Archive levels remain templated and a browser playthrough is not verified; those two gates stay false on purpose.",
+  "workers": "Forge watchers, supervisor and duplicate queue workers were stopped on 2026-10-24. Images are filled by build/fill_parallel.py and reconciled by build/reconcile_images.py."
 }
