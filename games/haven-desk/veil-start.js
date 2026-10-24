@@ -86,6 +86,32 @@
     }
     var sealed = ids.filter(function (id) { return !open(id); });
     if (sealed.length) {
+      // Some dates are not opened by any gate. The private date is recovered
+      // from the personal index, so the thread must say that instead of telling
+      // the player to solve a gate that does not exist.
+      var gateUnlocks = {};
+      ids.forEach(function (from) {
+        var g = D.days[from].gate;
+        (g && g.unlocks || []).forEach(function (n) { gateUnlocks[n] = true; });
+      });
+      var byIndex = sealed.filter(function (id) { return !gateUnlocks[id]; });
+      if (byIndex.length) {
+        return {
+          kicker: "THREAD · THE PRIVATE DATE",
+          label: "The private date is not on the map. Open the personal index and enter 19801231.",
+          act: function () {
+            H.open("calendar");
+            setTimeout(function () {
+              var input = document.querySelector('input[aria-label="personal date recovery"]');
+              if (input) {
+                if (input.scrollIntoView) input.scrollIntoView({ block: "center" });
+                input.focus();
+                input.value = "";
+              }
+            }, 220);
+          }
+        };
+      }
       return {
         kicker: "THREAD · " + String(Object.keys(V.solved || {}).length) + " OF " + ids.length,
         label: "Every open room is sealed. Solve a gate to unlock " + sealed[0] + ".",
@@ -178,6 +204,17 @@
       setTimeout(function () { input.focus(); }, 60);
     }
     paper.addEventListener("click", finish);
+    // Keyboard stays inside the note while it is up.
+    overlay.addEventListener("keydown", function (e) {
+      if (e.key !== "Tab") return;
+      var f = overlay.querySelectorAll("button, input, [href], select, textarea");
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+    var behind = document.getElementById("desk");
+    if (behind) behind.setAttribute("aria-hidden", "true");
     overlay.addEventListener("click", function (e) { if (e.target === overlay) finish(); });
 
     var wrong = 0;
@@ -248,6 +285,8 @@
   }
 
   function close() {
+    var behind = document.getElementById("desk");
+    if (behind) behind.removeAttribute("aria-hidden");
     if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
     overlay = null;
   }
