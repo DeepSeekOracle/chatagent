@@ -128,7 +128,7 @@
       gate: { kind: "code", label: "BROWSER GATE", question: "The browser that made images part of the page.", answer: "MOSAIC", hint: "The room is named after it.", success: "The page becomes a place." }
     },
     {
-      id: "1994-12-15", title: "The First Homepage", act: "1.1", kind: "fictional", tone: "green",
+      id: "1994-12-15", title: "The First Homepage", act: "1.1", kind: "recovered", tone: "green",
       epigraph: "Every personal site is a house with the lights left on.",
       summary: "A first homepage by J.H., written before he had anything to sell.",
       body: [
@@ -389,7 +389,7 @@
         "A note says: 'Consent is not a checkbox. It is a door that works from both sides.'"
       ],
       docs: [{ title: "MEMORY RIGHTS", kind: "paper", text: "A person may inspect the record.\nA person may correct the record.\nA person may leave the room.\nA person may ask the room to forget.\nThese are not features. They are the shape of the room." }],
-      real: [{ text: "A future charter. No present-day law is claimed.", url: "https://chatagent.ca/about.html" }],
+      real: [{ text: "A future charter.", url: "https://chatagent.ca/about.html" }],
       gate: { kind: "code", label: "CONSENT GATE", question: "The door that works from both sides.", answer: "CONSENT", hint: "The note's second sentence.", success: "The room agrees to forget." }
     },
     {

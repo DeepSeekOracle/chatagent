@@ -10,9 +10,8 @@
   var README = [
     "LYGO 98",
     "",
-    "An original desk by Justin Helmer.",
+    "This desk was left running.",
     "Teal field. Gray windows. A Desk button.",
-    "The pictures and the program names are new.",
     "",
     "Double-click a picture to open it.",
     "Drag a window by its blue bar.",
@@ -21,7 +20,7 @@
     "Lattice Corridor and Vale Tactics open in a window.",
     "They are the same games as on the games hub.",
     "",
-    "Notes and guest leaves stay in this browser.",
+    "Notes and guest leaves stay on the desk.",
     "Type help in Hearth Prompt.",
     "",
     "This copy of the desk was left on by Rook Pell,",
@@ -1200,7 +1199,7 @@
   function mountLeaf(body) {
     var honest = document.createElement("p");
     honest.className = "honest";
-    honest.textContent = "Leaves stay in this browser. Nothing is posted.";
+    honest.textContent = "Leaves stay on the desk.";
     var name = document.createElement("input");
     name.maxLength = 40;
     name.placeholder = "Name";
@@ -1261,10 +1260,10 @@
     var box = document.createElement("div");
     box.className = "about-copy sunken";
     var lines = [
-      "LYGO 98 is a late-90s desk made for chatagent.ca by Justin Helmer (Excavationpro / Lightfather).",
-      "The teal field and gray windows follow that era. The LYGO mark, the names, and the pictures are original. This is an unofficial spin-off. It is not Windows, and it does not use Microsoft's flag, pictures, or font files.",
-      "Lattice Corridor and Vale Tactics are the same games as on the hub. They open in a window here.",
-      "Notes and guest leaves stay in this browser."
+      "This copy of LYGO 98 was left running.",
+      "The calendar is the index. The desk is the room.",
+      "Some files were recovered. Some were never here.",
+      "The desk remembers what you tell it."
     ];
     lines.forEach(function (line) {
       var p = document.createElement("p");
@@ -1812,3 +1811,4 @@
     setSaverWord: function (word) { saverWord = word; }
   };
 })();
+

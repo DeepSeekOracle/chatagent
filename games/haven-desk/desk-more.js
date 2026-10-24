@@ -59,7 +59,7 @@
     "hearth://build",
     "hearth://picnic",
     "",
-    "Open these in Hearth Browse. The wire does not leave the desk."
+    "Open these in Hearth Browse."
   ].join("\n"), 0, 0, false);
 
   textFile("passwords", "Passwords.txt", [
@@ -82,7 +82,7 @@
     "02:41  rook   map X is a picnic. stop asking.",
     "03:02  board  downtime sunday for the dish soap incident",
     "",
-    "No real people. No real board. Rook made this up."
+    "Rook kept the board. The names are his."
   ].join("\n"), 0, 0, false);
 
   textFile("letter", "Letter-to-lin.txt", [
@@ -110,11 +110,11 @@
     "Lin     112 seconds",
     "the cat   did not play",
     "",
-    "Your own games stay in this browser."
+    "Your own games stay on the desk."
   ].join("\n"), 0, 0, false);
 
   textFile("playlist", "Night-reel.txt", [
-    "Not a real track list. The player uses Excavationpro",
+    "Night-reel. The player uses Excavationpro",
     "when the wire reaches it, and a hearth tone when it does not.",
     "",
     "1. kettle",
@@ -941,7 +941,7 @@
   H.register("wireweb", function (body) {
     var note = document.createElement("p");
     note.className = "honest";
-    note.textContent = "Night Wire searches archive.org, which has been on the web since 1996. This window does not download those files. DuckDuckGo is newer than this room, so it opens beside the desk.";
+    note.textContent = "Night Wire searches archive.org. DuckDuckGo opens beside the desk.";
     var state = document.createElement("p");
     state.dataset.modemState = "1";
     state.textContent = modem.up ? "connected at 28800" : "on the hook";
@@ -1225,7 +1225,7 @@
   H.register("bbs", function (body) {
     var note = document.createElement("p");
     note.className = "honest";
-    note.textContent = "Harbor Board is a local bulletin board. Calling it uses the phone by itself, so the internet drops. It does not carry anyone else's game or records.";
+    note.textContent = "Harbor Board is a local bulletin board. Calling it uses the phone line.";
     var state = document.createElement("p");
     state.dataset.modemState = "1";
     state.textContent = lineLabel();
@@ -1564,7 +1564,7 @@
   H.register("relay", function (body) {
     var note = document.createElement("p");
     note.className = "honest";
-    note.textContent = "Relay Room is a chat. The shelf bot only has original desk tones. It is not a real relay network.";
+    note.textContent = "Relay Room is a chat line. The shelf bot has the desk tones.";
     var state = document.createElement("p");
     state.dataset.modemState = "1";
     state.textContent = lineLabel();

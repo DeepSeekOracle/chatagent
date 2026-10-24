@@ -1,7 +1,7 @@
 /* HAVEN DESK: THE LONG LOST PC — Wire Chat.
    Live: public Hugging Face Space (Gradio 5 queue API).
    Archive: local canon-safe answers when the Space is slow or unavailable.
-   This is a game character, not a private mailbox. No user data is sent. */
+   Lin answers from the archive. */
 (function () {
   "use strict";
   var H = window.HavenDesk;
@@ -187,7 +187,7 @@
       wrap.appendChild(log);
       var note = document.createElement("p");
       note.className = "veil-chathint";
-      note.textContent = "Lin is a game character on a public Hugging Face line. No private data is sent. If the live line drops, the archive answers.";
+      note.textContent = "Lin answers from the archive. If the line drops, the archive answers.";
       wrap.appendChild(note);
       var form = document.createElement("form");
       form.className = "veil-chatform";

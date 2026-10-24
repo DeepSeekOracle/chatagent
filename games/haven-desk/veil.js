@@ -300,7 +300,7 @@
       var key = monthCursor.year + "-" + String(monthCursor.month + 1).padStart(2, "0") + "-" + String(n).padStart(2, "0");
       var d = day(key);
       var visibleDay = d && (!d.hidden || unlocked(key));
-      var b = button(String(n), "veil-day", function () { if (visibleDay) openDay(key); else toast("NO SIGNAL · this is an ordinary day"); });
+      var b = button(String(n), "veil-day", function () { if (visibleDay) openDay(key); else toast("NO SIGNAL"); });
       if (visibleDay) {
         b.classList.add(unlocked(key) ? "has-signal" : "has-locked");
         b.title = unlocked(key) ? d.title : "signal sealed";
@@ -326,7 +326,7 @@
 
   function renderCasebook() {
     var box = el("div", "veil-case");
-    box.appendChild(el("p", "veil-kicker", "RECOVERED ROOMS · LOCAL SAVE"));
+    box.appendChild(el("p", "veil-kicker", "RECOVERED ROOMS"));
     var solvedIds = Object.keys(D.days).filter(function (id) { return solved(id); });
     if (!solvedIds.length) {
       box.appendChild(el("p", "", "No rooms unsealed yet. Open the Date Map and find the first foundation."));
@@ -354,22 +354,18 @@
   function renderSources() {
     var box = el("div", "veil-sources");
     box.appendChild(el("p", "veil-kicker", "THE PUBLIC SHELF · LINKS THAT SURVIVED"));
-    box.appendChild(el("p", "", "Some of these links are still live. The desk does not ask you to trust the rest; it asks you to check."));
+    box.appendChild(el("p", "", "Some of these links are still live."));
     D.meta.links.forEach(function (l) {
       var a = el("a", "veil-source");
       a.href = l.url; a.target = "_blank"; a.rel = "noopener";
       a.textContent = l.label;
       box.appendChild(a);
     });
-    var rule = el("div", "veil-rule");
-    rule.appendChild(el("b", "", "FIELD NOTE"));
-    rule.appendChild(el("span", "", D.meta.disclaimer));
-    box.appendChild(rule);
-    var media = el("div", "veil-actions");
+        var media = el("div", "veil-actions");
     media.appendChild(button("OPEN LYGO TV", "veil-primary", function () { H.open("veil-media"); }));
     media.appendChild(button("PLAY SIGNAL AUDIO", "raised", function () {
       var audio = box.querySelector("audio");
-      if (audio) { audio.play().catch(function () { toast("The browser blocked autoplay; press play on the audio element."); }); }
+      if (audio) { audio.play().catch(function () { toast("The room stayed quiet. Press play."); }); }
     }));
     box.appendChild(media);
     var audio = el("audio", "veil-audio");
@@ -525,7 +521,7 @@
     } else {
       var final = el("div", "veil-solved");
       final.appendChild(el("b", "", "THE FIRST CALENDAR ENDS"));
-      final.appendChild(el("p", "", "This room is open. The game continues in the rooms you have not found yet."));
+      final.appendChild(el("p", "", "The room is open. The archive is still waiting."));
       final.appendChild(button("RETURN TO THE MAP", "veil-primary", function () { render("map"); }));
       if (id === "2045-09-01") {
         final.appendChild(button("OPEN THE LIGHTFATHER PAPERS", "veil-primary", function () { H.open("lightfather"); }));
@@ -850,14 +846,10 @@
       app.innerHTML = "";
       topBar("THE LONG LOST PC", "FIRST BOOT · A RECOVERED ARCHIVE");
       var introBox = el("div", "veil-intro");
-      introBox.appendChild(el("p", "veil-kicker", "A STORY ABOUT A COMPUTER, A CALENDAR, AND THE THINGS WE LEAVE ON"));
+      introBox.appendChild(el("p", "veil-kicker", "THE DESK WAS LEFT ON"));
       introBox.appendChild(el("h1", "", "It was already warm when you found it."));
-      introBox.appendChild(el("p", "", "The desk says 14 March 1998. The note says the calendar works. You are the visitor. The owner left more than a computer, and less than a confession."));
-      var rule = el("div", "veil-rule");
-      rule.appendChild(el("b", "", "FIELD NOTE"));
-      rule.appendChild(el("span", "", D.meta.disclaimer));
-      introBox.appendChild(rule);
-      var row = el("div", "veil-actions");
+      introBox.appendChild(el("p", "", "The desk says 14 March 1998. The note says the calendar works. There is no password prompt. The owner is gone, and the machine is still running."));
+            var row = el("div", "veil-actions");
       row.appendChild(button("SIT DOWN", "veil-primary", function () { V.seen = true; save(); render("map"); }));
       row.appendChild(button("READ SOURCES", "raised", function () { V.seen = true; save(); render("sources"); }));
       introBox.appendChild(row);
@@ -872,9 +864,9 @@
     app.classList.add("veil-app-hero");
     topBar(D.meta.title, "A LYGO temporal mystery");
     var box = el("div", "veil-intro short");
-    box.appendChild(el("p", "veil-kicker", "THE DESK WAS LEFT ON FOR A REASON"));
-    box.appendChild(el("h1", "", "A life is a room. A calendar is a door."));
-    box.appendChild(el("p", "", "Open the calendar to travel between recovered dates. Each room is sealed by a puzzle, a story, or a minigame. Follow the links where they survived. The rest is the room."));
+    box.appendChild(el("p", "veil-kicker", "THE DESK WAS LEFT ON"));
+    box.appendChild(el("h1", "", "It was already warm when you found it."));
+    box.appendChild(el("p", "", "The calendar says 14 March 1998. There is no password prompt. The owner is gone, and the machine is still running."));
     var row = el("div", "veil-actions");
     row.appendChild(button("OPEN THE CALENDAR", "veil-primary", function () { V.seen = true; save(); H.open("calendar"); }));
     if (archiveUnlocked("echoes")) row.appendChild(button("ECHO VAULT", "raised", function () { H.open("echoes"); }));
@@ -887,7 +879,7 @@
     if (archiveUnlocked("gallery")) row.appendChild(button("PHOTO JOURNAL", "raised", function () { H.open("gallery"); }));
     row.appendChild(button("OPEN LYGO TV", "raised", function () { H.open("veil-media"); }));
     box.appendChild(row);
-    box.appendChild(el("p", "veil-foot", "Begin at 14 March 1998. The first word is a foundation."));
+    box.appendChild(el("p", "veil-foot", "Open the calendar. The first word is a foundation."));
     app.appendChild(box);
   }
 

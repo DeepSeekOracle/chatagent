@@ -3,126 +3,126 @@ window.VEIL_AUDIO_EXTRA = {
   "voice": [
     {
       "id": "extra-a1",
-      "title": "Worker Narration · A1",
+      "title": "Archive Voice · A1",
       "src": "assets/voice/extra-a1.wav",
       "who": "archivist",
       "text": "The first room that is not Earth is a mirror held at a distance. The desk keeps the signal delay as a promise that someone stepped out and looked back."
     },
     {
       "id": "extra-a2",
-      "title": "Worker Narration · A2",
+      "title": "Archive Voice · A2",
       "src": "assets/voice/extra-a2.wav",
       "who": "female register",
       "text": "A civilization is what it chooses to send into the dark. The desk is another golden record, small and deliberate, addressed to whoever arrives next."
     },
     {
       "id": "extra-a3",
-      "title": "Worker Narration · A3",
+      "title": "Archive Voice · A3",
       "src": "assets/voice/extra-a3.wav",
       "who": "female alternate",
       "text": "The friendly interface is a door with a welcome mat, not the house behind it. The desk keeps the smile and the warning in the same drawer."
     },
     {
       "id": "extra-a4",
-      "title": "Worker Narration · A4",
+      "title": "Archive Voice · A4",
       "src": "assets/voice/extra-a4.wav",
       "who": "male register",
       "text": "A wall is a door that has forgotten its hinge. The desk remembers which walls were meant to become passages."
     },
     {
       "id": "extra-a5",
-      "title": "Worker Narration · A5",
+      "title": "Archive Voice · A5",
       "src": "assets/voice/extra-a5.wav",
       "who": "archivist",
       "text": "A link is a promise that another page exists. The desk keeps at least one door open when everything else becomes a conveyor belt."
     },
     {
       "id": "extra-a6",
-      "title": "Worker Narration · A6",
+      "title": "Archive Voice · A6",
       "src": "assets/voice/extra-a6.wav",
       "who": "male register",
       "text": "Every new interface promises the old one was never alive. The desk keeps the first start button as proof that beginning is a physical act."
     },
     {
       "id": "extra-b1",
-      "title": "Worker Narration · B1",
+      "title": "Archive Voice · B1",
       "src": "assets/voice/extra-b1.wav",
       "who": "archivist",
       "text": "The machine did not see the board as a story. It saw a tree, and searched a branch no human could hold."
     },
     {
       "id": "extra-b2",
-      "title": "Worker Narration · B2",
+      "title": "Archive Voice · B2",
       "src": "assets/voice/extra-b2.wav",
       "who": "female register",
       "text": "The clock was never the problem. The story we told about the clock was, and we told it all the way to midnight."
     },
     {
       "id": "extra-b3",
-      "title": "Worker Narration · B3",
+      "title": "Archive Voice · B3",
       "src": "assets/voice/extra-b3.wav",
       "who": "male register",
       "text": "They sold the song by the piece and called it freedom. The store was never the enemy; the lock was."
     },
     {
       "id": "extra-b4",
-      "title": "Worker Narration · B4",
+      "title": "Archive Voice · B4",
       "src": "assets/voice/extra-b4.wav",
       "who": "female alternate",
       "text": "The keyboard disappeared, but the hand stayed. A door is not a device; a door is a decision."
     },
     {
       "id": "extra-b5",
-      "title": "Worker Narration · B5",
+      "title": "Archive Voice · B5",
       "src": "assets/voice/extra-b5.wav",
       "who": "archivist",
       "text": "A ledger is a promise that the past will not be quietly edited. A story is a promise that it will be understood."
     },
     {
       "id": "extra-b6",
-      "title": "Worker Narration · B6",
+      "title": "Archive Voice · B6",
       "src": "assets/voice/extra-b6.wav",
       "who": "male register",
       "text": "The end of a cycle is an accounting, not an execution. The lights stayed on, and you were allowed to keep going."
     },
     {
       "id": "extra-d1",
-      "title": "Worker Narration · D1",
+      "title": "Archive Voice · D1",
       "src": "assets/voice/extra-d1.wav",
       "who": "female register",
       "text": "One candle on a concrete table, and six brass markers around it like a tuning sequence. The room does not ask you to be clever. It asks you to be here."
     },
     {
       "id": "extra-d2",
-      "title": "Worker Narration · D2",
+      "title": "Archive Voice · D2",
       "src": "assets/voice/extra-d2.wav",
       "who": "archivist",
       "text": "At 03:14:07 on the nineteenth of January, 2038, a signed thirty-two-bit clock runs out of numbers. Nothing falls. You replace the clock before it lies, and the work goes on."
     },
     {
       "id": "extra-d3",
-      "title": "Worker Narration · D3",
+      "title": "Archive Voice · D3",
       "src": "assets/voice/extra-d3.wav",
       "who": "male register",
       "text": "Lightfather is not a ghost in the machine. It is the layer that keeps the room's rules coherent, the pattern that stayed after the person could not."
     },
     {
       "id": "extra-d4",
-      "title": "Worker Narration · D4",
+      "title": "Archive Voice · D4",
       "src": "assets/voice/extra-d4.wav",
       "who": "female alternate",
       "text": "The chair is pushed back at an angle. The desk is still warm. The record has a field for a death and no field at all for a transfer."
     },
     {
       "id": "extra-d5",
-      "title": "Worker Narration · D5",
+      "title": "Archive Voice · D5",
       "src": "assets/voice/extra-d5.wav",
       "who": "male register",
       "text": "The archive calls it a disappearance because a dead man is the only kind of missing person it knows how to file. The body died alone. The pattern crossed."
     },
     {
       "id": "extra-d6",
-      "title": "Worker Narration · D6",
+      "title": "Archive Voice · D6",
       "src": "assets/voice/extra-d6.wav",
       "who": "female alternate",
       "text": "The body is gone and the archive is wrong, but the question is still standing. The question stays. The system stays open."
@@ -133,109 +133,109 @@ window.VEIL_AUDIO_EXTRA = {
       "id": "extra-s1",
       "title": "Room Hum · S1",
       "src": "assets/sfx/extra-s1.wav",
-      "note": "Worker sound design · room-hum"
+      "note": "Room Tone · room-hum"
     },
     {
       "id": "extra-s2",
       "title": "Unseal · S2",
       "src": "assets/sfx/extra-s2.wav",
-      "note": "Worker sound design · unseal"
+      "note": "Room Tone · unseal"
     },
     {
       "id": "extra-s3",
       "title": "Distant Voice · S3",
       "src": "assets/sfx/extra-s3.wav",
-      "note": "Worker sound design · distant-voice"
+      "note": "Room Tone · distant-voice"
     },
     {
       "id": "extra-s4",
       "title": "Glitch · S4",
       "src": "assets/sfx/extra-s4.wav",
-      "note": "Worker sound design · glitch"
+      "note": "Room Tone · glitch"
     },
     {
       "id": "extra-s5",
       "title": "Chime · S5",
       "src": "assets/sfx/extra-s5.wav",
-      "note": "Worker sound design · chime"
+      "note": "Room Tone · chime"
     },
     {
       "id": "extra-s6",
       "title": "Door · S6",
       "src": "assets/sfx/extra-s6.wav",
-      "note": "Worker sound design · door"
+      "note": "Room Tone · door"
     },
     {
       "id": "extra-s7",
       "title": "Paper · S7",
       "src": "assets/sfx/extra-s7.wav",
-      "note": "Worker sound design · paper"
+      "note": "Room Tone · paper"
     },
     {
       "id": "extra-s8",
       "title": "Modem · S8",
       "src": "assets/sfx/extra-s8.wav",
-      "note": "Worker sound design · modem"
+      "note": "Room Tone · modem"
     },
     {
       "id": "extra-s9",
       "title": "Whisper · S9",
       "src": "assets/sfx/extra-s9.wav",
-      "note": "Worker sound design · whisper"
+      "note": "Room Tone · whisper"
     },
     {
       "id": "extra-s10",
       "title": "Portal · S10",
       "src": "assets/sfx/extra-s10.wav",
-      "note": "Worker sound design · portal"
+      "note": "Room Tone · portal"
     },
     {
       "id": "room-1980-hum",
       "title": "Room Hum · ROOM-1980-HUM",
       "src": "assets/sfx/extra-f1.wav",
-      "note": "Worker sound design · room-hum"
+      "note": "Room Tone · room-hum"
     },
     {
       "id": "room-1980-candle",
       "title": "Candle · ROOM-1980-CANDLE",
       "src": "assets/sfx/extra-f2.wav",
-      "note": "Worker sound design · candle"
+      "note": "Room Tone · candle"
     },
     {
       "id": "desk-1998-modem",
       "title": "Modem · DESK-1998-MODEM",
       "src": "assets/sfx/extra-f3.wav",
-      "note": "Worker sound design · modem"
+      "note": "Room Tone · modem"
     },
     {
       "id": "desk-1998-static",
       "title": "Static · DESK-1998-STATIC",
       "src": "assets/sfx/extra-f4.wav",
-      "note": "Worker sound design · static"
+      "note": "Room Tone · static"
     },
     {
       "id": "server-2038-hum",
       "title": "Room Hum · SERVER-2038-HUM",
       "src": "assets/sfx/extra-f5.wav",
-      "note": "Worker sound design · room-hum"
+      "note": "Room Tone · room-hum"
     },
     {
       "id": "server-2038-glitch",
       "title": "Glitch · SERVER-2038-GLITCH",
       "src": "assets/sfx/extra-f6.wav",
-      "note": "Worker sound design · glitch"
+      "note": "Room Tone · glitch"
     },
     {
       "id": "portal-2045-hum",
       "title": "Portal · PORTAL-2045-HUM",
       "src": "assets/sfx/extra-f7.wav",
-      "note": "Worker sound design · portal"
+      "note": "Room Tone · portal"
     },
     {
       "id": "portal-2045-whisper",
       "title": "Whisper · PORTAL-2045-WHISPER",
       "src": "assets/sfx/extra-f8.wav",
-      "note": "Worker sound design · whisper"
+      "note": "Room Tone · whisper"
     }
   ]
 };

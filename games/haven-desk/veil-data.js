@@ -11,7 +11,6 @@
       version: "0.1.0-foundation",
       start: "1998-03-14",
       owner: "J.H.",
-      disclaimer: "The archive is incomplete. Public links are the checkable spine; the rooms are what the desk could recover.",
       tagline: "The computer remembers a life that has not happened yet.",
       links: [
         { label: "About Justin Helmer", url: "https://chatagent.ca/about.html" },
@@ -62,7 +61,7 @@
           { text: "14 March is Pi Day (3.14).", url: "https://www.piday.org/" }
         ],
         links: [
-          { label: "About the real public work", url: "https://chatagent.ca/about.html" }
+          { label: "About the public work", url: "https://chatagent.ca/about.html" }
         ],
         music: { title: "Desk hum (silence)", url: "" },
         voice: { title: "The Monitor Note", src: "assets/voice/1998-monitor.wav" },

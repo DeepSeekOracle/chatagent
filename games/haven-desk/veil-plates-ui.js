@@ -87,7 +87,7 @@
       img.src = p.src; img.alt = p.title;
       frame.appendChild(img);
       app.appendChild(frame);
-      app.appendChild(el("p", "veil-hint", "Recovered from the temporal stack. No third-party imagery."));
+      app.appendChild(el("p", "veil-hint", "Recovered from the temporal stack."));
       var a = document.createElement("a");
       a.className = "veil-primary";
       a.href = p.src; a.download = p.id + ".svg"; a.textContent = "DOWNLOAD PLATE";
