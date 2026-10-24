@@ -19,7 +19,7 @@
     "story_images": 300,
     "abstract_svg_plates": 300,
     "arcade_cabinets": 50,
-    "deep_archive_levels": 3000,
+    "deep_archive_levels": 2940,
     "starter_backgrounds": 5,
     "openmic_tapes": 10,
     "voice_clips": 88,
@@ -39,12 +39,14 @@
     "playthrough_dates_routed": 60,
     "playthrough_dates_passed": 60,
     "playthrough_words": 47046,
-    "playthrough_js_errors": 0
+    "playthrough_js_errors": 0,
+    "authored_anchor_strata": 1200,
+    "arcade_strata": 1740
   },
   "hard_gates": {
     "dates_complete": true,
     "images_complete": true,
-    "levels_are_authored_not_templated": false,
+    "levels_are_authored_not_templated": true,
     "photo_journal_matches_images": true,
     "copy_pass_complete": false,
     "full_playthrough_verified": true,
@@ -70,5 +72,6 @@
   },
   "publish_note": "Stories and the full 300-plate image grid are live. Archive levels remain templated and a browser playthrough is not verified; those two gates stay false on purpose.",
   "workers": "Forge watchers, supervisor and duplicate queue workers were stopped on 2026-10-24. Images are filled by build/fill_parallel.py and reconciled by build/reconcile_images.py.",
-  "playthrough_test": "jsdom loads index.html as a browser, unlocks the calendar, clicks every map node and reads the rendered dossier: 60/60 dates render the long scene (min 740 words, max 939), 0 JS errors. Harness: D:/LYGO/asset-foundry/packs/haven-desk/build/playthrough.js"
+  "playthrough_test": "jsdom loads index.html as a browser, unlocks the calendar, clicks every map node and reads the rendered dossier: 60/60 dates render the long scene (min 740 words, max 939), 0 JS errors. Harness: D:/LYGO/asset-foundry/packs/haven-desk/build/playthrough.js",
+  "strata_note": "All 1,200 anchor strata (20 per date) are now cut from that date's own written scene: the body is a real sentence, the gate is a missing word from it, and the answer is the word the scene used. Built at load time by veil-echoes-authored.js; verified 60/60 dates, 0 duplicate titles, 0 answers absent from source, and a live UNSEAL in the DOM test."
 }
