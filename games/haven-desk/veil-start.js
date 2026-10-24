@@ -93,9 +93,9 @@
       };
     }
     return {
-      kicker: "THREAD COMPLETE",
-      label: "Sixty rooms unsealed. The Echo Vault is open.",
-      act: function () { H.open("echoes"); }
+      kicker: "THREAD COMPLETE · 60 OF 60",
+      label: "Read the last page of the index.",
+      act: function () { H.open("lastpage"); }
     };
   }
 
@@ -106,12 +106,19 @@
     if (!bar) {
       bar = el("div", "veil-thread");
       bar.id = "veil-thread";
+      bar.setAttribute("role", "status");
+      bar.setAttribute("aria-live", "polite");
       desk.appendChild(bar);
     }
     var o = objective();
+    var sig = o.kicker + "|" + o.label;
+    // Rebuilding the bar on a timer steals focus from whatever the player is
+    // using. Only repaint when the objective actually changes.
+    if (bar.dataset.sig === sig) return;
+    bar.dataset.sig = sig;
     bar.innerHTML = "";
     bar.appendChild(el("span", "veil-thread-kicker", o.kicker));
-    var go = btn(o.label, "veil-thread-go", function () { o.act(); paintThread(); });
+    var go = btn(o.label, "veil-thread-go", function () { o.act(); setTimeout(paintThread, 300); });
     bar.appendChild(go);
     bar.dataset.label = o.label;
   }
@@ -237,6 +244,7 @@
     var next = body.querySelector("button");
     if (next) setTimeout(function () { next.focus(); }, 80);
     paintThread();
+    ensureKooter();
   }
 
   function close() {
@@ -250,20 +258,161 @@
     build(onSetup);
   }
 
+  /* ---------- Kooter, on the desk ---------- */
+
+  function kooterApp(body) {
+    var app = el("div", "veil-app");
+    body.appendChild(app);
+    var top = el("div", "veil-top");
+    var brand = el("div", "veil-brand");
+    brand.appendChild(el("span", "veil-mark", "Δ9"));
+    var copy = el("div");
+    copy.appendChild(el("strong", "", "KOOTER"));
+    copy.appendChild(el("small", "", "2005 · 30 JAN 2023 · ONE HOUSE, ONE DESK"));
+    brand.appendChild(copy);
+    top.appendChild(brand);
+    app.appendChild(top);
+
+    var fig = el("figure", "veil-memorial");
+    var img = document.createElement("img");
+    img.src = "assets/story/2023-03-14/1-memorial.jpg";
+    img.alt = "Kooter on a pale floor";
+    img.loading = "lazy";
+    fig.appendChild(img);
+    var cap = el("figcaption", "", "The only one in the house who never asked me to be somebody else.");
+    fig.appendChild(cap);
+    app.appendChild(fig);
+
+    [
+      "He was here for eighteen years, and the desk was on for all of them.",
+      "He slept on the bench in the afternoon, in the corner where the lamp's heat collects, and that corner is still warm.",
+      "When the desk is asked what it remembers, it does not answer with a name. It answers with a frequency at twenty-five, which is the rate a warm animal holds when it is asleep.",
+      "The room does not pretend to be him. That was the last instruction it was given, and it keeps it."
+    ].forEach(function (line) {
+      app.appendChild(el("p", "veil-prose", line));
+    });
+    app.appendChild(el("p", "veil-hint", "RECOVERED FROM 2023-03-14 · THE QUARTER PAGE IN THE DRAWER"));
+  }
+
+  function ensureKooter() {
+    // The mount has to be re-registered on every load: the file list survives in
+    // the save, the app registry does not.
+    H.register("kooter-card", kooterApp);
+    if (!V.flags || !V.flags.firstNote) return;
+    var files = H.files || [];
+    for (var i = 0; i < files.length; i++) if (files[i].id === "kooter-card") return;
+    H.addFile({ id: "kooter-card", name: "Kooter.jpg", kind: "app", icon: "page",
+                x: 470, y: 8, wide: 620, high: 620 });
+    if (H.refresh) H.refresh();
+  }
+
+  /* ---------- the last page ---------- */
+
+  var LAST_PAGE = [
+    "Sixty rooms and one that was never in the index. You have been through every date this machine kept, and it never once asked you to be impressed. It asked you to read a label, hold a meter steady, and notice which wall had been built to become a door.",
+    "The desk is still on. It has been on since a morning in March when somebody sat down, wrote a note in small even handwriting, and left the fan running. Everything in this house was built to be left on.",
+    "The bench has one warm spot. It has been warm for twenty-two years. A machine kept it because somebody asked it to, and then somebody stopped asking, and it went on doing it anyway.",
+    "There is no ceremony in the last room. A lamp, a warm place on a bench, a frequency at twenty-five, and a chair that still gives a half inch when a person sits down.",
+    "You were not the first visitor. You were the first one who stayed long enough to read the whole index. The difference between a record and a room is that somebody has to be in it.",
+    "The calendar is still counting. Somebody else will sit down."
+  ];
+
+  function lastPageApp(body) {
+    var app = el("div", "veil-app");
+    body.appendChild(app);
+    var top = el("div", "veil-top");
+    var brand = el("div", "veil-brand");
+    brand.appendChild(el("span", "veil-mark", "Δ9"));
+    var copy = el("div");
+    copy.appendChild(el("strong", "", "THE LAST PAGE"));
+    copy.appendChild(el("small", "", "INDEX COMPLETE · 60 OF 60 · ONE PRIVATE DATE"));
+    brand.appendChild(copy);
+    top.appendChild(brand);
+    app.appendChild(top);
+    var hero = el("div", "veil-hero amber");
+    hero.appendChild(el("span", "veil-kicker", "THE DESK IS STILL ON"));
+    hero.appendChild(el("h1", "", "The index is complete."));
+    hero.appendChild(el("p", "veil-summary", "There is no final gate. There is a room that was left warm."));
+    app.appendChild(hero);
+    LAST_PAGE.forEach(function (line) { app.appendChild(el("p", "veil-prose", line)); });
+    var words = 0;
+    Object.keys(D.days).forEach(function (id) {
+      var row = D.days[id];
+      if (row && row.body) words += row.body.join(" ").split(/\s+/).length;
+    });
+    app.appendChild(el("p", "veil-hint", "ROOMS · 60 · STORY WORDS · " + words + " · KEEPER · J.H."));
+  }
+
+  function ensureLastPage() {
+    H.register("lastpage", lastPageApp);
+    var files = H.files || [];
+    for (var i = 0; i < files.length; i++) if (files[i].id === "lastpage") return;
+    H.addFile({ id: "lastpage", name: "The Last Page", kind: "app", icon: "note",
+                x: 200, y: 554, wide: 680, high: 560 });
+    if (H.refresh) H.refresh();
+  }
+
+  function allSolved() {
+    var ids = Object.keys(D.days);
+    for (var i = 0; i < ids.length; i++) if (!solved(ids[i])) return false;
+    return true;
+  }
+
+  function showEnding() {
+    if (document.getElementById("veil-final")) return;
+    var wrap = el("div", "veil-first veil-final");
+    wrap.id = "veil-final";
+    var sheet = el("div", "veil-first-sheet");
+    sheet.appendChild(el("p", "veil-first-head", "THE NOTE · LAST SIDE · NO DATE"));
+    var done = el("div", "veil-first-done");
+    done.appendChild(el("h2", "", "The index is complete."));
+    done.appendChild(el("p", "", "Sixty rooms. One that was never in it. The desk is still on, and the line at the bottom of the screen has run out of things to ask you for."));
+    done.appendChild(el("p", "veil-first-small", "The Last Page is on the desk now. It stays there."));
+    var row = el("div", "veil-actions");
+    row.appendChild(btn("READ THE LAST PAGE", "veil-primary", function () {
+      removeEnding();
+      H.open("lastpage");
+    }));
+    row.appendChild(btn("STAY AT THE DESK", "raised", removeEnding));
+    done.appendChild(row);
+    sheet.appendChild(done);
+    wrap.appendChild(sheet);
+    document.body.appendChild(wrap);
+    if (window.VEIL_AUDIO && window.VEIL_AUDIO.playSfx) {
+      try { window.VEIL_AUDIO.playSfx("assets/sfx/chime.wav"); } catch (e) {}
+    }
+  }
+  function removeEnding() {
+    var n = document.getElementById("veil-final");
+    if (n && n.parentNode) n.parentNode.removeChild(n);
+  }
+
+  function checkComplete() {
+    if (!allSolved()) return;
+    if (!ensureLastPage.done) { ensureLastPage.done = true; ensureLastPage(); }
+    if (!V.flags.indexComplete) {
+      V.flags.indexComplete = new Date().toISOString();
+      save();
+      showEnding();
+    }
+  }
+
   /* ---------- boot ---------- */
 
   var bootEl = document.getElementById("boot");
   if (bootEl) bootEl.classList.add("veil-boot");
 
   stageDesktop();
-  setTimeout(function () {
-    stageDesktop();
+  function tick() {
     paintThread();
-  }, 400);
-  setInterval(paintThread, 2500);
+    ensureKooter();
+    checkComplete();
+  }
+  setTimeout(function () { stageDesktop(); tick(); }, 400);
+  setInterval(tick, 2500);
   // Any click can change the state (a gate unsealed, a room opened): repaint the
   // thread a moment later so the line never goes stale.
-  document.addEventListener("click", function () { setTimeout(paintThread, 420); }, true);
+  document.addEventListener("click", function () { setTimeout(tick, 420); }, true);
 
   window.VEIL_START = {
     // begin() respects the first-run guard; reopen() forces the note back up.
