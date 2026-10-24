@@ -232,6 +232,7 @@
     Object.keys(D.days).forEach(function (id) {
       var d = D.days[id];
       if (d.hidden && !unlocked(id)) return;
+      if (V.mapFilter === "open" && !unlocked(id)) return;
       var p = POS[id];
       var b = button("", "veil-node" + (unlocked(id) ? "" : " is-locked") + (solved(id) ? " is-solved" : ""), function () { openDay(id); });
       if (id === nextId) b.classList.add("is-next");
@@ -253,6 +254,13 @@
       legend.appendChild(s);
     });
     legend.appendChild(el("span", "veil-hint", "click a room · locked rooms name their predecessor"));
+    var mapFilter = button(V.mapFilter === "open" ? "SHOW ALL ROOMS" : "SHOW OPEN ONLY", "raised", function () {
+      V.mapFilter = V.mapFilter === "open" ? "all" : "open";
+      save();
+      render("map");
+    });
+    mapFilter.className = "veil-filter";
+    legend.appendChild(mapFilter);
     app.appendChild(legend);
     var recover = el("div", "veil-recover");
     var input = el("input", "veil-input");
