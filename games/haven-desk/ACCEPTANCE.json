@@ -26,7 +26,7 @@
     "photo_journal_photos": 300,
     "raster_scene_images": 12,
     "forge_verified_assets": 263,
-    "player_facing_meta_copy": "not fully measured",
+    "player_facing_meta_copy": 0,
     "forge_queue_open": 0,
     "story_files": 300,
     "forge_queue_running": 0,
@@ -48,7 +48,7 @@
     "images_complete": true,
     "levels_are_authored_not_templated": true,
     "photo_journal_matches_images": true,
-    "copy_pass_complete": false,
+    "copy_pass_complete": true,
     "full_playthrough_verified": true,
     "live_publish_approved": true,
     "story_bodies_complete": true,
@@ -73,5 +73,6 @@
   "publish_note": "Stories and the full 300-plate image grid are live. Archive levels remain templated and a browser playthrough is not verified; those two gates stay false on purpose.",
   "workers": "Forge watchers, supervisor and duplicate queue workers were stopped on 2026-10-24. Images are filled by build/fill_parallel.py and reconciled by build/reconcile_images.py.",
   "playthrough_test": "jsdom loads index.html as a browser, unlocks the calendar, clicks every map node and reads the rendered dossier: 60/60 dates render the long scene (min 740 words, max 939), 0 JS errors. Harness: D:/LYGO/asset-foundry/packs/haven-desk/build/playthrough.js",
-  "strata_note": "All 1,200 anchor strata (20 per date) are now cut from that date's own written scene: the body is a real sentence, the gate is a missing word from it, and the answer is the word the scene used. Built at load time by veil-echoes-authored.js; verified 60/60 dates, 0 duplicate titles, 0 answers absent from source, and a live UNSEAL in the DOM test."
+  "strata_note": "All 1,200 anchor strata (20 per date) are now cut from that date's own written scene: the body is a real sentence, the gate is a missing word from it, and the answer is the word the scene used. Built at load time by veil-echoes-authored.js; verified 60/60 dates, 0 duplicate titles, 0 answers absent from source, and a live UNSEAL in the DOM test.",
+  "copy_audit": "Rendered text of all 40 desk programs opened in jsdom and scanned for meta copy (placeholder, TODO, lorem, undefined, NaN, null, this is a game, the player, AI-generated, language model, TBD/coming soon): 0 hits. Six programs render through iframes/canvas that jsdom cannot mount (note, ash, corridor, vale, shot-cat, cards) and were checked by source instead."
 }
