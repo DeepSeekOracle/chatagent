@@ -288,6 +288,38 @@ window.VEIL_STORY_ENTRIES = [
     "note": "Recovered story image."
   },
   {
+    "date": "1981-08-12",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/1981-08-12/2-object.jpg",
+    "title": "1981-08-12 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1981-08-12",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/1981-08-12/3-afterimage.jpg",
+    "title": "1981-08-12 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1981-08-12",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/1981-08-12/4-document.jpg",
+    "title": "1981-08-12 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1981-08-12",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/1981-08-12/5-future.jpg",
+    "title": "1981-08-12 · future",
+    "note": "Recovered story image."
+  },
+  {
     "date": "1983-01-01",
     "index": 1,
     "pass": "scene",
@@ -365,6 +397,14 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/1984-01-24/5-future.jpg",
     "title": "1984-01-24 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1985-11-20",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/1985-11-20/1-scene.jpg",
+    "title": "1985-11-20 · scene",
     "note": "Recovered story image."
   },
   {
@@ -480,11 +520,59 @@ window.VEIL_STORY_ENTRIES = [
     "note": "Recovered story image."
   },
   {
+    "date": "1990-11-12",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/1990-11-12/1-scene.jpg",
+    "title": "1990-11-12 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1990-11-12",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/1990-11-12/2-object.jpg",
+    "title": "1990-11-12 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1990-11-12",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/1990-11-12/3-afterimage.jpg",
+    "title": "1990-11-12 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1990-11-12",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/1990-11-12/4-document.jpg",
+    "title": "1990-11-12 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1990-11-12",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/1990-11-12/5-future.jpg",
+    "title": "1990-11-12 · future",
+    "note": "Recovered story image."
+  },
+  {
     "date": "1991-08-06",
     "index": 1,
     "pass": "scene",
     "src": "assets/story/1991-08-06/1-scene.jpg",
     "title": "1991-08-06 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1991-08-06",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/1991-08-06/2-object.jpg",
+    "title": "1991-08-06 · object",
     "note": "Recovered story image."
   },
   {
@@ -509,6 +597,14 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/1991-08-06/5-future.jpg",
     "title": "1991-08-06 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "1993-04-22",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/1993-04-22/1-scene.jpg",
+    "title": "1993-04-22 · scene",
     "note": "Recovered story image."
   },
   {
@@ -1064,6 +1160,46 @@ window.VEIL_STORY_ENTRIES = [
     "note": "Recovered story image."
   },
   {
+    "date": "2008-10-31",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2008-10-31/1-scene.jpg",
+    "title": "2008-10-31 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2008-10-31",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/2008-10-31/2-object.jpg",
+    "title": "2008-10-31 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2008-10-31",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/2008-10-31/3-afterimage.jpg",
+    "title": "2008-10-31 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2008-10-31",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/2008-10-31/4-document.jpg",
+    "title": "2008-10-31 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2008-10-31",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/2008-10-31/5-future.jpg",
+    "title": "2008-10-31 · future",
+    "note": "Recovered story image."
+  },
+  {
     "date": "2009-01-03",
     "index": 1,
     "pass": "scene",
@@ -1104,6 +1240,46 @@ window.VEIL_STORY_ENTRIES = [
     "note": "Recovered story image."
   },
   {
+    "date": "2010-04-03",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2010-04-03/1-scene.jpg",
+    "title": "2010-04-03 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2010-04-03",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/2010-04-03/2-object.jpg",
+    "title": "2010-04-03 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2010-04-03",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/2010-04-03/3-afterimage.jpg",
+    "title": "2010-04-03 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2010-04-03",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/2010-04-03/4-document.jpg",
+    "title": "2010-04-03 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2010-04-03",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/2010-04-03/5-future.jpg",
+    "title": "2010-04-03 · future",
+    "note": "Recovered story image."
+  },
+  {
     "date": "2011-10-04",
     "index": 1,
     "pass": "scene",
@@ -1141,6 +1317,46 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/2011-10-04/5-future.jpg",
     "title": "2011-10-04 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2012-08-06",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2012-08-06/1-scene.jpg",
+    "title": "2012-08-06 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2012-08-06",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/2012-08-06/2-object.jpg",
+    "title": "2012-08-06 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2012-08-06",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/2012-08-06/3-afterimage.jpg",
+    "title": "2012-08-06 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2012-08-06",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/2012-08-06/4-document.jpg",
+    "title": "2012-08-06 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2012-08-06",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/2012-08-06/5-future.jpg",
+    "title": "2012-08-06 · future",
     "note": "Recovered story image."
   },
   {
@@ -1225,6 +1441,14 @@ window.VEIL_STORY_ENTRIES = [
   },
   {
     "date": "2014-06-10",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2014-06-10/1-scene.jpg",
+    "title": "2014-06-10 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2014-06-10",
     "index": 2,
     "pass": "object",
     "src": "assets/story/2014-06-10/2-object.jpg",
@@ -1297,6 +1521,14 @@ window.VEIL_STORY_ENTRIES = [
   },
   {
     "date": "2015-12-11",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2015-12-11/1-scene.jpg",
+    "title": "2015-12-11 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2015-12-11",
     "index": 2,
     "pass": "object",
     "src": "assets/story/2015-12-11/2-object.jpg",
@@ -1325,6 +1557,14 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/2015-12-11/5-future.jpg",
     "title": "2015-12-11 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2016-03-10",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2016-03-10/1-scene.jpg",
+    "title": "2016-03-10 · scene",
     "note": "Recovered story image."
   },
   {
@@ -1401,6 +1641,14 @@ window.VEIL_STORY_ENTRIES = [
   },
   {
     "date": "2018-06-11",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2018-06-11/1-scene.jpg",
+    "title": "2018-06-11 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2018-06-11",
     "index": 2,
     "pass": "object",
     "src": "assets/story/2018-06-11/2-object.jpg",
@@ -1429,6 +1677,14 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/2018-06-11/5-future.jpg",
     "title": "2018-06-11 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2019-06-01",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2019-06-01/1-scene.jpg",
+    "title": "2019-06-01 · scene",
     "note": "Recovered story image."
   },
   {
@@ -1784,6 +2040,54 @@ window.VEIL_STORY_ENTRIES = [
     "note": "Recovered story image."
   },
   {
+    "date": "2027-01-01",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2027-01-01/1-scene.jpg",
+    "title": "2027-01-01 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2027-01-01",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/2027-01-01/2-object.jpg",
+    "title": "2027-01-01 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2027-01-01",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/2027-01-01/3-afterimage.jpg",
+    "title": "2027-01-01 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2027-01-01",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/2027-01-01/4-document.jpg",
+    "title": "2027-01-01 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2027-01-01",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/2027-01-01/5-future.jpg",
+    "title": "2027-01-01 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2029-04-04",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2029-04-04/1-scene.jpg",
+    "title": "2029-04-04 · scene",
+    "note": "Recovered story image."
+  },
+  {
     "date": "2029-04-04",
     "index": 2,
     "pass": "object",
@@ -1813,6 +2117,46 @@ window.VEIL_STORY_ENTRIES = [
     "pass": "future",
     "src": "assets/story/2029-04-04/5-future.jpg",
     "title": "2029-04-04 · future",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2031-01-01",
+    "index": 1,
+    "pass": "scene",
+    "src": "assets/story/2031-01-01/1-scene.jpg",
+    "title": "2031-01-01 · scene",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2031-01-01",
+    "index": 2,
+    "pass": "object",
+    "src": "assets/story/2031-01-01/2-object.jpg",
+    "title": "2031-01-01 · object",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2031-01-01",
+    "index": 3,
+    "pass": "afterimage",
+    "src": "assets/story/2031-01-01/3-afterimage.jpg",
+    "title": "2031-01-01 · afterimage",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2031-01-01",
+    "index": 4,
+    "pass": "document",
+    "src": "assets/story/2031-01-01/4-document.jpg",
+    "title": "2031-01-01 · document",
+    "note": "Recovered story image."
+  },
+  {
+    "date": "2031-01-01",
+    "index": 5,
+    "pass": "future",
+    "src": "assets/story/2031-01-01/5-future.jpg",
+    "title": "2031-01-01 · future",
     "note": "Recovered story image."
   },
   {
