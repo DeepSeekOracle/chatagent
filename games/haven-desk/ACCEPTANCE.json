@@ -1,6 +1,6 @@
 {
   "game": "Haven Desk: The Long Lost PC",
-  "status": "incomplete",
+  "status": "stories_complete_assets_incomplete",
   "targets": {
     "authored_dates": 60,
     "story_images": 300,
@@ -30,7 +30,12 @@
     "forge_queue_open": 62,
     "story_files": 257,
     "forge_queue_running": 3,
-    "forge_queue_errors": 1
+    "forge_queue_errors": 1,
+    "story_scenes_accepted": 60,
+    "story_scene_words": 47046,
+    "story_scene_min_words": 740,
+    "story_scene_max_words": 939,
+    "kooter_memorial_photo": 1
   },
   "hard_gates": {
     "dates_complete": true,
@@ -39,7 +44,9 @@
     "photo_journal_matches_images": false,
     "copy_pass_complete": false,
     "full_playthrough_verified": false,
-    "live_publish_approved": false
+    "live_publish_approved": true,
+    "story_bodies_complete": true,
+    "kooter_memorial_wired": true
   },
   "source_of_truth": {
     "data": "games/haven-desk/veil-data.js",
@@ -48,11 +55,14 @@
     "plates": "games/haven-desk/assets/plates",
     "forge_contract": "D:/LYGO/asset-foundry/contracts/haven-desk.json",
     "forge_packs": "D:/LYGO/asset-foundry/packs/haven-desk",
-    "forge_queue": "D:/LYGO/asset-foundry/queue/jobs.json"
+    "forge_queue": "D:/LYGO/asset-foundry/queue/jobs.json",
+    "stories_synced": "games/haven-desk/veil-stories.js",
+    "stories_accepted": "D:/LYGO/asset-foundry/packs/haven-desk/story/accepted"
   },
   "rules": {
     "all_new_assets_through_forge": true,
     "no_hand_built_image_substitutes": true,
     "no_publish_until_all_gates_true": true
-  }
+  },
+  "publish_note": "Story layer published on explicit owner instruction 2026-10-24. Image, archive-level and full-playthrough gates remain open and are still reported false."
 }
