@@ -287,3 +287,20 @@
   letter-spacing: 0.08em;
   padding: 3px 8px;
 }
+
+/* ---------- respect reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .veil-first,
+  .veil-first-sheet,
+  .veil-first-sheet.is-shake,
+  #boot.veil-boot p,
+  .veil-first-paper::after,
+  .veil-node.is-next,
+  #desktop.veil-first-boot .icon,
+  #desktop.veil-first-reveal .icon {
+    animation: none !important;
+    transition: none !important;
+  }
+  .veil-first-paper::after { content: ""; }
+}

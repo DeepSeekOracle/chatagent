@@ -11,6 +11,7 @@ node qa/test_gates.js      # lights / memory / bits / sequence gates solve
 node qa/test_finale.js     # candle choice + portal sequence -> ending appears
 node qa/test_ending.js     # 60/60 -> ending card, Last Page item, thread state
 node qa/test_filter.js     # map filter: 59 rooms <-> open only
+node qa/test_sweep.js      # note focus trap, aria, and the private-date dead end
 node qa/playthrough_local.js  # all 60 rooms render their long scene
 ```
 
