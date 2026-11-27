@@ -15,6 +15,18 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=20261018e">
+<meta name="google-adsense-account" content="ca-pub-0646320966060599">
+<meta property="og:image" content="https://chatagent.ca/assets/og-home.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="chatagent.ca">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Excavationpro">
+<meta name="twitter:title" content="AGENT BUILD: add an image, sound or video engine | chatagent.ca">
+<meta name="twitter:description" content="Install one local engine on your own machine — Qwen-Image 2.1, ACE-Step 1.5 or Wan 2.2 — and the LYGO portal uses it. A copy-paste brief your agent runs, official download links, and the one-file bridge the page talks to. You do not need the whole suite.">
+<meta name="twitter:image" content="https://chatagent.ca/assets/og-home.jpg">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "name": "AGENT BUILD: add an image, sound or video engine | chatagent.ca", "url": "https://chatagent.ca/portal/limbs.html", "description": "Install one local engine on your own machine — Qwen-Image 2.1, ACE-Step 1.5 or Wan 2.2 — and the LYGO portal uses it. A copy-paste brief your agent runs, official download links, and the one-file bridge the page talks to. You do not need the whole suite.", "inLanguage": "en", "isPartOf": {"@type": "WebSite", "name": "chatagent.ca", "url": "https://chatagent.ca/"}, "author": {"@type": "Person", "name": "Justin Helmer", "alternateName": "Excavationpro", "url": "https://chatagent.ca/about.html"}}</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
 </head>
 <body class="limbs-page">
 <a class="skip" href="#limb-cards">Skip to the limbs</a>
@@ -53,6 +65,14 @@
       <li><b>Your agent installs it.</b> ComfyUI, the weights, the workflow, then the bridge on <code>127.0.0.1:8191</code> (image), <code>:8192</code> (sound) or <code>:8193</code> (video). It reports what it measured, not what it hopes.</li>
       <li><b>The portal lights up.</b> This page and the portal's LOCAL LIMBS module probe that port and, when it answers, generate on your machine with the file rendered in the page. Chrome will ask once for <b>local network access</b> — that is the page reaching your own PC, and it is the one permission this needs. Refuse it and the bridge still works in <b>its own window</b> (<code>127.0.0.1:8191</code>), which needs no permission at all.</li>
     </ol>
+  </section>
+
+  <section class="limbs-note" aria-labelledby="whatTitle">
+    <h2 id="whatTitle">What a limb actually is, and what it is not</h2>
+    <p>A limb is one engine with one job, installed on your machine and reachable over a loopback port. This page is a cockpit: it holds no weights, no GPU, and no model, and it cannot render anything by itself. What it can do is talk to a local bridge that you installed, ask it for the work, and display the file that comes back.</p>
+    <p>That split is the point. If the browser held the model, every visitor would pay for the download and the video memory, and the page would only work on one machine. Because the engine lives beside you, the same page works for anyone who installs one, it keeps working when this site is unreachable, and the expensive part — the model — is something you own rather than something you rent by the token.</p>
+    <p>The three limbs share a contract: the same agent-brief shape, the same three ports (8191 for image, 8192 for sound, 8193 for video), and the same rule that a limb reports what it measured rather than what it hopes. Pick the one you need. You are not buying the suite, and installing the image engine does not change anything else on the portal.</p>
+    <p>Three limits are worth knowing before you start. The bridge is loopback only, so it is not exposed to the network and cannot be reached from anywhere but your machine. Chrome asks once for local-network access; refuse it and the bridge still runs in its own window, which needs no permission at all. And a limb is only as good as the engine behind it — this page can prove the pipe works, but it cannot make a model better or a render faster than the weights allow.</p>
   </section>
 
   <section class="limbs-cards" id="limb-cards" aria-label="Choose a limb"></section>
@@ -98,5 +118,13 @@
 </footer>
 
 <script src="limbs.js?v=20261018e"></script>
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie consent">
+  <div>Google AdSense may use cookies after you accept. <a href="/privacy.html">Privacy</a></div>
+  <div>
+    <button type="button" class="ok" id="cookieOk">Accept</button>
+    <button type="button" class="no" id="cookieNo">Decline</button>
+  </div>
+</div>
+<script src="/assets/site-kit.js" defer></script>
 </body>
 </html>
