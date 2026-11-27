@@ -160,7 +160,8 @@ def load_games():
             "title": g.get("title") or g["id"],
             "cat": extra.get("cat", "action"),
             "badge": extra.get("badge", genre.capitalize()),
-            "tech": extra.get("tech", "Browser · No install"),
+            "tech": ("On excavationpro.ca" if g["href"].startswith("http")
+                     else extra.get("tech", "Browser · No install")),
             "glow": extra.get("glow", "rgba(56, 189, 248, 0.3)"),
             "desc": extra.get("desc") or g.get("blurb") or g.get("tagline") or "",
             "url": g["href"],
@@ -272,7 +273,7 @@ def jsonld(games, halls, updated):
             "item": {
                 "@type": "VideoGame",
                 "name": g["title"],
-                "url": CORE + g["url"],
+                "url": g["url"] if g["url"].startswith("http") else CORE + g["url"],
                 "image": CORE + g["img"].split("?")[0],
                 "description": g["blurb"][:300] or g["desc"],
                 "genre": [x.capitalize() for x in g["genre"]] or ["Arcade"],

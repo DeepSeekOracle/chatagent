@@ -139,7 +139,7 @@
       "status": "live",
       "featured": true,
       "order": 6.6,
-      "href": "/games/lygo-dungeon/",
+      "href": "https://excavationpro.ca/games/lygo-dungeon/",
       "genre": ["dungeon", "rpg"],
       "players": "1"
     },
@@ -225,7 +225,7 @@
       "status": "live",
       "featured": true,
       "order": 11,
-      "href": "/games/haven-desk/",
+      "href": "https://excavationpro.ca/games/haven-desk/",
       "cover": "/games/haven-desk/assets/og.jpg?v=lygo98",
       "coverAlt": "LYGO 98 on a teal field, with a gray window and a LYGO button",
       "genre": ["desk", "retro"],

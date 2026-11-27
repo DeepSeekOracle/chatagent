@@ -65,7 +65,7 @@
       return {
         "@type": "ListItem",
         position: i + 1,
-        url: (location.origin || "") + g.href,
+        url: /^https?:/.test(g.href) ? g.href : (location.origin || "") + g.href,
         name: g.title
       };
     });
