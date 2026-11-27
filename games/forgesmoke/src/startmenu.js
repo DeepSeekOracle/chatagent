@@ -169,7 +169,7 @@ export function createStartMenu(opts = {}) {
       <i class="motes"></i>
     </div>
     <div class="panel">
-      <div class="kicker"><i></i> Δ9Φ963 · EXCAVATIONPRO · BAY 01</div>
+      <div class="kicker"><i></i> Δ9Φ963 · CHATAGENT.CA · BAY 01</div>
       <h1>FORGE<em>SMOKE</em></h1>
       <p class="tag">CYBORG MANAGER · AUTONOMOUS ARENA</p>
       <p class="blurb">You do not fight. You build a fighter, launch it into the smoke, and keep it alive
