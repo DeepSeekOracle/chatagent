@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<!-- the HTML itself must not go stale: a cached shell pins an old module graph -->
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="pragma" content="no-cache" />
+<meta http-equiv="expires" content="0" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Forge Smoke — cyborg manager game | chatagent.ca</title>
+<meta name="description" content="Build an autonomous cyborg, launch it into the smoke, and keep it alive with power-up cards while it fights for you. Levels are permanent, arenas are one-shot, and surviving past the final beat drops a legendary. THE DARKNESS COMES." />
+<meta name="author" content="Justin Helmer / Excavationpro" />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<meta name="theme-color" content="#07090C" />
+<meta name="keywords" content="cyborg manager game, autonomous fighter, browser game, HTML5 game, roguelite, power-up cards, excavationpro" />
+<link rel="canonical" href="https://chatagent.ca/games/forgesmoke/" />
+<link rel="image_src" href="https://chatagent.ca/games/forgesmoke/og.jpg" />
+<link rel="alternate" type="application/json" href="https://chatagent.ca/games/catalog.json" title="Games catalog" />
+
+<!-- AdSense -->
+<meta name="google-adsense-account" content="ca-pub-0646320966060599" />
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0646320966060599" crossorigin="anonymous"></script>
+
+<!-- Open Graph (X, Discord, Messenger, Slack) -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="chatagent.ca" />
+<meta property="og:locale" content="en_CA" />
+<meta property="og:url" content="https://chatagent.ca/games/forgesmoke/" />
+<meta property="og:title" content="Forge Smoke — a cyborg manager game" />
+<meta property="og:description" content="You do not fight. You build a fighter, launch it into the smoke, and keep it alive with power-up cards. Levels are permanent. Survive an arena for a legendary." />
+<meta property="og:image" content="https://chatagent.ca/games/forgesmoke/og.jpg" />
+<meta property="og:image:secure_url" content="https://chatagent.ca/games/forgesmoke/og.jpg" />
+<meta property="og:image:type" content="image/jpeg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="An armoured cyborg under an amber work lamp in a rain-soaked industrial bay" />
+
+<!-- X cards -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@Excavationpro" />
+<meta name="twitter:creator" content="@Excavationpro" />
+<meta name="twitter:title" content="Forge Smoke — a cyborg manager game" />
+<meta name="twitter:description" content="Build the fighter, launch it, keep it alive with power-up cards. Levels are permanent. Survive an arena for a legendary." />
+<meta name="twitter:image" content="https://chatagent.ca/games/forgesmoke/og.jpg" />
+<meta name="twitter:image:alt" content="An armoured cyborg under an amber work lamp in a rain-soaked industrial bay" />
+<meta name="twitter:image:width" content="1200" />
+<meta name="twitter:image:height" content="630" />
+
+<link rel="icon" href="data:," />
+<script type="application/ld+json" id="forgesmoke-jsonld">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "VideoGame",
+      "@id": "https://chatagent.ca/games/forgesmoke/#game",
+      "name": "Forge Smoke",
+      "alternateName": "Forge Smoke — Cyborg Manager",
+      "url": "https://chatagent.ca/games/forgesmoke/",
+      "description": "A cyborg manager game: build an autonomous fighter, launch it into one arena, and keep it alive with power-up cards while it fights for you. Levels are permanent, arenas are one-shot, and surviving past the final beat rolls a legendary.",
+      "image": { "@id": "https://chatagent.ca/games/forgesmoke/og.jpg" },
+      "genre": ["Survival", "Strategy", "Shooter", "Roguelite"],
+      "applicationCategory": "Game",
+      "gamePlatform": "Web browser",
+      "operatingSystem": "Any",
+      "playMode": ["SinglePlayer"],
+      "gameItem": [
+        { "@type": "Thing", "name": "Light mods: floodlight, orb rounds, solar aura" },
+        { "@type": "Thing", "name": "Autonomous cyborg pilot" },
+        { "@type": "Thing", "name": "Legendary arena drops" }
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "CAD",
+        "availability": "https://schema.org/InStock",
+        "url": "https://chatagent.ca/games/forgesmoke/"
+      },
+      "publisher": { "@id": "https://chatagent.ca/#org" },
+      "author": { "@type": "Person", "name": "Justin Helmer" },
+      "inLanguage": "en-CA",
+      "isAccessibleForFree": true,
+      "datePublished": "2026-10-28",
+      "dateModified": "2026-10-29"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://chatagent.ca/games/forgesmoke/#page",
+      "url": "https://chatagent.ca/games/forgesmoke/",
+      "name": "Forge Smoke — cyborg manager game",
+      "isPartOf": { "@id": "https://chatagent.ca/#website" },
+      "primaryImageOfPage": { "@id": "https://chatagent.ca/games/forgesmoke/og.jpg" },
+      "mainEntity": { "@id": "https://chatagent.ca/games/forgesmoke/#game" },
+      "breadcrumb": { "@id": "https://chatagent.ca/games/forgesmoke/#crumbs" },
+      "inLanguage": "en-CA"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://chatagent.ca/#website",
+      "url": "https://chatagent.ca/",
+      "name": "chatagent.ca",
+      "publisher": { "@id": "https://chatagent.ca/#org" },
+      "inLanguage": "en-CA"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://chatagent.ca/#org",
+      "name": "Excavationpro",
+      "url": "https://chatagent.ca/",
+      "founder": { "@type": "Person", "name": "Justin Helmer" },
+      "sameAs": [
+        "https://open.spotify.com/artist/6CkZ4bN2xu3WRKbjEL3u2S",
+        "https://music.apple.com/us/artist/excavationpro/1586588545",
+        "https://music.youtube.com/channel/UCnCf9gjhMEfUFPvGkdlUabQ"
+      ]
+    },
+    {
+      "@type": "ImageObject",
+      "@id": "https://chatagent.ca/games/forgesmoke/og.jpg",
+      "url": "https://chatagent.ca/games/forgesmoke/og.jpg",
+      "contentUrl": "https://chatagent.ca/games/forgesmoke/og.jpg",
+      "width": 1200,
+      "height": 630,
+      "caption": "An armoured cyborg under an amber work lamp in a rain-soaked industrial bay"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://chatagent.ca/games/forgesmoke/#crumbs",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://chatagent.ca/" },
+        { "@type": "ListItem", "position": 2, "name": "Games", "item": "https://chatagent.ca/games/" },
+        { "@type": "ListItem", "position": 3, "name": "Forge Smoke", "item": "https://chatagent.ca/games/forgesmoke/" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  html, body {
+    margin: 0; height: 100%; background: #05070d; color: #cfd6e4;
+    font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #errbar {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 9999; display: none;
+    padding: 10px 14px; max-height: 35vh; overflow: auto;
+    background: #2a0b0f; color: #ffb4b4; border-bottom: 1px solid #f2545b;
+    font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap;
+  }
+  #errbar.show { display: block; }
+  /* crawlable summary: present for search and screen readers, invisible to the player */
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0
+  }
+
+  /* ── site dock: brand, links, donate, radio ─────────────────────────────── */
+  #siteDock{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;align-items:center;gap:14px;
+    padding:7px 14px;background:linear-gradient(180deg,rgba(5,7,13,0),rgba(5,7,13,.92) 40%);
+    font:600 10px/1 ui-monospace,Consolas,monospace;letter-spacing:.14em;color:#7E93A6;
+    transition:opacity .2s;pointer-events:none;
+  }
+  #siteDock > *{pointer-events:auto}
+  #siteDock.bare{opacity:.3}
+  #siteDock.bare:hover{opacity:1}
+  #siteDock .brand{color:#FFB347;letter-spacing:.2em;font-weight:800}
+  #siteDock a{color:#9FB3C8;text-decoration:none;letter-spacing:.14em}
+  #siteDock a:hover{color:#FFB347}
+  #siteDock .support{
+    color:#0A0D11;background:linear-gradient(180deg,#FFC463,#E79531);padding:6px 11px;border-radius:3px;
+    font-weight:800;letter-spacing:.16em;box-shadow:0 0 18px -8px rgba(255,179,71,.8)
+  }
+  #siteDock .support:hover{color:#0A0D11;filter:brightness(1.06)}
+  #siteDock .grow{flex:1}
+
+  /* radio (the shared LYGO listen player) */
+  #radioDock{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+  #radioDock button{
+    background:rgba(19,26,34,.92);border:1px solid #1E2A35;color:#E8F1F8;border-radius:3px;
+    padding:5px 9px;font:700 9.5px ui-monospace,Consolas,monospace;letter-spacing:.14em;cursor:pointer
+  }
+  #radioDock button:hover{border-color:#FFB347;color:#FFB347}
+  #radioDock .radio-vol{display:flex;align-items:center;gap:5px}
+  #radioDock input[type=range]{width:64px;accent-color:#FFB347}
+  #radioDock .radio-dsp{display:none}
+  #radioDock .radio-title-inline{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9FB3C8;letter-spacing:.08em}
+  @media (max-width:760px){ #siteDock .hide-sm{display:none} #radioDock .radio-title-inline{display:none} }
+
+  /* ad slots are part of the kit: labelled, auto-format, never over the play area */
+  .ad-slot{padding:8px 0 4px}
+  .ad-label{font:600 8px ui-monospace,Consolas,monospace;letter-spacing:.22em;color:#54626F;margin-bottom:4px}
+</style>
+</head>
+<body>
+<div id="errbar" role="alert" aria-live="assertive"></div>
+
+<!-- Crawlable identity. The game itself is canvas + JS; this is what a search engine,
+     a screen reader or a link-preview crawler can read without running the game. -->
+<header class="sr-only">
+  <h1>Forge Smoke — a cyborg manager game</h1>
+  <p>Forge Smoke is a free browser game from Excavationpro. You manage an autonomous cyborg: choose its
+     character, weapon, light mods and perks in the bay, launch it into a single arena, then keep it alive
+     by playing power-up cards while it fights for you. Kills and survival time bank experience; levels
+     permanently raise power, armour, agility, handling, tech and signal. Surviving past the final beat of
+     an arena rolls a legendary drop. Enemy strength scales with your profile and rises inside each arena.</p>
+  <nav aria-label="Site">
+    <a href="https://chatagent.ca/" tabindex="-1">chatagent.ca home</a>
+    <a href="https://chatagent.ca/games/" tabindex="-1">All games</a>
+    <a href="https://asiancoastline.com/listen.html" tabindex="-1">Listen to the music catalogue</a>
+  </nav>
+</header>
+
+<div id="siteDock">
+  <span class="brand">EXCAVATIONPRO</span>
+  <a href="/games/" class="hide-sm">ALL GAMES</a>
+  <a href="https://asiancoastline.com/listen.html" target="_blank" rel="noopener noreferrer" class="hide-sm">LISTEN</a>
+  <a href="https://chatagent.ca/" class="hide-sm">HOME</a>
+  <span class="grow"></span>
+  <div id="radioDock" class="radio-inline">
+    <button type="button" id="radioPlay">▶ RADIO</button>
+    <button type="button" id="radioNext">NEXT</button>
+    <button type="button" id="radioMute">MUTE</button>
+    <label class="radio-vol" title="Radio volume">
+      <input type="range" id="radioVol" min="0" max="100" step="1" value="50" aria-label="Radio volume">
+      <span id="radioVolPct">50%</span>
+    </label>
+    <span class="radio-title-inline" id="radioTitle">LYGO listen portal</span>
+  </div>
+  <a class="support" href="https://www.paypal.com/paypalme/ExcavationPro" target="_blank" rel="noopener noreferrer">SUPPORT</a>
+</div>
+<audio id="radioEl" preload="auto"></audio>
+
+<!-- three.js is vendored with the studio: games build and run with no network at all. -->
+<script type="importmap">
+  {
+    "imports": {
+      "three/webgpu": "./vendor/three.webgpu.js",
+      "three/tsl": "./vendor/three.tsl.js",
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/",
+      "three/": "./vendor/three/"
+    }
+  }
+</script>
+<script type="module">
+  // A game that throws on load must still be *diagnosable* by the critic, so failures are
+  // rendered into the page and pushed into the studio contract instead of vanishing into a
+  // console nobody reads.
+  window.addEventListener("error", (event) => {
+    const bar = document.getElementById("errbar");
+    if (!bar) return;
+    const entry = document.querySelector('script[type="module"][src*="main.js"]');
+    const build = entry ? ((entry.src.match(/[?&]v=([^&]+)/) || [])[1] || "unknown") : "unknown";
+    bar.classList.add("show");
+    bar.textContent = "[error] " + (event.message || "script error") + "\nbuild " + build
+      + (event.error?.stack ? "\n" + event.error.stack : "");
+    window.__studio_error = { kind: "error", message: event.message, stack: event.error?.stack ?? "", build };
+    console.error("[forge] error:", event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    const bar = document.getElementById("errbar");
+    if (!bar) return;
+    const reason = event.reason || {};
+    bar.classList.add("show");
+    bar.textContent = "[promise] " + String(reason.message || reason)
+      + (window.__forgeBuild ? "\nbuild " + window.__forgeBuild : "");
+    window.__studio_error = { kind: "promise", message: String(reason.message || reason), build: window.__forgeBuild || "unknown" };
+  });
+</script>
+<!-- the shared listen player: one audio element, keeps playing across start / manager / game -->
+<script src="./assets/radio.js?v=20261101fx"></script>
+<!-- arcade ledger: the shared write path for the live board (mirrors /games/arcade-ledger.js) -->
+<script src="./assets/arcade-ledger.js?v=20261101fx"></script>
+<script type="module" src="./src/main.js?v=20261101fx"></script>
+</body>
+</html>
