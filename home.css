@@ -1,5 +1,5 @@
 /* cinematic homepage — do not apply to interior article pages */
-:root { --bg:#120e0a; --fg:#f3ece3; --muted:#b7aa9a; --gold:#e0b36a; --accent:#f0d9a8; --line: rgba(255,255,255,.14); --page-max:76rem; --gutter:clamp(1.25rem,4vw,2rem); }
+:root { --measure:40rem; --bg:#120e0a; --fg:#f3ece3; --muted:#b7aa9a; --gold:#e0b36a; --accent:#f0d9a8; --line: rgba(255,255,255,.14); --page-max:76rem; --gutter:clamp(1.25rem,4vw,2rem); }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body.home { margin:0; background:var(--bg); color:var(--fg); font-family:Syne,system-ui,sans-serif; line-height:1.65; }
@@ -25,7 +25,7 @@ body.home { margin:0; background:var(--bg); color:var(--fg); font-family:Syne,sy
 .home .lygo-tv-wrap { margin-top:1.5rem; }
 .hero::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(9,8,10,.18) 0%, rgba(9,8,10,.28) 45%, rgba(9,8,10,.94) 100%); }
 .hero-inner { position:relative; z-index:1; width:100%; padding:0 var(--gutter) 8vh; max-width:var(--page-max); margin:0 auto; }
-.hero-inner > * { max-width:48rem; }
+.hero-inner > * { max-width:40rem; }
 .kicker { font-family:"IBM Plex Mono",ui-monospace,monospace; letter-spacing:.26em; font-size:.7rem; color:var(--gold); text-transform:uppercase; }
 .hero h1 { font-family:"Cormorant Garamond",Georgia,serif; font-weight:500; font-size:clamp(2.05rem,6vw,3.4rem); line-height:1.08; margin:.35rem 0 .75rem; text-wrap:balance; hyphens:none; }
 .nowrap { white-space:nowrap; }
@@ -38,10 +38,10 @@ main.sheet { padding:0 var(--gutter) 3.5rem; max-width:var(--page-max); margin:0
 .home article { margin:2.2rem 0; }
 .home article h2 { font-family:"Cormorant Garamond",Georgia,serif; font-size:clamp(1.45rem,3vw,2rem); font-weight:500; margin:0 0 .65rem; color:var(--gold); }
 .home article h3 { font-size:1.05rem; margin:1.15rem 0 .3rem; }
-.home article p, .home article li { color:#ddd4c8; max-width:70ch; }
-.home article h1, .home article h2 { max-width:70ch; }
+.home article p, .home article li { color:#ddd4c8; max-width:var(--measure); }
+.home article h1, .home article h2, .home article h3 { max-width:var(--measure); }
 .notice { margin:1rem 0 0; padding:.85rem 1rem; border:1px solid var(--line); border-radius:10px; color:var(--muted); font-size:.92rem; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:.85rem; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(13.5rem,1fr)); gap:.85rem; max-width:var(--measure); }
 .mini { border:1px solid var(--line); border-radius:12px; padding:1rem; background:rgba(255,255,255,.03); }
 .ad-slot { margin:1.6rem 0; min-height:90px; padding:8px; border:1px dashed var(--line); border-radius:8px; text-align:center; }
 .ad-label { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#888; margin-bottom:6px; }
@@ -51,16 +51,16 @@ footer.site .wrap { max-width:var(--page-max); margin:0 auto; padding:0 var(--gu
 footer.site nav { display:flex; flex-wrap:wrap; gap:.5rem 1rem; margin-bottom:.7rem; justify-content:center; }
 footer.site .family { justify-content:center; }
 footer.site p { max-width:70ch; margin-left:auto; margin-right:auto; }
-.chip-row { display:flex; flex-wrap:wrap; gap:.45rem; }
+.chip-row { display:flex; flex-wrap:wrap; gap:.45rem; max-width:var(--measure); }
 .chip { display:inline-block; padding:.35rem .65rem; border:1px solid var(--line); border-radius:999px; text-decoration:none; color:var(--fg) !important; font-size:.82rem; }
 
 /* long-form homepage additions (2026-11-26) — additive only */
 .byline { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.76rem; letter-spacing:.06em; color:var(--muted); margin:0 0 1.4rem; }
-.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:.6rem 1rem; list-style:none; margin:1.4rem 0 1.2rem; padding:0; }
+.stats { max-width:var(--measure); display:grid; grid-template-columns:repeat(auto-fit,minmax(5.5rem,1fr)); gap:.6rem 1rem; list-style:none; margin:1.4rem 0 1.2rem; padding:0; }
 .stats li { border-top:1px solid var(--line); padding:.7rem .15rem 0; }
 .stats b { display:block; font-family:"Cormorant Garamond",Georgia,serif; font-weight:500; font-size:1.85rem; line-height:1; color:var(--gold); }
 .stats span { display:block; margin-top:.3rem; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
-.toc { margin:1.2rem 0 0; padding:.85rem 1rem; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.025); font-size:.84rem; line-height:1.9; color:var(--muted); }
+.toc { max-width:var(--measure); margin:1.2rem 0 0; padding:.85rem 1rem; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.025); font-size:.84rem; line-height:1.9; color:var(--muted); }
 .toc strong { color:var(--fg); font-size:.78rem; letter-spacing:.1em; text-transform:uppercase; margin-right:.25rem; }
 .toc a { white-space:nowrap; }
 .home article ul { padding-left:1.15rem; }
@@ -72,4 +72,14 @@ footer.site p { max-width:70ch; margin-left:auto; margin-right:auto; }
 @media (max-width:820px) {
   .hero::after { background:linear-gradient(180deg, rgba(9,8,10,.58) 0%, rgba(9,8,10,.74) 45%, rgba(9,8,10,.96) 100%); }
   body.home #lygoDiscordBtn { bottom:84px; }
+}
+
+/* keep the TV player on the same measure as the text */
+.home .lygo-tv-wrap, .home .lygo-tv-wrap .lygo-tv-ninja { max-width: var(--measure); margin-left: 0; margin-right: 0; }
+/* the site kit hides .home nav under 820px; keep the in-page contents visible */
+@media (max-width:820px) { .home nav.toc { display:block; } }
+@media (max-width:520px) {
+  .stats { grid-template-columns:repeat(5,1fr); gap:.35rem; }
+  .stats b { font-size:1.45rem; }
+  .stats span { font-size:.6rem; letter-spacing:.05em; }
 }
